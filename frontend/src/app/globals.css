@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 243, 244, 246;
+  --toast-bg: #ffffff;
+  --toast-color: #000000;
+}
+
+[data-theme='dark'] {
+  --toast-bg: #1f2937;
+  --toast-color: #ffffff;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+@layer base {
+  body {
+    @apply antialiased transition-colors duration-200;
+  }
+
+  /* Form inputs */
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    @apply bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400 transition-colors duration-200;
+  }
+
+  input[type="checkbox"] {
+    @apply bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 transition-colors duration-200;
+  }
+
+  /* Cards and containers */
+  .card {
+    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow transition-colors duration-200;
+  }
+
+  /* Tables */
+  table {
+    @apply divide-y divide-gray-200 dark:divide-gray-700 transition-colors duration-200;
+  }
+
+  thead {
+    @apply bg-gray-50 dark:bg-gray-800 transition-colors duration-200;
+  }
+
+  tbody {
+    @apply bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 transition-colors duration-200;
+  }
+
+  th {
+    @apply text-gray-500 dark:text-gray-400 transition-colors duration-200;
+  }
+
+  td {
+    @apply text-gray-900 dark:text-gray-300 transition-colors duration-200;
+  }
+
+  /* Text colors */
+  .text-default {
+    @apply text-gray-900 dark:text-white transition-colors duration-200;
+  }
+
+  .text-secondary {
+    @apply text-gray-500 dark:text-gray-400 transition-colors duration-200;
+  }
+
+  /* Backgrounds */
+  .bg-card {
+    @apply bg-white dark:bg-gray-800 transition-colors duration-200;
+  }
+
+  .bg-page {
+    @apply bg-gray-50 dark:bg-gray-900 transition-colors duration-200;
+  }
+
+  /* Dark mode styles for form inputs */
+  .dark input[type="text"],
+  .dark input[type="number"],
+  .dark input[type="date"] {
+    @apply bg-gray-800 border-gray-700 text-white placeholder-gray-400;
+  }
+
+  .dark input[type="checkbox"] {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  /* Dark mode styles for cards and tables */
+  .dark .bg-white {
+    @apply bg-gray-800 border-gray-700;
+  }
+
+  .dark .bg-gray-50 {
+    @apply bg-gray-900;
+  }
+
+  .dark .text-gray-700 {
+    @apply text-gray-300;
+  }
+
+  .dark .border-gray-200 {
+    @apply border-gray-700;
+  }
+
+  .dark .divide-gray-200 > * + * {
+    @apply divide-gray-700;
+  }
+
+  /* Smooth transitions */
+  .transition-colors {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+}
