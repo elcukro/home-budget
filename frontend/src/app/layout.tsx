@@ -4,6 +4,11 @@ import "./globals.css";
 import Sidebar from "@/components/Sidebar";
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider } from 'next-themes';
+import { SettingsProvider } from '@/contexts/SettingsContext';
+import PageTitle from "@/components/PageTitle";
+import AuthProvider from "@/components/AuthProvider";
+import IntlProviderWrapper from "@/components/IntlProviderWrapper";
+import { headers } from 'next/headers';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -11,7 +16,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Home Budget App",
+  title: "Home Budget",
   description: "Track and manage your personal finances",
 };
 
@@ -20,28 +25,28 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = headers();
+  const pathname = headersList.get('x-pathname') || '';
+  const isAuthPage = pathname.startsWith('/auth');
+
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-white dark:bg-gray-900`}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <div className="flex h-screen">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto p-8 bg-gray-50 dark:bg-gray-900">
-              <div className="text-gray-900 dark:text-white">
-                {children}
-              </div>
-            </main>
-          </div>
-          <Toaster 
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: 'var(--toast-bg)',
-                color: 'var(--toast-color)',
-              },
-            }}
-          />
-        </ThemeProvider>
+      <body className={inter.className}>
+        <AuthProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <SettingsProvider>
+              <IntlProviderWrapper>
+                <div className="flex min-h-screen bg-background">
+                  {!isAuthPage && <Sidebar />}
+                  <main className={`flex-1 ${!isAuthPage ? 'p-8' : ''}`}>
+                    {children}
+                  </main>
+                </div>
+                {!isAuthPage && <Toaster position="top-right" />}
+              </IntlProviderWrapper>
+            </SettingsProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

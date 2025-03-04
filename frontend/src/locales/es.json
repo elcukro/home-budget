@@ -1,0 +1,169 @@
+{
+  "common": {
+    "add": "Agregar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loading": "Cargando...",
+    "error": "Error: {message}",
+    "confirm": "¿Estás seguro?",
+    "yes": "Sí",
+    "no": "No",
+    "actions": "Acciones",
+    "select": "Seleccionar...",
+    "appName": "Presupuesto del hogar"
+  },
+  "navigation": {
+    "dashboard": "Panel",
+    "income": "Ingresos",
+    "expenses": "Gastos",
+    "loans": "Préstamos",
+    "reports": "Informes",
+    "settings": "Configuración"
+  },
+  "dashboard": {
+    "title": "Panel Financiero",
+    "recentActivity": "Actividad Reciente",
+    "noActivity": "Sin actividad reciente",
+    "quickActions": "Acciones Rápidas",
+    "summaryCards": {
+      "monthlyIncome": "Ingresos Mensuales",
+      "monthlyExpenses": "Gastos Mensuales",
+      "loanPayments": "Pagos de Préstamos",
+      "monthlyBalance": "Balance Mensual"
+    },
+    "activity": {
+      "create": "Creado",
+      "update": "Actualizado",
+      "delete": "Eliminado",
+      "income": "ingreso",
+      "expense": "gasto",
+      "loan": "préstamo",
+      "source": "fuente",
+      "description": "descripción",
+      "amount": "monto",
+      "principal_amount": "monto principal",
+      "remaining_balance": "saldo restante",
+      "timestamp": "{date} a las {time}",
+      "updated_at": "Actualizado el {date} a las {time}",
+      "details": {
+        "income": "{operation} {type} con fuente: {source}, monto: {amount}",
+        "expense": "{operation} {type} con descripción: {description}, monto: {amount}",
+        "loan": "{operation} {type} con descripción: {description}, monto: {amount}"
+      }
+    }
+  },
+  "income": {
+    "title": "Gestión de Ingresos",
+    "addNew": "Agregar Nuevo Ingreso",
+    "source": "Fuente",
+    "amount": "Monto",
+    "date": "Fecha",
+    "recurring": "Ingreso Mensual Recurrente",
+    "noEntries": "Aún no hay ingresos",
+    "tooltips": {
+      "source": "Ingrese la fuente de sus ingresos (ej., Salario, Freelance, Inversión)",
+      "amount": "Ingrese el monto en su moneda seleccionada",
+      "date": "Seleccione la fecha cuando recibió o espera recibir este ingreso",
+      "recurring": "Marque esto si recibe este ingreso regularmente cada mes (ej., salario)"
+    }
+  },
+  "expenses": {
+    "title": "Gestión de Gastos",
+    "addNew": "Agregar Nuevo Gasto",
+    "category": "Categoría",
+    "description": "Descripción",
+    "amount": "Monto",
+    "date": "Fecha",
+    "recurring": "Gasto Mensual Recurrente",
+    "noEntries": "Aún no hay gastos",
+    "categories": {
+      "housing": "Vivienda",
+      "transportation": "Transporte",
+      "food": "Alimentación",
+      "utilities": "Servicios",
+      "insurance": "Seguros",
+      "healthcare": "Salud",
+      "entertainment": "Entretenimiento",
+      "other": "Otros"
+    },
+    "tooltips": {
+      "category": "Seleccione la categoría que mejor describe su gasto",
+      "description": "Ingrese una breve descripción del gasto",
+      "amount": "Ingrese el monto del gasto en su moneda seleccionada",
+      "date": "Seleccione la fecha cuando ocurrió el gasto",
+      "recurring": "Marque esto si este gasto ocurre regularmente cada mes"
+    }
+  },
+  "loans": {
+    "title": "Gestión de Préstamos",
+    "addNew": "Agregar Nuevo Préstamo",
+    "type": "Tipo",
+    "description": "Descripción",
+    "principalAmount": "Monto Principal",
+    "remainingBalance": "Saldo Restante",
+    "interestRate": "Tasa de Interés",
+    "monthlyPayment": "Pago Mensual",
+    "termMonths": "Plazo (Meses)",
+    "startDate": "Fecha de Inicio",
+    "noEntries": "Aún no hay préstamos",
+    "types": {
+      "mortgage": "Hipoteca",
+      "car": "Préstamo de Auto",
+      "personal": "Préstamo Personal",
+      "student": "Préstamo Estudiantil",
+      "other": "Otro"
+    },
+    "tooltips": {
+      "type": "Seleccione el tipo de préstamo",
+      "description": "Ingrese una breve descripción del préstamo",
+      "principalAmount": "Ingrese el monto original del préstamo",
+      "remainingBalance": "Ingrese el saldo pendiente actual del préstamo",
+      "interestRate": "Ingrese la tasa de interés anual",
+      "monthlyPayment": "Ingrese su monto de pago mensual fijo",
+      "termMonths": "Ingrese la duración total del préstamo en meses",
+      "startDate": "Seleccione la fecha cuando comenzó el préstamo"
+    }
+  },
+  "reports": {
+    "title": "Informes Financieros",
+    "monthlyBalance": "Balance Mensual",
+    "savingsRate": "Tasa de Ahorro",
+    "totalLoanBalance": "Saldo Total de Préstamos",
+    "monthlyFlow": "Flujo de Caja Mensual",
+    "expenseDistribution": "Distribución de Gastos",
+    "financialHealth": "Indicadores de Salud Financiera",
+    "indicators": {
+      "debtToIncome": "Ratio Deuda-Ingreso",
+      "expenseRatio": "Ratio de Gastos"
+    },
+    "chart": {
+      "income": "Ingresos",
+      "expenses": "Gastos",
+      "loanPayments": "Pagos de Préstamos",
+      "amount": "Monto"
+    },
+    "income": "Ingresos",
+    "expenses": "Gastos",
+    "loanPayments": "Pagos de préstamos",
+    "availableCash": "Efectivo disponible",
+    "submit": "Enviar"
+  },
+  "settings": {
+    "title": "Configuración",
+    "language": "Idioma",
+    "currency": "Moneda",
+    "languages": {
+      "en": "Inglés",
+      "es": "Español",
+      "fr": "Francés"
+    },
+    "currencies": {
+      "USD": "Dólar Estadounidense ($)",
+      "EUR": "Euro (€)",
+      "GBP": "Libra Esterlina (£)",
+      "JPY": "Yen Japonés (¥)"
+    }
+  }
+} 

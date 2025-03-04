@@ -2,119 +2,126 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 243, 244, 246;
-  --toast-bg: #ffffff;
-  --toast-color: #000000;
-}
+@layer base {
+  :root {
+    --background-primary: 255, 255, 255;    /* White */
+    --background-secondary: 249, 250, 251;  /* Gray-50 */
+    --text-primary: 17, 24, 39;            /* Gray-900 */
+    --text-secondary: 75, 85, 99;          /* Gray-600 */
+    --border-color: 229, 231, 235;         /* Gray-200 */
+    --input-background: 255, 255, 255;     /* White */
+    --card-background: 255, 255, 255;      /* White */
+    --hover-background: 243, 244, 246;     /* Gray-100 */
+  }
 
-[data-theme='dark'] {
-  --toast-bg: #1f2937;
-  --toast-color: #ffffff;
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  .dark {
+    --background-primary: 17, 24, 39;      /* Gray-900 */
+    --background-secondary: 31, 41, 55;    /* Gray-800 */
+    --text-primary: 243, 244, 246;         /* Gray-100 */
+    --text-secondary: 156, 163, 175;       /* Gray-400 */
+    --border-color: 55, 65, 81;           /* Gray-700 */
+    --input-background: 31, 41, 55;       /* Gray-800 */
+    --card-background: 31, 41, 55;        /* Gray-800 */
+    --hover-background: 55, 65, 81;       /* Gray-700 */
+  }
 }
 
 @layer base {
+  html {
+    @apply antialiased;
+  }
+
   body {
-    @apply antialiased transition-colors duration-200;
+    color: rgb(var(--text-primary));
+    background-color: rgb(var(--background-secondary));
   }
 
   /* Form inputs */
   input[type="text"],
   input[type="number"],
-  input[type="date"] {
-    @apply bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white dark:placeholder-gray-400 transition-colors duration-200;
+  input[type="date"],
+  select {
+    @apply border rounded-md px-3 py-2 w-full transition-colors duration-200;
+    background-color: rgb(var(--input-background));
+    border-color: rgb(var(--border-color));
+    color: rgb(var(--text-primary));
   }
 
   input[type="checkbox"] {
-    @apply bg-white border-gray-300 dark:bg-gray-800 dark:border-gray-700 transition-colors duration-200;
+    @apply rounded border transition-colors duration-200;
+    background-color: rgb(var(--input-background));
+    border-color: rgb(var(--border-color));
   }
 
   /* Cards and containers */
   .card {
-    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow transition-colors duration-200;
+    @apply rounded-lg shadow-sm border transition-colors duration-200;
+    background-color: rgb(var(--card-background));
+    border-color: rgb(var(--border-color));
   }
 
   /* Tables */
   table {
-    @apply divide-y divide-gray-200 dark:divide-gray-700 transition-colors duration-200;
+    @apply w-full transition-colors duration-200;
   }
 
   thead {
-    @apply bg-gray-50 dark:bg-gray-800 transition-colors duration-200;
+    background-color: rgb(var(--background-secondary));
   }
 
   tbody {
-    @apply bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 transition-colors duration-200;
+    background-color: rgb(var(--card-background));
   }
 
   th {
-    @apply text-gray-500 dark:text-gray-400 transition-colors duration-200;
+    @apply px-6 py-3 text-left text-xs font-medium uppercase tracking-wider;
+    color: rgb(var(--text-secondary));
   }
 
   td {
-    @apply text-gray-900 dark:text-gray-300 transition-colors duration-200;
+    @apply px-6 py-4 whitespace-nowrap;
+    color: rgb(var(--text-primary));
   }
 
   /* Text colors */
   .text-default {
-    @apply text-gray-900 dark:text-white transition-colors duration-200;
+    color: rgb(var(--text-primary));
   }
 
   .text-secondary {
-    @apply text-gray-500 dark:text-gray-400 transition-colors duration-200;
+    color: rgb(var(--text-secondary));
   }
 
-  /* Backgrounds */
-  .bg-card {
-    @apply bg-white dark:bg-gray-800 transition-colors duration-200;
+  /* Buttons */
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md 
+           transition-colors duration-200 focus:outline-none focus:ring-2 
+           focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900;
   }
 
-  .bg-page {
-    @apply bg-gray-50 dark:bg-gray-900 transition-colors duration-200;
+  .btn-secondary {
+    @apply bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 
+           text-gray-900 dark:text-gray-100 px-4 py-2 rounded-md transition-colors duration-200;
   }
 
-  /* Dark mode styles for form inputs */
-  .dark input[type="text"],
-  .dark input[type="number"],
-  .dark input[type="date"] {
-    @apply bg-gray-800 border-gray-700 text-white placeholder-gray-400;
+  /* Hover states */
+  .hover-bg {
+    @apply transition-colors duration-200;
   }
+  
+  .hover-bg:hover {
+    background-color: rgb(var(--hover-background));
+  }
+}
 
-  .dark input[type="checkbox"] {
-    @apply bg-gray-800 border-gray-700;
-  }
+/* Toast customization */
+.Toaster__toast {
+  background-color: rgb(var(--card-background)) !important;
+  color: rgb(var(--text-primary)) !important;
+  border: 1px solid rgb(var(--border-color)) !important;
+}
 
-  /* Dark mode styles for cards and tables */
-  .dark .bg-white {
-    @apply bg-gray-800 border-gray-700;
-  }
-
-  .dark .bg-gray-50 {
-    @apply bg-gray-900;
-  }
-
-  .dark .text-gray-700 {
-    @apply text-gray-300;
-  }
-
-  .dark .border-gray-200 {
-    @apply border-gray-700;
-  }
-
-  .dark .divide-gray-200 > * + * {
-    @apply divide-gray-700;
-  }
-
-  /* Smooth transitions */
-  .transition-colors {
-    transition-property: background-color, border-color, color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
-  }
+/* Transitions */
+* {
+  @apply transition-colors duration-200;
 }

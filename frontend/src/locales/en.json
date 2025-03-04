@@ -8,11 +8,13 @@
     "loading": "Loading...",
     "error": "Error: {message}",
     "confirm": "Are you sure?",
+    "confirmDelete": "Are you sure you want to delete this item?",
     "yes": "Yes",
     "no": "No",
     "actions": "Actions",
     "select": "Select...",
-    "appName": "Home Budget"
+    "appName": "Home Budget",
+    "mustBeLoggedIn": "You must be logged in to perform this action"
   },
   "auth": {
     "welcome": "Welcome to Home Budget",
@@ -43,7 +45,12 @@
     "title": "Financial Dashboard",
     "recentActivity": "Recent Activity",
     "noActivity": "No recent activity",
-    "quickActions": "Quick Actions",
+    "quickActions": {
+      "addIncome": "Record a new source of income",
+      "addExpense": "Add a new expense entry",
+      "addLoan": "Register a new loan",
+      "viewReports": "View financial reports and analytics"
+    },
     "summaryCards": {
       "monthlyIncome": "Monthly Income",
       "monthlyExpenses": "Monthly Expenses",
@@ -51,9 +58,9 @@
       "monthlyBalance": "Monthly Balance"
     },
     "activity": {
-      "created": "Created",
-      "updated": "Updated",
-      "deleted": "Deleted",
+      "create": "Created",
+      "update": "Updated",
+      "delete": "Deleted",
       "income": "income",
       "expense": "expense",
       "loan": "loan",
@@ -62,7 +69,8 @@
       "amount": "amount",
       "principal_amount": "principal amount",
       "remaining_balance": "remaining balance",
-      "change": "{from} → {to}",
+      "timestamp": "{date} at {time}",
+      "updated_at": "Updated {date} at {time}",
       "details": {
         "income": "{operation} {type} with source: {source}, amount: {amount}",
         "expense": "{operation} {type} with description: {description}, amount: {amount}",
@@ -74,6 +82,7 @@
     "title": "Income Management",
     "addNew": "Add New Income",
     "category": "Category",
+    "incomeHistory": "List of Incomes",
     "description": "Description",
     "amount": "Amount",
     "date": "Date",
@@ -110,12 +119,21 @@
       "created_at": "Created At",
       "actions": "Actions",
       "delete": "Delete"
+    },
+    "deleting": "Deleting income...",
+    "deleteSuccess": "Income deleted successfully",
+    "deleteFailed": "Failed to delete income",
+    "updateSuccess": "Income updated successfully",
+    "errors": {
+      "deleteFailed": "Failed to delete income",
+      "updateFailed": "Failed to update income"
     }
   },
   "expenses": {
     "title": "Expense Management",
     "addNew": "Add New Expense",
     "category": "Category",
+    "expenseHistory": "List of Expenses",
     "description": "Description",
     "amount": "Amount",
     "date": "Date",
@@ -137,12 +155,19 @@
       "amount": "Enter the expense amount in your selected currency",
       "date": "Select the date when the expense occurred",
       "recurring": "Check this if this expense occurs regularly each month"
+    },
+    "deleting": "Deleting expense...",
+    "deleteSuccess": "Expense deleted successfully",
+    "deleteFailed": "Failed to delete expense",
+    "errors": {
+      "deleteFailed": "Failed to delete expense"
     }
   },
   "loans": {
     "title": "Loan Management",
     "addNew": "Add New Loan",
     "type": "Type",
+    "loanHistory": "List of Loans",
     "description": "Description",
     "principalAmount": "Principal Amount",
     "remainingBalance": "Remaining Balance",
@@ -167,6 +192,20 @@
       "monthlyPayment": "Enter your fixed monthly payment amount",
       "termMonths": "Enter the total duration of the loan in months",
       "startDate": "Select the date when the loan began"
+    },
+    "deleting": "Deleting loan...",
+    "deleteSuccess": "Loan deleted successfully",
+    "deleteFailed": "Failed to delete loan",
+    "updating": "Updating loan...",
+    "updateSuccess": "Loan updated successfully",
+    "updateFailed": "Failed to update loan",
+    "adding": "Adding loan...",
+    "addSuccess": "Loan added successfully",
+    "addFailed": "Failed to add loan",
+    "errors": {
+      "deleteFailed": "Failed to delete loan",
+      "updateFailed": "Failed to update loan",
+      "addFailed": "Failed to add loan"
     }
   },
   "reports": {
@@ -177,6 +216,37 @@
     "monthlyFlow": "Monthly Cash Flow",
     "expenseDistribution": "Expense Distribution",
     "financialHealth": "Financial Health Indicators",
+    "yearlyBudgetTitle": "{year} Budget",
+    "income": "Income",
+    "expenses": "Expenses",
+    "loanPayments": "Loan Payments",
+    "availableCash": "Available Cash",
+    "balance": "Balance",
+    "submit": "Submit",
+    "period": {
+      "from": "From",
+      "to": "To",
+      "presets": {
+        "last3Months": "Last 3 months",
+        "last6Months": "Last 6 months",
+        "lastYear": "Last year",
+        "allTime": "All time"
+      }
+    },
+    "months": {
+      "1": "January",
+      "2": "February",
+      "3": "March",
+      "4": "April",
+      "5": "May",
+      "6": "June",
+      "7": "July",
+      "8": "August",
+      "9": "September",
+      "10": "October",
+      "11": "November",
+      "12": "December"
+    },
     "indicators": {
       "debtToIncome": "Debt-to-Income Ratio",
       "expenseRatio": "Expense Ratio"

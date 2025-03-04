@@ -216,4 +216,90 @@ def get_user_summary(user_id: int, db: Session = Depends(get_db)):
         "total_monthly_loan_payments": total_monthly_loan_payments,
         "total_loan_balance": total_loan_balance,
         "monthly_balance": total_monthly_income - total_monthly_expenses - total_monthly_loan_payments
-    } 
+    }
+
+# Activity endpoints
+@app.post("/users/{user_id}/activities", response_model=schemas.Activity)
+def create_activity(
+    user_id: str,
+    activity: schemas.ActivityCreate,
+    db: Session = Depends(get_db)
+):
+    try:
+        print(f"[FastAPI] Creating activity for user: {user_id}")
+        db_activity = models.Activity(
+            user_id=user_id,
+            entity_type=activity.entity_type,
+            operation_type=activity.operation_type,
+            entity_id=activity.entity_id,
+            previous_values=activity.previous_values,
+            new_values=activity.new_values
+        )
+        db.add(db_activity)
+        db.commit()
+        db.refresh(db_activity)
+        print(f"[FastAPI] Created activity: {db_activity}")
+        return db_activity
+    except Exception as e:
+        print(f"[FastAPI] Error in create_activity: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/users/{user_id}/activities", response_model=List[schemas.Activity])
+def get_user_activities(
+    user_id: str,
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    try:
+        print(f"[FastAPI] Getting activities for user: {user_id}")
+        activities = db.query(models.Activity)\
+            .filter(models.Activity.user_id == user_id)\
+            .order_by(models.Activity.timestamp.desc())\
+            .offset(skip)\
+            .limit(limit)\
+            .all()
+        print(f"[FastAPI] Found {len(activities)} activities")
+        return activities
+    except Exception as e:
+        print(f"[FastAPI] Error in get_user_activities: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Settings endpoints
+@app.get("/users/{user_id}/settings", response_model=schemas.Settings)
+def get_user_settings(user_id: int, db: Session = Depends(get_db)):
+    db_settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+    
+    if not db_settings:
+        # Create default settings if they don't exist
+        db_settings = models.Settings(
+            user_id=user_id,
+            language="en",
+            currency="USD"
+        )
+        db.add(db_settings)
+        db.commit()
+        db.refresh(db_settings)
+    
+    return db_settings
+
+@app.put("/users/{user_id}/settings", response_model=schemas.Settings)
+def update_user_settings(
+    user_id: int,
+    settings: schemas.SettingsCreate,
+    db: Session = Depends(get_db)
+):
+    db_settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+    
+    if not db_settings:
+        db_settings = models.Settings(user_id=user_id)
+    
+    for key, value in settings.dict().items():
+        setattr(db_settings, key, value)
+    
+    if not db_settings.id:
+        db.add(db_settings)
+    
+    db.commit()
+    db.refresh(db_settings)
+    return db_settings 

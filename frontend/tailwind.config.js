@@ -5,8 +5,30 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  darkMode: 'class',
   theme: {
-    extend: {},
+    extend: {
+      backgroundColor: {
+        'background-primary': 'rgb(var(--background-primary))',
+        'background-secondary': 'rgb(var(--background-secondary))',
+        'card': 'rgb(var(--card-background))',
+        'input': 'rgb(var(--input-background))',
+      },
+      textColor: {
+        'primary': 'rgb(var(--text-primary))',
+        'secondary': 'rgb(var(--text-secondary))',
+      },
+      borderColor: {
+        'default': 'rgb(var(--border-color))',
+      },
+      colors: {
+        navy: {
+          800: '#1a2c4e',
+          900: '#0f1a2e',
+          950: '#070d17',
+        },
+      },
+    },
   },
   plugins: [],
 } 

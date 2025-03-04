@@ -1,0 +1,330 @@
+{
+  "common": {
+    "add": "Dodaj",
+    "edit": "Edytuj",
+    "delete": "Usuń",
+    "save": "Zapisz",
+    "cancel": "Anuluj",
+    "loading": "Ładowanie...",
+    "error": "Błąd: {message}",
+    "confirm": "Czy jesteś pewien?",
+    "confirmDelete": "Czy na pewno chcesz usunąć ten element?",
+    "yes": "Tak",
+    "no": "Nie",
+    "actions": "Akcje",
+    "select": "Wybierz...",
+    "appName": "Budżet domowy",
+    "createdAt": "Data utworzenia",
+    "mustBeLoggedIn": "Musisz być zalogowany, aby wykonać tę akcję"
+  },
+  "navigation": {
+    "dashboard": "Panel",
+    "income": "Przychody",
+    "expenses": "Wydatki",
+    "loans": "Pożyczki",
+    "reports": "Raporty",
+    "settings": "Ustawienia"
+  },
+  "dashboard": {
+    "title": "Panel Finansowy",
+    "recentActivity": "Ostatnia Aktywność",
+    "noActivity": "Brak ostatniej aktywności",
+    "quickActions": {
+      "addIncome": "Dodaj nowe źródło przychodu",
+      "addExpense": "Dodaj nowy wydatek",
+      "addLoan": "Zarejestruj nową pożyczkę",
+      "viewReports": "Zobacz raporty i analizy finansowe"
+    },
+    "summaryCards": {
+      "monthlyIncome": "Miesięczny Przychód",
+      "monthlyExpenses": "Miesięczne Wydatki",
+      "loanPayments": "Spłaty Pożyczek",
+      "monthlyBalance": "Bilans Miesięczny"
+    },
+    "activity": {
+      "create": "Utworzono",
+      "update": "Zaktualizowano",
+      "delete": "Usunięto",
+      "income": "przychód",
+      "expense": "wydatek",
+      "loan": "pożyczkę",
+      "source": "źródło",
+      "description": "opis",
+      "amount": "kwota",
+      "id": "ID",
+      "category": "kategoria",
+      "principal_amount": "kwota główna",
+      "remaining_balance": "pozostała kwota",
+      "monthly_payment": "rata miesięczna",
+      "interest_rate": "stopa procentowa",
+      "term_months": "okres (miesiące)",
+      "timestamp": "{date} o {time}",
+      "updated_at": "Zaktualizowano {date} o {time}",
+      "categories": {
+        "income": {
+          "salary": "Wynagrodzenie",
+          "freelance": "Freelance",
+          "investments": "Inwestycje",
+          "rental": "Przychód z wynajmu",
+          "other": "Inne"
+        },
+        "expense": {
+          "housing": "Mieszkanie",
+          "transportation": "Transport",
+          "food": "Żywność",
+          "utilities": "Media",
+          "insurance": "Ubezpieczenia",
+          "healthcare": "Opieka Zdrowotna",
+          "entertainment": "Rozrywka",
+          "other": "Inne"
+        },
+        "loan": {
+          "mortgage": "Hipoteka",
+          "car": "Kredyt Samochodowy",
+          "personal": "Pożyczka Osobista",
+          "student": "Kredyt Studencki",
+          "other": "Inne"
+        }
+      },
+      "details": {
+        "income": "{operation} {type} ze źródłem: {source}, kwota: {amount}",
+        "expense": "{operation} {type} z opisem: {description}, kwota: {amount}",
+        "loan": "{operation} {type} z opisem: {description}, kwota: {amount}"
+      }
+    }
+  },
+  "income": {
+    "title": "Zarządzanie Przychodami",
+    "addNew": "Dodaj Nowy Przychód",
+    "incomeHistory": "Lista Przychodów",
+    "source": "Źródło",
+    "amount": "Kwota",
+    "date": "Data",
+    "recurring": "Przychód Cykliczny Miesięczny",
+    "noEntries": "Brak wpisów przychodów",
+    "category": "Kategoria",
+    "description": "Opis",
+    "tooltips": {
+      "source": "Wprowadź źródło przychodu (np. Wynagrodzenie, Freelance, Inwestycje)",
+      "amount": "Wprowadź kwotę w wybranej walucie",
+      "date": "Wybierz datę otrzymania lub oczekiwanego otrzymania przychodu",
+      "recurring": "Zaznacz, jeśli otrzymujesz ten przychód regularnie co miesiąc (np. wynagrodzenie)"
+    },
+    "categories": {
+      "salary": "Wynagrodzenie",
+      "freelance": "Freelance",
+      "investments": "Inwestycje",
+      "rental": "Przychód z wynajmu",
+      "other": "Inne"
+    },
+    "form": {
+      "category": "Kategoria",
+      "category.select": "Wybierz kategorię...",
+      "description": "Opis",
+      "amount": "Kwota",
+      "date": "Data",
+      "recurring": "Przychód Cykliczny Miesięczny",
+      "submit": "Dodaj Przychód"
+    },
+    "table": {
+      "category": "Kategoria",
+      "description": "Opis",
+      "amount": "Kwota",
+      "date": "Data",
+      "created_at": "Data utworzenia",
+      "actions": "Akcje",
+      "delete": "Usuń"
+    },
+    "deleting": "Usuwanie przychodu...",
+    "deleteSuccess": "Przychód został pomyślnie usunięty",
+    "deleteFailed": "Nie udało się usunąć przychodu",
+    "updateSuccess": "Przychód został pomyślnie zaktualizowany",
+    "createSuccess": "Przychód został pomyślnie dodany",
+    "errors": {
+      "deleteFailed": "Nie udało się usunąć przychodu",
+      "updateFailed": "Nie udało się zaktualizować przychodu"
+    }
+  },
+  "expenses": {
+    "title": "Zarządzanie Wydatkami",
+    "addNew": "Dodaj Nowy Wydatek",
+    "expenseHistory": "Lista Wydatków",
+    "category": "Kategoria",
+    "description": "Opis",
+    "amount": "Kwota",
+    "date": "Data",
+    "recurring": "Wydatek Cykliczny Miesięczny",
+    "noEntries": "Brak wpisów wydatków",
+    "categories": {
+      "housing": "Mieszkanie",
+      "transportation": "Transport",
+      "food": "Żywność",
+      "utilities": "Media",
+      "insurance": "Ubezpieczenia",
+      "healthcare": "Opieka Zdrowotna",
+      "entertainment": "Rozrywka",
+      "other": "Inne"
+    },
+    "tooltips": {
+      "category": "Wybierz kategorię, która najlepiej opisuje twój wydatek",
+      "description": "Wprowadź krótki opis wydatku",
+      "amount": "Wprowadź kwotę wydatku w wybranej walucie",
+      "date": "Wybierz datę dokonania wydatku",
+      "recurring": "Zaznacz, jeśli ten wydatek występuje regularnie co miesiąc"
+    },
+    "deleting": "Usuwanie wydatku...",
+    "deleteSuccess": "Wydatek został pomyślnie usunięty",
+    "deleteFailed": "Nie udało się usunąć wydatku",
+    "errors": {
+      "deleteFailed": "Nie udało się usunąć wydatku"
+    }
+  },
+  "loans": {
+    "title": "Zarządzanie Pożyczkami",
+    "addNew": "Dodaj Nową Pożyczkę",
+    "loanHistory": "Lista Pożyczek",
+    "loanType": "Typ Pożyczki",
+    "type": "Typ",
+    "description": "Opis",
+    "principalAmount": "Kwota Główna",
+    "remainingBalance": "Pozostała Kwota",
+    "interestRate": "Stopa Procentowa",
+    "monthlyPayment": "Rata Miesięczna",
+    "termMonths": "Okres (Miesiące)",
+    "startDate": "Data Rozpoczęcia",
+    "noEntries": "Brak wpisów pożyczek",
+    "types": {
+      "mortgage": "Hipoteka",
+      "car": "Kredyt Samochodowy",
+      "personal": "Pożyczka Osobista",
+      "student": "Kredyt Studencki",
+      "other": "Inne"
+    },
+    "tooltips": {
+      "loanType": "Wybierz typ pożyczki",
+      "type": "Wybierz typ pożyczki",
+      "description": "Wprowadź krótki opis pożyczki",
+      "principalAmount": "Wprowadź pierwotną kwotę pożyczki",
+      "remainingBalance": "Wprowadź aktualną pozostałą kwotę do spłaty",
+      "interestRate": "Wprowadź roczną stopę procentową",
+      "monthlyPayment": "Wprowadź stałą kwotę raty miesięcznej",
+      "termMonths": "Wprowadź całkowity okres spłaty w miesiącach",
+      "startDate": "Wybierz datę rozpoczęcia pożyczki"
+    },
+    "deleting": "Usuwanie pożyczki...",
+    "deleteSuccess": "Pożyczka została pomyślnie usunięta",
+    "deleteFailed": "Nie udało się usunąć pożyczki",
+    "updating": "Aktualizowanie pożyczki...",
+    "updateSuccess": "Pożyczka została pomyślnie zaktualizowana",
+    "updateFailed": "Nie udało się zaktualizować pożyczki",
+    "adding": "Dodawanie pożyczki...",
+    "addSuccess": "Pożyczka została pomyślnie dodana",
+    "addFailed": "Nie udało się dodać pożyczki",
+    "errors": {
+      "deleteFailed": "Nie udało się usunąć pożyczki",
+      "updateFailed": "Nie udało się zaktualizować pożyczki",
+      "addFailed": "Nie udało się dodać pożyczki"
+    }
+  },
+  "reports": {
+    "title": "Raporty Finansowe",
+    "monthlyBalance": "Bilans Miesięczny",
+    "savingsRate": "Wskaźnik Oszczędności",
+    "totalLoanBalance": "Całkowite Saldo Pożyczek",
+    "monthlyFlow": "Przepływ Pieniężny",
+    "expenseDistribution": "Rozkład Wydatków",
+    "financialHealth": "Wskaźniki Zdrowia Finansowego",
+    "yearlyBudgetTitle": "Budżet {year}",
+    "income": "Przychody",
+    "expenses": "Wydatki",
+    "loanPayments": "Spłaty Pożyczek",
+    "availableCash": "Dostępna gotówka",
+    "balance": "Saldo",
+    "submit": "Zatwierdź",
+    "period": {
+      "from": "Od",
+      "to": "Do",
+      "presets": {
+        "last3Months": "Ostatnie 3 miesiące",
+        "last6Months": "Ostatnie 6 miesięcy",
+        "lastYear": "Ostatni rok",
+        "allTime": "Cały okres"
+      }
+    },
+    "months": {
+      "1": "Styczeń",
+      "2": "Luty",
+      "3": "Marzec",
+      "4": "Kwiecień",
+      "5": "Maj",
+      "6": "Czerwiec",
+      "7": "Lipiec",
+      "8": "Sierpień",
+      "9": "Wrzesień",
+      "10": "Październik",
+      "11": "Listopad",
+      "12": "Grudzień"
+    },
+    "indicators": {
+      "debtToIncome": "Wskaźnik Zadłużenia do Dochodu",
+      "expenseRatio": "Wskaźnik Wydatków"
+    },
+    "chart": {
+      "income": "Przychód",
+      "expenses": "Wydatki",
+      "loanPayments": "Spłaty Pożyczek",
+      "amount": "Kwota"
+    }
+  },
+  "settings": {
+    "title": "Ustawienia",
+    "language": "Język",
+    "currency": "Waluta",
+    "languages": {
+      "en": "Angielski",
+      "es": "Hiszpański",
+      "fr": "Francuski",
+      "pl": "Polski"
+    },
+    "currencies": {
+      "USD": "Dolar Amerykański ($)",
+      "EUR": "Euro (€)",
+      "GBP": "Funt Brytyjski (£)",
+      "JPY": "Jen Japoński (¥)",
+      "PLN": "Złoty Polski (zł)"
+    },
+    "save": "Zapisz Ustawienia",
+    "noData": "Brak dostępnych ustawień",
+    "tooltips": {
+      "language": "Wybierz preferowany język aplikacji",
+      "currency": "Wybierz preferowaną walutę do wyświetlania kwot"
+    },
+    "form": {
+      "language": "Język",
+      "currency": "Waluta",
+      "submit": "Zapisz Ustawienia"
+    },
+    "messages": {
+      "success": "Ustawienia zostały zaktualizowane pomyślnie",
+      "error": "Nie udało się zaktualizować ustawień",
+      "loading": "Ładowanie ustawień...",
+      "notLoggedIn": "Musisz być zalogowany, aby zaktualizować ustawienia"
+    }
+  },
+  "auth": {
+    "welcome": "Witaj w Budżecie Domowym",
+    "signInPrompt": "Zaloguj się, aby zarządzać swoimi finansami",
+    "continueWithGoogle": "Kontynuuj z Google",
+    "signInWithGoogle": "Zaloguj się przez Google",
+    "signOut": "Wyloguj się",
+    "termsPrefix": "Kontynuując, akceptujesz nasze",
+    "termsOfService": "Warunki korzystania z usługi",
+    "termsAnd": "oraz",
+    "privacyPolicy": "Politykę prywatności",
+    "errors": {
+      "googleSignIn": "Nie udało się zalogować przez Google. Spróbuj ponownie.",
+      "googleCallback": "Nie udało się zakończyć logowania przez Google. Spróbuj ponownie.",
+      "default": "Wystąpił błąd podczas logowania. Spróbuj ponownie."
+    }
+  }
+} 

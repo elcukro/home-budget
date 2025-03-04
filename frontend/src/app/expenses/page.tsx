@@ -1,10 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { PencilIcon, TrashIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, CheckIcon, XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { validateAmount, validateDescription, validateDate } from '@/utils/validation';
 import Tooltip from '@/components/Tooltip';
+import { logActivity } from '@/utils/activityLogger';
+import { EditableCell } from '@/components/EditableCell';
+import { useSettings } from '@/contexts/SettingsContext';
+import { FormattedMessage, FormattedNumber, FormattedDate, useIntl } from 'react-intl';
+import { TablePageSkeleton } from '@/components/LoadingSkeleton';
+import { useSession } from 'next-auth/react';
+import { formatCurrency, formatPercentage, getCurrencySymbol } from '@/utils/formatting';
 
 interface Expense {
   id: number;
@@ -24,20 +31,42 @@ interface ExpenseFormData {
   date: string;
 }
 
-const formatCurrency = (amount: number): string => {
-  return `$${amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+type SortField = 'category' | 'description' | 'amount' | 'date' | 'created_at';
+type SortDirection = 'asc' | 'desc';
+
+const categoryOptions = [
+  { value: 'housing', label: <FormattedMessage id="expenses.categories.housing" /> },
+  { value: 'transportation', label: <FormattedMessage id="expenses.categories.transportation" /> },
+  { value: 'food', label: <FormattedMessage id="expenses.categories.food" /> },
+  { value: 'utilities', label: <FormattedMessage id="expenses.categories.utilities" /> },
+  { value: 'insurance', label: <FormattedMessage id="expenses.categories.insurance" /> },
+  { value: 'healthcare', label: <FormattedMessage id="expenses.categories.healthcare" /> },
+  { value: 'entertainment', label: <FormattedMessage id="expenses.categories.entertainment" /> },
+  { value: 'other', label: <FormattedMessage id="expenses.categories.other" /> }
+];
+
+const validateForm = (data: ExpenseFormData): string | null => {
+  if (!data.category.trim()) {
+    return 'Category is required';
+  }
+  if (!data.description.trim()) {
+    return 'Description is required';
+  }
+  if (data.amount <= 0) {
+    return 'Amount must be greater than 0';
+  }
+  if (!data.date) {
+    return 'Date is required';
+  }
+  return null;
 };
 
-const formatPercentage = (rate: number | null | undefined): string => {
-  if (rate === null || rate === undefined) return '0%';
-  return new Intl.NumberFormat('en-US', {
-    style: 'percent',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(rate / 100);
-};
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function ExpensesPage() {
+  const { formatCurrency, settings } = useSettings();
+  const { data: session } = useSession();
+  const intl = useIntl();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [formData, setFormData] = useState<ExpenseFormData>({
     category: '',
@@ -47,23 +76,45 @@ export default function ExpensesPage() {
     date: new Date().toISOString().split('T')[0],
   });
   const [editForm, setEditForm] = useState<{ [key: number]: ExpenseFormData }>({});
+  const [focusField, setFocusField] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
-    fetchExpenses();
-  }, []);
+    if (session?.user?.email) {
+      fetchExpenses();
+    }
+  }, [session]);
 
   const fetchExpenses = async () => {
+    if (!session?.user?.email) return;
+    
     try {
-      const response = await fetch('http://localhost:8000/users/1/expenses/');
+      console.log('[Expenses] Fetching expenses for user:', session.user.email);
+      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        signal: AbortSignal.timeout(5000),
+      });
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch expenses');
+        const errorText = await response.text();
+        console.error('[Expenses] Failed to fetch expenses:', errorText);
+        throw new Error(`Failed to fetch expenses: ${errorText}`);
       }
+      
       const data = await response.json();
+      console.log('[Expenses] Fetched expenses:', data);
       setExpenses(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load expenses');
+      const message = err instanceof Error ? err.message : 'Failed to load expenses';
+      console.error('[Expenses] Error:', err);
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -71,36 +122,68 @@ export default function ExpensesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const response = await fetch('http://localhost:8000/users/1/expenses/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to add expense');
-      }
+    
+    if (!session?.user?.email) {
+      toast.error('You must be logged in to add an expense');
+      return;
+    }
+    
+    const validationError = validateForm(formData);
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
 
+    console.log('[Expenses] Submitting new expense:', formData);
+    const promise = fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+      signal: AbortSignal.timeout(5000),
+    }).then(async (response) => {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Expenses] Failed to add expense:', errorText);
+        throw new Error(`Failed to add expense: ${errorText}`);
+      }
       const newExpense = await response.json();
+      console.log('[Expenses] Added new expense:', newExpense);
       setExpenses([...expenses, newExpense]);
-      
-      // Reset form
       setFormData({
         category: '',
         description: '',
         amount: 0,
-        is_recurring: false,
         date: new Date().toISOString().split('T')[0],
+        is_recurring: false,
       });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add expense');
-    }
+
+      // Log the create activity
+      await logActivity({
+        entity_type: 'Expense',
+        operation_type: 'create',
+        entity_id: newExpense.id,
+        new_values: {
+          category: newExpense.category,
+          description: newExpense.description,
+          amount: newExpense.amount,
+          date: newExpense.date,
+          is_recurring: newExpense.is_recurring
+        }
+      });
+    });
+
+    toast.promise(promise, {
+      loading: 'Adding expense...',
+      success: 'Expense added successfully',
+      error: 'Failed to add expense',
+    });
   };
 
-  const handleEdit = (expense: Expense) => {
+  const handleEdit = (expense: Expense, field?: string) => {
+    setFocusField(field);
     setEditForm({
       ...editForm,
       [expense.id]: {
@@ -120,98 +203,206 @@ export default function ExpensesPage() {
   };
 
   const handleSaveEdit = async (expenseId: number) => {
-    const response = await fetch(`http://localhost:8000/users/1/expenses/${expenseId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm[expenseId]),
-    });
-    if (response.ok) {
-      const newEditForm = { ...editForm };
-      delete newEditForm[expenseId];
-      setEditForm(newEditForm);
-      fetchExpenses();
+    if (!session?.user?.email) {
+      toast.error('You must be logged in to edit an expense');
+      return;
     }
+
+    const data = editForm[expenseId];
+    const previousExpense = expenses.find(expense => expense.id === expenseId);
+    
+    console.log('[Expenses] Saving edit for expense:', expenseId, data);
+    const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/${expenseId}`, {
+      method: 'PUT',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(5000),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Expenses] Failed to update expense:', errorText);
+      throw new Error(`Failed to update expense: ${errorText}`);
+    }
+    
+    const newEditForm = { ...editForm };
+    delete newEditForm[expenseId];
+    setEditForm(newEditForm);
+    
+    // Log the update activity
+    await logActivity({
+      entity_type: 'Expense',
+      operation_type: 'update',
+      entity_id: expenseId,
+      previous_values: previousExpense ? { ...previousExpense } : undefined,
+      new_values: { ...data }
+    });
+    
+    fetchExpenses();
   };
 
   const handleDelete = async (expenseId: number) => {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
+    if (!session?.user?.email) {
+      toast.error(intl.formatMessage({ id: 'common.mustBeLoggedIn' }));
+      return;
+    }
+
+    if (!confirm(intl.formatMessage({ id: 'common.confirmDelete' }))) return;
     
-    const response = await fetch(`http://localhost:8000/users/1/expenses/${expenseId}`, {
+    const previousExpense = expenses.find(expense => expense.id === expenseId);
+    console.log('[Expenses] Deleting expense:', expenseId);
+    
+    const promise = fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/${expenseId}`, {
       method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      signal: AbortSignal.timeout(5000),
+    }).then(async (response) => {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Expenses] Failed to delete expense:', errorText);
+        throw new Error(intl.formatMessage({ id: 'expenses.errors.deleteFailed' }));
+      }
+      await fetchExpenses();
+
+      // Log the delete activity
+      await logActivity({
+        entity_type: 'Expense',
+        operation_type: 'delete',
+        entity_id: expenseId,
+        previous_values: previousExpense ? {
+          category: previousExpense.category,
+          description: previousExpense.description,
+          amount: previousExpense.amount,
+          date: previousExpense.date,
+          is_recurring: previousExpense.is_recurring
+        } as Record<string, unknown> : undefined
+      });
     });
-    if (response.ok) {
-      fetchExpenses();
+
+    toast.promise(promise, {
+      loading: intl.formatMessage({ id: 'expenses.deleting' }),
+      success: intl.formatMessage({ id: 'expenses.deleteSuccess' }),
+      error: intl.formatMessage({ id: 'expenses.deleteFailed' }),
+    });
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
     }
   };
 
+  const getSortedExpenses = () => {
+    return [...expenses].sort((a, b) => {
+      const direction = sortDirection === 'asc' ? 1 : -1;
+      
+      switch (sortField) {
+        case 'category':
+          return direction * a.category.localeCompare(b.category);
+        case 'description':
+          return direction * a.description.localeCompare(b.description);
+        case 'amount':
+          return direction * (a.amount - b.amount);
+        case 'date':
+          return direction * (new Date(a.date).getTime() - new Date(b.date).getTime());
+        case 'created_at':
+          return direction * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        default:
+          return 0;
+      }
+    });
+  };
+
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) return null;
+    
+    return sortDirection === 'asc' ? (
+      <ChevronUpIcon className="h-4 w-4 inline-block ml-1" />
+    ) : (
+      <ChevronDownIcon className="h-4 w-4 inline-block ml-1" />
+    );
+  };
+
   if (loading) {
-    return <div className="text-center">Loading...</div>;
+    return <TablePageSkeleton />;
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Expense Management</h1>
+      <h1 className="text-2xl font-semibold">
+        <FormattedMessage id="expenses.title" />
+      </h1>
       
       {error && (
         <div className="bg-red-50 text-red-600 p-4 rounded-md">
-          {error}
+          <FormattedMessage id="common.error" values={{ message: error }} />
         </div>
       )}
 
       {/* Add Expense Form */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-lg font-medium mb-4">Add New Expense</h2>
+      <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow">
+        <h2 className="text-lg font-medium mb-4 text-default">
+          <FormattedMessage id="expenses.addNew" />
+        </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-              Category
-              <Tooltip content="Select the category that best describes your expense" />
+            <label htmlFor="category" className="block text-sm font-medium text-secondary">
+              <FormattedMessage id="expenses.category" />
+              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.category" })} icon={true} />
             </label>
             <select
               id="category"
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             >
-              <option value="">Select a category</option>
-              <option value="housing">Housing</option>
-              <option value="transportation">Transportation</option>
-              <option value="food">Food</option>
-              <option value="utilities">Utilities</option>
-              <option value="insurance">Insurance</option>
-              <option value="healthcare">Healthcare</option>
-              <option value="entertainment">Entertainment</option>
-              <option value="other">Other</option>
+              <option value="">
+                {intl.formatMessage({ id: "common.select" })}
+              </option>
+              {categoryOptions.map(option => (
+                <option key={option.value} value={option.value}>
+                  {intl.formatMessage({ id: `expenses.categories.${option.value}` })}
+                </option>
+              ))}
             </select>
           </div>
           
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-              Description
-              <Tooltip content="Enter a brief description of the expense (e.g., Grocery shopping at Walmart)" />
+            <label htmlFor="description" className="block text-sm font-medium text-secondary">
+              <FormattedMessage id="expenses.description" />
+              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.description" })} icon={true} />
             </label>
             <input
               type="text"
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             />
           </div>
           
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-              Amount
-              <Tooltip content="Enter the expense amount in dollars (e.g., 50.99 for $50.99)" />
+            <label htmlFor="amount" className="block text-sm font-medium text-secondary">
+              <FormattedMessage id="expenses.amount" /> ({getCurrencySymbol(settings?.currency)})
+              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.amount" })} icon={true} />
             </label>
             <input
               type="number"
               id="amount"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
               min="0"
               step="0.01"
@@ -219,16 +410,16 @@ export default function ExpensesPage() {
           </div>
           
           <div>
-            <label htmlFor="date" className="block text-sm font-medium text-gray-700">
-              Date
-              <Tooltip content="Select the date when the expense occurred" />
+            <label htmlFor="date" className="block text-sm font-medium text-secondary">
+              <FormattedMessage id="expenses.date" />
+              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.date" })} icon={true} />
             </label>
             <input
               type="date"
               id="date"
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="mt-1 block w-full rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             />
           </div>
@@ -242,8 +433,8 @@ export default function ExpensesPage() {
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label htmlFor="is_recurring" className="ml-2 block text-sm text-gray-700">
-              Recurring Monthly Expense
-              <Tooltip content="Check this if this expense occurs regularly each month (e.g., rent, utilities)" />
+              <FormattedMessage id="expenses.recurring" />
+              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.recurring" })} icon={true} />
             </label>
           </div>
           
@@ -251,110 +442,146 @@ export default function ExpensesPage() {
             type="submit"
             className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            Add Expense
+            <FormattedMessage id="common.add" />
           </button>
         </form>
       </div>
 
       {/* Expense List */}
-      <div className="bg-white p-6 rounded-lg shadow overflow-hidden">
-        <h2 className="text-lg font-medium mb-4">Expense History</h2>
+      <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow overflow-hidden">
+        <h2 className="text-lg font-medium mb-4 text-default">
+          <FormattedMessage id="expenses.expenseHistory" />
+        </h2>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-default">
+            <thead className="bg-background-secondary">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recurring</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('category')}
+                >
+                  <FormattedMessage id="expenses.category" /> {renderSortIcon('category')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('description')}
+                >
+                  <FormattedMessage id="expenses.description" /> {renderSortIcon('description')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('amount')}
+                >
+                  <FormattedMessage id="expenses.amount" /> {renderSortIcon('amount')}
+                </th>
+                <th 
+                  className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider cursor-pointer"
+                  onClick={() => handleSort('date')}
+                >
+                  <FormattedMessage id="expenses.date" /> {renderSortIcon('date')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">
+                  <FormattedMessage id="expenses.recurring" />
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">
+                  <FormattedMessage id="common.actions" />
+                </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {expenses.map((expense) => (
-                <tr key={expense.id} className="border-t">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {editForm[expense.id] ? (
-                      <select
-                        value={editForm[expense.id].category}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          [expense.id]: { ...editForm[expense.id], category: e.target.value }
-                        })}
-                        className="border p-1 rounded w-full"
-                      >
-                        <option value="housing">Housing</option>
-                        <option value="transportation">Transportation</option>
-                        <option value="food">Food</option>
-                        <option value="utilities">Utilities</option>
-                        <option value="insurance">Insurance</option>
-                        <option value="healthcare">Healthcare</option>
-                        <option value="entertainment">Entertainment</option>
-                        <option value="other">Other</option>
-                      </select>
-                    ) : (
-                      expense.category.charAt(0).toUpperCase() + expense.category.slice(1)
-                    )}
+            <tbody className="divide-y divide-default">
+              {getSortedExpenses().map((expense) => (
+                <tr 
+                  key={expense.id} 
+                  className="border-t hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleEdit(expense, 'category')}>
+                    <EditableCell
+                      isEditing={!!editForm[expense.id]}
+                      value={editForm[expense.id]?.category || expense.category}
+                      type="select"
+                      options={categoryOptions}
+                      onChange={(value) => setEditForm({
+                        ...editForm,
+                        [expense.id]: { ...editForm[expense.id], category: value }
+                      })}
+                      onSave={() => handleSaveEdit(expense.id)}
+                      onCancel={() => handleCancelEdit(expense.id)}
+                      formatter={(value) => <FormattedMessage id={`expenses.categories.${value}`} />}
+                      field="category"
+                      focusField={focusField}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleEdit(expense, 'description')}>
+                    <EditableCell
+                      isEditing={!!editForm[expense.id]}
+                      value={editForm[expense.id]?.description || expense.description}
+                      type="text"
+                      onChange={(value) => setEditForm({
+                        ...editForm,
+                        [expense.id]: { ...editForm[expense.id], description: value }
+                      })}
+                      onSave={() => handleSaveEdit(expense.id)}
+                      onCancel={() => handleCancelEdit(expense.id)}
+                      field="description"
+                      focusField={focusField}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleEdit(expense, 'amount')}>
+                    <EditableCell
+                      isEditing={!!editForm[expense.id]}
+                      value={editForm[expense.id]?.amount || expense.amount}
+                      type="number"
+                      onChange={(value) => setEditForm({
+                        ...editForm,
+                        [expense.id]: { ...editForm[expense.id], amount: value }
+                      })}
+                      onSave={() => handleSaveEdit(expense.id)}
+                      onCancel={() => handleCancelEdit(expense.id)}
+                      min={0}
+                      step={0.01}
+                      formatter={formatCurrency}
+                      field="amount"
+                      focusField={focusField}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleEdit(expense, 'date')}>
+                    <EditableCell
+                      isEditing={!!editForm[expense.id]}
+                      value={editForm[expense.id]?.date || expense.date}
+                      type="date"
+                      onChange={(value) => setEditForm({
+                        ...editForm,
+                        [expense.id]: { ...editForm[expense.id], date: value }
+                      })}
+                      onSave={() => handleSaveEdit(expense.id)}
+                      onCancel={() => handleCancelEdit(expense.id)}
+                      formatter={(value) => (
+                        <FormattedDate
+                          value={value}
+                          year="numeric"
+                          month="short"
+                          day="numeric"
+                        />
+                      )}
+                      field="date"
+                      focusField={focusField}
+                    />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {editForm[expense.id] ? (
-                      <input
-                        type="text"
-                        value={editForm[expense.id].description}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          [expense.id]: { ...editForm[expense.id], description: e.target.value }
-                        })}
-                        className="border p-1 rounded w-full"
-                      />
-                    ) : (
-                      expense.description
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {editForm[expense.id] ? (
-                      <input
-                        type="number"
-                        value={editForm[expense.id].amount}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          [expense.id]: { ...editForm[expense.id], amount: Number(e.target.value) }
-                        })}
-                        className="border p-1 rounded w-full"
-                      />
-                    ) : (
-                      formatCurrency(expense.amount)
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {editForm[expense.id] ? (
-                      <input
-                        type="date"
-                        value={editForm[expense.id].date}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          [expense.id]: { ...editForm[expense.id], date: e.target.value }
-                        })}
-                        className="border p-1 rounded w-full"
-                      />
-                    ) : (
-                      new Date(expense.date).toLocaleDateString()
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {editForm[expense.id] ? (
-                      <input
-                        type="checkbox"
-                        checked={editForm[expense.id].is_recurring}
-                        onChange={(e) => setEditForm({
-                          ...editForm,
-                          [expense.id]: { ...editForm[expense.id], is_recurring: e.target.checked }
-                        })}
-                      />
-                    ) : (
-                      expense.is_recurring ? 'Yes' : 'No'
-                    )}
+                    <input
+                      type="checkbox"
+                      checked={editForm[expense.id]?.is_recurring || expense.is_recurring}
+                      onChange={(e) => {
+                        if (editForm[expense.id]) {
+                          setEditForm({
+                            ...editForm,
+                            [expense.id]: { ...editForm[expense.id], is_recurring: e.target.checked }
+                          });
+                          handleSaveEdit(expense.id);
+                        }
+                      }}
+                      className="rounded border-default bg-input text-blue-600"
+                    />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {editForm[expense.id] ? (
@@ -362,12 +589,14 @@ export default function ExpensesPage() {
                         <button
                           onClick={() => handleSaveEdit(expense.id)}
                           className="text-green-600 hover:text-green-800"
+                          title={<FormattedMessage id="common.save" />}
                         >
                           <CheckIcon className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => handleCancelEdit(expense.id)}
                           className="text-gray-600 hover:text-gray-800"
+                          title={<FormattedMessage id="common.cancel" />}
                         >
                           <XMarkIcon className="h-5 w-5" />
                         </button>
@@ -377,12 +606,14 @@ export default function ExpensesPage() {
                         <button
                           onClick={() => handleEdit(expense)}
                           className="text-blue-600 hover:text-blue-800"
+                          title={<FormattedMessage id="common.edit" />}
                         >
                           <PencilIcon className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(expense.id)}
                           className="text-red-600 hover:text-red-800"
+                          title={<FormattedMessage id="common.delete" />}
                         >
                           <TrashIcon className="h-5 w-5" />
                         </button>
@@ -393,8 +624,8 @@ export default function ExpensesPage() {
               ))}
               {expenses.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                    No expense entries yet
+                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <FormattedMessage id="expenses.noEntries" />
                   </td>
                 </tr>
               )}
