@@ -1,0 +1,226 @@
+{
+  "common": {
+    "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading...",
+    "error": "Error: {message}",
+    "confirm": "Are you sure?",
+    "yes": "Yes",
+    "no": "No",
+    "actions": "Actions",
+    "select": "Select...",
+    "appName": "Home Budget"
+  },
+  "auth": {
+    "welcome": "Welcome to Home Budget",
+    "signInPrompt": "Sign in to manage your finances",
+    "loading": "Loading...",
+    "continueWithGoogle": "Continue with Google",
+    "signInWithGoogle": "Sign in with Google",
+    "signOut": "Sign Out",
+    "termsPrefix": "By continuing, you agree to our",
+    "termsOfService": "Terms of Service",
+    "termsAnd": "and",
+    "privacyPolicy": "Privacy Policy",
+    "errors": {
+      "googleSignIn": "Failed to sign in with Google. Please try again.",
+      "googleCallback": "Failed to complete Google sign in. Please try again.",
+      "default": "An error occurred during sign in. Please try again."
+    }
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "income": "Income",
+    "expenses": "Expenses",
+    "loans": "Loans",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "dashboard": {
+    "title": "Financial Dashboard",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No recent activity",
+    "quickActions": "Quick Actions",
+    "summaryCards": {
+      "monthlyIncome": "Monthly Income",
+      "monthlyExpenses": "Monthly Expenses",
+      "loanPayments": "Loan Payments",
+      "monthlyBalance": "Monthly Balance"
+    },
+    "activity": {
+      "created": "Created",
+      "updated": "Updated",
+      "deleted": "Deleted",
+      "income": "income",
+      "expense": "expense",
+      "loan": "loan",
+      "source": "source",
+      "description": "description",
+      "amount": "amount",
+      "principal_amount": "principal amount",
+      "remaining_balance": "remaining balance",
+      "change": "{from} → {to}",
+      "details": {
+        "income": "{operation} {type} with source: {source}, amount: {amount}",
+        "expense": "{operation} {type} with description: {description}, amount: {amount}",
+        "loan": "{operation} {type} with description: {description}, amount: {amount}"
+      }
+    }
+  },
+  "income": {
+    "title": "Income Management",
+    "addNew": "Add New Income",
+    "category": "Category",
+    "description": "Description",
+    "amount": "Amount",
+    "date": "Date",
+    "recurring": "Recurring Monthly Income",
+    "noEntries": "No income entries yet",
+    "categories": {
+      "salary": "Salary",
+      "freelance": "Freelance",
+      "investments": "Investments",
+      "rental": "Rental Income",
+      "other": "Other"
+    },
+    "tooltips": {
+      "category": "Select the category that best describes your income",
+      "description": "Enter a brief description of the income",
+      "amount": "Enter the income amount in your selected currency",
+      "date": "Select the date when you received or expect to receive this income",
+      "recurring": "Check this if you receive this income regularly each month"
+    },
+    "form": {
+      "category": "Category",
+      "category.select": "Select a category...",
+      "description": "Description",
+      "amount": "Amount",
+      "date": "Date",
+      "recurring": "Recurring Monthly Income",
+      "submit": "Add Income"
+    },
+    "table": {
+      "category": "Category",
+      "description": "Description",
+      "amount": "Amount",
+      "date": "Date",
+      "created_at": "Created At",
+      "actions": "Actions",
+      "delete": "Delete"
+    }
+  },
+  "expenses": {
+    "title": "Expense Management",
+    "addNew": "Add New Expense",
+    "category": "Category",
+    "description": "Description",
+    "amount": "Amount",
+    "date": "Date",
+    "recurring": "Recurring Monthly Expense",
+    "noEntries": "No expense entries yet",
+    "categories": {
+      "housing": "Housing",
+      "transportation": "Transportation",
+      "food": "Food",
+      "utilities": "Utilities",
+      "insurance": "Insurance",
+      "healthcare": "Healthcare",
+      "entertainment": "Entertainment",
+      "other": "Other"
+    },
+    "tooltips": {
+      "category": "Select the category that best describes your expense",
+      "description": "Enter a brief description of the expense",
+      "amount": "Enter the expense amount in your selected currency",
+      "date": "Select the date when the expense occurred",
+      "recurring": "Check this if this expense occurs regularly each month"
+    }
+  },
+  "loans": {
+    "title": "Loan Management",
+    "addNew": "Add New Loan",
+    "type": "Type",
+    "description": "Description",
+    "principalAmount": "Principal Amount",
+    "remainingBalance": "Remaining Balance",
+    "interestRate": "Interest Rate",
+    "monthlyPayment": "Monthly Payment",
+    "termMonths": "Term (Months)",
+    "startDate": "Start Date",
+    "noEntries": "No loan entries yet",
+    "types": {
+      "mortgage": "Mortgage",
+      "car": "Car Loan",
+      "personal": "Personal Loan",
+      "student": "Student Loan",
+      "other": "Other"
+    },
+    "tooltips": {
+      "type": "Select the type of loan",
+      "description": "Enter a brief description of the loan",
+      "principalAmount": "Enter the original loan amount borrowed",
+      "remainingBalance": "Enter the current outstanding balance of the loan",
+      "interestRate": "Enter the annual interest rate",
+      "monthlyPayment": "Enter your fixed monthly payment amount",
+      "termMonths": "Enter the total duration of the loan in months",
+      "startDate": "Select the date when the loan began"
+    }
+  },
+  "reports": {
+    "title": "Financial Reports",
+    "monthlyBalance": "Monthly Balance",
+    "savingsRate": "Savings Rate",
+    "totalLoanBalance": "Total Loan Balance",
+    "monthlyFlow": "Monthly Cash Flow",
+    "expenseDistribution": "Expense Distribution",
+    "financialHealth": "Financial Health Indicators",
+    "indicators": {
+      "debtToIncome": "Debt-to-Income Ratio",
+      "expenseRatio": "Expense Ratio"
+    },
+    "chart": {
+      "income": "Income",
+      "expenses": "Expenses",
+      "loanPayments": "Loan Payments",
+      "amount": "Amount"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "currency": "Currency",
+    "save": "Save Settings",
+    "noData": "No settings available",
+    "languages": {
+      "en": "English",
+      "es": "Spanish",
+      "fr": "French",
+      "pl": "Polish"
+    },
+    "currencies": {
+      "USD": "US Dollar",
+      "EUR": "Euro",
+      "GBP": "British Pound",
+      "JPY": "Japanese Yen",
+      "PLN": "Polish Złoty"
+    },
+    "tooltips": {
+      "language": "Select your preferred language for the application",
+      "currency": "Select your preferred currency for displaying amounts"
+    },
+    "form": {
+      "language": "Language",
+      "currency": "Currency",
+      "submit": "Save Settings"
+    },
+    "messages": {
+      "success": "Settings updated successfully",
+      "error": "Failed to update settings",
+      "loading": "Loading settings...",
+      "notLoggedIn": "You must be logged in to update settings"
+    }
+  }
+} 
