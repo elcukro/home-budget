@@ -10,6 +10,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - 📊 **Loan Management**: Comprehensive loan tracking with interest rates and payment schedules
 - 📈 **Financial Reports**: Generate detailed reports and analytics with interactive charts
 - 🔄 **Recurring Transactions**: Set up and manage recurring income and expenses
+- 🤖 **AI Financial Insights**: Personalized financial analysis and recommendations powered by Claude AI, with multilingual support and efficient caching for quick access
 
 ### User Experience
 - 🌓 **Dark Mode Support**: Comfortable viewing experience with automatic theme switching
@@ -52,6 +53,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - Alembic for database migrations
 - JWT for authentication
 - CORS for secure cross-origin requests
+- Claude AI integration for intelligent financial insights
 
 ## 📝 Changelog
 
@@ -60,6 +62,11 @@ A modern, full-stack personal finance management application built with Next.js,
 - 🐛 **Bug Fixes**: 
   - Fixed missing translation key for AI insights modal close button
   - Added language column to insights_cache table to support multilingual insights
+- 🤖 **AI Insights Enhancement**: 
+  - Added multilingual support for AI-generated financial insights
+  - Implemented efficient caching system with language-specific entries
+  - Optimized database queries with indexed lookups
+  - Added comprehensive error handling for Claude API interactions
 
 ## 🚀 Getting Started
 
@@ -69,6 +76,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - Docker and Docker Compose
 - PostgreSQL
 - Google OAuth credentials (for authentication)
+- Claude API key (for AI insights feature)
 
 ### Installation
 
@@ -94,6 +102,7 @@ Backend (.env):
 DATABASE_URL=postgresql://user:password@localhost:5432/homebudget
 SECRET_KEY=your_secret_key
 CORS_ORIGINS=http://localhost:3000
+CLAUDE_API_KEY=your_claude_api_key
 ```
 
 3. Set up the frontend:
@@ -159,12 +168,40 @@ home-budget/
 └── README.md
 ```
 
+## 🧠 AI Financial Insights
+
+The Home Budget Application features an intelligent AI-powered financial analysis system that provides personalized insights and recommendations based on your financial data.
+
+### Key Features
+- **Personalized Analysis**: Receive tailored insights about your spending patterns, savings opportunities, and financial health
+- **Categorized Insights**: Insights are organized into categories like Spending, Savings, Debt, and Income for easy navigation
+- **Actionable Recommendations**: Get practical suggestions to improve your financial situation
+- **Multilingual Support**: Access insights in your preferred language (English, Polish, Spanish)
+- **Efficient Caching**: Insights are cached for quick access while ensuring data is up-to-date
+
+### How It Works
+1. The system analyzes your income, expenses, and loan data
+2. Claude AI generates personalized insights and recommendations
+3. Results are cached in the database with language-specific entries
+4. Cached insights are marked as stale when your financial data changes
+5. You can manually refresh insights at any time
+
+### Technical Implementation
+- **Caching System**: Efficient database caching with language-specific entries
+- **Staleness Tracking**: Automatic detection of when insights need refreshing
+- **Optimized Database**: Indexed queries for fast retrieval based on user ID and language
+- **Error Handling**: Robust error handling for API rate limits and service disruptions
+
 ## 📡 API Endpoints
 
 ### User Settings
 - `GET /users/{email}/settings/` - Fetch user settings
 - `PUT /users/{email}/settings/` - Update user settings
 - `GET /users/{email}/export/?format={format}` - Export user data (JSON/CSV/XLSX)
+
+### AI Insights
+- `GET /users/{email}/insights` - Fetch AI-generated financial insights
+- `GET /users/{email}/insights?refresh=true` - Force refresh of AI-generated insights
 
 ### Income
 - `GET /users/{email}/income/` - Fetch user income entries
