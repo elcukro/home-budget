@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
           email: userEmail,
           name: session.user.name || userEmail.split('@')[0],
         }),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(15000),
       });
 
       if (createResponse.ok) {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15000),
     });
 
     if (!response.ok) {

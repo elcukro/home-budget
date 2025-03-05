@@ -8,6 +8,7 @@ import { SettingsProvider } from '@/contexts/SettingsContext';
 import PageTitle from "@/components/PageTitle";
 import AuthProvider from "@/components/AuthProvider";
 import IntlProviderWrapper from "@/components/IntlProviderWrapper";
+import InactivityChecker from "@/components/InactivityChecker";
 import { headers } from 'next/headers';
 
 const inter = Inter({
@@ -43,6 +44,7 @@ export default function RootLayout({
                   </main>
                 </div>
                 {!isAuthPage && <Toaster position="top-right" />}
+                <InactivityChecker />
               </IntlProviderWrapper>
             </SettingsProvider>
           </ThemeProvider>

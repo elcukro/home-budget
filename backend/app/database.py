@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
 import os
 import logging
 
@@ -19,7 +20,14 @@ SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{PO
 
 logger.info(f"Connecting to database at {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}")
 try:
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        poolclass=QueuePool,
+        pool_size=20,  # Maximum number of connections to keep in the pool
+        max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
+        pool_timeout=30,  # Timeout for getting a connection from the pool
+        pool_pre_ping=True  # Enable connection health checks
+    )
     # Test the connection
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))

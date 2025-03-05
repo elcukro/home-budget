@@ -20,6 +20,8 @@ import { TablePageSkeleton } from '@/components/LoadingSkeleton';
 import { useSession } from 'next-auth/react';
 import { formatCurrency, formatPercentage, getCurrencySymbol } from '@/utils/formatting';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface LoanFormData {
   loan_type: string;
   description: string;
@@ -73,12 +75,31 @@ export default function LoansPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
-    if (session?.user?.email) {
-      console.log('[LoansPage] Session available, fetching loans for user:', session.user.email);
-      fetchLoans();
-    } else {
-      console.log('[LoansPage] No session available, skipping fetch');
-    }
+    const fetchLoans = async () => {
+      if (!session?.user?.email) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans/`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Failed to fetch loans');
+        }
+        const data = await response.json();
+        setLoans(data);
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Loans] Error:', err instanceof Error ? err.message : 'Failed to fetch loans');
+        }
+        setError('Failed to load loans');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLoans();
   }, [session]);
 
   const validateForm = (data: LoanFormData): string | null => {
@@ -103,45 +124,6 @@ export default function LoansPage() {
     return null;
   };
 
-  const fetchLoans = async () => {
-    if (!session?.user?.email) {
-      console.log('[LoansPage] No user email available, skipping fetch');
-      return;
-    }
-
-    try {
-      console.log('[LoansPage] Fetching loans for user:', session.user.email);
-      const url = `http://localhost:8000/users/${encodeURIComponent(session.user.email)}/loans`;
-      console.log('[LoansPage] Fetch URL:', url);
-
-      const response = await fetch(url, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-      console.log('[LoansPage] Response status:', response.status);
-      console.log('[LoansPage] Response headers:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[LoansPage] Error response body:', errorText);
-        throw new Error(`Failed to fetch loans: ${response.status} ${response.statusText}\n${errorText}`);
-      }
-
-      const data = await response.json();
-      console.log('[LoansPage] Received loans:', data);
-      setLoans(data);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load loans';
-      console.error('[LoansPage] Error fetching loans:', message);
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -159,7 +141,7 @@ export default function LoansPage() {
       return;
     }
 
-    const url = `http://localhost:8000/users/${encodeURIComponent(session.user.email)}/loans`;
+    const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans/`;
     console.log('[LoansPage] Submit URL:', url);
 
     const promise = fetch(url, {
@@ -170,7 +152,7 @@ export default function LoansPage() {
       console.log('[LoansPage] Submit response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(intl.formatMessage({ id: 'loans.errors.addFailed' }));
+        throw new Error(intl.formatMessage({ id: 'loans.addFailed' }));
       }
       
       const newLoan = await response.json();
@@ -208,7 +190,7 @@ export default function LoansPage() {
     toast.promise(promise, {
       loading: intl.formatMessage({ id: 'loans.adding' }),
       success: intl.formatMessage({ id: 'loans.addSuccess' }),
-      error: intl.formatMessage({ id: 'loans.errors.addFailed' }),
+      error: intl.formatMessage({ id: 'loans.addFailed' }),
     });
   };
 
@@ -253,18 +235,18 @@ export default function LoansPage() {
       return;
     }
 
-    const url = `http://localhost:8000/users/${encodeURIComponent(session.user.email)}/loans/${loanId}`;
+    const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans/${loanId}`;
     console.log('[LoansPage] Save edit URL:', url);
 
     const promise = fetch(url, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(async (response) => {
       console.log('[LoansPage] Save edit response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(intl.formatMessage({ id: 'loans.errors.updateFailed' }));
+        throw new Error(intl.formatMessage({ id: 'loans.updateFailed' }));
       }
       
       const updatedLoan = await response.json();
@@ -292,7 +274,7 @@ export default function LoansPage() {
     toast.promise(promise, {
       loading: intl.formatMessage({ id: 'loans.updating' }),
       success: intl.formatMessage({ id: 'loans.updateSuccess' }),
-      error: intl.formatMessage({ id: 'loans.errors.updateFailed' }),
+      error: intl.formatMessage({ id: 'loans.updateFailed' }),
     });
   };
 
@@ -309,16 +291,17 @@ export default function LoansPage() {
     const previousLoan = loans.find(loan => loan.id === loanId);
     console.log('[LoansPage] Previous loan data:', previousLoan);
 
-    const url = `http://localhost:8000/users/${encodeURIComponent(session.user.email)}/loans/${loanId}`;
+    const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans/${loanId}`;
     console.log('[LoansPage] Delete URL:', url);
 
     const promise = fetch(url, {
       method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
     }).then(async (response) => {
       console.log('[LoansPage] Delete response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(intl.formatMessage({ id: 'loans.errors.deleteFailed' }));
+        throw new Error(intl.formatMessage({ id: 'loans.deleteFailed' }));
       }
       
       setLoans(loans.filter(loan => loan.id !== loanId));

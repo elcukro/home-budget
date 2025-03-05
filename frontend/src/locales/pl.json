@@ -27,7 +27,9 @@
   },
   "dashboard": {
     "title": "Panel Finansowy",
-    "recentActivity": "Ostatnia Aktywność",
+    "recentActivity": "Ostatnia aktywność",
+    "viewAllActivity": "Pokaż wszystko",
+    "showLessActivity": "Pokaż mniej",
     "noActivity": "Brak ostatniej aktywności",
     "quickActions": {
       "addIncome": "Dodaj nowe źródło przychodu",
@@ -295,9 +297,17 @@
     },
     "save": "Zapisz Ustawienia",
     "noData": "Brak dostępnych ustawień",
+    "export": {
+      "title": "Eksport danych",
+      "description": "Eksportuj wszystkie swoje dane w formacie JSON, CSV lub Excel. Możesz użyć tego eksportu do utworzenia kopii zapasowej lub przeniesienia danych na inne konto.",
+      "jsonButton": "Eksportuj jako JSON",
+      "csvButton": "Eksportuj jako CSV",
+      "excelButton": "Eksportuj jako Excel"
+    },
     "tooltips": {
       "language": "Wybierz preferowany język aplikacji",
-      "currency": "Wybierz preferowaną walutę do wyświetlania kwot"
+      "currency": "Wybierz preferowaną walutę do wyświetlania kwot",
+      "export": "Pobierz wszystkie swoje dane finansowe, w tym wydatki, przychody, pożyczki i ustawienia"
     },
     "form": {
       "language": "Język",
@@ -308,7 +318,9 @@
       "success": "Ustawienia zostały zaktualizowane pomyślnie",
       "error": "Nie udało się zaktualizować ustawień",
       "loading": "Ładowanie ustawień...",
-      "notLoggedIn": "Musisz być zalogowany, aby zaktualizować ustawienia"
+      "notLoggedIn": "Musisz być zalogowany, aby zaktualizować ustawienia",
+      "exportSuccess": "Dane zostały wyeksportowane pomyślnie",
+      "exportError": "Nie udało się wyeksportować danych. Spróbuj ponownie."
     }
   },
   "auth": {
@@ -325,6 +337,13 @@
       "googleSignIn": "Nie udało się zalogować przez Google. Spróbuj ponownie.",
       "googleCallback": "Nie udało się zakończyć logowania przez Google. Spróbuj ponownie.",
       "default": "Wystąpił błąd podczas logowania. Spróbuj ponownie."
+    }
+  },
+  "inactivity": {
+    "warning": {
+      "title": "Ostrzeżenie o czasie bezczynności",
+      "message": "Z powodu braku aktywności, twoja sesja wygaśnie za {seconds} sekund.",
+      "continue": "Kontynuuj sesję"
     }
   }
 } 

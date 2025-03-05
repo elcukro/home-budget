@@ -14,16 +14,19 @@ A modern, full-stack personal finance management application built with Next.js,
 ### User Experience
 - 🌓 **Dark Mode Support**: Comfortable viewing experience with automatic theme switching
 - 📱 **Responsive Design**: Fully responsive interface that works on desktop and mobile
-- 🌍 **Internationalization**: Comprehensive multi-language support including UI elements, dates, and charts
-- 💰 **Currency Support**: Multiple currency support with automatic formatting
+- 🌍 **Internationalization**: Comprehensive multi-language support (English, Polish, Spanish) with automatic formatting
+- 💰 **Currency Support**: Multiple currency support (USD, EUR, GBP, PLN, JPY) with automatic formatting
 - 🔒 **Secure Authentication**: Google OAuth integration for secure sign-in
+- 📤 **Data Export**: Export your financial data in JSON, CSV, or Excel formats
 
 ### Technical Features
-- 🔍 **Data Validation**: Robust form validation for data integrity
+- 🔍 **Data Validation**: Robust form validation and error handling
 - 💡 **Helpful Tooltips**: Contextual help throughout the application
 - 📊 **Real-time Updates**: Instant feedback on data changes
 - 🔄 **Automatic Calculations**: Smart calculations for loans and balances
 - 📱 **Progressive Web App**: Installable on mobile devices
+- 🛡️ **Enhanced Error Handling**: Comprehensive error handling with development mode logging
+- 🔗 **RESTful API**: Well-structured API endpoints following REST principles
 
 ## 🛠️ Tech Stack
 
@@ -38,6 +41,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - React Query for data fetching
 - Chart.js and react-chartjs-2 for interactive charts
 - Zod for schema validation
+- React Hot Toast for notifications
 
 ### Backend
 - FastAPI for high-performance API
@@ -124,62 +128,53 @@ home-budget/
 ├── frontend/
 │   ├── src/
 │   │   ├── app/              # Next.js pages and routes
-│   │   │   ├── components/       # Reusable React components
-│   │   │   ├── contexts/         # React contexts
-│   │   │   ├── hooks/           # Custom React hooks
-│   │   │   ├── utils/           # Utility functions
-│   │   │   └── types/           # TypeScript types
-│   │   ├── public/              # Static assets
-│   │   └── package.json
-│   ├── backend/
-│   │   ├── src/
-│   │   │   ├── models/          # Database models
-│   │   │   ├── schemas/         # Pydantic schemas
-│   │   │   ├── routes/          # API routes
-│   │   │   ├── services/        # Business logic
-│   │   │   ├── utils/           # Utility functions
-│   │   │   └── main.py         # FastAPI application
-│   │   ├── alembic/            # Database migrations
-│   │   ├── tests/              # Backend tests
-│   │   └── requirements.txt
-│   ├── shared/                 # Shared types and utilities
-│   ├── docker-compose.yml      # Docker configuration
-│   └── README.md
+│   │   ├── components/       # Reusable React components
+│   │   ├── contexts/         # React contexts
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── utils/           # Utility functions
+│   │   └── types/           # TypeScript types
+│   ├── public/              # Static assets
+│   └── package.json
+├── backend/
+│   ├── src/
+│   │   ├── models/          # Database models
+│   │   ├── schemas/         # Pydantic schemas
+│   │   ├── routes/          # API routes
+│   │   ├── services/        # Business logic
+│   │   ├── utils/           # Utility functions
+│   │   └── main.py         # FastAPI application
+│   ├── alembic/            # Database migrations
+│   ├── tests/              # Backend tests
+│   └── requirements.txt
+├── shared/                 # Shared types and utilities
+├── docker-compose.yml      # Docker configuration
+└── README.md
 ```
 
-## �� Features in Detail
+## 📡 API Endpoints
 
-### Income Management
-- Add and track multiple income sources
-- Support for recurring and one-time income
-- Detailed history and editing capabilities
-- Data validation and formatting
-- Category-based organization
-- Income trends and analytics
+### User Settings
+- `GET /users/{email}/settings/` - Fetch user settings
+- `PUT /users/{email}/settings/` - Update user settings
+- `GET /users/{email}/export/?format={format}` - Export user data (JSON/CSV/XLSX)
 
-### Expense Tracking
-- Categorized expense management
-- Recurring expense support
-- Detailed transaction history
-- Category-based filtering and sorting
-- Budget tracking and alerts
-- Expense trends and insights
+### Income
+- `GET /users/{email}/income/` - Fetch user income entries
+- `POST /users/{email}/income/` - Create new income entry
+- `PATCH /users/{email}/income/{id}` - Update income entry
+- `DELETE /users/{email}/income/{id}` - Delete income entry
 
-### Loan Management
-- Track multiple loans with detailed information
-- Calculate interest rates and payment schedules
-- Monitor remaining balances
-- Track payment history
-- Loan amortization schedules
-- Early payment calculations
+### Expenses
+- `GET /users/{email}/expenses/` - Fetch user expenses
+- `POST /users/{email}/expenses/` - Create new expense
+- `PATCH /users/{email}/expenses/{id}` - Update expense
+- `DELETE /users/{email}/expenses/{id}` - Delete expense
 
-### Reports and Analytics
-- Monthly and yearly summaries
-- Category-based analysis
-- Income vs. expenses tracking
-- Loan payment tracking
-- Custom date range reports
-- Export functionality
+### Loans
+- `GET /users/{email}/loans/` - Fetch user loans
+- `POST /users/{email}/loans/` - Create new loan
+- `PATCH /users/{email}/loans/{id}` - Update loan
+- `DELETE /users/{email}/loans/{id}` - Delete loan
 
 ## 🤝 Contributing
 

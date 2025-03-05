@@ -185,6 +185,11 @@ export default function IncomePage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!session?.user?.email) {
+      toast.error(intl.formatMessage({ id: 'common.mustBeLoggedIn' }));
+      return;
+    }
+
     if (!confirm(intl.formatMessage({ id: 'common.confirmDelete' }))) {
       return;
     }
@@ -201,6 +206,7 @@ export default function IncomePage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ email: session.user.email }),
       });
 
       console.log('Delete response status:', response.status);
@@ -253,7 +259,8 @@ export default function IncomePage() {
         },
         body: JSON.stringify({
           ...formData,
-          amount: parseFloat(formData.amount)
+          amount: parseFloat(formData.amount),
+          email: session?.user?.email
         }),
       });
 
@@ -296,23 +303,30 @@ export default function IncomePage() {
 
   useEffect(() => {
     const fetchIncomes = async () => {
+      if (!session?.user?.email) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch('/api/income');
+        const response = await fetch(`/api/income?email=${encodeURIComponent(session.user.email)}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch incomes');
+          const errorText = await response.text();
+          throw new Error(errorText || 'Failed to fetch income');
         }
         const data = await response.json();
         setIncomes(data);
-      } catch (error) {
-        setError('Failed to fetch incomes');
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Income] Error:', err instanceof Error ? err.message : 'Failed to fetch income');
+        }
+        setError('Failed to load income');
       } finally {
         setLoading(false);
       }
     };
 
-    if (session?.user?.email) {
-      fetchIncomes();
-    }
+    fetchIncomes();
   }, [session]);
 
   if (loading) {
@@ -617,13 +631,13 @@ export default function IncomePage() {
                     {editForm[income.id] ? (
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={() => handleSaveEdit(income.id)}
+                          onClick={(e) => { e.stopPropagation(); handleSaveEdit(income.id); }}
                           className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
                         >
                           <CheckIcon className="h-5 w-5" />
                         </button>
                         <button
-                          onClick={() => handleCancelEdit(income.id)}
+                          onClick={(e) => { e.stopPropagation(); handleCancelEdit(income.id); }}
                           className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                         >
                           <XMarkIcon className="h-5 w-5" />
@@ -633,7 +647,7 @@ export default function IncomePage() {
                       <div className="flex justify-end gap-2">
                         <Tooltip content={intl.formatMessage({ id: 'common.edit' })}>
                           <button
-                            onClick={() => handleEdit(income.id, 'all')}
+                            onClick={(e) => { e.stopPropagation(); handleEdit(income.id, 'all'); }}
                             className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                           >
                             <PencilIcon className="h-5 w-5" />
@@ -641,7 +655,7 @@ export default function IncomePage() {
                         </Tooltip>
                         <Tooltip content={intl.formatMessage({ id: 'common.delete' })}>
                           <button
-                            onClick={() => handleDelete(income.id)}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(income.id); }}
                             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                           >
                             <TrashIcon className="h-5 w-5" />

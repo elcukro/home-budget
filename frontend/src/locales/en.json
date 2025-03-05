@@ -14,7 +14,8 @@
     "actions": "Actions",
     "select": "Select...",
     "appName": "Home Budget",
-    "mustBeLoggedIn": "You must be logged in to perform this action"
+    "mustBeLoggedIn": "You must be logged in to perform this action",
+    "createdAt": "Created At"
   },
   "auth": {
     "welcome": "Welcome to Home Budget",
@@ -44,6 +45,8 @@
   "dashboard": {
     "title": "Financial Dashboard",
     "recentActivity": "Recent Activity",
+    "viewAllActivity": "View All Activity",
+    "showLessActivity": "Show Less",
     "noActivity": "No recent activity",
     "quickActions": {
       "addIncome": "Record a new source of income",
@@ -67,8 +70,13 @@
       "source": "source",
       "description": "description",
       "amount": "amount",
+      "category": "category",
+      "id": "ID",
       "principal_amount": "principal amount",
       "remaining_balance": "remaining balance",
+      "interest_rate": "interest rate",
+      "term_months": "term months",
+      "monthly_payment": "monthly payment",
       "timestamp": "{date} at {time}",
       "updated_at": "Updated {date} at {time}",
       "details": {
@@ -100,7 +108,8 @@
       "description": "Enter a brief description of the income",
       "amount": "Enter the income amount in your selected currency",
       "date": "Select the date when you received or expect to receive this income",
-      "recurring": "Check this if you receive this income regularly each month"
+      "recurring": "Check this if you receive this income regularly each month",
+      "source": "Enter the source of your income (e.g., employer name, investment platform)"
     },
     "form": {
       "category": "Category",
@@ -167,6 +176,7 @@
     "title": "Loan Management",
     "addNew": "Add New Loan",
     "type": "Type",
+    "loanType": "Loan Type",
     "loanHistory": "List of Loans",
     "description": "Description",
     "principalAmount": "Principal Amount",
@@ -185,6 +195,7 @@
     },
     "tooltips": {
       "type": "Select the type of loan",
+      "loanType": "Select the type of loan you are registering",
       "description": "Enter a brief description of the loan",
       "principalAmount": "Enter the original loan amount borrowed",
       "remainingBalance": "Enter the current outstanding balance of the loan",
@@ -279,7 +290,8 @@
     },
     "tooltips": {
       "language": "Select your preferred language for the application",
-      "currency": "Select your preferred currency for displaying amounts"
+      "currency": "Select your preferred currency for displaying amounts",
+      "export": "Download all your financial data including expenses, incomes, loans, and settings"
     },
     "form": {
       "language": "Language",
@@ -290,7 +302,23 @@
       "success": "Settings updated successfully",
       "error": "Failed to update settings",
       "loading": "Loading settings...",
-      "notLoggedIn": "You must be logged in to update settings"
+      "notLoggedIn": "You must be logged in to update settings",
+      "exportSuccess": "Data exported successfully",
+      "exportError": "Failed to export data. Please try again."
+    },
+    "export": {
+      "title": "Export Data",
+      "description": "Export all your data in JSON, CSV, or Excel format. You can use this export to backup your data or transfer it to another account.",
+      "jsonButton": "Export as JSON",
+      "csvButton": "Export as CSV",
+      "excelButton": "Export as Excel"
+    }
+  },
+  "inactivity": {
+    "warning": {
+      "title": "Session Timeout Warning",
+      "message": "Due to inactivity, your session will expire in {seconds} seconds.",
+      "continue": "Continue Session"
     }
   }
 } 

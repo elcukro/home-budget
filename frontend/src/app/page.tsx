@@ -51,6 +51,8 @@ function ActivityCard(props: {
   operation: 'create' | 'update' | 'delete';
   changes?: Array<{ field: string; oldValue?: any; newValue?: any; }>;
   formatCurrency: (amount: number) => string;
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
   const intl = useIntl();
   const activityTypeColors = {
@@ -67,7 +69,7 @@ function ActivityCard(props: {
     if (!props.changes || props.changes.length === 0) return null;
     
     return (
-      <div className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1">
+      <div className={`mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 transition-all duration-200 ${props.isExpanded ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
         {props.changes.map((change, index) => {
           const isMonetary = ['amount', 'principal_amount', 'remaining_balance', 'monthly_payment'].includes(change.field);
           const oldValue = isMonetary ? props.formatCurrency(Number(change.oldValue) || 0) : change.oldValue;
@@ -93,12 +95,27 @@ function ActivityCard(props: {
     <div className="relative pl-8 pb-4 last:pb-0" role="listitem">
       <div className={`absolute left-0 top-2 w-2.5 h-2.5 rounded-full ${dotColor} ring-4 ring-white dark:ring-background-primary`} aria-hidden="true"></div>
       <div className="absolute left-[4px] top-6 bottom-0 w-[2px] bg-gray-200 dark:bg-gray-700" aria-hidden="true"></div>
-      <div className="bg-white dark:bg-background-primary p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-800">
+      <div 
+        className="bg-white dark:bg-background-primary p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-800 cursor-pointer"
+        onClick={props.onToggle}
+      >
         <div className="flex justify-between items-start gap-4">
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-base text-gray-900 dark:text-gray-100 mb-0.5 truncate" title={props.title}>
-              {props.title}
-            </h4>
+            <div className="flex items-center gap-2">
+              <h4 className="font-medium text-base text-gray-900 dark:text-gray-100 mb-0.5 truncate" title={props.title}>
+                {props.title}
+              </h4>
+              {props.changes && props.changes.length > 0 && (
+                <svg 
+                  className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${props.isExpanded ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
               <span className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`} aria-hidden="true"></span>
               {intl.formatMessage({ id: `dashboard.activity.${props.operation}` })} {intl.formatMessage({ id: `dashboard.activity.${props.type.toLowerCase()}` })}
@@ -126,6 +143,8 @@ export default function Home() {
   const { formatCurrency } = useSettings();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [expandedActivities, setExpandedActivities] = useState<Set<number>>(new Set());
+  const [showAllActivities, setShowAllActivities] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -147,7 +166,10 @@ export default function Home() {
         const activitiesData = await activitiesResponse.json();
         setActivities(activitiesData);
       } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('[Dashboard] Error:', error instanceof Error ? error.message : 'Failed to load dashboard data');
+        }
         setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
       } finally {
         setLoading(false);
@@ -171,6 +193,24 @@ export default function Home() {
       </div>
     );
   }
+
+  const toggleActivity = (id: number) => {
+    setExpandedActivities(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleShowAllActivities = () => {
+    setShowAllActivities(prev => !prev);
+  };
+
+  const displayedActivities = showAllActivities ? activities : activities.slice(0, 2);
 
   return (
     <ProtectedPage>
@@ -272,59 +312,38 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow">
-          <h2 className="text-lg font-bold mb-6 text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <svg className="w-5 h-5 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div className="bg-white dark:bg-background-primary rounded-lg shadow p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4 text-default">
             {intl.formatMessage({ id: 'dashboard.recentActivity' })}
           </h2>
-          <div className="relative">
-            {activities.length === 0 ? (
-              <div className="text-center py-8">
-                <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                </svg>
-                <p className="text-gray-500 dark:text-gray-400 text-lg">
-                  {intl.formatMessage({ id: 'dashboard.noActivity' })}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4" role="list">
-                {activities.map((activity) => {
-                  const date = new Date(activity.date);
-                  const formattedDate = intl.formatMessage(
-                    { id: 'dashboard.activity.timestamp' },
-                    {
-                      date: intl.formatDate(date, { dateStyle: 'medium' }),
-                      time: intl.formatTime(date, { timeStyle: 'short' })
-                    }
-                  );
-
-                  let displayDate = formattedDate;
-                  if (activity.operation === 'update') {
-                    displayDate = intl.formatMessage(
-                      { id: 'dashboard.activity.updated_at' },
-                      {
-                        date: intl.formatDate(date, { dateStyle: 'medium' }),
-                        time: intl.formatTime(date, { timeStyle: 'short' })
-                      }
-                    );
-                  }
-
-                  return (
-                    <ActivityCard
-                      key={activity.id}
-                      title={activity.title}
-                      amount={activity.amount}
-                      type={activity.type}
-                      date={displayDate}
-                      operation={activity.operation}
-                      changes={activity.changes}
-                      formatCurrency={formatCurrency}
-                    />
-                  );
-                })}
+          <div className="space-y-4" role="list">
+            {displayedActivities.map((activity) => (
+              <ActivityCard
+                key={activity.id}
+                {...activity}
+                formatCurrency={formatCurrency}
+                isExpanded={expandedActivities.has(activity.id)}
+                onToggle={() => toggleActivity(activity.id)}
+              />
+            ))}
+            {activities.length > 2 && (
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  className="text-primary hover:text-primary-dark dark:hover:text-primary-light font-medium text-sm flex items-center gap-2"
+                  onClick={toggleShowAllActivities}
+                >
+                  {intl.formatMessage({ 
+                    id: showAllActivities ? 'dashboard.showLessActivity' : 'dashboard.viewAllActivity' 
+                  })}
+                  <svg 
+                    className={`w-4 h-4 transition-transform duration-200 ${showAllActivities ? 'rotate-180' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
               </div>
             )}
           </div>

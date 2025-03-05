@@ -68,57 +68,47 @@ export default function ExpensesPage() {
   const { data: session } = useSession();
   const intl = useIntl();
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [formData, setFormData] = useState<ExpenseFormData>({
-    category: '',
-    description: '',
-    amount: 0,
-    is_recurring: false,
-    date: new Date().toISOString().split('T')[0],
-  });
-  const [editForm, setEditForm] = useState<{ [key: number]: ExpenseFormData }>({});
-  const [focusField, setFocusField] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-
-  useEffect(() => {
-    if (session?.user?.email) {
-      fetchExpenses();
-    }
-  }, [session]);
+  const [editForm, setEditForm] = useState<{ [key: number]: ExpenseFormData }>({});
+  const [focusField, setFocusField] = useState<string | undefined>();
+  const [formData, setFormData] = useState<ExpenseFormData>({
+    category: '',
+    description: '',
+    amount: 0,
+    date: new Date().toISOString().split('T')[0],
+    is_recurring: false,
+  });
 
   const fetchExpenses = async () => {
-    if (!session?.user?.email) return;
-    
+    if (!session?.user?.email) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      console.log('[Expenses] Fetching expenses for user:', session.user.email);
-      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/`, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(5000),
-      });
-      
+      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/`);
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Expenses] Failed to fetch expenses:', errorText);
-        throw new Error(`Failed to fetch expenses: ${errorText}`);
+        throw new Error(errorText || 'Failed to fetch expenses');
       }
-      
       const data = await response.json();
-      console.log('[Expenses] Fetched expenses:', data);
       setExpenses(data);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load expenses';
-      console.error('[Expenses] Error:', err);
-      setError(message);
-      toast.error(message);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Expenses] Error:', err instanceof Error ? err.message : 'Failed to fetch expenses');
+      }
+      setError('Failed to load expenses');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,7 +132,6 @@ export default function ExpensesPage() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(formData),
-      signal: AbortSignal.timeout(5000),
     }).then(async (response) => {
       if (!response.ok) {
         const errorText = await response.text();
@@ -219,7 +208,6 @@ export default function ExpensesPage() {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
-      signal: AbortSignal.timeout(5000),
     });
     
     if (!response.ok) {
@@ -261,7 +249,6 @@ export default function ExpensesPage() {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       },
-      signal: AbortSignal.timeout(5000),
     }).then(async (response) => {
       if (!response.ok) {
         const errorText = await response.text();

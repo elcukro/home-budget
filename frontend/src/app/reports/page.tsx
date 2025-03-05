@@ -274,15 +274,50 @@ const BudgetReport = () => {
   const { data: session } = useSession();
   const { settings } = useSettings();
   const intl = useIntl();
-  const [period, setPeriod] = useState<PeriodSelection>({
-    startDate: new Date(new Date().getFullYear(), 0, 1), // Start of current year
-    endDate: new Date(new Date().getFullYear(), 11, 31), // End of current year
+  
+  // Set default period to current year
+  const [period, setPeriod] = useState<PeriodSelection>(() => {
+    const currentYear = new Date().getFullYear();
+    return {
+      startDate: new Date(currentYear, 0, 1), // Start of current year
+      endDate: new Date(currentYear, 11, 31), // End of current year
+    };
   });
-  const [shouldFetch, setShouldFetch] = useState(false);
 
-  const handleSubmit = () => {
-    setShouldFetch(true);
+  const fetchYearlyBudget = async () => {
+    if (!session?.user?.email) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const startMonth = period.startDate.toISOString().slice(0, 7); // YYYY-MM
+      const endMonth = period.endDate.toISOString().slice(0, 7); // YYYY-MM
+
+      const response = await fetch(
+        `http://localhost:8000/api/reports/yearly-budget?start_date=${startMonth}&end_date=${endMonth}&user_id=${session.user.id}`
+      );
+      
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      }
+
+      setYearlyData(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred while fetching the data');
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  // Fetch data on initial load and when period changes
+  useEffect(() => {
+    if (session?.user?.email) {
+      fetchYearlyBudget();
+    }
+  }, [session?.user?.email, period]);
 
   // Filter and sort the yearly data
   const filteredYearlyData = useMemo(() => {
@@ -323,40 +358,6 @@ const BudgetReport = () => {
       }, {} as YearlyBudget);
   }, [yearlyData, period.startDate, period.endDate]);
 
-  useEffect(() => {
-    if (!shouldFetch) return;
-    const fetchYearlyBudget = async () => {
-      if (!session?.user?.email) return;
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const startMonth = period.startDate.toISOString().slice(0, 7); // YYYY-MM
-        const endMonth = period.endDate.toISOString().slice(0, 7); // YYYY-MM
-
-        const response = await fetch(
-          `http://localhost:8000/api/reports/yearly-budget?start_date=${startMonth}&end_date=${endMonth}&user_id=${session.user.id}`
-        );
-        
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || `HTTP error! status: ${response.status}`);
-        }
-
-        setYearlyData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred while fetching the data');
-      } finally {
-        setIsLoading(false);
-        setShouldFetch(false);
-      }
-    };
-
-    fetchYearlyBudget();
-  }, [session?.user?.email, period, shouldFetch]);
-
   // Convert period to format expected by PeriodSelector
   const periodValue = useMemo(() => ({
     startYear: period.startDate.getFullYear(),
@@ -386,12 +387,6 @@ const BudgetReport = () => {
           minYear={new Date().getFullYear() - 5}
           maxYear={new Date().getFullYear()}
         />
-        <button
-          onClick={handleSubmit}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-        >
-          <FormattedMessage id="reports.submit" />
-        </button>
       </div>
 
       {isLoading && (

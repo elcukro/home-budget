@@ -7,6 +7,11 @@ from datetime import date, datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
 import calendar
+from fastapi.responses import JSONResponse, StreamingResponse
+import csv
+import io
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
 
 app = FastAPI()
 
@@ -843,4 +848,224 @@ def get_yearly_budget(
         print(f"[FastAPI] Error in get_yearly_budget: {str(e)}")
         import traceback
         print(f"[FastAPI] Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/users/{user_id}/export")
+async def export_user_data(
+    user_id: str,
+    format: str = Query(..., description="Export format: 'json', 'csv', or 'xlsx'"),
+    db: Session = Depends(database.get_db)
+):
+    try:
+        # Fetch all user data
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+        expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
+        incomes = db.query(models.Income).filter(models.Income.user_id == user_id).all()
+        loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
+
+        # Prepare data structure for JSON
+        data = {
+            "settings": {
+                "language": settings.language if settings else "en",
+                "currency": settings.currency if settings else "USD"
+            },
+            "expenses": [
+                {
+                    "category": expense.category,
+                    "description": expense.description,
+                    "amount": expense.amount,
+                    "date": expense.date.isoformat(),
+                    "is_recurring": expense.is_recurring
+                }
+                for expense in expenses
+            ],
+            "incomes": [
+                {
+                    "category": income.category,
+                    "description": income.description,
+                    "amount": income.amount,
+                    "date": income.date.isoformat(),
+                    "is_recurring": income.is_recurring
+                }
+                for income in incomes
+            ],
+            "loans": [
+                {
+                    "loan_type": loan.loan_type,
+                    "description": loan.description,
+                    "principal_amount": loan.principal_amount,
+                    "remaining_balance": loan.remaining_balance,
+                    "interest_rate": loan.interest_rate,
+                    "monthly_payment": loan.monthly_payment,
+                    "term_months": loan.term_months,
+                    "start_date": loan.start_date.isoformat()
+                }
+                for loan in loans
+            ]
+        }
+
+        if format.lower() == 'json':
+            return JSONResponse(content=data)
+        elif format.lower() == 'csv':
+            # Create CSV buffer
+            output = io.StringIO()
+            writer = csv.writer(output)
+
+            # Write headers
+            writer.writerow(['Type', 'Category/Loan Type', 'Description', 'Amount/Principal', 'Date/Start Date', 'Is Recurring/Interest Rate', 'Remaining Balance', 'Monthly Payment', 'Term Months'])
+
+            # Write settings
+            writer.writerow(['Settings', 'language', settings.language if settings else "en", '', '', '', '', '', ''])
+            writer.writerow(['Settings', 'currency', settings.currency if settings else "USD", '', '', '', '', '', ''])
+
+            # Write expenses
+            for expense in expenses:
+                writer.writerow([
+                    'Expense',
+                    expense.category,
+                    expense.description,
+                    expense.amount,
+                    expense.date.isoformat(),
+                    expense.is_recurring,
+                    '', '', ''
+                ])
+
+            # Write incomes
+            for income in incomes:
+                writer.writerow([
+                    'Income',
+                    income.category,
+                    income.description,
+                    income.amount,
+                    income.date.isoformat(),
+                    income.is_recurring,
+                    '', '', ''
+                ])
+
+            # Write loans
+            for loan in loans:
+                writer.writerow([
+                    'Loan',
+                    loan.loan_type,
+                    loan.description,
+                    loan.principal_amount,
+                    loan.start_date.isoformat(),
+                    loan.interest_rate,
+                    loan.remaining_balance,
+                    loan.monthly_payment,
+                    loan.term_months
+                ])
+
+            # Prepare the response
+            output.seek(0)
+            return StreamingResponse(
+                iter([output.getvalue()]),
+                media_type="text/csv",
+                headers={
+                    "Content-Disposition": f"attachment; filename=home_budget_export_{user_id}.csv"
+                }
+            )
+        elif format.lower() == 'xlsx':
+            # Create Excel workbook
+            wb = Workbook()
+            
+            # Create styles
+            header_font = Font(bold=True)
+            header_fill = PatternFill(start_color='CCE5FF', end_color='CCE5FF', fill_type='solid')
+
+            def style_header_row(worksheet):
+                for cell in worksheet[1]:
+                    cell.font = header_font
+                    cell.fill = header_fill
+
+            # Settings sheet
+            settings_sheet = wb.active
+            settings_sheet.title = 'Settings'
+            settings_sheet.append(['Setting', 'Value'])
+            settings_sheet.append(['Language', settings.language if settings else "en"])
+            settings_sheet.append(['Currency', settings.currency if settings else "USD"])
+            style_header_row(settings_sheet)
+            
+            # Expenses sheet
+            expenses_sheet = wb.create_sheet('Expenses')
+            expenses_sheet.append(['Category', 'Description', 'Amount', 'Date', 'Is Recurring'])
+            for expense in expenses:
+                expenses_sheet.append([
+                    expense.category,
+                    expense.description,
+                    expense.amount,
+                    expense.date.isoformat(),
+                    expense.is_recurring
+                ])
+            style_header_row(expenses_sheet)
+
+            # Income sheet
+            income_sheet = wb.create_sheet('Income')
+            income_sheet.append(['Category', 'Description', 'Amount', 'Date', 'Is Recurring'])
+            for income in incomes:
+                income_sheet.append([
+                    income.category,
+                    income.description,
+                    income.amount,
+                    income.date.isoformat(),
+                    income.is_recurring
+                ])
+            style_header_row(income_sheet)
+
+            # Loans sheet
+            loans_sheet = wb.create_sheet('Loans')
+            loans_sheet.append([
+                'Type', 'Description', 'Principal Amount', 'Remaining Balance',
+                'Interest Rate', 'Monthly Payment', 'Term Months', 'Start Date'
+            ])
+            for loan in loans:
+                loans_sheet.append([
+                    loan.loan_type,
+                    loan.description,
+                    loan.principal_amount,
+                    loan.remaining_balance,
+                    loan.interest_rate,
+                    loan.monthly_payment,
+                    loan.term_months,
+                    loan.start_date.isoformat()
+                ])
+            style_header_row(loans_sheet)
+
+            # Adjust column widths
+            for sheet in wb.sheetnames:
+                ws = wb[sheet]
+                for column in ws.columns:
+                    max_length = 0
+                    column = list(column)
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    adjusted_width = (max_length + 2)
+                    ws.column_dimensions[column[0].column_letter].width = adjusted_width
+
+            # Save to buffer
+            excel_buffer = io.BytesIO()
+            wb.save(excel_buffer)
+            excel_buffer.seek(0)
+
+            # Return the Excel file
+            return StreamingResponse(
+                iter([excel_buffer.getvalue()]),
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                headers={
+                    "Content-Disposition": f"attachment; filename=home_budget_export_{user_id}.xlsx"
+                }
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Invalid format. Use 'json', 'csv', or 'xlsx'")
+
+    except Exception as e:
+        print(f"[FastAPI] Error in export_user_data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) 

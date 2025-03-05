@@ -164,6 +164,27 @@
       "EUR": "Euro (€)",
       "GBP": "Libra Esterlina (£)",
       "JPY": "Yen Japonés (¥)"
+    },
+    "export": {
+      "title": "Exportar datos",
+      "description": "Exporta todos tus datos en formato JSON, CSV o Excel. Puedes usar esta exportación para hacer una copia de seguridad o transferir tus datos a otra cuenta.",
+      "jsonButton": "Exportar como JSON",
+      "csvButton": "Exportar como CSV",
+      "excelButton": "Exportar como Excel"
+    },
+    "tooltips": {
+      "export": "Descarga todos tus datos financieros, incluyendo gastos, ingresos, préstamos y configuraciones"
+    },
+    "messages": {
+      "exportSuccess": "Datos exportados exitosamente",
+      "exportError": "Error al exportar datos. Por favor, inténtalo de nuevo."
+    }
+  },
+  "inactivity": {
+    "warning": {
+      "title": "Advertencia de tiempo de inactividad",
+      "message": "Debido a la inactividad, su sesión expirará en {seconds} segundos.",
+      "continue": "Continuar sesión"
     }
   }
 } 
