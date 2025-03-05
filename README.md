@@ -53,6 +53,14 @@ A modern, full-stack personal finance management application built with Next.js,
 - JWT for authentication
 - CORS for secure cross-origin requests
 
+## 📝 Changelog
+
+### 2025-03-05
+- 🧹 **Dependency Cleanup**: Removed unused Recharts package, reducing bundle size and dependencies
+- 🐛 **Bug Fixes**: 
+  - Fixed missing translation key for AI insights modal close button
+  - Added language column to insights_cache table to support multilingual insights
+
 ## 🚀 Getting Started
 
 ### Prerequisites
