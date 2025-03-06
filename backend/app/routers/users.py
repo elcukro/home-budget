@@ -27,6 +27,9 @@ class SettingsBase(BaseModel):
     language: str
     currency: str
     ai: dict | None = None
+    emergency_fund_target: int | None = 1000  # Default to $1000 for Baby Step 1
+    emergency_fund_months: int | None = 3     # Default to 3 months for Baby Step 3
+    base_currency: str | None = "USD"         # Base currency for emergency fund target
 
 class Settings(SettingsBase):
     id: int
@@ -62,7 +65,10 @@ def get_current_user(user_id: str = Query(..., description="The ID of the user")
                     user_id=user_id,
                     language="en",
                     currency="USD",
-                    ai={"apiKey": None}
+                    ai={"apiKey": None},
+                    emergency_fund_target=1000,
+                    emergency_fund_months=3,
+                    base_currency="USD"
                 )
                 db.add(settings)
                 db.commit()
@@ -97,7 +103,10 @@ def create_user(user: UserBase, db: Session = Depends(database.get_db)):
             user_id=user.email,
             language="en",
             currency="USD",
-            ai={"apiKey": None}
+            ai={"apiKey": None},
+            emergency_fund_target=1000,
+            emergency_fund_months=3,
+            base_currency="USD"
         )
         db.add(settings)
         

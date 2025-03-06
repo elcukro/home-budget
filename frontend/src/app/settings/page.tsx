@@ -21,6 +21,8 @@ interface UserSettings {
   ai?: {
     apiKey?: string;
   };
+  emergency_fund_target: number;
+  emergency_fund_months: number;
   created_at: string;
   updated_at: string | null;
 }
@@ -94,32 +96,48 @@ export default function Settings() {
     
     setUpdateStatus('loading');
     try {
-      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          language: settings.language,
-          currency: settings.currency,
-          ai: {
-            apiKey: settings.ai?.apiKey
-          }
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update settings');
-      }
-
-      const updatedSettings = await response.json();
+      // Capture current values to detect changes
+      const oldCurrency = settings.currency;
+      
+      // Update settings using context method
       await updateContextSettings({
-        language: updatedSettings.language,
-        currency: updatedSettings.currency,
-        ai: updatedSettings.ai
+        language: settings.language,
+        currency: settings.currency,
+        ai: {
+          apiKey: settings.ai?.apiKey
+        },
+        emergency_fund_target: settings.emergency_fund_target,
+        emergency_fund_months: settings.emergency_fund_months,
+        base_currency: settings.base_currency
       });
       
+      // Refresh settings
+      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings/`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch updated settings');
+      }
+      const updatedSettings = await response.json();
       setSettings(updatedSettings);
+      
+      // Show success message
       setUpdateStatus('success');
       toast.success(intl.formatMessage({ id: 'settings.messages.success' }));
+      
+      // If currency changed, show notification about emergency fund target conversion
+      if (oldCurrency !== updatedSettings.currency && updatedSettings.emergency_fund_target) {
+        toast.success(
+          intl.formatMessage(
+            { id: 'settings.messages.currencyConverted' },
+            { 
+              oldCurrency: oldCurrency,
+              newCurrency: updatedSettings.currency,
+              amount: updatedSettings.emergency_fund_target
+            }
+          ),
+          { duration: 6000 }
+        );
+      }
+      
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
         console.error('[Settings] Update error:', err instanceof Error ? err.message : 'Failed to update settings');
@@ -324,6 +342,62 @@ export default function Settings() {
                 placeholder={intl.formatMessage({ id: 'settings.form.claudeApiKeyPlaceholder' })}
                 className="w-full mt-1 block rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
+            </div>
+          </div>
+          
+          <h3 className="text-lg font-medium mt-6 mb-4 text-primary">
+            {intl.formatMessage({ id: 'settings.financialFreedom.title' })}
+          </h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-secondary mb-1">
+              {intl.formatMessage({ id: 'settings.financialFreedom.emergencyFundTarget' })}
+              <Tooltip content={intl.formatMessage({ id: 'settings.tooltips.emergencyFundTarget' })} icon={true} />
+            </label>
+            <div className="relative">
+              <div className="flex">
+                <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-default bg-gray-50 text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+                  {getCurrencySymbol(settings.currency)}
+                </span>
+                <input
+                  type="number"
+                  min="1000"
+                  max="5000"
+                  step="100"
+                  value={settings.emergency_fund_target || 1000}
+                  onChange={(e) => setSettings({ 
+                    ...settings, 
+                    emergency_fund_target: Math.max(1000, Math.min(5000, parseInt(e.target.value) || 1000))
+                  })}
+                  className="w-full rounded-r-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mt-1 text-xs text-secondary">
+                {intl.formatMessage({ id: 'settings.financialFreedom.emergencyFundTargetRange' })}
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-secondary mb-1">
+              {intl.formatMessage({ id: 'settings.financialFreedom.emergencyFundMonths' })}
+              <Tooltip content={intl.formatMessage({ id: 'settings.tooltips.emergencyFundMonths' })} icon={true} />
+            </label>
+            <div className="relative">
+              <select
+                value={settings.emergency_fund_months || 3}
+                onChange={(e) => setSettings({ 
+                  ...settings, 
+                  emergency_fund_months: parseInt(e.target.value) 
+                })}
+                className="w-full mt-1 block rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {[3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((months) => (
+                  <option key={months} value={months}>
+                    {months} {intl.formatMessage({ id: 'settings.financialFreedom.months' })}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

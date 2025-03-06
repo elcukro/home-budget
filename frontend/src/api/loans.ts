@@ -31,6 +31,10 @@ interface ApiCache {
     data: number;
     timestamp: number;
   };
+  mortgageData?: {
+    data: Loan | null;
+    timestamp: number;
+  };
 }
 
 // Cache duration in milliseconds (5 minutes)
@@ -144,5 +148,68 @@ export const getNonMortgagePrincipal = async (): Promise<number> => {
   } catch (error) {
     console.error('Error fetching non-mortgage principal:', error);
     return 0;
+  }
+};
+
+// Cache for combined mortgage data (all mortgages)
+interface CombinedMortgageData {
+  principal_amount: number;
+  remaining_balance: number;
+  hasMortgage: boolean;
+}
+
+/**
+ * Gets the mortgage loan data with caching
+ * Returns combined data from all mortgages, or null if no mortgages exist
+ */
+export const getMortgageData = async (): Promise<CombinedMortgageData | null> => {
+  // Check if we have a valid cached response
+  const now = Date.now();
+  if (
+    apiCache.mortgageData && 
+    now - apiCache.mortgageData.timestamp < CACHE_DURATION
+  ) {
+    console.log('Using cached mortgage data');
+    return apiCache.mortgageData.data;
+  }
+  
+  try {
+    const loans = await getLoans();
+    const mortgages = loans.filter(loan => loan.loan_type.toLowerCase() === 'mortgage');
+    
+    if (mortgages.length === 0) {
+      // No mortgages found
+      const noMortgageData = {
+        principal_amount: 0,
+        remaining_balance: 0,
+        hasMortgage: false
+      };
+      
+      // Cache the result
+      apiCache.mortgageData = {
+        data: noMortgageData,
+        timestamp: now
+      };
+      
+      return noMortgageData;
+    }
+    
+    // Combine all mortgages data
+    const combinedData = {
+      principal_amount: mortgages.reduce((sum, loan) => sum + loan.principal_amount, 0),
+      remaining_balance: mortgages.reduce((sum, loan) => sum + loan.remaining_balance, 0),
+      hasMortgage: true
+    };
+    
+    // Cache the result
+    apiCache.mortgageData = {
+      data: combinedData,
+      timestamp: now
+    };
+    
+    return combinedData;
+  } catch (error) {
+    console.error('Error fetching mortgage data:', error);
+    return null;
   }
 }; 

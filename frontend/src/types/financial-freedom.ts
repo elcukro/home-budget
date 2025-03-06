@@ -8,6 +8,7 @@ export interface BabyStep {
   currentAmount?: number;
   completionDate?: string;
   notes?: string;
+  isAutoCalculated?: boolean; // Flag for data-driven steps
 }
 
 export interface FinancialFreedomData {

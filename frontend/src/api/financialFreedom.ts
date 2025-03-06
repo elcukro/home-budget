@@ -39,17 +39,4 @@ export const updateFinancialFreedomData = async (data: { steps: BabyStep[], star
   }
 };
 
-export const resetFinancialFreedomData = async (): Promise<void> => {
-  try {
-    const response = await fetchWithAuth(`${API_URL}/financial-freedom`, {
-      method: 'DELETE',
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to reset financial freedom data: ${response.statusText}`);
-    }
-  } catch (error) {
-    console.error('Error resetting financial freedom data:', error);
-    throw error;
-  }
-}; 
+// Reset functionality removed as it's no longer needed 

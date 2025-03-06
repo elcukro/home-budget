@@ -85,6 +85,10 @@ class Settings(Base):
     language = Column(String, default="en")
     currency = Column(String, default="USD")
     ai = Column(JSON)
+    # Financial Freedom settings
+    emergency_fund_target = Column(Integer, default=1000)  # Target for Baby Step 1
+    emergency_fund_months = Column(Integer, default=3)     # Months for Baby Step 3
+    base_currency = Column(String, default="USD")          # Base currency for emergency fund target
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

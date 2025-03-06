@@ -4,22 +4,23 @@ import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { BabyStep } from '@/types/financial-freedom';
 import { CheckCircleIcon, PencilIcon, CheckIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface BabyStepCardProps {
   step: BabyStep;
   onUpdate: (updates: Partial<BabyStep>) => void;
   formatCurrency: (amount: number) => string;
   currency: string;
-  onRefresh?: () => Promise<void>;
 }
 
-export default function BabyStepCard({ step, onUpdate, formatCurrency, currency, onRefresh }: BabyStepCardProps) {
+export default function BabyStepCard({ step, onUpdate, formatCurrency, currency }: BabyStepCardProps) {
+  // Access the settings context to get emergency_fund_months
+  const { settings } = useSettings();
   const intl = useIntl();
   const [isEditing, setIsEditing] = useState(false);
   const [currentAmount, setCurrentAmount] = useState(step.currentAmount || 0);
   const [targetAmount, setTargetAmount] = useState(step.targetAmount || 0);
   const [notes, setNotes] = useState(step.notes || '');
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSave = () => {
     onUpdate({
@@ -39,6 +40,12 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
   };
 
   const handleToggleComplete = () => {
+    // Only allow toggling completion for steps 4-7
+    if (step.id <= 3) {
+      console.log('Steps 1-3 completion status is determined automatically by progress');
+      return;
+    }
+    
     onUpdate({
       isCompleted: !step.isCompleted,
       completionDate: !step.isCompleted ? new Date().toISOString() : undefined,
@@ -46,27 +53,31 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
     });
   };
 
-  const handleRefresh = async () => {
-    if (onRefresh && step.id === 2) {
-      setIsRefreshing(true);
-      try {
-        await onRefresh();
-      } finally {
-        setIsRefreshing(false);
-      }
-    }
-  };
+  // Removed handleRefresh function as we no longer need individual step refresh
 
   const getStepStatusClass = () => {
-    if (step.isCompleted) return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700';
-    if (step.progress > 0) return 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700';
-    return 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700';
+    // For steps 1-3, completion is determined entirely by progress percentage
+    // This ensures the visual indicator is always accurate for auto-calculated steps
+    if (step.id <= 3) {
+      if (step.progress >= 100) return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700';
+      if (step.progress > 0) return 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700';
+      return 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700';
+    } 
+    // For steps 4-7, use the existing logic (manually toggled completion)
+    else {
+      if (step.isCompleted) return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700';
+      if (step.progress > 0) return 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700';
+      return 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700';
+    }
   };
 
   const renderProgressCircle = () => {
     const radius = 30;
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (step.progress / 100) * circumference;
+    
+    // For steps 1-3, completion is determined by progress percentage (100%)
+    const isComplete = step.id <= 3 ? step.progress >= 100 : step.isCompleted;
     
     return (
       <div className="relative w-20 h-20 flex items-center justify-center">
@@ -81,7 +92,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
           />
           <circle
             className={`${
-              step.isCompleted
+              isComplete
                 ? 'text-green-500 dark:text-green-400'
                 : 'text-blue-500 dark:text-blue-400'
             } stroke-current`}
@@ -96,7 +107,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          {step.isCompleted ? (
+          {isComplete ? (
             <CheckCircleIcon className="w-8 h-8 text-green-500 dark:text-green-400" />
           ) : (
             <span className="text-lg font-bold text-default">{step.progress}%</span>
@@ -172,7 +183,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
             <p className="text-sm text-secondary">
               {intl.formatMessage(
                 { id: 'financialFreedom.steps.step1.target' },
-                { amount: formatCurrency(step.targetAmount || 1000) }
+                { amount: formatCurrency(step.targetAmount || 3000) }
               )}
             </p>
             <p className="text-sm text-secondary">
@@ -218,6 +229,12 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
                 { amount: formatCurrency(step.currentAmount || 0) }
               )}
             </p>
+            <p className="text-xs text-secondary italic mt-1">
+              {intl.formatMessage(
+                { id: 'financialFreedom.steps.step3.tip' },
+                { months: settings?.emergency_fund_months || 3 }
+              )}
+            </p>
           </div>
         )}
 
@@ -259,6 +276,17 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
                     { amount: formatCurrency(step.currentAmount || 0) }
                   )}
             </p>
+            {!step.isCompleted && step.targetAmount > 0 && (
+              <p className="text-sm text-secondary">
+                {intl.formatMessage(
+                  { id: 'financialFreedom.steps.step6.originalAmount' },
+                  { amount: formatCurrency(step.targetAmount || 0) }
+                )}
+              </p>
+            )}
+            <p className="text-xs text-secondary italic mt-1">
+              {intl.formatMessage({ id: 'financialFreedom.steps.step6.tip' })}
+            </p>
           </div>
         )}
 
@@ -284,10 +312,20 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-default">
-            {intl.formatMessage({ id: step.titleKey })}
+            {step.id === 1 
+              ? intl.formatMessage({ id: step.titleKey }, { amount: formatCurrency(step.targetAmount || 3000) })
+              : step.id === 3
+              ? intl.formatMessage({ id: step.titleKey }, { months: settings?.emergency_fund_months || 3 })
+              : intl.formatMessage({ id: step.titleKey })
+            }
           </h3>
           <p className="text-sm text-secondary mt-1">
-            {intl.formatMessage({ id: step.descriptionKey })}
+            {step.id === 1
+              ? intl.formatMessage({ id: step.descriptionKey }, { amount: formatCurrency(step.targetAmount || 3000) })
+              : step.id === 3
+              ? intl.formatMessage({ id: step.descriptionKey }, { months: settings?.emergency_fund_months || 3 })
+              : intl.formatMessage({ id: step.descriptionKey })
+            }
           </p>
         </div>
         {renderProgressCircle()}
@@ -295,43 +333,34 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency,
 
       {renderStepContent()}
 
-      <div className="mt-4 flex justify-between">
-        <div className="flex space-x-2">
-          {step.id === 2 && onRefresh && (
+      <div className="mt-4 flex justify-end space-x-2">
+        {/* Only show buttons for steps 4-7, except for step 6 (mortgage) which is data-driven */}
+        {step.id > 3 && step.id !== 6 && !step.isAutoCalculated && (
+          <>
             <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-800 flex items-center"
+              onClick={() => setIsEditing(true)}
+              className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 flex items-center"
             >
-              <ArrowPathIcon className={`w-3 h-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-              {intl.formatMessage({ id: 'common.refresh' })}
+              <PencilIcon className="w-3 h-3 mr-1" />
+              {intl.formatMessage({ id: 'financialFreedom.actions.updateProgress' })}
             </button>
-          )}
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setIsEditing(true)}
-            className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 flex items-center"
-          >
-            <PencilIcon className="w-3 h-3 mr-1" />
-            {intl.formatMessage({ id: 'financialFreedom.actions.updateProgress' })}
-          </button>
-          <button
-            onClick={handleToggleComplete}
-            className={`px-3 py-1 text-xs rounded-md flex items-center ${
-              step.isCompleted
-                ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:hover:bg-yellow-800'
-                : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800'
-            }`}
-          >
-            <CheckCircleIcon className="w-3 h-3 mr-1" />
-            {intl.formatMessage({
-              id: step.isCompleted
-                ? 'financialFreedom.actions.markIncomplete'
-                : 'financialFreedom.actions.markComplete',
-            })}
-          </button>
-        </div>
+            <button
+              onClick={handleToggleComplete}
+              className={`px-3 py-1 text-xs rounded-md flex items-center ${
+                step.isCompleted
+                  ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:hover:bg-yellow-800'
+                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800'
+              }`}
+            >
+              <CheckCircleIcon className="w-3 h-3 mr-1" />
+              {intl.formatMessage({
+                id: step.isCompleted
+                  ? 'financialFreedom.actions.markIncomplete'
+                  : 'financialFreedom.actions.markComplete',
+              })}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

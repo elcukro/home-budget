@@ -71,6 +71,7 @@
     "expenses": "Wydatki",
     "loans": "Pożyczki",
     "reports": "Raporty",
+    "financialFreedom": "Wolność Finansowa",
     "settings": "Ustawienia",
     "savings": "Oszczędności"
   },
@@ -441,7 +442,10 @@
       "language": "Wybierz preferowany język aplikacji",
       "currency": "Wybierz preferowaną walutę dla obliczeń finansowych",
       "claudeApiKey": "Wprowadź swój klucz API Claude, aby włączyć analizy AI",
-      "import": "Importuj wcześniej wyeksportowane dane, aby przywrócić lub połączyć je z bieżącymi rekordami"
+      "export": "Eksportuj swoje dane w formacie JSON, CSV lub Excel do kopii zapasowej lub analizy",
+      "import": "Importuj wcześniej wyeksportowane dane, aby przywrócić lub połączyć je z bieżącymi rekordami",
+      "emergencyFundTarget": "Ustaw kwotę docelową dla Kroku 1 (Początkowy Fundusz Awaryjny)",
+      "emergencyFundMonths": "Wybierz ile miesięcy wydatków chcesz zaoszczędzić dla Kroku 3 (Pełny Fundusz Awaryjny)"
     },
     "form": {
       "language": "Język",
@@ -459,7 +463,15 @@
       "exportError": "Nie udało się wyeksportować danych",
       "claudeApiKeyRequired": "Klucz API Claude jest wymagany do analiz AI",
       "importSuccess": "Dane zostały zaimportowane pomyślnie",
-      "importError": "Nie udało się zaimportować danych. Sprawdź format pliku i spróbuj ponownie."
+      "importError": "Nie udało się zaimportować danych. Sprawdź format pliku i spróbuj ponownie.",
+      "currencyConverted": "Twój docelowy fundusz awaryjny został przeliczony z {oldCurrency} na {newCurrency}: {amount}"
+    },
+    "financialFreedom": {
+      "title": "Ustawienia Wolności Finansowej",
+      "emergencyFundTarget": "Krok 1: Docelowy Fundusz Awaryjny",
+      "emergencyFundTargetRange": "Zakres: 1 000 zł - 5 000 zł",
+      "emergencyFundMonths": "Krok 3: Liczba miesięcy Funduszu Awaryjnego",
+      "months": "miesięcy"
     }
   },
   "auth": {
@@ -483,6 +495,105 @@
       "title": "Ostrzeżenie o czasie bezczynności",
       "message": "Z powodu braku aktywności, twoja sesja wygaśnie za {seconds} sekund.",
       "continue": "Kontynuuj sesję"
+    }
+  },
+  "financialFreedom": {
+    "title": "Droga do Wolności Finansowej",
+    "subtitle": "Śledź swój postęp w 7 Krokach Dave'a Ramseya",
+    "overview": "7 Kroków to sprawdzony plan, który pomoże Ci wyjść z długów, oszczędzać pieniądze i budować majątek.",
+    "yourProgress": "Twój Postęp",
+    "startDate": "Rozpoczęto: {date}",
+    "updateProgress": "Aktualizuj Postęp",
+    "resetProgress": "Resetuj Postęp",
+    "confirmReset": "Czy na pewno chcesz zresetować swój postęp?",
+    "lastUpdated": "Ostatnia Aktualizacja: {date}",
+    "progressTracker": "Śledzenie Postępu 7 Kroków",
+    "currentAmount": "Aktualna Kwota",
+    "targetAmount": "Kwota Docelowa",
+    "notes": "Notatki",
+    "summary": "Podsumowanie Podróży",
+    "overallProgress": "Ogólny Postęp",
+    "currentStep": "Aktualny Fokus",
+    "noData": "Brak dostępnych danych o wolności finansowej",
+    "steps": {
+      "step1": {
+        "title": "Krok 1: Fundusz Awaryjny {amount}",
+        "shortTitle": "Fundusz Awaryjny",
+        "description": "Zaoszczędź {amount} jako początkowy fundusz awaryjny, aby pokryć nieoczekiwane wydatki bez zadłużania się.",
+        "target": "Cel: {amount}",
+        "current": "Aktualnie: {amount}",
+        "tip": "Zacznij od ograniczenia nieistotnych wydatków i sprzedaży rzeczy, których nie potrzebujesz."
+      },
+      "step2": {
+        "title": "Krok 2: Spłać Wszystkie Długi",
+        "shortTitle": "Spłata Długów",
+        "description": "Spłać wszystkie długi (oprócz kredytu hipotecznego) metodą kuli śnieżnej, płacąc od najmniejszego do największego.",
+        "remainingDebt": "Pozostały Dług: {amount}",
+        "debtFree": "Jesteś wolny od długów!",
+        "tip": "Uszereguj wszystkie swoje długi od najmniejszego do największego i skup się na spłacie najmniejszego najpierw."
+      },
+      "step3": {
+        "title": "Krok 3: {months} Miesięcy Wydatków",
+        "shortTitle": "Pełny Fundusz Awaryjny",
+        "description": "Zaoszczędź {months} miesięcy wydatków w pełnym funduszu awaryjnym.",
+        "target": "Cel: {amount}",
+        "current": "Aktualnie: {amount}",
+        "tip": "Oblicz swoje miesięczne wydatki i pomnóż przez {months}, aby określić swój cel."
+      },
+      "step4": {
+        "title": "Krok 4: 15% na Emeryturę",
+        "shortTitle": "Emerytura",
+        "description": "Inwestuj 15% dochodu gospodarstwa domowego na konta emerytalne.",
+        "target": "Cel: 15% dochodu",
+        "current": "Aktualnie: {percent}% dochodu",
+        "tip": "Najpierw wykorzystaj wszelkie dopasowania pracodawcy w planach emerytalnych."
+      },
+      "step5": {
+        "title": "Krok 5: Fundusz Edukacyjny",
+        "shortTitle": "Fundusz Edukacyjny",
+        "description": "Oszczędzaj na edukację dzieci za pomocą kont oszczędnościowych na edukację.",
+        "inProgress": "W trakcie",
+        "completed": "Ukończony",
+        "notApplicable": "Nie dotyczy",
+        "tip": "Rozważ plany 529 lub Edukacyjne Konta Oszczędnościowe (ESA)."
+      },
+      "step6": {
+        "title": "Krok 6: Wcześniejsza Spłata Domu",
+        "shortTitle": "Spłata Domu",
+        "description": "Spłać wcześniej kredyt hipoteczny na dom.",
+        "remainingMortgage": "Pozostały Kredyt Hipoteczny: {amount}",
+        "originalAmount": "Pierwotny Kredyt Hipoteczny: {amount}",
+        "mortgageFree": "Twój dom jest spłacony!",
+        "tip": "Dokonuj dodatkowych płatności na poczet kapitału, aby szybciej spłacić kredyt hipoteczny."
+      },
+      "step7": {
+        "title": "Krok 7: Buduj Majątek i Dawaj",
+        "shortTitle": "Budowanie Majątku",
+        "description": "Buduj majątek i hojnie dawaj innym.",
+        "wealthBuilding": "Budowanie Majątku: W trakcie",
+        "giving": "Darowizny Charytatywne: {amount}/rocznie",
+        "tip": "Kontynuuj inwestowanie i znajdź cele, które Cię pasjonują, aby je wspierać."
+      }
+    },
+    "status": {
+      "notStarted": "Nie Rozpoczęto",
+      "inProgress": "W Trakcie",
+      "completed": "Ukończony",
+      "notApplicable": "Nie Dotyczy"
+    },
+    "actions": {
+      "markComplete": "Oznacz jako Ukończony",
+      "markIncomplete": "Oznacz jako Nieukończony",
+      "updateProgress": "Aktualizuj Postęp",
+      "setTarget": "Ustaw Cel",
+      "addNotes": "Dodaj Notatki",
+      "viewDetails": "Zobacz Szczegóły"
+    },
+    "insights": {
+      "title": "Spostrzeżenia Finansowe",
+      "timeToComplete": "Szacowany czas do ukończenia bieżącego kroku: {time}",
+      "nextMilestone": "Następny kamień milowy: {milestone}",
+      "suggestion": "Sugestia: {text}"
     }
   },
   "savings": {

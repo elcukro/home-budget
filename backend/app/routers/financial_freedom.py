@@ -5,7 +5,7 @@ from datetime import datetime
 import logging
 
 from ..database import get_db
-from ..models import User, FinancialFreedom
+from ..models import User, FinancialFreedom, Settings
 from ..schemas.financial_freedom import FinancialFreedomCreate, FinancialFreedomResponse, FinancialFreedomUpdate
 from ..dependencies import get_current_user
 
@@ -32,7 +32,22 @@ async def get_financial_freedom(
         ).first()
         
         if not financial_freedom:
-            logger.info(f"No existing data found for user {current_user.id}, returning default data")
+            logger.info(f"No existing data found for user {current_user.id}, retrieving settings and creating default data")
+            
+            # Get user settings for financial freedom configuration
+            user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+            
+            # Default values if settings don't exist
+            emergency_fund_target = 1000
+            emergency_fund_months = 3
+            
+            # Use user settings if they exist
+            if user_settings:
+                emergency_fund_target = user_settings.emergency_fund_target
+                emergency_fund_months = user_settings.emergency_fund_months
+            
+            logger.info(f"Using settings: emergency_fund_target={emergency_fund_target}, emergency_fund_months={emergency_fund_months}")
+            
             return FinancialFreedomResponse(
                 userId=current_user.id,
                 steps=[
@@ -42,7 +57,7 @@ async def get_financial_freedom(
                         "descriptionKey": "financialFreedom.steps.step1.description",
                         "isCompleted": False,
                         "progress": 0,
-                        "targetAmount": 3000,
+                        "targetAmount": emergency_fund_target,
                         "currentAmount": 0,
                         "completionDate": None,
                         "notes": ""
@@ -136,13 +151,61 @@ async def update_financial_freedom(
     """Update the financial freedom data for the current user."""
     try:
         logger.info(f"Updating financial freedom data for user: {current_user.id}")
-        financial_freedom = db.query(FinancialFreedom).filter(
+        
+        # Get existing financial freedom data to compare with updates
+        existing_ff = db.query(FinancialFreedom).filter(
             FinancialFreedom.userId == current_user.id
         ).first()
         
-        if not financial_freedom:
+        # Get user settings for steps 1-3 reference values
+        user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+        
+        # Prevent manual updates to steps 1-3 which are auto-calculated
+        # We'll preserve the steps from the database when they're available
+        if existing_ff:
+            existing_steps = existing_ff.steps
+            updated_steps = []
+            
+            for step in financial_freedom_data.steps:
+                # For steps 1-3, we never accept client-side updates as they're fully automated
+                if step.id <= 3 and existing_steps:
+                    # Find the matching existing step and preserve it
+                    existing_step = next((s for s in existing_steps if s["id"] == step.id), None)
+                    if existing_step:
+                        # Keep existing step data without changes
+                        updated_steps.append(existing_step)
+                    else:
+                        # If the step doesn't exist in the database (unlikely), use the default
+                        logger.warning(f"Step {step.id} not found in existing data, using client data")
+                        updated_steps.append(step.dict())
+                else:
+                    # For steps 4-7, allow all updates
+                    updated_steps.append(step.dict())
+            
+            # Create or update the financial freedom record
+            if not existing_ff:
+                logger.info(f"Creating new financial freedom record for user {current_user.id}")
+                financial_freedom = FinancialFreedom(
+                    userId=current_user.id,
+                    steps=updated_steps,
+                    startDate=financial_freedom_data.startDate or datetime.now(),
+                    lastUpdated=datetime.now()
+                )
+                db.add(financial_freedom)
+            else:
+                logger.info(f"Updating existing record for user {current_user.id}")
+                existing_ff.steps = updated_steps
+                existing_ff.lastUpdated = datetime.now()
+                financial_freedom = existing_ff
+            
+            db.commit()
+            db.refresh(financial_freedom)
+            logger.info(f"Successfully updated data for user {current_user.id}")
+            
+            return financial_freedom
+        else:
+            # If no existing record, create a new one (should be rare since GET creates a default)
             logger.info(f"Creating new financial freedom record for user {current_user.id}")
-            # Create new record if it doesn't exist
             financial_freedom = FinancialFreedom(
                 userId=current_user.id,
                 steps=[step.dict() for step in financial_freedom_data.steps],
@@ -150,17 +213,9 @@ async def update_financial_freedom(
                 lastUpdated=datetime.now()
             )
             db.add(financial_freedom)
-        else:
-            logger.info(f"Updating existing record for user {current_user.id}")
-            # Update existing record
-            financial_freedom.steps = [step.dict() for step in financial_freedom_data.steps]
-            financial_freedom.lastUpdated = datetime.now()
-        
-        db.commit()
-        db.refresh(financial_freedom)
-        logger.info(f"Successfully updated data for user {current_user.id}")
-        
-        return financial_freedom
+            db.commit()
+            db.refresh(financial_freedom)
+            return financial_freedom
     except Exception as e:
         logger.error(f"Error in update_financial_freedom: {str(e)}")
         db.rollback()

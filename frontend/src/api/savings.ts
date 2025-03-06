@@ -18,15 +18,7 @@ const CACHE_DURATION = 1 * 60 * 1000;
 // In-memory cache
 const apiCache: ApiCache = {};
 
-/**
- * Clears the API cache
- */
-export const clearApiCache = (): void => {
-  Object.keys(apiCache).forEach(key => {
-    delete apiCache[key as keyof ApiCache];
-  });
-  console.log('API cache cleared');
-};
+// Removed clearApiCache function as it's no longer needed
 
 /**
  * Fetches the savings summary for the current user with caching

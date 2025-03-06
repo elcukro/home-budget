@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import { SupportedLocale, DEFAULT_LOCALE, formatLocaleCurrency } from '@/utils/i18n';
+import { convertCurrency } from '@/api/exchangeRates';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -12,6 +13,9 @@ interface Settings {
   ai?: {
     apiKey?: string;
   };
+  emergency_fund_target?: number; // Target amount for Baby Step 1
+  emergency_fund_months?: number; // Months for Baby Step 3
+  base_currency?: string; // Base currency for emergency fund target
 }
 
 interface SettingsContextType {
@@ -27,7 +31,10 @@ const DEFAULT_SETTINGS: Settings = {
   currency: 'USD',
   ai: {
     apiKey: undefined
-  }
+  },
+  emergency_fund_target: 1000,
+  emergency_fund_months: 3,
+  base_currency: 'USD'
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -97,10 +104,44 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     }
 
     const oldLanguage = settings?.language;
+    const oldCurrency = settings?.currency;
     console.log('[SettingsContext] Updating settings for user:', session.user.email);
     console.log('[SettingsContext] New settings:', newSettings);
 
     try {
+      // If currency is changing and emergency_fund_target is set, convert the target amount
+      if (settings && newSettings.currency !== settings.currency && newSettings.emergency_fund_target) {
+        const oldCurrency = settings.base_currency || settings.currency;
+        
+        try {
+          console.log(`[SettingsContext] Converting emergency fund target from ${oldCurrency} to ${newSettings.currency}`);
+          
+          // Convert the emergency fund target to the new currency
+          const convertedTarget = await convertCurrency(
+            newSettings.emergency_fund_target,
+            oldCurrency,
+            newSettings.currency
+          );
+          
+          // Round to nearest whole number
+          const roundedTarget = Math.round(convertedTarget);
+          
+          console.log(`[SettingsContext] Converted emergency fund target: ${newSettings.emergency_fund_target} ${oldCurrency} -> ${roundedTarget} ${newSettings.currency}`);
+          
+          // Update the target amount and the base currency
+          newSettings.emergency_fund_target = roundedTarget;
+          newSettings.base_currency = newSettings.currency;
+          
+        } catch (error) {
+          console.warn('[SettingsContext] Currency conversion failed:', error);
+          // If conversion fails, keep the same target but update the base currency
+          newSettings.base_currency = newSettings.currency;
+        }
+      } else {
+        // Keep the base currency in sync with the display currency if no conversion happened
+        newSettings.base_currency = newSettings.currency;
+      }
+
       const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings/`;
       console.log('[SettingsContext] Update URL:', url);
       
@@ -127,6 +168,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       // This prevents issues with Chart.js controllers not being registered
       if (oldLanguage !== newSettings.language) {
         console.log('[SettingsContext] Language changed, updating without page reload');
+      }
+      
+      // Notify of currency conversion if it happened
+      if (oldCurrency !== newSettings.currency && newSettings.emergency_fund_target) {
+        console.log(`[SettingsContext] Currency changed from ${oldCurrency} to ${newSettings.currency}`);
       }
     } catch (err) {
       console.error('[SettingsContext] Error updating settings:', err);

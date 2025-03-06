@@ -423,6 +423,13 @@
     "currency": "Currency",
     "save": "Save Settings",
     "noData": "No settings data available",
+    "financialFreedom": {
+      "title": "Financial Freedom Settings",
+      "emergencyFundTarget": "Baby Step 1: Emergency Fund Target",
+      "emergencyFundTargetRange": "Range: $1,000 - $5,000",
+      "emergencyFundMonths": "Baby Step 3: Emergency Fund Months",
+      "months": "months"
+    },
     "languages": {
       "en": "English",
       "es": "Spanish",
@@ -458,7 +465,9 @@
       "currency": "Select your preferred currency for financial calculations",
       "claudeApiKey": "Enter your Claude API key to enable AI-powered insights",
       "export": "Export your data in JSON, CSV, or Excel format for backup or analysis",
-      "import": "Import your previously exported data to restore or merge with your current records"
+      "import": "Import your previously exported data to restore or merge with your current records",
+      "emergencyFundTarget": "Set your target amount for Baby Step 1 (Initial Emergency Fund)",
+      "emergencyFundMonths": "Choose how many months of expenses to save for Baby Step 3 (Full Emergency Fund)"
     },
     "form": {
       "language": "Language",
@@ -476,7 +485,8 @@
       "exportError": "Failed to export data",
       "claudeApiKeyRequired": "Claude API key is required for AI insights",
       "importSuccess": "Data imported successfully",
-      "importError": "Failed to import data. Please check the file format and try again."
+      "importError": "Failed to import data. Please check the file format and try again.",
+      "currencyConverted": "Your emergency fund target has been converted from {oldCurrency} to {newCurrency}: {amount}"
     },
     "export": {
       "title": "Export Data",
@@ -521,10 +531,10 @@
     "noData": "No financial freedom data available",
     "steps": {
       "step1": {
-        "title": "Baby Step 1: $1,000 Emergency Fund",
+        "title": "Baby Step 1: {amount} Emergency Fund",
         "shortTitle": "Emergency Fund",
-        "description": "Save $1,000 as a starter emergency fund to cover unexpected expenses without going into debt.",
-        "target": "Target: $1,000",
+        "description": "Save {amount} as a starter emergency fund to cover unexpected expenses without going into debt.",
+        "target": "Target: {amount}",
         "current": "Current: {amount}",
         "tip": "Start by cutting non-essential expenses and selling items you don't need."
       },
@@ -537,12 +547,12 @@
         "tip": "List all your debts from smallest to largest and focus on paying the smallest one first."
       },
       "step3": {
-        "title": "Baby Step 3: 3-6 Months Expenses",
+        "title": "Baby Step 3: {months} Months Expenses",
         "shortTitle": "Full Emergency Fund",
-        "description": "Save 3-6 months of expenses in a fully funded emergency fund.",
+        "description": "Save {months} months of expenses in a fully funded emergency fund.",
         "target": "Target: {amount}",
         "current": "Current: {amount}",
-        "tip": "Calculate your monthly expenses and multiply by 3-6 to determine your target."
+        "tip": "Calculate your monthly expenses and multiply by {months} to determine your target."
       },
       "step4": {
         "title": "Baby Step 4: 15% to Retirement",
@@ -566,6 +576,7 @@
         "shortTitle": "Pay Off Home",
         "description": "Pay off your home mortgage early.",
         "remainingMortgage": "Remaining Mortgage: {amount}",
+        "originalAmount": "Original Mortgage: {amount}",
         "mortgageFree": "You're mortgage free!",
         "tip": "Make extra payments toward your principal to pay off your mortgage faster."
       },

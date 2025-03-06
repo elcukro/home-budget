@@ -23,12 +23,12 @@ import Image from 'next/image';
 
 const navigation = [
   { name: 'navigation.dashboard', href: '/', icon: HomeIcon },
+  { name: 'navigation.financialFreedom', href: '/financial-freedom', icon: StarIcon },
   { name: 'navigation.income', href: '/income', icon: BanknotesIcon },
   { name: 'navigation.expenses', href: '/expenses', icon: CreditCardIcon },
   { name: 'navigation.loans', href: '/loans', icon: BuildingLibraryIcon },
   { name: 'navigation.savings', href: '/savings', icon: CurrencyDollarIcon },
   { name: 'navigation.reports', href: '/reports', icon: ChartBarIcon },
-  { name: 'navigation.financialFreedom', href: '/financial-freedom', icon: StarIcon },
   { name: 'navigation.settings', href: '/settings', icon: Cog6ToothIcon }
 ];
 

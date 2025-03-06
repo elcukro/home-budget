@@ -65,8 +65,11 @@ export default function BabyStepsProgress({ steps, activeStepId }: BabyStepsProg
         </div>
       </div>
       
+      {/* Add extra spacing to ensure the step text doesn't overlap with the divider */}
+      <div className="mb-12 sm:mb-16"></div>
+      
       {/* Current Step Info */}
-      <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="mt-2 pt-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-3
             ${steps.find(s => s.id === activeStepId)?.isCompleted 

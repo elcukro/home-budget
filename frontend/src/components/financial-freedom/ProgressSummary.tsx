@@ -1,26 +1,21 @@
 'use client';
 
-import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { FinancialFreedomData } from '@/types/financial-freedom';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
 
 interface ProgressSummaryProps {
   data: FinancialFreedomData;
-  onResetProgress: () => void;
   formatCurrency: (amount: number) => string;
   currency: string;
 }
 
 export default function ProgressSummary({ 
   data, 
-  onResetProgress,
   formatCurrency,
   currency
 }: ProgressSummaryProps) {
   const intl = useIntl();
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-
+  
   const completedSteps = data.steps.filter(step => step.isCompleted).length;
   const totalSteps = data.steps.length;
   const completionPercentage = Math.round((completedSteps / totalSteps) * 100);
@@ -37,18 +32,7 @@ export default function ProgressSummary({
     return dateObj.toLocaleDateString(intl.locale);
   };
 
-  const handleResetClick = () => {
-    setShowResetConfirm(true);
-  };
-
-  const handleConfirmReset = () => {
-    onResetProgress();
-    setShowResetConfirm(false);
-  };
-
-  const handleCancelReset = () => {
-    setShowResetConfirm(false);
-  };
+  // Reset progress functionality has been removed
 
   return (
     <div className="bg-white dark:bg-background-primary rounded-lg shadow p-6">
@@ -111,37 +95,7 @@ export default function ProgressSummary({
               )}
             </p>
             
-            <div className="pt-4">
-              {showResetConfirm ? (
-                <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
-                  <p className="text-sm text-red-600 dark:text-red-400 mb-2">
-                    {intl.formatMessage({ id: 'financialFreedom.confirmReset' })}
-                  </p>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={handleCancelReset}
-                      className="px-3 py-1 text-sm border border-default rounded-md text-secondary hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      {intl.formatMessage({ id: 'common.cancel' })}
-                    </button>
-                    <button
-                      onClick={handleConfirmReset}
-                      className="px-3 py-1 text-sm bg-red-500 text-white rounded-md hover:bg-red-600"
-                    >
-                      {intl.formatMessage({ id: 'common.yes' })}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={handleResetClick}
-                  className="flex items-center text-sm text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
-                >
-                  <ArrowPathIcon className="w-4 h-4 mr-1" />
-                  {intl.formatMessage({ id: 'financialFreedom.resetProgress' })}
-                </button>
-              )}
-            </div>
+            {/* Reset progress functionality has been removed */}
           </div>
         </div>
       </div>
