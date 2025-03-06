@@ -21,7 +21,8 @@
     "loans": "Préstamos",
     "reports": "Informes",
     "financialFreedom": "Libertad Financiera",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "savings": "Ahorros"
   },
   "dashboard": {
     "title": "Panel Financiero",
@@ -178,6 +179,13 @@
     "title": "Configuración",
     "language": "Idioma",
     "currency": "Moneda",
+    "financialFreedom": {
+      "title": "Configuración de Libertad Financiera",
+      "emergencyFundTarget": "Paso 1: Objetivo del Fondo de Emergencia",
+      "emergencyFundTargetRange": "Rango: $1,000 - $5,000",
+      "emergencyFundMonths": "Paso 3: Meses del Fondo de Emergencia",
+      "months": "meses"
+    },
     "languages": {
       "en": "Inglés",
       "es": "Español",
@@ -206,13 +214,16 @@
     },
     "tooltips": {
       "export": "Descarga todos tus datos financieros, incluyendo gastos, ingresos, préstamos y configuraciones",
-      "import": "Importa tus datos previamente exportados para restaurar o combinar con tus registros actuales"
+      "import": "Importa tus datos previamente exportados para restaurar o combinar con tus registros actuales",
+      "emergencyFundTarget": "Establece tu cantidad objetivo para el Paso 1 (Fondo de Emergencia Inicial)",
+      "emergencyFundMonths": "Elige cuántos meses de gastos ahorrar para el Paso 3 (Fondo de Emergencia Completo)"
     },
     "messages": {
       "exportSuccess": "Datos exportados exitosamente",
       "exportError": "Error al exportar datos. Por favor, inténtalo de nuevo.",
       "importSuccess": "Datos importados exitosamente",
-      "importError": "Error al importar datos. Por favor, verifica el formato del archivo e inténtalo de nuevo."
+      "importError": "Error al importar datos. Por favor, verifica el formato del archivo e inténtalo de nuevo.",
+      "currencyConverted": "Tu objetivo del fondo de emergencia ha sido convertido de {oldCurrency} a {newCurrency}: {amount}"
     }
   },
   "inactivity": {
@@ -242,10 +253,10 @@
     "noData": "No hay datos de libertad financiera disponibles",
     "steps": {
       "step1": {
-        "title": "Paso 1: Fondo de Emergencia de $1,000",
+        "title": "Paso 1: Fondo de Emergencia de {amount}",
         "shortTitle": "Fondo de Emergencia",
-        "description": "Ahorra $1,000 como fondo de emergencia inicial para cubrir gastos inesperados sin endeudarte.",
-        "target": "Objetivo: $1,000",
+        "description": "Ahorra {amount} como fondo de emergencia inicial para cubrir gastos inesperados sin endeudarte.",
+        "target": "Objetivo: {amount}",
         "current": "Actual: {amount}",
         "tip": "Comienza reduciendo gastos no esenciales y vendiendo artículos que no necesitas."
       },
@@ -258,12 +269,12 @@
         "tip": "Enumera todas tus deudas de menor a mayor y concéntrate en pagar primero la más pequeña."
       },
       "step3": {
-        "title": "Paso 3: 3-6 Meses de Gastos",
+        "title": "Paso 3: {months} Meses de Gastos",
         "shortTitle": "Fondo Completo",
-        "description": "Ahorra 3-6 meses de gastos en un fondo de emergencia completo.",
+        "description": "Ahorra {months} meses de gastos en un fondo de emergencia completo.",
         "target": "Objetivo: {amount}",
         "current": "Actual: {amount}",
-        "tip": "Calcula tus gastos mensuales y multiplica por 3-6 para determinar tu objetivo."
+        "tip": "Calcula tus gastos mensuales y multiplica por {months} para determinar tu objetivo."
       },
       "step4": {
         "title": "Paso 4: 15% para Jubilación",
@@ -287,6 +298,7 @@
         "shortTitle": "Pagar la Casa",
         "description": "Paga tu hipoteca anticipadamente.",
         "remainingMortgage": "Hipoteca Restante: {amount}",
+        "originalAmount": "Hipoteca Original: {amount}",
         "mortgageFree": "¡Tu casa está pagada!",
         "tip": "Haz pagos adicionales al capital para pagar tu hipoteca más rápido."
       },

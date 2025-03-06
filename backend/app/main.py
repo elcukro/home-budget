@@ -12,7 +12,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings
+from .routers import users, auth, financial_freedom, savings, exchange_rates
 from .database import engine, Base
 from .routers.users import User, UserBase, Settings, SettingsBase  # Import User, UserBase, Settings, and SettingsBase models from users router
 import json
@@ -38,6 +38,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(financial_freedom.router)
 app.include_router(savings.router)
+app.include_router(exchange_rates.router)
 
 # Loan models
 class LoanBase(BaseModel):
@@ -1062,12 +1063,15 @@ async def export_user_data(
         expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
         incomes = db.query(models.Income).filter(models.Income.user_id == user_id).all()
         loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
+        savings = db.query(models.Saving).filter(models.Saving.user_id == user_id).all()
 
         # Prepare data structure for JSON
         data = {
             "settings": {
                 "language": settings.language if settings else "en",
-                "currency": settings.currency if settings else "USD"
+                "currency": settings.currency if settings else "USD",
+                "emergency_fund_target": settings.emergency_fund_target if settings else 1000,
+                "emergency_fund_months": settings.emergency_fund_months if settings else 3
             },
             "expenses": [
                 {
@@ -1101,6 +1105,18 @@ async def export_user_data(
                     "start_date": loan.start_date.isoformat()
                 }
                 for loan in loans
+            ],
+            "savings": [
+                {
+                    "category": saving.category,
+                    "description": saving.description,
+                    "amount": saving.amount,
+                    "date": saving.date.isoformat(),
+                    "is_recurring": saving.is_recurring,
+                    "target_amount": saving.target_amount,
+                    "saving_type": saving.saving_type
+                }
+                for saving in savings
             ]
         }
 
@@ -1112,11 +1128,13 @@ async def export_user_data(
             writer = csv.writer(output)
 
             # Write headers
-            writer.writerow(['Type', 'Category/Loan Type', 'Description', 'Amount/Principal', 'Date/Start Date', 'Is Recurring/Interest Rate', 'Remaining Balance', 'Monthly Payment', 'Term Months'])
+            writer.writerow(['Type', 'Category/Loan Type', 'Description', 'Amount/Principal', 'Date/Start Date', 'Is Recurring/Interest Rate', 'Target Amount/Remaining Balance', 'Monthly Payment/Saving Type', 'Term Months'])
 
             # Write settings
             writer.writerow(['Settings', 'language', settings.language if settings else "en", '', '', '', '', '', ''])
             writer.writerow(['Settings', 'currency', settings.currency if settings else "USD", '', '', '', '', '', ''])
+            writer.writerow(['Settings', 'emergency_fund_target', settings.emergency_fund_target if settings else 1000, '', '', '', '', '', ''])
+            writer.writerow(['Settings', 'emergency_fund_months', settings.emergency_fund_months if settings else 3, '', '', '', '', '', ''])
 
             # Write expenses
             for expense in expenses:
@@ -1155,6 +1173,20 @@ async def export_user_data(
                     loan.monthly_payment,
                     loan.term_months
                 ])
+                
+            # Write savings
+            for saving in savings:
+                writer.writerow([
+                    'Saving',
+                    saving.category,
+                    saving.description,
+                    saving.amount,
+                    saving.date.isoformat(),
+                    saving.is_recurring,
+                    saving.target_amount or '',
+                    saving.saving_type,
+                    ''
+                ])
 
             # Prepare the response
             output.seek(0)
@@ -1184,6 +1216,8 @@ async def export_user_data(
             settings_sheet.append(['Setting', 'Value'])
             settings_sheet.append(['Language', settings.language if settings else "en"])
             settings_sheet.append(['Currency', settings.currency if settings else "USD"])
+            settings_sheet.append(['Emergency Fund Target', settings.emergency_fund_target if settings else 1000])
+            settings_sheet.append(['Emergency Fund Months', settings.emergency_fund_months if settings else 3])
             style_header_row(settings_sheet)
             
             # Expenses sheet
@@ -1230,6 +1264,24 @@ async def export_user_data(
                     loan.start_date.isoformat()
                 ])
             style_header_row(loans_sheet)
+            
+            # Savings sheet
+            savings_sheet = wb.create_sheet('Savings')
+            savings_sheet.append([
+                'Category', 'Description', 'Amount', 'Date', 'Is Recurring',
+                'Target Amount', 'Saving Type'
+            ])
+            for saving in savings:
+                savings_sheet.append([
+                    saving.category,
+                    saving.description,
+                    saving.amount,
+                    saving.date.isoformat(),
+                    saving.is_recurring,
+                    saving.target_amount,
+                    saving.saving_type
+                ])
+            style_header_row(savings_sheet)
 
             # Adjust column widths
             for sheet in wb.sheetnames:
@@ -1290,6 +1342,9 @@ async def import_user_data(
             # Delete existing loans
             db.query(models.Loan).filter(models.Loan.user_id == user_id).delete()
             
+            # Delete existing savings
+            db.query(models.Saving).filter(models.Saving.user_id == user_id).delete()
+            
             # Commit the deletions
             db.commit()
             print(f"[FastAPI] Cleared existing data for user: {user_id}")
@@ -1301,6 +1356,8 @@ async def import_user_data(
                 settings.language = data["settings"].get("language", settings.language)
                 settings.currency = data["settings"].get("currency", settings.currency)
                 settings.ai = data["settings"].get("ai", settings.ai)
+                settings.emergency_fund_target = data["settings"].get("emergency_fund_target", settings.emergency_fund_target)
+                settings.emergency_fund_months = data["settings"].get("emergency_fund_months", settings.emergency_fund_months)
                 db.commit()
 
         # Import expenses
@@ -1344,6 +1401,21 @@ async def import_user_data(
                     start_date=datetime.fromisoformat(loan_data["start_date"].replace("Z", "+00:00"))
                 )
                 db.add(loan)
+                
+        # Import savings
+        if "savings" in data:
+            for saving_data in data["savings"]:
+                saving = models.Saving(
+                    user_id=user_id,
+                    category=saving_data["category"],
+                    description=saving_data["description"],
+                    amount=saving_data["amount"],
+                    date=datetime.fromisoformat(saving_data["date"].replace("Z", "+00:00")),
+                    is_recurring=saving_data.get("is_recurring", False),
+                    target_amount=saving_data.get("target_amount"),
+                    saving_type=saving_data["saving_type"]
+                )
+                db.add(saving)
 
         db.commit()
         return {"message": "Data imported successfully"}

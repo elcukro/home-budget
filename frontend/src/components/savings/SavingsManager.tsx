@@ -194,7 +194,7 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
       dataIndex: 'amount',
       key: 'amount',
       render: (amount: number, record: Saving) => (
-        <span style={{ color: record.saving_type === 'deposit' ? 'green' : 'red' }}>
+        <span className={record.saving_type === 'deposit' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
           {record.saving_type === 'withdrawal' ? '-' : ''}
           {formatCurrency(amount)}
         </span>
@@ -239,31 +239,37 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
   ];
 
   return (
-    <div className="p-6">
-      <Card title={intl.formatMessage({ id: 'savings.title' })}>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-semibold">
+        {intl.formatMessage({ id: 'savings.title' })}
+      </h1>
+
+      <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow">
         {/* Summary Section */}
         {summary && (
-          <Row gutter={16} className="mb-6">
-            <Col span={8}>
-              <Statistic
-                title={intl.formatMessage({ id: 'savings.summary.totalSavings' })}
-                value={summary.total_savings}
-                prefix={settings?.currency}
-              />
-            </Col>
-            <Col span={8}>
-              <Statistic
-                title={intl.formatMessage({ id: 'savings.summary.monthlyContribution' })}
-                value={summary.monthly_contribution}
-                prefix={settings?.currency}
-              />
-            </Col>
-          </Row>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h3 className="text-sm font-medium text-secondary mb-1">
+                {intl.formatMessage({ id: 'savings.summary.totalSavings' })}
+              </h3>
+              <p className="text-2xl font-semibold">
+                {formatCurrency(summary.total_savings)}
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-secondary mb-1">
+                {intl.formatMessage({ id: 'savings.summary.monthlyContribution' })}
+              </h3>
+              <p className="text-2xl font-semibold">
+                {formatCurrency(summary.monthly_contribution)}
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Filters and Actions */}
-        <div className="mb-4 flex justify-between items-center">
-          <div className="flex gap-4">
+        <div className="mb-4 flex flex-col md:flex-row justify-between gap-4">
+          <div className="flex flex-wrap gap-4">
             <Select
               placeholder={intl.formatMessage({ id: 'savings.filters.category' })}
               allowClear
@@ -286,6 +292,7 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
                 setFilters({ category: undefined, dateRange: undefined });
                 fetchSavings();
               }}
+              className="bg-white dark:bg-gray-800 dark:text-white dark:border-gray-700"
             >
               {intl.formatMessage({ id: 'savings.filters.clear' })}
             </Button>
@@ -298,18 +305,23 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
               form.resetFields();
               setModalVisible(true);
             }}
+            className="bg-blue-500 text-white hover:bg-blue-600"
           >
             {intl.formatMessage({ id: 'savings.addNew' })}
           </Button>
         </div>
 
         {/* Savings Table */}
-        <Table
-          dataSource={savings}
-          columns={columns}
-          loading={loading}
-          rowKey="id"
-        />
+        <div className="overflow-x-auto">
+          <Table
+            dataSource={savings}
+            columns={columns}
+            loading={loading}
+            rowKey="id"
+            className="dark:table-dark"
+            rowClassName="dark:hover:bg-gray-800/50"
+          />
+        </div>
 
         {/* Add/Edit Modal */}
         <Modal
@@ -322,6 +334,7 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
             form.resetFields();
           }}
           footer={null}
+          className="dark:bg-background-primary dark:text-white"
         >
           <Form
             form={form}
@@ -333,7 +346,7 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
               label={intl.formatMessage({ id: 'savings.fields.category' })}
               rules={[{ required: true }]}
             >
-              <Select>
+              <Select className="dark:bg-gray-800 dark:text-white dark:border-gray-700">
                 {Object.values(SavingCategory).map((category) => (
                   <Select.Option key={category} value={category}>
                     {intl.formatMessage({ id: `savings.categories.${category}` })}
@@ -346,7 +359,7 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
               name="description"
               label={intl.formatMessage({ id: 'savings.fields.description' })}
             >
-              <Input />
+              <Input className="dark:bg-gray-800 dark:text-white dark:border-gray-700" />
             </Form.Item>
 
             <Form.Item
@@ -354,7 +367,7 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
               label={intl.formatMessage({ id: 'savings.fields.amount' })}
               rules={[{ required: true }]}
             >
-              <Input type="number" min={0} step={0.01} />
+              <Input type="number" min={0} step={0.01} className="dark:bg-gray-800 dark:text-white dark:border-gray-700" />
             </Form.Item>
 
             <Form.Item
@@ -362,7 +375,7 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
               label={intl.formatMessage({ id: 'savings.fields.date' })}
               rules={[{ required: true }]}
             >
-              <DatePicker style={{ width: '100%' }} />
+              <DatePicker style={{ width: '100%' }} className="dark:bg-gray-800 dark:text-white dark:border-gray-700" />
             </Form.Item>
 
             <Form.Item
@@ -370,7 +383,7 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
               label={intl.formatMessage({ id: 'savings.fields.savingType' })}
               rules={[{ required: true }]}
             >
-              <Select>
+              <Select className="dark:bg-gray-800 dark:text-white dark:border-gray-700">
                 {Object.values(SavingType).map((type) => (
                   <Select.Option key={type} value={type}>
                     {intl.formatMessage({ id: `savings.types.${type}` })}
@@ -391,25 +404,32 @@ export const SavingsManager: React.FC<SavingsManagerProps> = ({ onSavingChange }
               name="target_amount"
               label={intl.formatMessage({ id: 'savings.fields.targetAmount' })}
             >
-              <Input type="number" min={0} step={0.01} />
+              <Input type="number" min={0} step={0.01} className="dark:bg-gray-800 dark:text-white dark:border-gray-700" />
             </Form.Item>
 
             <Form.Item>
               <div className="flex justify-end gap-2">
-                <Button onClick={() => {
-                  setModalVisible(false);
-                  form.resetFields();
-                }}>
+                <Button 
+                  onClick={() => {
+                    setModalVisible(false);
+                    form.resetFields();
+                  }}
+                  className="dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600"
+                >
                   {intl.formatMessage({ id: 'common.cancel' })}
                 </Button>
-                <Button type="primary" htmlType="submit">
+                <Button 
+                  type="primary" 
+                  htmlType="submit"
+                  className="bg-blue-500 text-white hover:bg-blue-600"
+                >
                   {intl.formatMessage({ id: 'common.save' })}
                 </Button>
               </div>
             </Form.Item>
           </Form>
         </Modal>
-      </Card>
+      </div>
     </div>
   );
 }; 
