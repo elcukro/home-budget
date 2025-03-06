@@ -57,6 +57,11 @@ A modern, full-stack personal finance management application built with Next.js,
 
 ## 📝 Changelog
 
+### 2025-03-06
+- 🐛 **Bug Fix**: 
+  - Fixed 500 error in Financial Freedom feature by properly serializing BabyStep objects to JSON before storing in the database
+  - Updated both creation and update logic to consistently handle object serialization
+
 ### 2025-03-05
 - 🧹 **Dependency Cleanup**: Removed unused Recharts package, reducing bundle size and dependencies
 - 🐛 **Bug Fixes**: 
