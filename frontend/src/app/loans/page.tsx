@@ -82,7 +82,7 @@ export default function LoansPage() {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans/`);
+        const response = await fetch(`${API_BASE_URL}/loans?user_id=${encodeURIComponent(session.user.email)}`);
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(errorText || 'Failed to fetch loans');
@@ -141,7 +141,7 @@ export default function LoansPage() {
       return;
     }
 
-    const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans/`;
+    const url = `${API_BASE_URL}/loans?user_id=${encodeURIComponent(session.user.email)}`;
     console.log('[LoansPage] Submit URL:', url);
 
     const promise = fetch(url, {
@@ -235,11 +235,11 @@ export default function LoansPage() {
       return;
     }
 
-    const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans/${loanId}`;
+    const url = `${API_BASE_URL}/loans/${loanId}?user_id=${encodeURIComponent(session.user.email)}`;
     console.log('[LoansPage] Save edit URL:', url);
 
     const promise = fetch(url, {
-      method: 'PATCH',
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }).then(async (response) => {

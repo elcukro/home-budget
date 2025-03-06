@@ -4,9 +4,14 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { useSession } from 'next-auth/react';
 import { SupportedLocale, DEFAULT_LOCALE, formatLocaleCurrency } from '@/utils/i18n';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 interface Settings {
   language: string;
   currency: string;
+  ai?: {
+    apiKey?: string;
+  };
 }
 
 interface SettingsContextType {
@@ -20,6 +25,9 @@ interface SettingsContextType {
 const DEFAULT_SETTINGS: Settings = {
   language: DEFAULT_LOCALE,
   currency: 'USD',
+  ai: {
+    apiKey: undefined
+  }
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -49,7 +57,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     console.log('[SettingsContext] Fetching settings for user:', session.user.email);
     try {
       setIsLoading(true);
-      const url = `http://localhost:8000/users/${encodeURIComponent(session.user.email)}/settings`;
+      const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings/`;
       console.log('[SettingsContext] Fetch URL:', url);
       
       const response = await fetch(url);
@@ -93,7 +101,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     console.log('[SettingsContext] New settings:', newSettings);
 
     try {
-      const url = `http://localhost:8000/users/${encodeURIComponent(session.user.email)}/settings`;
+      const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings/`;
       console.log('[SettingsContext] Update URL:', url);
       
       const response = await fetch(url, {
@@ -111,16 +119,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
       console.log('[SettingsContext] Update response:', data);
       
-      // Update local state first
+      // Update local state
       setSettings(newSettings);
 
-      // If language was changed, force a hard reload of the page
+      // We no longer need to force a page reload for language changes
+      // The IntlProviderWrapper will handle the language change
+      // This prevents issues with Chart.js controllers not being registered
       if (oldLanguage !== newSettings.language) {
-        console.log('[SettingsContext] Language changed, triggering page reload');
-        // Use a small delay to ensure the state is updated and toast is visible
-        setTimeout(() => {
-          window.location.href = window.location.href;
-        }, 1000);
+        console.log('[SettingsContext] Language changed, updating without page reload');
       }
     } catch (err) {
       console.error('[SettingsContext] Error updating settings:', err);

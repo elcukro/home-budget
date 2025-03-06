@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, DateTime, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, DateTime, Boolean, JSON, UniqueConstraint, Table, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
+from datetime import datetime
+from sqlalchemy.dialects.postgresql import JSONB
 
 class User(Base):
     __tablename__ = "users"
@@ -18,6 +20,11 @@ class User(Base):
     income = relationship("Income", back_populates="user")
     settings = relationship("Settings", back_populates="user", uselist=False)
     activities = relationship("Activity", back_populates="user")
+    insights_caches = relationship("InsightsCache", back_populates="user", cascade="all, delete-orphan")
+    accounts = relationship("Account", back_populates="user", cascade="all, delete-orphan")
+    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+    financial_freedom = relationship("FinancialFreedom", back_populates="user", uselist=False)
+    savings = relationship("Saving", back_populates="user", cascade="all, delete-orphan")
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -77,6 +84,7 @@ class Settings(Base):
     user_id = Column(String, ForeignKey("users.id"), unique=True)
     language = Column(String, default="en")
     currency = Column(String, default="USD")
+    ai = Column(JSON)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -96,4 +104,105 @@ class Activity(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationship
-    user = relationship("User", back_populates="activities") 
+    user = relationship("User", back_populates="activities")
+
+class InsightsCache(Base):
+    __tablename__ = "insights_cache"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    language = Column(String, default="en")  # Store the language of the insights
+    insights = Column(JSON)
+    financial_snapshot = Column(JSON)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_stale = Column(Boolean, default=False)
+    # New fields for caching strategy
+    last_refresh_date = Column(DateTime, default=datetime.utcnow)
+    total_income = Column(Float, default=0)
+    total_expenses = Column(Float, default=0)
+    total_loans = Column(Float, default=0)
+
+    user = relationship("User", back_populates="insights_caches")
+
+class Account(Base):
+    __tablename__ = "accounts"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    type = Column(String, nullable=False)
+    provider = Column(String, nullable=False)
+    provider_account_id = Column(String, nullable=False)
+    refresh_token = Column(String, nullable=True)
+    access_token = Column(String, nullable=True)
+    expires_at = Column(Integer, nullable=True)
+    token_type = Column(String, nullable=True)
+    scope = Column(String, nullable=True)
+    id_token = Column(String, nullable=True)
+    session_state = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="accounts")
+
+    __table_args__ = (UniqueConstraint('provider', 'provider_account_id', name='provider_account_id_unique'),)
+
+class Session(Base):
+    __tablename__ = "sessions"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    session_token = Column(String, unique=True, nullable=False)
+    expires = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="sessions")
+
+class VerificationToken(Base):
+    __tablename__ = "verification_tokens"
+
+    identifier = Column(String, nullable=False)
+    token = Column(String, primary_key=True)
+    expires = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (UniqueConstraint('identifier', 'token', name='token_identifier_unique'),)
+
+class FinancialFreedom(Base):
+    __tablename__ = "financial_freedom"
+
+    id = Column(Integer, primary_key=True, index=True)
+    userId = Column("user_id", String, ForeignKey("users.id", ondelete="CASCADE"))  # Map user_id column to userId
+    steps = Column(JSONB)
+    startDate = Column("start_date", DateTime(timezone=True), server_default=func.now())  # Map start_date column to startDate
+    lastUpdated = Column("last_updated", DateTime(timezone=True), server_default=func.now(), onupdate=func.now())  # Map last_updated column to lastUpdated
+
+    user = relationship("User", back_populates="financial_freedom")
+
+    __table_args__ = (
+        Index('idx_financial_freedom_user_id', 'user_id'),
+        Index('idx_financial_freedom_steps', 'steps', postgresql_using='gin'),
+    )
+
+class Saving(Base):
+    __tablename__ = "savings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    category = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    date = Column(Date, nullable=False)
+    is_recurring = Column(Boolean, default=False)
+    target_amount = Column(Float, nullable=True)
+    saving_type = Column(String, nullable=False)  # 'deposit' or 'withdrawal'
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    user = relationship("User", back_populates="savings")
+
+    __table_args__ = (
+        Index('idx_savings_user_id', 'user_id'),
+        Index('idx_savings_category', 'category'),
+        Index('idx_savings_date', 'date'),
+    ) 

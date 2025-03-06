@@ -195,18 +195,16 @@ export default function IncomePage() {
     }
 
     try {
-      const incomeToDelete = incomes.find(income => income.id === id);
-      console.log('Income record to delete:', incomeToDelete);
       console.log('ID type:', typeof id);
       console.log('ID value:', id);
       console.log('ID length:', id.length);
       
-      const response = await fetch(`/api/income/${id}`, {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/users/${encodeURIComponent(session.user.email)}/income/${id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email: session.user.email }),
       });
 
       console.log('Delete response status:', response.status);
@@ -220,13 +218,21 @@ export default function IncomePage() {
       // Log the delete activity
       console.log('[Income] Logging delete activity for:', {
         id,
-        deleted: incomeToDelete
+        deleted: incomes.find(income => income.id === id)
       });
       await logActivity({
         entity_type: 'Income',
         operation_type: 'delete',
         entity_id: parseInt(id),
-        previous_values: incomeToDelete ? Object.assign({}, incomeToDelete) : undefined
+        previous_values: incomes.find(income => income.id === id) ? {
+          id: id,
+          category: incomes.find(income => income.id === id)?.category,
+          description: incomes.find(income => income.id === id)?.description,
+          amount: incomes.find(income => income.id === id)?.amount,
+          is_recurring: incomes.find(income => income.id === id)?.is_recurring,
+          date: incomes.find(income => income.id === id)?.date,
+          created_at: incomes.find(income => income.id === id)?.created_at
+        } : undefined
       });
       console.log('[Income] Delete activity logged successfully');
 
@@ -251,8 +257,14 @@ export default function IncomePage() {
     e.preventDefault();
     setError(null);
 
+    if (!session?.user?.email) {
+      toast.error(intl.formatMessage({ id: 'common.mustBeLoggedIn' }));
+      return;
+    }
+
     try {
-      const response = await fetch('/api/income', {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/users/${encodeURIComponent(session.user.email)}/income`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -309,7 +321,8 @@ export default function IncomePage() {
       }
 
       try {
-        const response = await fetch(`/api/income?email=${encodeURIComponent(session.user.email)}`);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_URL}/users/${encodeURIComponent(session.user.email)}/income`);
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(errorText || 'Failed to fetch income');

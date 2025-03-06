@@ -7,6 +7,7 @@ import { useTheme } from 'next-themes';
 import { useSession, signOut } from 'next-auth/react';
 import {
   HomeIcon,
+  CurrencyDollarIcon,
   BanknotesIcon,
   CreditCardIcon,
   BuildingLibraryIcon,
@@ -15,6 +16,7 @@ import {
   MoonIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
+  StarIcon,
 } from '@heroicons/react/24/outline';
 import { useIntl } from 'react-intl';
 import Image from 'next/image';
@@ -24,8 +26,10 @@ const navigation = [
   { name: 'navigation.income', href: '/income', icon: BanknotesIcon },
   { name: 'navigation.expenses', href: '/expenses', icon: CreditCardIcon },
   { name: 'navigation.loans', href: '/loans', icon: BuildingLibraryIcon },
+  { name: 'navigation.savings', href: '/savings', icon: CurrencyDollarIcon },
   { name: 'navigation.reports', href: '/reports', icon: ChartBarIcon },
-  { name: 'navigation.settings', href: '/settings', icon: Cog6ToothIcon },
+  { name: 'navigation.financialFreedom', href: '/financial-freedom', icon: StarIcon },
+  { name: 'navigation.settings', href: '/settings', icon: Cog6ToothIcon }
 ];
 
 export default function Sidebar() {
@@ -41,7 +45,7 @@ export default function Sidebar() {
 
   if (!mounted) {
     return (
-      <div className="w-64 bg-card border-r border-default">
+      <div className="sticky top-0 h-screen w-64 bg-card border-r border-default">
         <div className="h-full px-3 py-4 flex flex-col">
           <div className="flex items-center justify-between px-3">
             <h2 className="text-xl font-bold text-primary">
@@ -54,9 +58,9 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="w-64 bg-gradient-to-b from-blue-50 via-blue-100/50 to-white dark:from-navy-950 dark:via-navy-900/90 dark:to-navy-800/80 border-r border-default">
-      <div className="h-full px-3 py-4 flex flex-col">
-        <div className="space-y-3">
+    <div className="sticky top-0 h-screen w-64 bg-gradient-to-b from-blue-50 via-blue-100/50 to-white dark:from-navy-950 dark:via-navy-900/90 dark:to-navy-800/80 border-r border-default z-40">
+      <div className="h-full px-3 py-4 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+        <div className="space-y-3 min-h-full flex flex-col">
           <div className="flex items-center justify-between px-3">
             <h2 className="text-xl font-bold text-blue-900 dark:text-primary">
               {intl.formatMessage({ id: 'common.appName' })}
@@ -121,7 +125,9 @@ export default function Sidebar() {
                 </Link>
               );
             })}
+          </nav>
 
+          <div className="mt-auto pt-4">
             {session && (
               <button
                 onClick={() => signOut({ 
@@ -137,7 +143,7 @@ export default function Sidebar() {
                 {intl.formatMessage({ id: 'auth.signOut' })}
               </button>
             )}
-          </nav>
+          </div>
         </div>
       </div>
     </div>

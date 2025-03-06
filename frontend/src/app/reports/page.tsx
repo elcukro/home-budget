@@ -294,8 +294,9 @@ const BudgetReport = () => {
       const startMonth = period.startDate.toISOString().slice(0, 7); // YYYY-MM
       const endMonth = period.endDate.toISOString().slice(0, 7); // YYYY-MM
 
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const response = await fetch(
-        `http://localhost:8000/api/reports/yearly-budget?start_date=${startMonth}&end_date=${endMonth}&user_id=${session.user.id}`
+        `${API_URL}/api/reports/yearly-budget?start_date=${startMonth}&end_date=${endMonth}&user_id=${session.user.email}`
       );
       
       const data = await response.json();

@@ -15,7 +15,55 @@
     "select": "Wybierz...",
     "appName": "Budżet domowy",
     "createdAt": "Data utworzenia",
-    "mustBeLoggedIn": "Musisz być zalogowany, aby wykonać tę akcję"
+    "mustBeLoggedIn": "Musisz być zalogowany, aby wykonać tę akcję",
+    "refresh": "Odśwież",
+    "months": {
+      "1": "Styczeń",
+      "2": "Luty",
+      "3": "Marzec",
+      "4": "Kwiecień",
+      "5": "Maj",
+      "6": "Czerwiec",
+      "7": "Lipiec",
+      "8": "Sierpień",
+      "9": "Wrzesień",
+      "10": "Październik",
+      "11": "Listopad",
+      "12": "Grudzień",
+      "01": "Styczeń",
+      "02": "Luty",
+      "03": "Marzec",
+      "04": "Kwiecień",
+      "05": "Maj",
+      "06": "Czerwiec",
+      "07": "Lipiec",
+      "08": "Sierpień",
+      "09": "Wrzesień",
+      "2024-01": "Styczeń 2024",
+      "2024-02": "Luty 2024",
+      "2024-03": "Marzec 2024",
+      "2024-04": "Kwiecień 2024",
+      "2024-05": "Maj 2024",
+      "2024-06": "Czerwiec 2024",
+      "2024-07": "Lipiec 2024",
+      "2024-08": "Sierpień 2024",
+      "2024-09": "Wrzesień 2024",
+      "2024-10": "Październik 2024",
+      "2024-11": "Listopad 2024",
+      "2024-12": "Grudzień 2024",
+      "2025-01": "Styczeń 2025",
+      "2025-02": "Luty 2025",
+      "2025-03": "Marzec 2025",
+      "2025-04": "Kwiecień 2025",
+      "2025-05": "Maj 2025",
+      "2025-06": "Czerwiec 2025",
+      "2025-07": "Lipiec 2025",
+      "2025-08": "Sierpień 2025",
+      "2025-09": "Wrzesień 2025",
+      "2025-10": "Październik 2025",
+      "2025-11": "Listopad 2025",
+      "2025-12": "Grudzień 2025"
+    }
   },
   "navigation": {
     "dashboard": "Panel",
@@ -23,7 +71,8 @@
     "expenses": "Wydatki",
     "loans": "Pożyczki",
     "reports": "Raporty",
-    "settings": "Ustawienia"
+    "settings": "Ustawienia",
+    "savings": "Oszczędności"
   },
   "dashboard": {
     "title": "Panel Finansowy",
@@ -31,17 +80,78 @@
     "viewAllActivity": "Pokaż wszystko",
     "showLessActivity": "Pokaż mniej",
     "noActivity": "Brak ostatniej aktywności",
+    "noData": "Brak dostępnych danych",
     "quickActions": {
       "addIncome": "Dodaj nowe źródło przychodu",
       "addExpense": "Dodaj nowy wydatek",
       "addLoan": "Zarejestruj nową pożyczkę",
       "viewReports": "Zobacz raporty i analizy finansowe"
     },
-    "summaryCards": {
-      "monthlyIncome": "Miesięczny Przychód",
-      "monthlyExpenses": "Miesięczne Wydatki",
+    "summary": {
+      "title": "Podsumowanie Miesięczne",
+      "totalIncome": "Całkowity Przychód",
+      "totalExpenses": "Całkowite Wydatki",
       "loanPayments": "Spłaty Pożyczek",
-      "monthlyBalance": "Bilans Miesięczny"
+      "netCashflow": "Przepływ Netto",
+      "savingsRate": "Wskaźnik Oszczędności",
+      "debtToIncome": "Wskaźnik Zadłużenia",
+      "aiInsights": {
+        "button": "Analiza AI",
+        "modalTitle": "Analiza finansowa AI",
+        "loading": "Generowanie analizy...",
+        "error": "Nie udało się wygenerować analizy. Spróbuj ponownie później.",
+        "errorTitle": "Błąd API",
+        "tryAgain": "Spróbuj ponownie",
+        "refreshing": "Odświeżanie...",
+        "close": "Zamknij",
+        "categories": {
+          "health": "Ogólna kondycja finansowa",
+          "spending": "Wzorce wydatków",
+          "savings": "Strategia oszczędzania",
+          "debt": "Zarządzanie długiem",
+          "budget": "Optymalizacja budżetu"
+        },
+        "status": {
+          "good": "Dobry",
+          "ok": "W porządku",
+          "can_be_improved": "Można poprawić",
+          "bad": "Wymaga uwagi"
+        },
+        "lastRefreshed": "Ostatnio odświeżono {date} ({days} dni temu)",
+        "dataChanges": "Zmiany od ostatniego odświeżenia",
+        "incomeChange": "Dochody: {change}",
+        "expensesChange": "Wydatki: {change}",
+        "loansChange": "Pożyczki: {change}",
+        "refresh": "Odśwież analizę",
+        "refreshNeeded": "Twoje dane finansowe uległy zmianie. Odśwież analizę, aby uzyskać aktualne wyniki.",
+        "upToDate": "Analiza jest aktualna z Twoimi obecnymi danymi finansowymi.",
+        "generatedAt": "Wygenerowano {date}",
+        "usingCached": "Używanie zapisanej analizy",
+        "apiErrors": {
+          "overloaded": "Claude AI jest obecnie przeciążony. Spróbuj ponownie później.",
+          "invalidKey": "Nieprawidłowy klucz API. Sprawdź swój klucz API Claude w ustawieniach.",
+          "forbidden": "Twój klucz API nie ma uprawnień do korzystania z tego modelu.",
+          "rateLimit": "Przekroczono limit zapytań. Spróbuj ponownie później.",
+          "generic": "Wystąpił błąd podczas generowania analizy. Spróbuj ponownie później."
+        }
+      }
+    },
+    "cashFlow": {
+      "title": "Przepływ Pieniędzy",
+      "income": "Przychody",
+      "expenses": "Wydatki",
+      "loanPayments": "Spłaty Pożyczek",
+      "netFlow": "Przepływ Netto",
+      "availableCash": "Dostępna Gotówka"
+    },
+    "loans": {
+      "title": "Przegląd Pożyczek",
+      "noLoans": "Brak aktywnych pożyczek",
+      "totalBalance": "Całkowite Saldo",
+      "interestRate": "Oprocentowanie: {rate}%",
+      "monthlyPayment": "Rata Miesięczna: {amount}",
+      "progress": "Postęp: {percentage}%",
+      "totalMonthlyPayments": "Suma Rat Miesięcznych"
     },
     "activity": {
       "create": "Utworzono",
@@ -49,51 +159,49 @@
       "delete": "Usunięto",
       "income": "przychód",
       "expense": "wydatek",
-      "loan": "pożyczkę",
+      "loan": "pożyczka",
+      "payment": "płatność",
+      "settings": "ustawienia",
       "source": "źródło",
       "description": "opis",
       "amount": "kwota",
-      "id": "ID",
       "category": "kategoria",
+      "id": "ID",
       "principal_amount": "kwota główna",
-      "remaining_balance": "pozostała kwota",
+      "remaining_balance": "pozostałe saldo",
+      "interest_rate": "oprocentowanie",
+      "term_months": "okres w miesiącach",
       "monthly_payment": "rata miesięczna",
-      "interest_rate": "stopa procentowa",
-      "term_months": "okres (miesiące)",
       "timestamp": "{date} o {time}",
       "updated_at": "Zaktualizowano {date} o {time}",
-      "categories": {
-        "income": {
-          "salary": "Wynagrodzenie",
-          "freelance": "Freelance",
-          "investments": "Inwestycje",
-          "rental": "Przychód z wynajmu",
-          "other": "Inne"
-        },
-        "expense": {
-          "housing": "Mieszkanie",
-          "transportation": "Transport",
-          "food": "Żywność",
-          "utilities": "Media",
-          "insurance": "Ubezpieczenia",
-          "healthcare": "Opieka Zdrowotna",
-          "entertainment": "Rozrywka",
-          "other": "Inne"
-        },
-        "loan": {
-          "mortgage": "Hipoteka",
-          "car": "Kredyt Samochodowy",
-          "personal": "Pożyczka Osobista",
-          "student": "Kredyt Studencki",
-          "other": "Inne"
-        }
-      },
       "details": {
-        "income": "{operation} {type} ze źródłem: {source}, kwota: {amount}",
+        "income": "{operation} {type} ze źródła: {source}, kwota: {amount}",
         "expense": "{operation} {type} z opisem: {description}, kwota: {amount}",
         "loan": "{operation} {type} z opisem: {description}, kwota: {amount}"
+      },
+      "undefined": "nieznana aktywność"
+    },
+    "categories": {
+      "income": {
+        "salary": "Wynagrodzenie",
+        "freelance": "Freelance",
+        "investments": "Inwestycje",
+        "rental": "Przychód z wynajmu",
+        "other": "Inne"
+      },
+      "expense": {
+        "housing": "Mieszkanie",
+        "transportation": "Transport",
+        "food": "Żywność",
+        "utilities": "Media",
+        "insurance": "Ubezpieczenia",
+        "healthcare": "Opieka Zdrowotna",
+        "entertainment": "Rozrywka",
+        "other": "Inne"
       }
-    }
+    },
+    "incomeDistribution": "Rozkład Przychodów",
+    "expenseDistribution": "Rozkład Wydatków"
   },
   "income": {
     "title": "Zarządzanie Przychodami",
@@ -295,6 +403,23 @@
       "JPY": "Jen Japoński (¥)",
       "PLN": "Złoty Polski (zł)"
     },
+    "ai": {
+      "title": "Konfiguracja AI Insights",
+      "apiKey": "Klucz API Claude",
+      "apiKeyDescription": "Wprowadź klucz API Claude, aby włączyć spersonalizowane analizy",
+      "frequency": {
+        "label": "Częstotliwość odświeżania analiz",
+        "daily": "Codziennie",
+        "weekly": "Tygodniowo",
+        "monthly": "Miesięcznie"
+      },
+      "autoGenerate": "Automatycznie generuj nowe analizy",
+      "lastGenerated": "Ostatnio wygenerowano: {date}",
+      "saveSuccess": "Ustawienia AI zostały zapisane pomyślnie",
+      "testConnection": "Testuj połączenie",
+      "connectionSuccess": "Pomyślnie połączono z Claude AI",
+      "connectionError": "Błąd połączenia: {error}"
+    },
     "save": "Zapisz Ustawienia",
     "noData": "Brak dostępnych ustawień",
     "export": {
@@ -304,23 +429,37 @@
       "csvButton": "Eksportuj jako CSV",
       "excelButton": "Eksportuj jako Excel"
     },
+    "import": {
+      "title": "Import danych",
+      "description": "Importuj wcześniej wyeksportowane dane w formacie JSON. Spowoduje to dodanie wszystkich zaimportowanych rekordów do bieżących danych.",
+      "confirmTitle": "Potwierdź import danych",
+      "confirmMessage": "Czy chcesz usunąć istniejące dane dotyczące Przychodów, Wydatków i Pożyczek przed zaimportowaniem nowych danych?",
+      "keepExisting": "Zachowaj istniejące dane",
+      "removeExisting": "Usuń istniejące dane"
+    },
     "tooltips": {
       "language": "Wybierz preferowany język aplikacji",
-      "currency": "Wybierz preferowaną walutę do wyświetlania kwot",
-      "export": "Pobierz wszystkie swoje dane finansowe, w tym wydatki, przychody, pożyczki i ustawienia"
+      "currency": "Wybierz preferowaną walutę dla obliczeń finansowych",
+      "claudeApiKey": "Wprowadź swój klucz API Claude, aby włączyć analizy AI",
+      "import": "Importuj wcześniej wyeksportowane dane, aby przywrócić lub połączyć je z bieżącymi rekordami"
     },
     "form": {
       "language": "Język",
       "currency": "Waluta",
-      "submit": "Zapisz Ustawienia"
+      "submit": "Zapisz ustawienia",
+      "claudeApiKey": "Klucz API Claude",
+      "claudeApiKeyPlaceholder": "Wprowadź swój klucz API Claude"
     },
     "messages": {
-      "success": "Ustawienia zostały zaktualizowane pomyślnie",
+      "success": "Ustawienia zostały zaktualizowane",
       "error": "Nie udało się zaktualizować ustawień",
       "loading": "Ładowanie ustawień...",
-      "notLoggedIn": "Musisz być zalogowany, aby zaktualizować ustawienia",
-      "exportSuccess": "Dane zostały wyeksportowane pomyślnie",
-      "exportError": "Nie udało się wyeksportować danych. Spróbuj ponownie."
+      "notLoggedIn": "Musisz być zalogowany, aby uzyskać dostęp do ustawień",
+      "exportSuccess": "Dane zostały wyeksportowane",
+      "exportError": "Nie udało się wyeksportować danych",
+      "claudeApiKeyRequired": "Klucz API Claude jest wymagany do analiz AI",
+      "importSuccess": "Dane zostały zaimportowane pomyślnie",
+      "importError": "Nie udało się zaimportować danych. Sprawdź format pliku i spróbuj ponownie."
     }
   },
   "auth": {
@@ -345,5 +484,75 @@
       "message": "Z powodu braku aktywności, twoja sesja wygaśnie za {seconds} sekund.",
       "continue": "Kontynuuj sesję"
     }
+  },
+  "savings": {
+    "title": "Zarządzanie Oszczędnościami",
+    "addNew": "Dodaj Nową Oszczędność",
+    "categories": {
+      "emergency_fund": "Fundusz Awaryjny",
+      "retirement": "Emerytura",
+      "college": "Fundusz Edukacyjny",
+      "general": "Ogólne Oszczędności",
+      "investment": "Inwestycje",
+      "other": "Inne"
+    },
+    "fields": {
+      "category": "Kategoria",
+      "description": "Opis",
+      "amount": "Kwota",
+      "date": "Data",
+      "isRecurring": "Oszczędność Cykliczna",
+      "targetAmount": "Kwota Docelowa",
+      "savingType": "Typ"
+    },
+    "types": {
+      "deposit": "Wpłata",
+      "withdrawal": "Wypłata"
+    },
+    "summary": {
+      "title": "Podsumowanie Oszczędności",
+      "totalSavings": "Łączne Oszczędności",
+      "monthlyContribution": "Miesięczna Składka",
+      "emergencyFund": {
+        "title": "Fundusz Awaryjny",
+        "target": "Cel: {amount}",
+        "current": "Aktualnie: {amount}",
+        "progress": "Postęp: {percent}%",
+        "remaining": "Pozostało: {amount}"
+      },
+      "categoryTotals": "Sumy Kategorii",
+      "recentTransactions": "Ostatnie Transakcje"
+    },
+    "tooltips": {
+      "category": "Wybierz kategorię dla tej oszczędności",
+      "description": "Wprowadź opis dla tej oszczędności",
+      "amount": "Wprowadź kwotę w wybranej walucie",
+      "date": "Wybierz datę oszczędności",
+      "isRecurring": "Zaznacz, jeśli jest to cykliczna oszczędność miesięczna",
+      "targetAmount": "Opcjonalnie: Ustaw kwotę docelową dla tej oszczędności",
+      "savingType": "Wybierz czy jest to wpłata czy wypłata"
+    },
+    "messages": {
+      "created": "Oszczędność utworzona pomyślnie",
+      "updated": "Oszczędność zaktualizowana pomyślnie",
+      "deleted": "Oszczędność usunięta pomyślnie",
+      "error": {
+        "create": "Błąd podczas tworzenia oszczędności",
+        "update": "Błąd podczas aktualizacji oszczędności",
+        "delete": "Błąd podczas usuwania oszczędności",
+        "fetch": "Błąd podczas pobierania oszczędności"
+      }
+    },
+    "filters": {
+      "title": "Filtry",
+      "category": "Filtruj według Kategorii",
+      "dateRange": "Zakres Dat",
+      "startDate": "Data Początkowa",
+      "endDate": "Data Końcowa",
+      "apply": "Zastosuj Filtry",
+      "clear": "Wyczyść Filtry"
+    },
+    "noData": "Brak zapisów oszczędności",
+    "loading": "Ładowanie danych oszczędności..."
   }
 } 

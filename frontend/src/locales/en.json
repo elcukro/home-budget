@@ -15,7 +15,67 @@
     "select": "Select...",
     "appName": "Home Budget",
     "mustBeLoggedIn": "You must be logged in to perform this action",
-    "createdAt": "Created At"
+    "createdAt": "Created At",
+    "refresh": "Refresh",
+    "months": {
+      "1": "January",
+      "2": "February",
+      "3": "March",
+      "4": "April",
+      "5": "May",
+      "6": "June",
+      "7": "July",
+      "8": "August",
+      "9": "September",
+      "10": "October",
+      "11": "November",
+      "12": "December",
+      "01": "January",
+      "02": "February",
+      "03": "March",
+      "04": "April",
+      "05": "May",
+      "06": "June",
+      "07": "July",
+      "08": "August",
+      "09": "September",
+      "2024-01": "January 2024",
+      "2024-02": "February 2024",
+      "2024-03": "March 2024",
+      "2024-04": "April 2024",
+      "2024-05": "May 2024",
+      "2024-06": "June 2024",
+      "2024-07": "July 2024",
+      "2024-08": "August 2024",
+      "2024-09": "September 2024",
+      "2024-10": "October 2024",
+      "2024-11": "November 2024",
+      "2024-12": "December 2024",
+      "2025-01": "January 2025",
+      "2025-02": "February 2025",
+      "2025-03": "March 2025",
+      "2025-04": "April 2025",
+      "2025-05": "May 2025",
+      "2025-06": "June 2025",
+      "2025-07": "July 2025",
+      "2025-08": "August 2025",
+      "2025-09": "September 2025",
+      "2025-10": "October 2025",
+      "2025-11": "November 2025",
+      "2025-12": "December 2025",
+      "2026-01": "January 2026",
+      "2026-02": "February 2026",
+      "2026-03": "March 2026",
+      "2026-04": "April 2026",
+      "2026-05": "May 2026",
+      "2026-06": "June 2026",
+      "2026-07": "July 2026",
+      "2026-08": "August 2026",
+      "2026-09": "September 2026",
+      "2026-10": "October 2026",
+      "2026-11": "November 2026",
+      "2026-12": "December 2026"
+    }
   },
   "auth": {
     "welcome": "Welcome to Home Budget",
@@ -40,7 +100,12 @@
     "expenses": "Expenses",
     "loans": "Loans",
     "reports": "Reports",
-    "settings": "Settings"
+    "financialFreedom": "Financial Freedom",
+    "settings": "Settings",
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "signOut": "Sign Out",
+    "savings": "Savings"
   },
   "dashboard": {
     "title": "Financial Dashboard",
@@ -48,17 +113,76 @@
     "viewAllActivity": "View All Activity",
     "showLessActivity": "Show Less",
     "noActivity": "No recent activity",
+    "noData": "No dashboard data available",
     "quickActions": {
       "addIncome": "Record a new source of income",
       "addExpense": "Add a new expense entry",
       "addLoan": "Register a new loan",
       "viewReports": "View financial reports and analytics"
     },
-    "summaryCards": {
-      "monthlyIncome": "Monthly Income",
-      "monthlyExpenses": "Monthly Expenses",
+    "summary": {
+      "title": "Monthly Summary",
+      "totalIncome": "Total Income",
+      "totalExpenses": "Total Expenses",
       "loanPayments": "Loan Payments",
-      "monthlyBalance": "Monthly Balance"
+      "netCashflow": "Net Cashflow",
+      "savingsRate": "Savings Rate",
+      "debtToIncome": "Debt to Income Ratio",
+      "aiInsights": {
+        "button": "AI Insights",
+        "modalTitle": "AI Financial Insights",
+        "loading": "Generating insights...",
+        "error": "Failed to generate insights. Please try again later.",
+        "errorTitle": "API Error",
+        "tryAgain": "Try Again",
+        "refreshing": "Refreshing...",
+        "close": "Close",
+        "categories": {
+          "health": "Overall Financial Health",
+          "spending": "Spending Patterns",
+          "savings": "Savings Strategy",
+          "debt": "Debt Management",
+          "budget": "Budget Optimization"
+        },
+        "status": {
+          "good": "Good",
+          "ok": "Okay",
+          "can_be_improved": "Can Be Improved",
+          "bad": "Needs Attention"
+        },
+        "lastRefreshed": "Last refreshed {date} ({days} days ago)",
+        "dataChanges": "Changes since last refresh",
+        "incomeChange": "Income: {change}",
+        "expensesChange": "Expenses: {change}",
+        "loansChange": "Loans: {change}",
+        "refresh": "Refresh Insights",
+        "refreshNeeded": "Your financial data has changed. Refresh insights for updated analysis.",
+        "upToDate": "Insights are up to date with your current financial data.",
+        "apiErrors": {
+          "overloaded": "Claude AI is currently experiencing high demand. Please try again later.",
+          "invalidKey": "Invalid API key. Please check your Claude API key in settings.",
+          "forbidden": "Your API key doesn't have permission to use this model.",
+          "rateLimit": "Rate limit exceeded. Please try again later.",
+          "generic": "An error occurred while generating insights. Please try again later."
+        }
+      }
+    },
+    "cashFlow": {
+      "title": "Cash Flow",
+      "income": "Income",
+      "expenses": "Expenses",
+      "loanPayments": "Loan Payments",
+      "netFlow": "Net Flow",
+      "availableCash": "Available Cash"
+    },
+    "loans": {
+      "title": "Loans Overview",
+      "noLoans": "No active loans",
+      "totalBalance": "Total Balance",
+      "interestRate": "Interest Rate: {rate}%",
+      "monthlyPayment": "Monthly Payment: {amount}",
+      "progress": "Progress: {percentage}%",
+      "totalMonthlyPayments": "Total Monthly Payments"
     },
     "activity": {
       "create": "Created",
@@ -67,6 +191,8 @@
       "income": "income",
       "expense": "expense",
       "loan": "loan",
+      "payment": "payment",
+      "settings": "settings",
       "source": "source",
       "description": "description",
       "amount": "amount",
@@ -83,8 +209,30 @@
         "income": "{operation} {type} with source: {source}, amount: {amount}",
         "expense": "{operation} {type} with description: {description}, amount: {amount}",
         "loan": "{operation} {type} with description: {description}, amount: {amount}"
+      },
+      "undefined": "unknown activity"
+    },
+    "categories": {
+      "income": {
+        "salary": "Salary",
+        "freelance": "Freelance",
+        "investments": "Investments",
+        "rental": "Rental Income",
+        "other": "Other"
+      },
+      "expense": {
+        "housing": "Housing",
+        "transportation": "Transportation",
+        "food": "Food",
+        "utilities": "Utilities",
+        "insurance": "Insurance",
+        "healthcare": "Healthcare",
+        "entertainment": "Entertainment",
+        "other": "Other"
       }
-    }
+    },
+    "incomeDistribution": "Income Distribution",
+    "expenseDistribution": "Expense Distribution"
   },
   "income": {
     "title": "Income Management",
@@ -274,7 +422,7 @@
     "language": "Language",
     "currency": "Currency",
     "save": "Save Settings",
-    "noData": "No settings available",
+    "noData": "No settings data available",
     "languages": {
       "en": "English",
       "es": "Spanish",
@@ -288,23 +436,47 @@
       "JPY": "Japanese Yen",
       "PLN": "Polish Złoty"
     },
+    "ai": {
+      "title": "AI Insights Configuration",
+      "apiKey": "Claude API Key",
+      "apiKeyDescription": "Enter your Claude API key to enable personalized insights",
+      "frequency": {
+        "label": "Insights Refresh Frequency",
+        "daily": "Daily",
+        "weekly": "Weekly",
+        "monthly": "Monthly"
+      },
+      "autoGenerate": "Automatically generate new insights",
+      "lastGenerated": "Last generated: {date}",
+      "saveSuccess": "AI settings saved successfully",
+      "testConnection": "Test Connection",
+      "connectionSuccess": "Successfully connected to Claude AI",
+      "connectionError": "Failed to connect: {error}"
+    },
     "tooltips": {
       "language": "Select your preferred language for the application",
-      "currency": "Select your preferred currency for displaying amounts",
-      "export": "Download all your financial data including expenses, incomes, loans, and settings"
+      "currency": "Select your preferred currency for financial calculations",
+      "claudeApiKey": "Enter your Claude API key to enable AI-powered insights",
+      "export": "Export your data in JSON, CSV, or Excel format for backup or analysis",
+      "import": "Import your previously exported data to restore or merge with your current records"
     },
     "form": {
       "language": "Language",
       "currency": "Currency",
-      "submit": "Save Settings"
+      "submit": "Save Settings",
+      "claudeApiKey": "Claude API Key",
+      "claudeApiKeyPlaceholder": "Enter your Claude API key"
     },
     "messages": {
       "success": "Settings updated successfully",
       "error": "Failed to update settings",
       "loading": "Loading settings...",
-      "notLoggedIn": "You must be logged in to update settings",
+      "notLoggedIn": "You must be logged in to access settings",
       "exportSuccess": "Data exported successfully",
-      "exportError": "Failed to export data. Please try again."
+      "exportError": "Failed to export data",
+      "claudeApiKeyRequired": "Claude API key is required for AI insights",
+      "importSuccess": "Data imported successfully",
+      "importError": "Failed to import data. Please check the file format and try again."
     },
     "export": {
       "title": "Export Data",
@@ -312,6 +484,14 @@
       "jsonButton": "Export as JSON",
       "csvButton": "Export as CSV",
       "excelButton": "Export as Excel"
+    },
+    "import": {
+      "title": "Import Data",
+      "description": "Import your previously exported data in JSON format. This will add all the imported records to your current data.",
+      "confirmTitle": "Confirm Data Import",
+      "confirmMessage": "Do you want to remove your existing Income, Expenses, and Loans data before importing new data?",
+      "keepExisting": "Keep Existing Data",
+      "removeExisting": "Remove Existing Data"
     }
   },
   "inactivity": {
@@ -320,5 +500,173 @@
       "message": "Due to inactivity, your session will expire in {seconds} seconds.",
       "continue": "Continue Session"
     }
+  },
+  "financialFreedom": {
+    "title": "Financial Freedom Journey",
+    "subtitle": "Track your progress through Dave Ramsey's 7 Baby Steps",
+    "overview": "The 7 Baby Steps are a proven plan to help you get out of debt, save money, and build wealth.",
+    "yourProgress": "Your Progress",
+    "startDate": "Journey Started: {date}",
+    "updateProgress": "Update Progress",
+    "resetProgress": "Reset Progress",
+    "confirmReset": "Are you sure you want to reset your progress?",
+    "lastUpdated": "Last Updated: {date}",
+    "progressTracker": "Baby Steps Progress Tracker",
+    "currentAmount": "Current Amount",
+    "targetAmount": "Target Amount",
+    "notes": "Notes",
+    "summary": "Journey Summary",
+    "overallProgress": "Overall Progress",
+    "currentStep": "Current Focus",
+    "noData": "No financial freedom data available",
+    "steps": {
+      "step1": {
+        "title": "Baby Step 1: $1,000 Emergency Fund",
+        "shortTitle": "Emergency Fund",
+        "description": "Save $1,000 as a starter emergency fund to cover unexpected expenses without going into debt.",
+        "target": "Target: $1,000",
+        "current": "Current: {amount}",
+        "tip": "Start by cutting non-essential expenses and selling items you don't need."
+      },
+      "step2": {
+        "title": "Baby Step 2: Pay Off All Debt",
+        "shortTitle": "Debt Payoff",
+        "description": "Pay off all debt (except your mortgage) using the debt snowball method, paying smallest to largest.",
+        "remainingDebt": "Remaining Debt: {amount}",
+        "debtFree": "You're debt free!",
+        "tip": "List all your debts from smallest to largest and focus on paying the smallest one first."
+      },
+      "step3": {
+        "title": "Baby Step 3: 3-6 Months Expenses",
+        "shortTitle": "Full Emergency Fund",
+        "description": "Save 3-6 months of expenses in a fully funded emergency fund.",
+        "target": "Target: {amount}",
+        "current": "Current: {amount}",
+        "tip": "Calculate your monthly expenses and multiply by 3-6 to determine your target."
+      },
+      "step4": {
+        "title": "Baby Step 4: 15% to Retirement",
+        "shortTitle": "Retirement",
+        "description": "Invest 15% of your household income into retirement accounts.",
+        "target": "Target: 15% of income",
+        "current": "Current: {percent}% of income",
+        "tip": "Take advantage of any employer match in retirement plans first."
+      },
+      "step5": {
+        "title": "Baby Step 5: College Fund",
+        "shortTitle": "College Fund",
+        "description": "Save for your children's college education using education savings accounts.",
+        "inProgress": "In Progress",
+        "completed": "Completed",
+        "notApplicable": "Not Applicable",
+        "tip": "Consider 529 plans or Education Savings Accounts (ESAs)."
+      },
+      "step6": {
+        "title": "Baby Step 6: Pay Off Home Early",
+        "shortTitle": "Pay Off Home",
+        "description": "Pay off your home mortgage early.",
+        "remainingMortgage": "Remaining Mortgage: {amount}",
+        "mortgageFree": "You're mortgage free!",
+        "tip": "Make extra payments toward your principal to pay off your mortgage faster."
+      },
+      "step7": {
+        "title": "Baby Step 7: Build Wealth & Give",
+        "shortTitle": "Build Wealth",
+        "description": "Build wealth and give generously to others.",
+        "wealthBuilding": "Wealth Building: In Progress",
+        "giving": "Charitable Giving: {amount}/year",
+        "tip": "Continue investing and find causes you're passionate about to support."
+      }
+    },
+    "status": {
+      "notStarted": "Not Started",
+      "inProgress": "In Progress",
+      "completed": "Completed",
+      "notApplicable": "Not Applicable"
+    },
+    "actions": {
+      "markComplete": "Mark Complete",
+      "markIncomplete": "Mark Incomplete",
+      "updateProgress": "Update Progress",
+      "setTarget": "Set Target",
+      "addNotes": "Add Notes",
+      "viewDetails": "View Details"
+    },
+    "insights": {
+      "title": "Financial Insights",
+      "timeToComplete": "Estimated time to complete current step: {time}",
+      "nextMilestone": "Next milestone: {milestone}",
+      "suggestion": "Suggestion: {text}"
+    }
+  },
+  "savings": {
+    "title": "Savings Management",
+    "addNew": "Add New Saving",
+    "categories": {
+      "emergency_fund": "Emergency Fund",
+      "retirement": "Retirement",
+      "college": "College Fund",
+      "general": "General Savings",
+      "investment": "Investments",
+      "other": "Other"
+    },
+    "fields": {
+      "category": "Category",
+      "description": "Description",
+      "amount": "Amount",
+      "date": "Date",
+      "isRecurring": "Recurring Saving",
+      "targetAmount": "Target Amount",
+      "savingType": "Type"
+    },
+    "types": {
+      "deposit": "Deposit",
+      "withdrawal": "Withdrawal"
+    },
+    "summary": {
+      "title": "Savings Summary",
+      "totalSavings": "Total Savings",
+      "monthlyContribution": "Monthly Contribution",
+      "emergencyFund": {
+        "title": "Emergency Fund",
+        "target": "Target: {amount}",
+        "current": "Current: {amount}",
+        "progress": "Progress: {percent}%",
+        "remaining": "Remaining: {amount}"
+      },
+      "categoryTotals": "Category Totals",
+      "recentTransactions": "Recent Transactions"
+    },
+    "tooltips": {
+      "category": "Select the category for this saving",
+      "description": "Enter a description for this saving",
+      "amount": "Enter the amount in your selected currency",
+      "date": "Select the date of the saving",
+      "isRecurring": "Check if this is a recurring monthly saving",
+      "targetAmount": "Optional: Set a target amount for this saving",
+      "savingType": "Select whether this is a deposit or withdrawal"
+    },
+    "messages": {
+      "created": "Saving created successfully",
+      "updated": "Saving updated successfully",
+      "deleted": "Saving deleted successfully",
+      "error": {
+        "create": "Error creating saving",
+        "update": "Error updating saving",
+        "delete": "Error deleting saving",
+        "fetch": "Error fetching savings"
+      }
+    },
+    "filters": {
+      "title": "Filters",
+      "category": "Filter by Category",
+      "dateRange": "Date Range",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "apply": "Apply Filters",
+      "clear": "Clear Filters"
+    },
+    "noData": "No savings entries yet",
+    "loading": "Loading savings data..."
   }
 } 

@@ -10,6 +10,7 @@ import AuthProvider from "@/components/AuthProvider";
 import IntlProviderWrapper from "@/components/IntlProviderWrapper";
 import InactivityChecker from "@/components/InactivityChecker";
 import { headers } from 'next/headers';
+import ChartInitializer from "@/components/ChartInitializer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,6 +38,7 @@ export default function RootLayout({
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <SettingsProvider>
               <IntlProviderWrapper>
+                <ChartInitializer />
                 <div className="flex min-h-screen bg-background">
                   {!isAuthPage && <Sidebar />}
                   <main className={`flex-1 ${!isAuthPage ? 'p-8' : ''}`}>

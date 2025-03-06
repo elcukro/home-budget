@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default function AuthError() {
   const searchParams = useSearchParams();
-  const error = searchParams.get("error");
+  const error = searchParams?.get("error");
 
   const getErrorMessage = (error: string) => {
     switch (error) {

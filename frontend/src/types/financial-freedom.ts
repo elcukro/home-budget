@@ -1,0 +1,53 @@
+export interface BabyStep {
+  id: number;
+  titleKey: string;
+  descriptionKey: string;
+  isCompleted: boolean;
+  progress: number; // 0-100
+  targetAmount?: number;
+  currentAmount?: number;
+  completionDate?: string;
+  notes?: string;
+}
+
+export interface FinancialFreedomData {
+  userId: string;
+  steps: BabyStep[];
+  startDate: string;
+  lastUpdated: string;
+}
+
+export enum SavingCategory {
+  EMERGENCY_FUND = "emergency_fund",
+  RETIREMENT = "retirement",
+  COLLEGE = "college",
+  GENERAL = "general",
+  INVESTMENT = "investment",
+  OTHER = "other"
+}
+
+export enum SavingType {
+  DEPOSIT = "deposit",
+  WITHDRAWAL = "withdrawal"
+}
+
+export interface Saving {
+  id: number;
+  user_id: number;
+  category: SavingCategory;
+  description?: string;
+  amount: number;
+  date: string;
+  is_recurring: boolean;
+  target_amount?: number;
+  saving_type: SavingType;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SavingsSummary {
+  total_savings: number;
+  category_totals: Record<SavingCategory, number>;
+  monthly_contribution: number;
+  recent_transactions: Saving[];
+} 

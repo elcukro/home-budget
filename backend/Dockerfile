@@ -16,5 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
+# Make the startup script executable
+RUN chmod +x start.sh
+
 # Run the application
-CMD ["python", "src/run.py"] 
+CMD ["bash", "/app/start.sh"] 

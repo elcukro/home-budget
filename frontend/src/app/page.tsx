@@ -5,7 +5,11 @@ import { useIntl } from "react-intl";
 import { useEffect, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { DashboardSkeleton } from '@/components/LoadingSkeleton';
-import { useRouter } from 'next/navigation';
+import MonthlySummary from '@/components/dashboard/MonthlySummary';
+import DistributionChart from '@/components/dashboard/DistributionChart';
+import CashFlowChart from '@/components/dashboard/CashFlowChart';
+import LoanOverview from '@/components/dashboard/LoanOverview';
+import { useSession } from 'next-auth/react';
 
 interface Summary {
   totalIncome: number;
@@ -59,10 +63,12 @@ function ActivityCard(props: {
     income: 'bg-green-500',
     expense: 'bg-red-500',
     loan: 'bg-blue-500',
-    payment: 'bg-purple-500'
+    payment: 'bg-purple-500',
+    settings: 'bg-purple-500'
   };
 
-  const typeKey = props.type.toLowerCase() as keyof typeof activityTypeColors;
+  const type = props.type || 'settings';
+  const typeKey = type.toLowerCase() as keyof typeof activityTypeColors;
   const dotColor = activityTypeColors[typeKey] || 'bg-gray-500';
 
   const renderChanges = () => {
@@ -118,7 +124,7 @@ function ActivityCard(props: {
             </div>
             <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
               <span className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`} aria-hidden="true"></span>
-              {intl.formatMessage({ id: `dashboard.activity.${props.operation}` })} {intl.formatMessage({ id: `dashboard.activity.${props.type.toLowerCase()}` })}
+              {intl.formatMessage({ id: `dashboard.activity.${props.operation}` })} {intl.formatMessage({ id: `dashboard.activity.${type.toLowerCase()}` })}
             </p>
             {renderChanges()}
           </div>
@@ -137,36 +143,93 @@ function ActivityCard(props: {
   );
 }
 
+interface DashboardData {
+  summary: {
+    totalIncome: number;
+    totalExpenses: number;
+    totalLoanPayments: number;
+    netCashflow: number;
+    savingsRate: number;
+    debtToIncome: number;
+  };
+  incomeDistribution: Array<{
+    category: string;
+    amount: number;
+    percentage: number;
+  }>;
+  expenseDistribution: Array<{
+    category: string;
+    amount: number;
+    percentage: number;
+  }>;
+  cashFlow: Array<{
+    month: string;
+    income: number;
+    expenses: number;
+    loanPayments: number;
+    netFlow: number;
+  }>;
+  loans: Array<{
+    id: string;
+    description: string;
+    balance: number;
+    monthlyPayment: number;
+    interestRate: number;
+    progress: number;
+    totalAmount: number;
+  }>;
+  activities: Activity[];
+}
+
 export default function Home() {
   const intl = useIntl();
-  const router = useRouter();
   const { formatCurrency } = useSettings();
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [expandedActivities, setExpandedActivities] = useState<Set<number>>(new Set());
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { data: session } = useSession();
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!session?.user?.email) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setError(null);
-        const summaryResponse = await fetch('/api/summary');
-        if (!summaryResponse.ok) {
-          throw new Error(`Failed to fetch summary: ${summaryResponse.statusText}`);
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_URL}/users/${encodeURIComponent(session.user.email)}/summary`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch dashboard data: ${response.statusText}`);
         }
-        const summaryData = await summaryResponse.json();
-        setSummary(summaryData);
-
-        const activitiesResponse = await fetch('/api/activities');
-        if (!activitiesResponse.ok) {
-          throw new Error(`Failed to fetch activities: ${activitiesResponse.statusText}`);
-        }
-        const activitiesData = await activitiesResponse.json();
-        setActivities(activitiesData);
+        const data = await response.json();
+        
+        // Map the API response fields to the expected format
+        const mappedData: DashboardData = {
+          summary: {
+            totalIncome: data.total_monthly_income || 0,
+            totalExpenses: data.total_monthly_expenses || 0,
+            totalLoanPayments: data.total_monthly_loan_payments || 0,
+            netCashflow: data.monthly_balance || 0,
+            savingsRate: data.savings_rate !== undefined ? data.savings_rate : 
+              (data.total_monthly_income > 0 ? 
+                (data.total_monthly_income - data.total_monthly_expenses - data.total_monthly_loan_payments) / data.total_monthly_income : 0),
+            debtToIncome: data.debt_to_income !== undefined ? data.debt_to_income :
+              (data.total_monthly_income > 0 ? 
+                data.total_monthly_loan_payments / data.total_monthly_income : 0)
+          },
+          incomeDistribution: data.income_distribution || [],
+          expenseDistribution: data.expense_distribution || [],
+          cashFlow: data.cash_flow || [],
+          loans: data.loans || [],
+          activities: data.activities || []
+        };
+        
+        setDashboardData(mappedData);
       } catch (error) {
-        // Only log in development
         if (process.env.NODE_ENV === 'development') {
           console.error('[Dashboard] Error:', error instanceof Error ? error.message : 'Failed to load dashboard data');
         }
@@ -177,22 +240,7 @@ export default function Home() {
     };
 
     fetchData();
-  }, []);
-
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="text-red-600 dark:text-red-400 text-center">
-          <p className="text-lg font-semibold">Error loading dashboard</p>
-          <p className="text-sm mt-2">{error}</p>
-        </div>
-      </div>
-    );
-  }
+  }, [session]);
 
   const toggleActivity = (id: number) => {
     setExpandedActivities(prev => {
@@ -210,7 +258,33 @@ export default function Home() {
     setShowAllActivities(prev => !prev);
   };
 
-  const displayedActivities = showAllActivities ? activities : activities.slice(0, 2);
+  const displayedActivities = showAllActivities
+    ? dashboardData?.activities || []
+    : (dashboardData?.activities || []).slice(0, 2);
+
+  if (loading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-gray-500">
+          {intl.formatMessage({ id: 'dashboard.noData' })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ProtectedPage>
@@ -219,100 +293,50 @@ export default function Home() {
           {intl.formatMessage({ id: 'dashboard.title' })}
         </h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <SummaryCard
-            title={intl.formatMessage({ id: 'dashboard.summaryCards.monthlyIncome' })}
-            amount={summary?.totalIncome || 0}
-            formatCurrency={formatCurrency}
-          />
-          <SummaryCard
-            title={intl.formatMessage({ id: 'dashboard.summaryCards.monthlyExpenses' })}
-            amount={summary?.totalExpenses || 0}
-            formatCurrency={formatCurrency}
-          />
-          <SummaryCard
-            title={intl.formatMessage({ id: 'dashboard.summaryCards.loanPayments' })}
-            amount={summary?.totalLoans || 0}
-            formatCurrency={formatCurrency}
-          />
-          <SummaryCard
-            title={intl.formatMessage({ id: 'dashboard.summaryCards.monthlyBalance' })}
-            amount={summary?.balance || 0}
+        <div className="grid grid-cols-1 gap-6 mb-6">
+          <MonthlySummary
+            data={dashboardData?.summary || {
+              totalIncome: 0,
+              totalExpenses: 0,
+              totalLoanPayments: 0,
+              netCashflow: 0,
+              savingsRate: 0,
+              debtToIncome: 0
+            }}
             formatCurrency={formatCurrency}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <button
-            className="bg-white dark:bg-background-primary p-6 rounded-lg shadow hover:shadow-md transition-all flex flex-col items-center justify-center text-center group"
-            onClick={() => router.push('/income')}
-          >
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-default mb-2">
-              {intl.formatMessage({ id: 'income.addNew' })}
-            </h3>
-            <p className="text-sm text-secondary">
-              {intl.formatMessage({ id: 'dashboard.quickActions.addIncome' })}
-            </p>
-          </button>
-
-          <button
-            className="bg-white dark:bg-background-primary p-6 rounded-lg shadow hover:shadow-md transition-all flex flex-col items-center justify-center text-center group"
-            onClick={() => router.push('/expenses')}
-          >
-            <div className="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-default mb-2">
-              {intl.formatMessage({ id: 'expenses.addNew' })}
-            </h3>
-            <p className="text-sm text-secondary">
-              {intl.formatMessage({ id: 'dashboard.quickActions.addExpense' })}
-            </p>
-          </button>
-
-          <button
-            className="bg-white dark:bg-background-primary p-6 rounded-lg shadow hover:shadow-md transition-all flex flex-col items-center justify-center text-center group"
-            onClick={() => router.push('/loans')}
-          >
-            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-default mb-2">
-              {intl.formatMessage({ id: 'loans.addNew' })}
-            </h3>
-            <p className="text-sm text-secondary">
-              {intl.formatMessage({ id: 'dashboard.quickActions.addLoan' })}
-            </p>
-          </button>
-
-          <button
-            className="bg-white dark:bg-background-primary p-6 rounded-lg shadow hover:shadow-md transition-all flex flex-col items-center justify-center text-center group"
-            onClick={() => router.push('/reports')}
-          >
-            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-              <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-medium text-default mb-2">
-              {intl.formatMessage({ id: 'reports.title' })}
-            </h3>
-            <p className="text-sm text-secondary">
-              {intl.formatMessage({ id: 'dashboard.quickActions.viewReports' })}
-            </p>
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 min-h-[400px]">
+          <DistributionChart
+            title={intl.formatMessage({ id: 'dashboard.incomeDistribution' })}
+            data={dashboardData?.incomeDistribution || []}
+            formatCurrency={formatCurrency}
+            type="income"
+          />
+          <DistributionChart
+            title={intl.formatMessage({ id: 'dashboard.expenseDistribution' })}
+            data={dashboardData?.expenseDistribution || []}
+            formatCurrency={formatCurrency}
+            type="expense"
+          />
         </div>
 
-        <div className="bg-white dark:bg-background-primary rounded-lg shadow p-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 mb-6 min-h-[550px]">
+          <CashFlowChart
+            data={dashboardData?.cashFlow || []}
+            formatCurrency={formatCurrency}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 mb-6 min-h-[400px]">
+          <LoanOverview
+            loans={dashboardData?.loans || []}
+            formatCurrency={formatCurrency}
+          />
+        </div>
+
+        <div className="bg-white dark:bg-background-primary rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4 text-default">
             {intl.formatMessage({ id: 'dashboard.recentActivity' })}
           </h2>
@@ -320,13 +344,18 @@ export default function Home() {
             {displayedActivities.map((activity) => (
               <ActivityCard
                 key={activity.id}
-                {...activity}
+                title={activity.title}
+                amount={activity.amount}
+                type={activity.type}
+                date={activity.date}
+                operation={activity.operation}
+                changes={activity.changes}
                 formatCurrency={formatCurrency}
                 isExpanded={expandedActivities.has(activity.id)}
                 onToggle={() => toggleActivity(activity.id)}
               />
             ))}
-            {activities.length > 2 && (
+            {dashboardData?.activities && dashboardData.activities.length > 2 && (
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   className="text-primary hover:text-primary-dark dark:hover:text-primary-light font-medium text-sm flex items-center gap-2"

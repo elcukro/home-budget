@@ -1,0 +1,16 @@
+---
+description: App architecture
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- You can @ files here
+- You can use markdown but dont have to
+We are using Docker
+All API's are created in FastAPI
+DB is in Docker
+Always check API schema and DB schema when adding new data structures and see, if they are inline
+When adding labels on pages or in components, remember to create localized values for them and place them in localization files - do not hardcode labels in pages or components
+

@@ -12,34 +12,34 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
+from .routers import users, auth, financial_freedom, savings
+from .database import engine, Base
+from .routers.users import User, UserBase, Settings, SettingsBase  # Import User, UserBase, Settings, and SettingsBase models from users router
+import json
+import re
+import httpx
 
 app = FastAPI()
 
-# Add CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
-# Create database tables
-models.Base.metadata.create_all(bind=database.engine)
+# Create the database tables
+Base.metadata.create_all(bind=engine)
 
-# Pydantic models for request/response
-class UserBase(BaseModel):
-    email: str
-    name: str | None = None
+# Include routers
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(financial_freedom.router)
+app.include_router(savings.router)
 
-class User(UserBase):
-    id: str
-    created_at: datetime
-    updated_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
-
+# Loan models
 class LoanBase(BaseModel):
     loan_type: str
     description: str
@@ -111,26 +111,6 @@ class Income(IncomeBase):
             datetime: lambda v: v.isoformat()
         }
 
-# Settings models
-class SettingsBase(BaseModel):
-    language: str
-    currency: str
-
-class SettingsCreate(SettingsBase):
-    pass
-
-class Settings(SettingsBase):
-    id: int
-    user_id: str
-    created_at: datetime
-    updated_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
-        json_encoders = {
-            datetime: lambda v: v.isoformat()
-        }
-
 # Activity models
 class ActivityBase(BaseModel):
     entity_type: str
@@ -157,6 +137,47 @@ class MonthlyBudgetData(BaseModel):
 class YearlyBudgetReport(BaseModel):
     months: dict[str, MonthlyBudgetData]
 
+# Insights models
+class InsightMetric(BaseModel):
+    label: str
+    value: str
+    trend: str  # "up" | "down" | "stable"
+
+class Insight(BaseModel):
+    type: str  # "observation" | "recommendation" | "alert" | "achievement"
+    title: str
+    description: str
+    priority: str  # "high" | "medium" | "low"
+    actionItems: list[str]
+    metrics: list[InsightMetric]
+
+class CategoryInsights(BaseModel):
+    insights: list[Insight]
+    status: str  # "good" | "can_be_improved" | "ok" | "bad"
+
+class InsightsResponse(BaseModel):
+    categories: dict[str, list[Insight]]
+    status: dict[str, str]
+    metadata: dict
+
+class InsightsCache(BaseModel):
+    id: int
+    userId: str
+    insights: InsightsResponse
+    financialSnapshot: dict
+    createdAt: datetime
+    isStale: bool
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+# Define SettingsCreate model
+class SettingsCreate(SettingsBase):
+    pass
+
 # User endpoints
 @app.get("/users/me", response_model=User)
 def get_current_user(user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
@@ -182,7 +203,8 @@ def get_current_user(user_id: str = Query(..., description="The ID of the user")
                 settings = models.Settings(
                     user_id=user_id,
                     language="en",
-                    currency="USD"
+                    currency="USD",
+                    ai={"apiKey": None}
                 )
                 db.add(settings)
                 db.commit()
@@ -230,7 +252,8 @@ def create_user(user: UserBase, db: Session = Depends(database.get_db)):
         default_settings = models.Settings(
             user_id=db_user.id,
             language="en",
-            currency="USD"
+            currency="USD",
+            ai={"apiKey": None}
         )
         db.add(default_settings)
         db.commit()
@@ -276,7 +299,8 @@ def get_user_settings(user_id: str, db: Session = Depends(database.get_db)):
             settings = models.Settings(
                 user_id=user_id,
                 language="en",
-                currency="USD"
+                currency="USD",
+                ai={"apiKey": None}
             )
             db.add(settings)
             try:
@@ -319,26 +343,36 @@ def update_user_settings(user_id: str, settings: SettingsCreate, db: Session = D
         raise HTTPException(status_code=500, detail=str(e))
 
 # Loan endpoints
-@app.get("/users/{user_id}/loans", response_model=List[Loan])
-def get_user_loans(user_id: str, db: Session = Depends(database.get_db)):
+@app.get("/loans", response_model=List[Loan])
+def get_loans(user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
     loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
     return loans
 
-@app.post("/users/{user_id}/loans", response_model=Loan)
-def create_loan(user_id: str, loan: LoanCreate, db: Session = Depends(database.get_db)):
+@app.post("/loans", response_model=Loan)
+def create_loan(loan: LoanCreate, user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
     # Check if user exists
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    db_loan = models.Loan(**loan.model_dump(), user_id=user_id)
+
+    db_loan = models.Loan(
+        user_id=user_id,
+        loan_type=loan.loan_type,
+        description=loan.description,
+        principal_amount=loan.principal_amount,
+        remaining_balance=loan.remaining_balance,
+        interest_rate=loan.interest_rate,
+        monthly_payment=loan.monthly_payment,
+        start_date=loan.start_date,
+        term_months=loan.term_months
+    )
     db.add(db_loan)
     db.commit()
     db.refresh(db_loan)
     return db_loan
 
-@app.put("/users/{user_id}/loans/{loan_id}", response_model=Loan)
-def update_loan(user_id: str, loan_id: int, loan: LoanCreate, db: Session = Depends(database.get_db)):
+@app.put("/loans/{loan_id}", response_model=Loan)
+def update_loan(loan_id: int, loan: LoanCreate, user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
     db_loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
         models.Loan.user_id == user_id
@@ -531,19 +565,39 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
         month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
-        # Fetch monthly income
-        monthly_income = db.query(func.sum(models.Income.amount)).filter(
+        # Fetch monthly income (non-recurring, within current month)
+        monthly_income_non_recurring = db.query(func.sum(models.Income.amount)).filter(
             models.Income.user_id == user_id,
             models.Income.date >= month_start,
-            models.Income.date <= month_end
+            models.Income.date <= month_end,
+            models.Income.is_recurring == False
         ).scalar() or 0
 
-        # Fetch monthly expenses
-        monthly_expenses = db.query(func.sum(models.Expense.amount)).filter(
+        # Fetch recurring income (regardless of date)
+        monthly_income_recurring = db.query(func.sum(models.Income.amount)).filter(
+            models.Income.user_id == user_id,
+            models.Income.is_recurring == True
+        ).scalar() or 0
+
+        # Total monthly income
+        monthly_income = monthly_income_non_recurring + monthly_income_recurring
+
+        # Fetch monthly expenses (non-recurring, within current month)
+        monthly_expenses_non_recurring = db.query(func.sum(models.Expense.amount)).filter(
             models.Expense.user_id == user_id,
             models.Expense.date >= month_start,
-            models.Expense.date <= month_end
+            models.Expense.date <= month_end,
+            models.Expense.is_recurring == False
         ).scalar() or 0
+
+        # Fetch recurring expenses (regardless of date)
+        monthly_expenses_recurring = db.query(func.sum(models.Expense.amount)).filter(
+            models.Expense.user_id == user_id,
+            models.Expense.is_recurring == True
+        ).scalar() or 0
+
+        # Total monthly expenses
+        monthly_expenses = monthly_expenses_non_recurring + monthly_expenses_recurring
 
         # Fetch monthly loan payments
         monthly_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
@@ -559,12 +613,154 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
         # Calculate monthly balance
         monthly_balance = monthly_income - monthly_expenses - monthly_loan_payments
 
+        # Calculate savings rate if income is not zero
+        savings_rate = 0
+        if monthly_income > 0:
+            savings_rate = (monthly_income - monthly_expenses - monthly_loan_payments) / monthly_income
+
+        # Calculate debt-to-income ratio if income is not zero
+        debt_to_income = 0
+        if monthly_income > 0:
+            debt_to_income = monthly_loan_payments / monthly_income
+
+        # Get income distribution by category
+        income_distribution = []
+        income_categories = db.query(
+            models.Income.category,
+            func.sum(models.Income.amount).label("total_amount")
+        ).filter(
+            models.Income.user_id == user_id
+        ).group_by(
+            models.Income.category
+        ).all()
+
+        total_income = sum(category.total_amount for category in income_categories)
+        for category in income_categories:
+            percentage = (category.total_amount / total_income * 100) if total_income > 0 else 0
+            income_distribution.append({
+                "category": category.category,
+                "amount": float(category.total_amount),
+                "percentage": float(percentage)
+            })
+
+        # Get expense distribution by category
+        expense_distribution = []
+        expense_categories = db.query(
+            models.Expense.category,
+            func.sum(models.Expense.amount).label("total_amount")
+        ).filter(
+            models.Expense.user_id == user_id
+        ).group_by(
+            models.Expense.category
+        ).all()
+
+        total_expenses = sum(category.total_amount for category in expense_categories)
+        for category in expense_categories:
+            percentage = (category.total_amount / total_expenses * 100) if total_expenses > 0 else 0
+            expense_distribution.append({
+                "category": category.category,
+                "amount": float(category.total_amount),
+                "percentage": float(percentage)
+            })
+
+        # Generate cash flow data for all months in the current year
+        cash_flow = []
+        current_year = today.year
+        
+        # Include all 12 months of the current year
+        for month in range(1, 13):
+            month_date = datetime(current_year, month, 1)
+            month_start_date = month_date.replace(day=1)
+            month_end_date = (month_start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            month_str = f"{current_year}-{month:02d}"
+            
+            # For past and current months, use actual data
+            if month <= today.month:
+                # Non-recurring income for this month
+                month_income_non_recurring = db.query(func.sum(models.Income.amount)).filter(
+                    models.Income.user_id == user_id,
+                    models.Income.date >= month_start_date,
+                    models.Income.date <= month_end_date,
+                    models.Income.is_recurring == False
+                ).scalar() or 0
+                
+                # Include recurring income
+                month_income = month_income_non_recurring + monthly_income_recurring
+                
+                # Non-recurring expenses for this month
+                month_expenses_non_recurring = db.query(func.sum(models.Expense.amount)).filter(
+                    models.Expense.user_id == user_id,
+                    models.Expense.date >= month_start_date,
+                    models.Expense.date <= month_end_date,
+                    models.Expense.is_recurring == False
+                ).scalar() or 0
+                
+                # Include recurring expenses
+                month_expenses = month_expenses_non_recurring + monthly_expenses_recurring
+                
+                # Loan payments for this month
+                month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
+                    models.Loan.user_id == user_id,
+                    models.Loan.start_date <= month_end_date
+                ).scalar() or 0
+            else:
+                # For future months, use projections based on recurring data
+                month_income = monthly_income_recurring
+                month_expenses = monthly_expenses_recurring
+                
+                # Loan payments for future months (assuming all current loans continue)
+                month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
+                    models.Loan.user_id == user_id,
+                    models.Loan.start_date <= today
+                ).scalar() or 0
+            
+            # Calculate net flow
+            net_flow = month_income - month_expenses - month_loan_payments
+            
+            cash_flow.append({
+                "month": month_str,
+                "income": float(month_income),
+                "expenses": float(month_expenses),
+                "loanPayments": float(month_loan_payments),
+                "netFlow": float(net_flow),
+                "year": current_year
+            })
+
+        # Fetch active loans for the user
+        active_loans = db.query(models.Loan).filter(
+            models.Loan.user_id == user_id
+        ).all()
+        
+        # Format loans for the frontend
+        loans_data = []
+        for loan in active_loans:
+            # Calculate progress (paid amount / total amount)
+            total_amount = loan.principal_amount
+            paid_amount = total_amount - loan.remaining_balance
+            progress = paid_amount / total_amount if total_amount > 0 else 0
+            
+            loans_data.append({
+                "id": str(loan.id),
+                "description": loan.description,
+                "balance": float(loan.remaining_balance),
+                "monthlyPayment": float(loan.monthly_payment),
+                "interestRate": float(loan.interest_rate),
+                "progress": float(progress),
+                "totalAmount": float(total_amount)
+            })
+
         summary = {
             "total_monthly_income": float(monthly_income),
             "total_monthly_expenses": float(monthly_expenses),
             "total_monthly_loan_payments": float(monthly_loan_payments),
             "total_loan_balance": float(total_loan_balance),
-            "monthly_balance": float(monthly_balance)
+            "monthly_balance": float(monthly_balance),
+            "savings_rate": float(savings_rate),
+            "debt_to_income": float(debt_to_income),
+            "income_distribution": income_distribution,
+            "expense_distribution": expense_distribution,
+            "cash_flow": cash_flow,
+            "loans": loans_data
         }
         print(f"[FastAPI] Summary data: {summary}")
         return summary
@@ -1068,4 +1264,548 @@ async def export_user_data(
 
     except Exception as e:
         print(f"[FastAPI] Error in export_user_data: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/users/{user_id}/import")
+async def import_user_data(
+    user_id: str,
+    data: dict,
+    clear_existing: bool = False,
+    db: Session = Depends(database.get_db)
+):
+    try:
+        # Verify user exists
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Clear existing data if requested
+        if clear_existing:
+            # Delete existing expenses
+            db.query(models.Expense).filter(models.Expense.user_id == user_id).delete()
+            
+            # Delete existing incomes
+            db.query(models.Income).filter(models.Income.user_id == user_id).delete()
+            
+            # Delete existing loans
+            db.query(models.Loan).filter(models.Loan.user_id == user_id).delete()
+            
+            # Commit the deletions
+            db.commit()
+            print(f"[FastAPI] Cleared existing data for user: {user_id}")
+
+        # Import settings
+        if "settings" in data:
+            settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+            if settings:
+                settings.language = data["settings"].get("language", settings.language)
+                settings.currency = data["settings"].get("currency", settings.currency)
+                settings.ai = data["settings"].get("ai", settings.ai)
+                db.commit()
+
+        # Import expenses
+        if "expenses" in data:
+            for expense_data in data["expenses"]:
+                expense = models.Expense(
+                    user_id=user_id,
+                    category=expense_data["category"],
+                    description=expense_data["description"],
+                    amount=expense_data["amount"],
+                    date=datetime.fromisoformat(expense_data["date"].replace("Z", "+00:00")),
+                    is_recurring=expense_data.get("is_recurring", False)
+                )
+                db.add(expense)
+
+        # Import incomes
+        if "incomes" in data:
+            for income_data in data["incomes"]:
+                income = models.Income(
+                    user_id=user_id,
+                    category=income_data["category"],
+                    description=income_data["description"],
+                    amount=income_data["amount"],
+                    date=datetime.fromisoformat(income_data["date"].replace("Z", "+00:00")),
+                    is_recurring=income_data.get("is_recurring", False)
+                )
+                db.add(income)
+
+        # Import loans
+        if "loans" in data:
+            for loan_data in data["loans"]:
+                loan = models.Loan(
+                    user_id=user_id,
+                    loan_type=loan_data["loan_type"],
+                    description=loan_data["description"],
+                    principal_amount=loan_data["principal_amount"],
+                    remaining_balance=loan_data["remaining_balance"],
+                    interest_rate=loan_data["interest_rate"],
+                    monthly_payment=loan_data["monthly_payment"],
+                    term_months=loan_data["term_months"],
+                    start_date=datetime.fromisoformat(loan_data["start_date"].replace("Z", "+00:00"))
+                )
+                db.add(loan)
+
+        db.commit()
+        return {"message": "Data imported successfully"}
+
+    except Exception as e:
+        db.rollback()
+        print(f"[FastAPI] Error in import_user_data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Insights endpoints
+@app.get("/users/{user_id}/insights", response_model=InsightsResponse)
+async def get_user_insights(
+    user_id: str,
+    refresh: bool = False,  # Changed default to False
+    db: Session = Depends(database.get_db)
+):
+    try:
+        # Get user settings for AI API key
+        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+        if not settings or not settings.ai or not settings.ai.get("apiKey"):
+            raise HTTPException(status_code=400, detail="AI API key not found")
+
+        # If manual refresh requested, bypass cache
+        if refresh:
+            return await refresh_user_insights(user_id, db)
+        
+        # Get current financial data
+        current_data = await get_user_financial_data(user_id, db)
+        
+        # Get user's language preference
+        language = current_data.get("settings", {}).get("language", "en")
+        
+        # Calculate current totals
+        current_income = sum(income["amount"] for income in current_data["incomes"])
+        current_expenses = sum(expense["amount"] for expense in current_data["expenses"])
+        current_loans = sum(loan["remaining_balance"] for loan in current_data["loans"])
+        
+        # Check for valid cache for the current language
+        cache = db.query(models.InsightsCache).filter(
+            models.InsightsCache.user_id == user_id,
+            models.InsightsCache.language == language,
+            models.InsightsCache.is_stale == False
+        ).order_by(models.InsightsCache.created_at.desc()).first()
+
+        if cache:
+            # Check time-based expiration (7 days)
+            days_since_refresh = (datetime.now() - cache.last_refresh_date).days
+            if days_since_refresh >= 7:
+                print(f"[Insights] Cache expired due to time (7+ days old)")
+                return await refresh_user_insights(user_id, db)
+            
+            # Check data change threshold (10%)
+            cached_income = cache.total_income
+            cached_expenses = cache.total_expenses
+            cached_loans = cache.total_loans
+            
+            income_change = abs((current_income - cached_income) / cached_income) if cached_income else 1
+            expenses_change = abs((current_expenses - cached_expenses) / cached_expenses) if cached_expenses else 1
+            loans_change = abs((current_loans - cached_loans) / cached_loans) if cached_loans else 1
+            
+            # If any metric changed by more than 10%, refresh
+            if income_change > 0.1 or expenses_change > 0.1 or loans_change > 0.1:
+                print(f"[Insights] Cache invalidated due to data changes: income={income_change:.2f}, expenses={expenses_change:.2f}, loans={loans_change:.2f}")
+                return await refresh_user_insights(user_id, db)
+            
+            # Cache is valid, return it with metadata
+            return {
+                **cache.insights,
+                "metadata": {
+                    "isCached": True,
+                    "createdAt": cache.created_at.isoformat(),
+                    "lastRefreshDate": cache.last_refresh_date.isoformat(),
+                    "language": language,
+                    "validityReason": "Using cached insights",
+                    "dataChanges": {
+                        "income": f"{income_change:.2%}",
+                        "expenses": f"{expenses_change:.2%}",
+                        "loans": f"{loans_change:.2%}"
+                    }
+                }
+            }
+
+        # No valid cache exists for this language, generate new insights
+        return await refresh_user_insights(user_id, db)
+    except Exception as e:
+        print(f"[FastAPI] Error in get_user_insights: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/users/{user_id}/insights/refresh", response_model=InsightsResponse)
+async def refresh_user_insights(
+    user_id: str,
+    db: Session = Depends(database.get_db)
+):
+    try:
+        # Get user settings for AI API key
+        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+        if not settings or not settings.ai or not settings.ai.get("apiKey"):
+            raise HTTPException(status_code=400, detail="AI API key not found")
+            
+        # Get user's financial data
+        user_data = await get_user_financial_data(user_id, db)
+        
+        # Get user's language preference
+        language = user_data.get("settings", {}).get("language", "en")
+        
+        # Calculate totals for cache comparison
+        total_income = sum(income["amount"] for income in user_data["incomes"])
+        total_expenses = sum(expense["amount"] for expense in user_data["expenses"])
+        total_loans = sum(loan["remaining_balance"] for loan in user_data["loans"])
+        
+        # Generate new insights
+        insights = await generate_insights(user_data, settings.ai["apiKey"])
+        
+        # Mark existing cache entries as stale for this language
+        db.query(models.InsightsCache).filter(
+            models.InsightsCache.user_id == user_id,
+            models.InsightsCache.language == language,
+            models.InsightsCache.is_stale == False
+        ).update({"is_stale": True})
+        
+        # Save to cache with financial totals and language
+        cache = models.InsightsCache(
+            user_id=user_id,
+            language=language,
+            insights=insights,
+            financial_snapshot=user_data,
+            is_stale=False,
+            last_refresh_date=datetime.now(),
+            total_income=total_income,
+            total_expenses=total_expenses,
+            total_loans=total_loans
+        )
+        
+        db.add(cache)
+        db.commit()
+        
+        return {
+            **insights,
+            "metadata": {
+                "isCached": False,
+                "createdAt": cache.created_at.isoformat(),
+                "lastRefreshDate": cache.last_refresh_date.isoformat(),
+                "language": language,
+                "validityReason": "Generated new insights",
+                "financialTotals": {
+                    "income": total_income,
+                    "expenses": total_expenses,
+                    "loans": total_loans
+                }
+            }
+        }
+    except Exception as e:
+        print(f"[FastAPI] Error in refresh_user_insights: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def get_user_financial_data(user_id: str, db: Session):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    incomes = db.query(models.Income).filter(models.Income.user_id == user_id).all()
+    expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
+    loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
+    settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+
+    return {
+        "settings": {
+            "language": settings.language if settings else "en",
+            "currency": settings.currency if settings else "USD"
+        },
+        "incomes": [
+            {
+                "date": income.date.isoformat(),
+                "amount": income.amount,
+                "category": income.category,
+                "description": income.description,
+                "is_recurring": income.is_recurring
+            }
+            for income in incomes
+        ],
+        "expenses": [
+            {
+                "date": expense.date.isoformat(),
+                "amount": expense.amount,
+                "category": expense.category,
+                "description": expense.description,
+                "is_recurring": expense.is_recurring
+            }
+            for expense in expenses
+        ],
+        "loans": [
+            {
+                "loan_type": loan.loan_type,
+                "description": loan.description,
+                "principal_amount": loan.principal_amount,
+                "remaining_balance": loan.remaining_balance,
+                "interest_rate": loan.interest_rate,
+                "monthly_payment": loan.monthly_payment,
+                "term_months": loan.term_months,
+                "start_date": loan.start_date.isoformat()
+            }
+            for loan in loans
+        ]
+    }
+
+async def generate_insights(user_data: dict, api_key: str):
+    """
+    Generate financial insights using the Claude API.
+    
+    Args:
+        user_data: Dictionary containing user's financial data (incomes, expenses, loans)
+        api_key: Claude API key from user settings
+        
+    Returns:
+        InsightsResponse object with AI-generated insights
+    """
+    try:
+        # Calculate some basic financial metrics to include in the prompt
+        incomes = user_data.get("incomes", [])
+        expenses = user_data.get("expenses", [])
+        loans = user_data.get("loans", [])
+        currency = user_data.get("settings", {}).get("currency", "USD")
+        language = user_data.get("settings", {}).get("language", "en")
+        
+        # Calculate total income, expenses, and loan payments
+        total_income = sum(income["amount"] for income in incomes)
+        total_expenses = sum(expense["amount"] for expense in expenses)
+        total_loan_payments = sum(loan["monthly_payment"] for loan in loans)
+        total_loan_balance = sum(loan["remaining_balance"] for loan in loans)
+        
+        # Calculate monthly balance
+        monthly_balance = total_income - total_expenses - total_loan_payments
+        
+        # Calculate savings rate if income is not zero
+        savings_rate = 0
+        if total_income > 0:
+            savings_rate = (monthly_balance / total_income) * 100
+            
+        # Calculate debt-to-income ratio if income is not zero
+        debt_to_income = 0
+        if total_income > 0:
+            debt_to_income = (total_loan_payments / total_income) * 100
+            
+        # Group expenses by category
+        expense_categories = {}
+        for expense in expenses:
+            category = expense["category"]
+            if category not in expense_categories:
+                expense_categories[category] = 0
+            expense_categories[category] += expense["amount"]
+            
+        # Group incomes by category
+        income_categories = {}
+        for income in incomes:
+            category = income["category"]
+            if category not in income_categories:
+                income_categories[category] = 0
+            income_categories[category] += income["amount"]
+        
+        # Map language codes to full language names for Claude
+        language_names = {
+            "en": "English",
+            "pl": "Polish",
+            "es": "Spanish",
+            "fr": "French"
+        }
+        
+        # Get the full language name, default to English if not found
+        language_name = language_names.get(language, "English")
+        
+        # Create the prompt for Claude
+        prompt = f"""
+You are a financial advisor analyzing a user's financial data. Based on the data provided, generate insights in the following categories:
+1. Overall Financial Health
+2. Spending Patterns
+3. Savings Strategy
+4. Debt Management
+5. Budget Optimization
+
+For each category, provide 1-3 specific insights. Each insight should include:
+- A clear title
+- A detailed description
+- Priority level (high, medium, or low)
+- 1-3 actionable recommendations
+- Relevant metrics with values and trends
+
+IMPORTANT: Please provide your entire response in {language_name}. The user's preferred language is {language_name}.
+
+Here's the user's financial data:
+
+Currency: {currency}
+
+SUMMARY METRICS:
+- Total Monthly Income: {total_income} {currency}
+- Total Monthly Expenses: {total_expenses} {currency}
+- Total Monthly Loan Payments: {total_loan_payments} {currency}
+- Total Loan Balance: {total_loan_balance} {currency}
+- Monthly Balance (Income - Expenses - Loan Payments): {monthly_balance} {currency}
+- Savings Rate: {savings_rate:.2f}%
+- Debt-to-Income Ratio: {debt_to_income:.2f}%
+
+INCOME BREAKDOWN BY CATEGORY:
+{json.dumps(income_categories, indent=2)}
+
+EXPENSE BREAKDOWN BY CATEGORY:
+{json.dumps(expense_categories, indent=2)}
+
+LOANS:
+{json.dumps(loans, indent=2)}
+
+DETAILED INCOME TRANSACTIONS:
+{json.dumps(incomes, indent=2)}
+
+DETAILED EXPENSE TRANSACTIONS:
+{json.dumps(expenses, indent=2)}
+
+Respond with a JSON object that follows this exact structure:
+{{
+  "categories": {{
+    "health": [
+      {{
+        "type": "observation|recommendation|alert|achievement",
+        "title": "Insight title",
+        "description": "Detailed description",
+        "priority": "high|medium|low",
+        "actionItems": ["Action 1", "Action 2"],
+        "metrics": [
+          {{
+            "label": "Metric name",
+            "value": "Metric value",
+            "trend": "up|down|stable"
+          }}
+        ]
+      }}
+    ],
+    "spending": [...],
+    "savings": [...],
+    "debt": [...],
+    "budget": [...]
+  }},
+  "status": {{
+    "health": "good|ok|can_be_improved|bad",
+    "spending": "good|ok|can_be_improved|bad",
+    "savings": "good|ok|can_be_improved|bad",
+    "debt": "good|ok|can_be_improved|bad",
+    "budget": "good|ok|can_be_improved|bad"
+  }}
+}}
+
+Ensure your response is valid JSON and follows the exact structure above. Do not include any explanations or text outside the JSON object.
+Remember to write all text content (titles, descriptions, action items, etc.) in {language_name}.
+"""
+
+        # Make the API call to Claude
+        response = await httpx.AsyncClient().post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            },
+            json={
+                "model": "claude-3-7-sonnet-20250219",
+                "max_tokens": 4000,
+                "messages": [{
+                    "role": "user",
+                    "content": prompt
+                }]
+            },
+            timeout=60.0  # Set a longer timeout for complex analysis
+        )
+        
+        # Check if the request was successful
+        if response.status_code != 200:
+            print(f"[Claude API] Error: {response.status_code} - {response.text}")
+            
+            # Provide more specific error messages based on status code
+            if response.status_code == 529:
+                raise Exception(f"Claude API error: 529 - Service overloaded. The Claude API is currently experiencing high demand. Please try again later.")
+            elif response.status_code == 401:
+                raise Exception(f"Claude API error: 401 - Invalid API key. Please check your Claude API key in settings.")
+            elif response.status_code == 403:
+                raise Exception(f"Claude API error: 403 - Forbidden. Your API key may not have permission to use this model.")
+            elif response.status_code == 429:
+                raise Exception(f"Claude API error: 429 - Rate limit exceeded. Please try again later.")
+            else:
+                raise Exception(f"Claude API error: {response.status_code}")
+            
+        # Parse the response
+        claude_response = response.json()
+        content = claude_response.get("content", [])
+        
+        if not content or len(content) == 0:
+            raise Exception("Empty response from Claude API")
+            
+        # Extract the JSON from the response
+        text_content = content[0].get("text", "")
+        
+        # Try to parse the JSON response
+        try:
+            # Find JSON in the response (it might be wrapped in markdown code blocks)
+            json_match = re.search(r'```json\s*([\s\S]*?)\s*```|({[\s\S]*})', text_content)
+            if json_match:
+                json_str = json_match.group(1) or json_match.group(2)
+                insights_data = json.loads(json_str)
+            else:
+                insights_data = json.loads(text_content)
+                
+            # Add metadata
+            insights_data["metadata"] = {
+                "generatedAt": datetime.now().isoformat(),
+                "source": "claude-3-7-sonnet"
+            }
+            
+            return insights_data
+            
+        except json.JSONDecodeError as e:
+            print(f"[Claude API] JSON parse error: {e}")
+            print(f"[Claude API] Response content: {text_content}")
+            raise Exception(f"Failed to parse Claude API response: {e}")
+            
+    except Exception as e:
+        print(f"[Claude API] Error generating insights: {str(e)}")
+        
+        # Return a fallback response in case of error
+        sample_insight = {
+            "type": "observation",
+            "title": "API Error",
+            "description": f"We encountered an error while generating insights: {str(e)}. Please try again later.",
+            "priority": "medium",
+            "actionItems": ["Check your Claude API key", "Try again later"],
+            "metrics": [
+                {
+                    "label": "Error",
+                    "value": "API call failed",
+                    "trend": "stable"
+                }
+            ]
+        }
+        
+        return {
+            "categories": {
+                "health": [sample_insight],
+                "spending": [sample_insight],
+                "savings": [sample_insight],
+                "debt": [sample_insight],
+                "budget": [sample_insight]
+            },
+            "status": {
+                "health": "ok",
+                "spending": "ok",
+                "savings": "ok",
+                "debt": "ok",
+                "budget": "ok"
+            },
+            "metadata": {
+                "generatedAt": datetime.now().isoformat(),
+                "source": "error_fallback",
+                "error": str(e)
+            }
+        }
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the Home Budget API"} 

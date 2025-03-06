@@ -20,6 +20,7 @@
     "expenses": "Gastos",
     "loans": "Préstamos",
     "reports": "Informes",
+    "financialFreedom": "Libertad Financiera",
     "settings": "Configuración"
   },
   "dashboard": {
@@ -51,6 +52,29 @@
         "income": "{operation} {type} con fuente: {source}, monto: {amount}",
         "expense": "{operation} {type} con descripción: {description}, monto: {amount}",
         "loan": "{operation} {type} con descripción: {description}, monto: {amount}"
+      }
+    },
+    "summary": {
+      "aiInsights": {
+        "button": "Ver análisis de IA",
+        "modalTitle": "Análisis de IA de tu presupuesto",
+        "loading": "Analizando tus datos financieros...",
+        "error": "No se pudieron generar los análisis en este momento. Por favor, inténtalo de nuevo más tarde.",
+        "lastUpdated": "Última actualización: {date}",
+        "close": "Cerrar",
+        "refresh": "Actualizar análisis",
+        "changes": "Cambios desde el último análisis",
+        "incomeChange": "Los ingresos cambiaron en {change}%",
+        "expensesChange": "Los gastos cambiaron en {change}%",
+        "debtChange": "La deuda cambió en {change}%",
+        "generatedAt": "Generado el {date}",
+        "categories": {
+          "health": "Salud",
+          "spending": "Gastos",
+          "savings": "Ahorros",
+          "debt": "Deuda",
+          "budget": "Presupuesto"
+        }
       }
     }
   },
@@ -172,12 +196,23 @@
       "csvButton": "Exportar como CSV",
       "excelButton": "Exportar como Excel"
     },
+    "import": {
+      "title": "Importar datos",
+      "description": "Importa tus datos previamente exportados en formato JSON. Esto agregará todos los registros importados a tus datos actuales.",
+      "confirmTitle": "Confirmar importación de datos",
+      "confirmMessage": "¿Deseas eliminar tus datos existentes de Ingresos, Gastos y Préstamos antes de importar nuevos datos?",
+      "keepExisting": "Mantener datos existentes",
+      "removeExisting": "Eliminar datos existentes"
+    },
     "tooltips": {
-      "export": "Descarga todos tus datos financieros, incluyendo gastos, ingresos, préstamos y configuraciones"
+      "export": "Descarga todos tus datos financieros, incluyendo gastos, ingresos, préstamos y configuraciones",
+      "import": "Importa tus datos previamente exportados para restaurar o combinar con tus registros actuales"
     },
     "messages": {
       "exportSuccess": "Datos exportados exitosamente",
-      "exportError": "Error al exportar datos. Por favor, inténtalo de nuevo."
+      "exportError": "Error al exportar datos. Por favor, inténtalo de nuevo.",
+      "importSuccess": "Datos importados exitosamente",
+      "importError": "Error al importar datos. Por favor, verifica el formato del archivo e inténtalo de nuevo."
     }
   },
   "inactivity": {
@@ -185,6 +220,104 @@
       "title": "Advertencia de tiempo de inactividad",
       "message": "Debido a la inactividad, su sesión expirará en {seconds} segundos.",
       "continue": "Continuar sesión"
+    }
+  },
+  "financialFreedom": {
+    "title": "Camino a la Libertad Financiera",
+    "subtitle": "Sigue tu progreso a través de los 7 Pasos de Dave Ramsey",
+    "overview": "Los 7 Pasos son un plan probado para ayudarte a salir de deudas, ahorrar dinero y construir riqueza.",
+    "yourProgress": "Tu Progreso",
+    "startDate": "Inicio del Viaje: {date}",
+    "updateProgress": "Actualizar Progreso",
+    "resetProgress": "Reiniciar Progreso",
+    "confirmReset": "¿Estás seguro de que quieres reiniciar tu progreso?",
+    "lastUpdated": "Última Actualización: {date}",
+    "progressTracker": "Seguimiento de Progreso",
+    "currentAmount": "Cantidad Actual",
+    "targetAmount": "Cantidad Objetivo",
+    "notes": "Notas",
+    "summary": "Resumen del Viaje",
+    "overallProgress": "Progreso General",
+    "currentStep": "Enfoque Actual",
+    "noData": "No hay datos de libertad financiera disponibles",
+    "steps": {
+      "step1": {
+        "title": "Paso 1: Fondo de Emergencia de $1,000",
+        "shortTitle": "Fondo de Emergencia",
+        "description": "Ahorra $1,000 como fondo de emergencia inicial para cubrir gastos inesperados sin endeudarte.",
+        "target": "Objetivo: $1,000",
+        "current": "Actual: {amount}",
+        "tip": "Comienza reduciendo gastos no esenciales y vendiendo artículos que no necesitas."
+      },
+      "step2": {
+        "title": "Paso 2: Pagar Todas las Deudas",
+        "shortTitle": "Pago de Deudas",
+        "description": "Paga todas tus deudas (excepto tu hipoteca) usando el método de bola de nieve, pagando de menor a mayor.",
+        "remainingDebt": "Deuda Restante: {amount}",
+        "debtFree": "¡Estás libre de deudas!",
+        "tip": "Enumera todas tus deudas de menor a mayor y concéntrate en pagar primero la más pequeña."
+      },
+      "step3": {
+        "title": "Paso 3: 3-6 Meses de Gastos",
+        "shortTitle": "Fondo Completo",
+        "description": "Ahorra 3-6 meses de gastos en un fondo de emergencia completo.",
+        "target": "Objetivo: {amount}",
+        "current": "Actual: {amount}",
+        "tip": "Calcula tus gastos mensuales y multiplica por 3-6 para determinar tu objetivo."
+      },
+      "step4": {
+        "title": "Paso 4: 15% para Jubilación",
+        "shortTitle": "Jubilación",
+        "description": "Invierte el 15% de los ingresos de tu hogar en cuentas de jubilación.",
+        "target": "Objetivo: 15% de ingresos",
+        "current": "Actual: {percent}% de ingresos",
+        "tip": "Aprovecha primero cualquier aportación de tu empleador en planes de jubilación."
+      },
+      "step5": {
+        "title": "Paso 5: Fondo Universitario",
+        "shortTitle": "Fondo Universitario",
+        "description": "Ahorra para la educación universitaria de tus hijos usando cuentas de ahorro educativo.",
+        "inProgress": "En Progreso",
+        "completed": "Completado",
+        "notApplicable": "No Aplicable",
+        "tip": "Considera planes 529 o Cuentas de Ahorro Educativo (ESAs)."
+      },
+      "step6": {
+        "title": "Paso 6: Pagar la Casa Anticipadamente",
+        "shortTitle": "Pagar la Casa",
+        "description": "Paga tu hipoteca anticipadamente.",
+        "remainingMortgage": "Hipoteca Restante: {amount}",
+        "mortgageFree": "¡Tu casa está pagada!",
+        "tip": "Haz pagos adicionales al capital para pagar tu hipoteca más rápido."
+      },
+      "step7": {
+        "title": "Paso 7: Construir Riqueza y Dar",
+        "shortTitle": "Construir Riqueza",
+        "description": "Construye riqueza y da generosamente a otros.",
+        "wealthBuilding": "Construcción de Riqueza: En Progreso",
+        "giving": "Donaciones Caritativas: {amount}/año",
+        "tip": "Continúa invirtiendo y encuentra causas que te apasionen para apoyar."
+      }
+    },
+    "status": {
+      "notStarted": "No Iniciado",
+      "inProgress": "En Progreso",
+      "completed": "Completado",
+      "notApplicable": "No Aplicable"
+    },
+    "actions": {
+      "markComplete": "Marcar Completo",
+      "markIncomplete": "Marcar Incompleto",
+      "updateProgress": "Actualizar Progreso",
+      "setTarget": "Establecer Objetivo",
+      "addNotes": "Añadir Notas",
+      "viewDetails": "Ver Detalles"
+    },
+    "insights": {
+      "title": "Perspectivas Financieras",
+      "timeToComplete": "Tiempo estimado para completar el paso actual: {time}",
+      "nextMilestone": "Próximo hito: {milestone}",
+      "suggestion": "Sugerencia: {text}"
     }
   }
 } 

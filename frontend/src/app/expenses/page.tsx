@@ -518,10 +518,22 @@ export default function ExpensesPage() {
                       isEditing={!!editForm[expense.id]}
                       value={editForm[expense.id]?.amount || expense.amount}
                       type="number"
-                      onChange={(value) => setEditForm({
-                        ...editForm,
-                        [expense.id]: { ...editForm[expense.id], amount: value }
-                      })}
+                      onChange={(value) => {
+                        const updatedForm = {
+                          ...editForm,
+                          [expense.id]: { 
+                            ...editForm[expense.id] || {
+                              category: expense.category,
+                              description: expense.description,
+                              amount: expense.amount,
+                              is_recurring: expense.is_recurring,
+                              date: expense.date
+                            },
+                            amount: Number(value)
+                          }
+                        };
+                        setEditForm(updatedForm);
+                      }}
                       onSave={() => handleSaveEdit(expense.id)}
                       onCancel={() => handleCancelEdit(expense.id)}
                       min={0}
@@ -572,39 +584,39 @@ export default function ExpensesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {editForm[expense.id] ? (
-                      <div className="flex space-x-2">
+                      <>
                         <button
                           onClick={() => handleSaveEdit(expense.id)}
                           className="text-green-600 hover:text-green-800"
-                          title={<FormattedMessage id="common.save" />}
+                          title={intl.formatMessage({ id: "common.save" })}
                         >
                           <CheckIcon className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => handleCancelEdit(expense.id)}
-                          className="text-gray-600 hover:text-gray-800"
-                          title={<FormattedMessage id="common.cancel" />}
+                          className="text-red-600 hover:text-red-800 ml-2"
+                          title={intl.formatMessage({ id: "common.cancel" })}
                         >
                           <XMarkIcon className="h-5 w-5" />
                         </button>
-                      </div>
+                      </>
                     ) : (
-                      <div className="flex space-x-2">
+                      <>
                         <button
                           onClick={() => handleEdit(expense)}
                           className="text-blue-600 hover:text-blue-800"
-                          title={<FormattedMessage id="common.edit" />}
+                          title={intl.formatMessage({ id: "common.edit" })}
                         >
                           <PencilIcon className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(expense.id)}
-                          className="text-red-600 hover:text-red-800"
-                          title={<FormattedMessage id="common.delete" />}
+                          className="text-red-600 hover:text-red-800 ml-2"
+                          title={intl.formatMessage({ id: "common.delete" })}
                         >
                           <TrashIcon className="h-5 w-5" />
                         </button>
-                      </div>
+                      </>
                     )}
                   </td>
                 </tr>

@@ -17,9 +17,9 @@ interface UserData {
   id: string;
   name: string | null;
   email: string | null;
-  emailVerified: Date | null;
-  image: string | null;
-  settings: UserSettings | null;
+  created_at: string;
+  updated_at: string | null;
+  settings?: UserSettings | null;
 }
 
 // Define the shape of our context
@@ -49,14 +49,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchUser = async () => {
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       setIsLoading(false);
       return;
     }
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/users/me`);
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/users/me?user_id=${encodeURIComponent(session.user.email || '')}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch user data');
