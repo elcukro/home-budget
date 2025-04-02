@@ -105,7 +105,8 @@
     "darkMode": "Dark Mode",
     "lightMode": "Light Mode",
     "signOut": "Sign Out",
-    "savings": "Savings"
+    "savings": "Savings",
+    "banking": "Banking"
   },
   "dashboard": {
     "title": "Financial Dashboard",
@@ -679,5 +680,48 @@
     },
     "noData": "No savings entries yet",
     "loading": "Loading savings data..."
+  },
+  "banking": {
+    "title": "Banking Data Integration",
+    "selectCountry": "Select Country",
+    "getInstitutions": "Get Institutions",
+    "selectInstitution": "Select Institution",
+    "createRequisition": "Create Bank Connection Link",
+    "requisitionId": "Requisition ID",
+    "getAccounts": "Get Accounts",
+    "selectAccount": "Select Account",
+    "getTransactions": "Get Transactions",
+    "transactionResults": "Transaction Results",
+    "bookedTransactions": "Booked Transactions",
+    "pendingTransactions": "Pending Transactions",
+    "noBookedTransactions": "No booked transactions found.",
+    "noPendingTransactions": "No pending transactions found.",
+    "steps": {
+      "step1": "Step 1: Select Country and Get Institutions",
+      "step1Description": "Choose your country and get a list of available banks.",
+      "step2": "Step 2: Create Requisition",
+      "step2Description": "This will create a link to connect to your selected bank. The link will open in a new tab where you can authenticate with your bank credentials.",
+      "step3": "Step 3: Get Accounts",
+      "step3Description": "After authenticating with your bank, get the list of accounts. Enter the requisition ID from Step 2 or from a previous session.",
+      "step4": "Step 4: Get Transactions",
+      "step4Description": "Retrieve transactions for the selected account."
+    },
+    "table": {
+      "date": "Date",
+      "description": "Description",
+      "amount": "Amount",
+      "currency": "Currency"
+    },
+    "messages": {
+      "institutionsFound": "Found {count} institutions",
+      "requisitionCreated": "Requisition created successfully",
+      "accountsFound": "Found {count} accounts",
+      "transactionsFound": "Found {booked} booked and {pending} pending transactions"
+    },
+    "errors": {
+      "selectInstitution": "Please select an institution first",
+      "requisitionId": "Please enter a requisition ID",
+      "selectAccount": "Please select an account first"
+    }
   }
 } 

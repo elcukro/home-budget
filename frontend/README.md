@@ -1,5 +1,19 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Features
+
+### Banking Integration
+
+This application integrates with the GoCardless Bank Account Data API to provide real-time banking data. Key features include:
+
+- Connect securely to bank accounts
+- View account information and transaction history
+- Display human-readable account names
+- Test with sandbox mode without real credentials
+- View detailed transaction data
+
+For full documentation, see [BANKING.md](../BANKING.md) in the project root.
+
 ## Getting Started
 
 First, run the development server:

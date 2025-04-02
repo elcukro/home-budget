@@ -13,6 +13,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - 🔄 **Recurring Transactions**: Set up and manage recurring income, expenses, and savings
 - 🤖 **AI Financial Insights**: Personalized financial analysis and recommendations powered by Claude AI, with multilingual support and efficient caching for quick access
 - 🛣️ **Financial Freedom Journey**: Track your progress through Dave Ramsey's 7 Baby Steps with customizable goals and detailed progress tracking
+- 🏦 **Banking Integration**: Securely connect to bank accounts and access transaction data using GoCardless Bank Account Data API
 
 ### User Experience
 - 🌓 **Dark Mode Support**: Comfortable viewing experience with automatic theme switching
@@ -56,8 +57,17 @@ A modern, full-stack personal finance management application built with Next.js,
 - JWT for authentication
 - CORS for secure cross-origin requests
 - Claude AI integration for intelligent financial insights
+- GoCardless API integration for secure bank account access
 
 ## 📝 Changelog
+
+### 2025-03-25
+- ✨ **New Feature**:
+  - Added Banking Integration with GoCardless API for secure bank account connections
+  - Implemented requisition management and bank account data access
+  - Added UI for connecting to banks, viewing accounts, and fetching transactions
+  - Created settings page integration to manage bank connections
+  - Added transaction fetching capability for connected accounts
 
 ### 2025-03-10
 - ✨ **New Feature**: 
@@ -133,6 +143,8 @@ DATABASE_URL=postgresql://user:password@localhost:5432/homebudget
 SECRET_KEY=your_secret_key
 CORS_ORIGINS=http://localhost:3000
 CLAUDE_API_KEY=your_claude_api_key
+GOCARDLESS_SECRET_ID=your_gocardless_secret_id
+GOCARDLESS_SECRET_KEY=your_gocardless_secret_key
 ```
 
 3. Set up the frontend:
@@ -279,6 +291,32 @@ Track your progress through Dave Ramsey's 7 Baby Steps methodology to achieve fi
 - **Internationalization**: Fully localized in all supported languages
 - **Persistent Storage**: Progress data is stored in the database for long-term tracking
 
+## 🏦 Banking Integration
+
+Connect securely to your bank accounts and access your financial data using the GoCardless Bank Account Data API.
+
+### Key Features
+- **Secure Authentication**: Connect to your bank using secure authorization flow
+- **Bank Account Access**: Get access to your bank accounts with proper consent
+- **Transaction History**: View transaction details from your connected accounts
+- **Requisition Management**: Store and manage bank connection details
+- **Expiration Handling**: Track connection expiration dates (typically 90 days)
+- **Connection Settings**: Manage your bank connections in user settings
+
+### How It Works
+1. **Select Your Bank**: Choose from available financial institutions in your country
+2. **Authorize Access**: Authenticate securely through your bank's website
+3. **Access Accounts**: Once authorized, your accounts become available
+4. **View Transactions**: Access transaction data from your connected accounts
+5. **Manage Connections**: View and manage all bank connections in settings
+
+### Technical Implementation
+- **Secure API**: Uses the GoCardless Bank Account Data API for secure access
+- **OAuth Flow**: Follows secure OAuth authentication patterns
+- **Token Management**: Handles API tokens securely with proper expiration
+- **Connection Storage**: Saves connection details in the database
+- **Settings Integration**: Provides UI for managing connections in settings
+
 ## 📡 API Endpoints
 
 ### User Settings
@@ -321,6 +359,15 @@ Track your progress through Dave Ramsey's 7 Baby Steps methodology to achieve fi
 - `POST /api/financial-freedom` - Create/initialize financial freedom journey
 - `PUT /api/financial-freedom` - Update financial freedom progress
 - `PATCH /api/financial-freedom/baby-steps/{step_id}` - Update specific baby step
+
+### Banking
+- `GET /api/banking/institutions?country={country}` - Get list of available banks by country
+- `POST /api/banking/requisitions` - Create a requisition for bank access
+- `GET /api/banking/requisitions/{requisition_id}` - Get details of a requisition
+- `GET /api/banking/accounts/{account_id}/transactions` - Get transactions for a specific account
+- `POST /api/banking/connections` - Save a bank connection to user settings
+- `GET /api/banking/connections` - List user's bank connections
+- `DELETE /api/banking/connections/{id}` - Remove a bank connection
 
 ## 🤝 Contributing
 

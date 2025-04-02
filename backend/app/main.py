@@ -12,7 +12,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking
 from .database import engine, Base
 from .routers.users import User, UserBase, Settings, SettingsBase  # Import User, UserBase, Settings, and SettingsBase models from users router
 import json
@@ -39,6 +39,7 @@ app.include_router(users.router)
 app.include_router(financial_freedom.router)
 app.include_router(savings.router)
 app.include_router(exchange_rates.router)
+app.include_router(banking.router)
 
 # Loan models
 class LoanBase(BaseModel):

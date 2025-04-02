@@ -13,6 +13,17 @@ import { formatCurrency, formatPercentage, getCurrencySymbol } from '@/utils/for
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+interface BankingConnection {
+  id: number;
+  institution_id: string;
+  institution_name: string;
+  requisition_id: string;
+  created_at: string;
+  expires_at: string;
+  is_active: boolean;
+  accounts: string[] | null;
+}
+
 interface UserSettings {
   id: number;
   user_id: string;
@@ -23,6 +34,9 @@ interface UserSettings {
   };
   emergency_fund_target: number;
   emergency_fund_months: number;
+  banking?: {
+    connections?: BankingConnection[];
+  };
   created_at: string;
   updated_at: string | null;
 }
@@ -55,6 +69,7 @@ export default function Settings() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [bankingConnections, setBankingConnections] = useState<BankingConnection[]>([]);
 
   const fetchSettings = async () => {
     if (!session?.user?.email) {
@@ -80,9 +95,50 @@ export default function Settings() {
     }
   };
 
+  const fetchBankingConnections = async () => {
+    if (!session?.user?.email) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/banking/connections');
+      if (!response.ok) {
+        throw new Error('Failed to fetch banking connections');
+      }
+      const data = await response.json();
+      setBankingConnections(data);
+    } catch (err) {
+      console.error('Error fetching banking connections:', err);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
+    fetchBankingConnections();
   }, [session]);
+  
+  const handleDeleteConnection = async (connectionId: number) => {
+    if (!confirm('Are you sure you want to remove this bank connection?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/banking/connections/${connectionId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete banking connection');
+      }
+      
+      // Refresh the connections list
+      fetchBankingConnections();
+      toast.success('Bank connection removed successfully');
+    } catch (err) {
+      console.error('Error deleting banking connection:', err);
+      toast.error('Failed to remove bank connection');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -435,6 +491,70 @@ export default function Settings() {
               dark:file:bg-blue-900 dark:file:text-blue-200"
           />
         </div>
+      </div>
+
+      {/* Banking Connections Section */}
+      <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow mb-6">
+        <h2 className="text-lg font-medium mb-4">
+          Banking Connections
+          <Tooltip content="View and manage your connected bank accounts" icon={true} />
+        </h2>
+        
+        {bankingConnections.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bank</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Connected On</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Expires</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Accounts</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {bankingConnections.map((connection) => {
+                  const createdDate = new Date(connection.created_at).toLocaleDateString();
+                  const expiresDate = new Date(connection.expires_at).toLocaleDateString();
+                  const isExpired = new Date(connection.expires_at) < new Date();
+                  
+                  return (
+                    <tr key={connection.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-primary">{connection.institution_name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">{createdDate}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={isExpired ? 'text-red-500' : 'text-secondary'}>
+                          {expiresDate}
+                          {isExpired && ' (Expired)'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary">
+                        {connection.accounts ? connection.accounts.length : 0} accounts
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => handleDeleteConnection(connection.id)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-4 text-center text-secondary">
+            <p>No bank connections found.</p>
+            <p className="mt-2">
+              <a href="/banking" className="text-blue-500 hover:text-blue-700">
+                Connect your bank account
+              </a>
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow">
