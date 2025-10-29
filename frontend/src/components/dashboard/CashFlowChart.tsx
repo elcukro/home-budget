@@ -15,7 +15,6 @@ import {
   LineController,
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
-import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 // Move registration outside component to ensure it happens only once
@@ -48,8 +47,6 @@ interface CashFlowChartProps {
 
 export default function CashFlowChart({ data, formatCurrency }: CashFlowChartProps) {
   const intl = useIntl();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
   const [chartKey, setChartKey] = useState(Date.now());
 
   // Re-render chart when locale changes
@@ -75,8 +72,8 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
         type: 'bar' as const,
         label: intl.formatMessage({ id: 'dashboard.cashFlow.income' }),
         data: data.map(item => item.income),
-        backgroundColor: 'rgba(34, 197, 94, 0.8)',
-        borderColor: 'rgba(34, 197, 94, 1)',
+        backgroundColor: '#4BA56ACC',
+        borderColor: '#4BA56A',
         borderWidth: 1,
         stack: 'stack0',
       },
@@ -84,8 +81,8 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
         type: 'bar' as const,
         label: intl.formatMessage({ id: 'dashboard.cashFlow.expenses' }),
         data: data.map(item => -item.expenses),
-        backgroundColor: 'rgba(239, 68, 68, 0.8)',
-        borderColor: 'rgba(239, 68, 68, 1)',
+        backgroundColor: '#D65A56CC',
+        borderColor: '#D65A56',
         borderWidth: 1,
         stack: 'stack1',
       },
@@ -93,8 +90,8 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
         type: 'bar' as const,
         label: intl.formatMessage({ id: 'dashboard.cashFlow.loanPayments' }),
         data: data.map(item => -item.loanPayments),
-        backgroundColor: 'rgba(59, 130, 246, 0.8)',
-        borderColor: 'rgba(59, 130, 246, 1)',
+        backgroundColor: '#6B9F91CC',
+        borderColor: '#6B9F91',
         borderWidth: 1,
         stack: 'stack1',
       },
@@ -102,8 +99,8 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
         type: 'line' as const,
         label: intl.formatMessage({ id: 'dashboard.cashFlow.netFlow' }),
         data: data.map(item => item.netFlow),
-        borderColor: 'rgba(168, 85, 247, 1)',
-        backgroundColor: 'rgba(168, 85, 247, 0.5)',
+        borderColor: '#252529',
+        backgroundColor: '#25252933',
         borderWidth: 2,
         tension: 0.4,
         pointRadius: 4,
@@ -111,6 +108,9 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
       },
     ],
   };
+
+  const axisColor = 'rgba(31, 28, 26, 0.9)';
+  const gridColor = 'rgba(31, 28, 26, 0.16)';
 
   const options = {
     responsive: true,
@@ -123,7 +123,7 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
       legend: {
         position: 'top' as const,
         labels: {
-          color: isDark ? '#ffffff' : '#000000',
+          color: axisColor,
           font: {
             size: 12,
           },
@@ -142,18 +142,18 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
     scales: {
       x: {
         grid: {
-          color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+          color: gridColor,
         },
         ticks: {
-          color: isDark ? '#ffffff' : '#000000',
+          color: axisColor,
         },
       },
       y: {
         grid: {
-          color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+          color: gridColor,
         },
         ticks: {
-          color: isDark ? '#ffffff' : '#000000',
+          color: axisColor,
           callback: (value: any) => formatCurrency(Math.abs(value)),
         },
       },
@@ -164,8 +164,8 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
   const chartTitle = `${intl.formatMessage({ id: 'dashboard.cashFlow.title' })} ${currentYear}`;
 
   return (
-    <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow h-full flex flex-col">
-      <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+    <div className="bg-card border border-default p-6 rounded-lg shadow-sm h-full flex flex-col">
+      <h2 className="text-lg font-semibold mb-4 text-primary">
         {chartTitle}
       </h2>
       <div className="relative flex-grow h-[500px]">

@@ -66,7 +66,7 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
     entity_type = Column(String)  # 'Income', 'Expense', or 'Loan'
     operation_type = Column(String)  # 'create', 'update', or 'delete'
     entity_id = Column(Integer)

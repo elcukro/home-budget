@@ -35,8 +35,8 @@ export default function ProgressSummary({
   // Reset progress functionality has been removed
 
   return (
-    <div className="bg-white dark:bg-background-primary rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-default mb-4">
+    <div className="bg-card border border-default rounded-lg shadow-sm p-6">
+      <h2 className="text-lg font-semibold text-primary mb-4">
         {intl.formatMessage({ id: 'financialFreedom.summary' })}
       </h2>
       
@@ -47,13 +47,13 @@ export default function ProgressSummary({
               {intl.formatMessage({ id: 'financialFreedom.overallProgress' })}
             </p>
             <div className="flex items-center">
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-4 mr-4">
+              <div className="w-full bg-muted rounded-full h-4 mr-4">
                 <div 
-                  className="bg-blue-500 dark:bg-blue-600 h-4 rounded-full"
+                  className="bg-primary h-4 rounded-full"
                   style={{ width: `${completionPercentage}%` }}
                 ></div>
               </div>
-              <span className="text-sm font-medium text-default whitespace-nowrap">
+              <span className="text-sm font-medium text-primary whitespace-nowrap">
                 {completedSteps} / {totalSteps} ({completionPercentage}%)
               </span>
             </div>
@@ -63,17 +63,17 @@ export default function ProgressSummary({
             <p className="text-sm text-secondary mb-1">
               {intl.formatMessage({ id: 'financialFreedom.currentStep' })}
             </p>
-            <p className="font-medium text-default">
+            <p className="font-medium text-primary">
               {intl.formatMessage({ id: `financialFreedom.steps.step${currentStep.id}.title` })}
             </p>
             <div className="flex items-center mt-1">
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-4">
+              <div className="w-full bg-muted rounded-full h-2 mr-4">
                 <div 
-                  className="bg-green-500 dark:bg-green-600 h-2 rounded-full"
+                  className="bg-success h-2 rounded-full"
                   style={{ width: `${currentStepProgress}%` }}
                 ></div>
               </div>
-              <span className="text-xs font-medium text-default whitespace-nowrap">
+              <span className="text-xs font-medium text-primary whitespace-nowrap">
                 {currentStepProgress}%
               </span>
             </div>
@@ -100,13 +100,13 @@ export default function ProgressSummary({
         </div>
       </div>
       
-      <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-        <h3 className="text-sm font-medium text-default mb-2">
+      <div className="mt-6 pt-4 border-t border-default">
+        <h3 className="text-sm font-medium text-primary mb-2">
           {intl.formatMessage({ id: 'financialFreedom.insights.title' })}
         </h3>
         <ul className="space-y-2 text-sm text-secondary">
           <li className="flex items-start">
-            <span className="text-blue-500 mr-2">•</span>
+            <span className="text-primary mr-2">•</span>
             {intl.formatMessage(
               { id: 'financialFreedom.insights.nextMilestone' },
               { 
@@ -117,7 +117,7 @@ export default function ProgressSummary({
             )}
           </li>
           <li className="flex items-start">
-            <span className="text-blue-500 mr-2">•</span>
+            <span className="text-primary mr-2">•</span>
             {intl.formatMessage(
               { id: 'financialFreedom.insights.suggestion' },
               { text: intl.formatMessage({ id: `financialFreedom.steps.step${currentStep.id}.tip` }) }

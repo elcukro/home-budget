@@ -61,7 +61,7 @@ export const EditableCell: React.FC<EditableCellProps> = ({
   if (!isEditing) {
     return (
       <div className="p-1">
-        {prefix && <span className="text-gray-500 dark:text-gray-400">{prefix}</span>}
+        {prefix && <span className="text-subtle">{prefix}</span>}
         {formatter ? formatter(value) : value}
       </div>
     );
@@ -73,7 +73,7 @@ export const EditableCell: React.FC<EditableCellProps> = ({
         value={String(value)}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={onBlur}
-        className="w-full p-1 border rounded border-gray-300 dark:border-gray-600"
+        className="w-full rounded border border-border bg-card py-1 px-2 text-sm text-primary"
         autoFocus={isEditing && field === focusField}
       >
         {options.map((option) => (
@@ -88,7 +88,7 @@ export const EditableCell: React.FC<EditableCellProps> = ({
   return (
     <div className="relative">
       {prefix && (
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-subtle">
           {prefix}
         </span>
       )}
@@ -100,12 +100,12 @@ export const EditableCell: React.FC<EditableCellProps> = ({
         onKeyDown={handleKeyDown}
         min={min}
         step={step}
-        className={`w-full p-1 border rounded ${
-          error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+        className={`w-full rounded border bg-card py-1 px-2 text-sm ${
+          error ? 'border-destructive' : 'border-border'
         } ${prefix ? 'pl-6' : ''}`}
         autoFocus={isEditing && field === focusField}
       />
-      {error && <span className="absolute -bottom-5 left-0 text-xs text-red-500">{error}</span>}
+      {error && <span className="absolute -bottom-5 left-0 text-xs text-destructive">{error}</span>}
     </div>
   );
 }; 

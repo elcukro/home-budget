@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+pg_ctl -D ~/postgres_data start
 
 # Wait for PostgreSQL to be ready
 echo "Waiting for PostgreSQL..."

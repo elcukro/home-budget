@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { useTheme } from 'next-themes';
 import { useSession, signOut } from 'next-auth/react';
 import {
   HomeIcon,
@@ -12,17 +11,17 @@ import {
   CreditCardIcon,
   BuildingLibraryIcon,
   ChartBarIcon,
-  SunIcon,
-  MoonIcon,
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   StarIcon,
   GlobeAltIcon,
+  UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import { useIntl } from 'react-intl';
-import Image from 'next/image';
+import SproutlyFiLogo from './SproutlyFiLogo';
 
 const navigation = [
+  { name: 'navigation.onboarding', href: '/onboarding', icon: UserPlusIcon },
   { name: 'navigation.dashboard', href: '/', icon: HomeIcon },
   { name: 'navigation.financialFreedom', href: '/financial-freedom', icon: StarIcon },
   { name: 'navigation.income', href: '/income', icon: BanknotesIcon },
@@ -36,52 +35,19 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const intl = useIntl();
   const { data: session } = useSession();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="sticky top-0 h-screen w-64 bg-card border-r border-default">
-        <div className="h-full px-3 py-4 flex flex-col">
-          <div className="flex items-center justify-between px-3">
-            <h2 className="text-xl font-bold text-primary">
-              {intl.formatMessage({ id: 'common.appName' })}
-            </h2>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="sticky top-0 h-screen w-64 bg-gradient-to-b from-blue-50 via-blue-100/50 to-white dark:from-navy-950 dark:via-navy-900/90 dark:to-navy-800/80 border-r border-default z-40">
-      <div className="h-full px-3 py-4 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+    <div className="sticky top-0 h-screen w-64 border-r border-default bg-muted z-40">
+      <div className="h-full px-3 py-4 flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-[#E5DDD2] scrollbar-track-transparent">
         <div className="space-y-3 min-h-full flex flex-col">
           <div className="flex items-center justify-between px-3">
-            <h2 className="text-xl font-bold text-blue-900 dark:text-primary">
-              {intl.formatMessage({ id: 'common.appName' })}
-            </h2>
-            <button
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-2 rounded-lg hover:bg-blue-200/50 dark:hover-bg"
-              aria-label="Toggle dark mode"
-            >
-              {theme === 'dark' ? (
-                <SunIcon className="h-5 w-5 text-yellow-500" />
-              ) : (
-                <MoonIcon className="h-5 w-5 text-blue-700" />
-              )}
-            </button>
+            <SproutlyFiLogo />
           </div>
 
           {session?.user && (
-            <div className="px-3 py-2 border-b border-blue-200/50 dark:border-default">
+            <div className="px-3 py-2 border-b border-default/70">
               <div className="flex items-center space-x-3">
                 {session.user.image && (
                   <Image
@@ -93,10 +59,10 @@ export default function Sidebar() {
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-blue-900 dark:text-primary truncate">
+                  <p className="text-sm font-medium text-primary truncate">
                     {session.user.name}
                   </p>
-                  <p className="text-xs text-blue-700 dark:text-secondary truncate">
+                  <p className="text-xs text-secondary truncate">
                     {session.user.email}
                   </p>
                 </div>
@@ -113,13 +79,13 @@ export default function Sidebar() {
                   href={item.href}
                   className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                     isActive
-                      ? 'bg-blue-200/50 text-blue-900 dark:bg-primary/10 dark:text-primary'
-                      : 'text-blue-700 hover:bg-blue-100/50 hover:text-blue-900 dark:text-secondary dark:hover:bg-hover dark:hover:text-primary'
+                      ? 'bg-mint/50 text-primary'
+                      : 'text-secondary hover:bg-mint/40 hover:text-primary'
                   }`}
                 >
                   <item.icon
                     className={`mr-3 h-5 w-5 flex-shrink-0 ${
-                      isActive ? 'text-blue-900 dark:text-primary' : 'text-blue-700 dark:text-secondary'
+                      isActive ? 'text-primary' : 'text-secondary'
                     }`}
                     aria-hidden="true"
                   />
@@ -136,10 +102,10 @@ export default function Sidebar() {
                   callbackUrl: '/auth/signin',
                   redirect: true 
                 })}
-                className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg text-blue-700 hover:bg-blue-100/50 hover:text-blue-900 dark:text-secondary dark:hover:bg-hover dark:hover:text-primary transition-colors"
+                className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg text-secondary hover:bg-mint/40 hover:text-primary transition-colors"
               >
                 <ArrowRightOnRectangleIcon
-                  className="mr-3 h-5 w-5 flex-shrink-0 text-blue-700 dark:text-secondary"
+                  className="mr-3 h-5 w-5 flex-shrink-0 text-secondary"
                   aria-hidden="true"
                 />
                 {intl.formatMessage({ id: 'auth.signOut' })}

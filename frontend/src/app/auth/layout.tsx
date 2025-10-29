@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "../globals.css";
-import { Toaster } from 'react-hot-toast';
-import { ThemeProvider } from 'next-themes';
-import AuthProvider from "@/components/AuthProvider";
-import IntlProviderWrapper from "@/components/IntlProviderWrapper";
+import { Toaster as SonnerToaster } from "@/components/ui/toaster";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,6 +21,7 @@ export default function AuthLayout({
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       {children}
+      <SonnerToaster />
     </div>
   );
-} 
+}

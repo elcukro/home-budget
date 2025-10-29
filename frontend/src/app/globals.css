@@ -4,25 +4,76 @@
 
 @layer base {
   :root {
-    --background-primary: 255, 255, 255;    /* White */
-    --background-secondary: 249, 250, 251;  /* Gray-50 */
-    --text-primary: 17, 24, 39;            /* Gray-900 */
-    --text-secondary: 75, 85, 99;          /* Gray-600 */
-    --border-color: 229, 231, 235;         /* Gray-200 */
-    --input-background: 255, 255, 255;     /* White */
-    --card-background: 255, 255, 255;      /* White */
-    --hover-background: 243, 244, 246;     /* Gray-100 */
-  }
+    --color-bg: #F5EFE8;
+    --color-surface: #FFFFFF;
+    --color-border: #E5DDD2;
+    --color-text-primary: #1F1C1A;
+    --color-text-secondary: #5E5852;
+    --color-muted-bg: #F1E9DF;
+    --color-muted-text: #8A827A;
+    --color-mint: #9FD3C1;
+    --color-lilac: #CDBAD6;
+    --color-blush: #E8C1BC;
+    --color-sand: #E2D6C6;
+    --color-primary: #6B9F91;
+    --color-primary-foreground: #FFFFFF;
+    --color-success: #4BA56A;
+    --color-warning: #E67C3F;
+    --color-error: #D65A56;
+    --color-chart-bg: #252529;
 
-  .dark {
-    --background-primary: 17, 24, 39;      /* Gray-900 */
-    --background-secondary: 31, 41, 55;    /* Gray-800 */
-    --text-primary: 243, 244, 246;         /* Gray-100 */
-    --text-secondary: 156, 163, 175;       /* Gray-400 */
-    --border-color: 55, 65, 81;           /* Gray-700 */
-    --input-background: 31, 41, 55;       /* Gray-800 */
-    --card-background: 31, 41, 55;        /* Gray-800 */
-    --hover-background: 55, 65, 81;       /* Gray-700 */
+    --background-primary: 245, 239, 232; /* #F5EFE8 */
+    --background-secondary: 241, 233, 223; /* #F1E9DF */
+    --card-background: 255, 255, 255; /* #FFFFFF */
+    --input-background: 255, 255, 255;
+    --hover-background: 235, 227, 218; /* slightly deeper almond */
+    --border-color: 229, 221, 210; /* #E5DDD2 */
+
+    --text-primary: 31, 28, 26; /* #1F1C1A */
+    --text-secondary: 94, 88, 82; /* #5E5852 */
+    --text-muted: 138, 130, 122; /* #8A827A */
+
+    --background: 32 39% 94%;
+    --foreground: 24 9% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 24 9% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 9% 11%;
+    --secondary: 33 39% 91%;
+    --secondary-foreground: 24 9% 11%;
+    --muted: 33 39% 91%;
+    --muted-foreground: 30 12% 45%;
+    --accent: 159 37% 73%;
+    --accent-foreground: 24 9% 11%;
+    --primary: 164 21% 52%;
+    --primary-foreground: 0 0% 100%;
+    --success: 141 37% 47%;
+    --success-foreground: 0 0% 100%;
+    --warning: 22 77% 57%;
+    --warning-foreground: 24 9% 11%;
+    --destructive: 2 61% 59%;
+    --destructive-foreground: 0 0% 100%;
+    --input: 35 27% 86%;
+    --border: 35 27% 86%;
+    --ring: 164 21% 52%;
+
+    --mint: 159 37% 73%;
+    --mint-foreground: 24 9% 11%;
+    --lilac: 281 25% 78%;
+    --lilac-foreground: 24 9% 11%;
+    --blush: 7 49% 82%;
+    --blush-foreground: 24 9% 11%;
+    --sand: 34 33% 83%;
+    --sand-foreground: 24 9% 11%;
+
+    --chart-1: 159 37% 73%;
+    --chart-2: 34 33% 83%;
+    --chart-3: 7 49% 82%;
+    --chart-4: 281 25% 78%;
+    --chart-5: 22 77% 57%;
+    --chart-bg: 240 5% 15%;
+
+    --radius: 0.75rem;
   }
 }
 
@@ -32,96 +83,154 @@
   }
 
   body {
-    color: rgb(var(--text-primary));
-    background-color: rgb(var(--background-secondary));
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
   }
 
-  /* Form inputs */
-  input[type="text"],
-  input[type="number"],
-  input[type="date"],
+  input,
+  textarea,
   select {
-    @apply border rounded-md px-3 py-2 w-full transition-colors duration-200;
-    background-color: rgb(var(--input-background));
-    border-color: rgb(var(--border-color));
-    color: rgb(var(--text-primary));
+    @apply w-full rounded-md border px-3 py-2 text-sm transition-colors duration-200;
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
   }
 
-  input[type="checkbox"] {
-    @apply rounded border transition-colors duration-200;
-    background-color: rgb(var(--input-background));
-    border-color: rgb(var(--border-color));
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted-text);
   }
 
-  /* Cards and containers */
   .card {
-    @apply rounded-lg shadow-sm border transition-colors duration-200;
-    background-color: rgb(var(--card-background));
-    border-color: rgb(var(--border-color));
+    @apply rounded-xl border shadow-sm transition-colors duration-200;
+    background-color: var(--color-surface);
+    border-color: var(--color-border);
   }
 
-  /* Tables */
   table {
-    @apply w-full transition-colors duration-200;
+    @apply w-full;
+    background-color: var(--color-surface);
   }
 
   thead {
-    background-color: rgb(var(--background-secondary));
-  }
-
-  tbody {
-    background-color: rgb(var(--card-background));
+    background-color: var(--color-muted-bg);
   }
 
   th {
     @apply px-6 py-3 text-left text-xs font-medium uppercase tracking-wider;
-    color: rgb(var(--text-secondary));
+    color: var(--color-text-secondary);
   }
 
   td {
-    @apply px-6 py-4 whitespace-nowrap;
-    color: rgb(var(--text-primary));
+    @apply px-6 py-4;
+    color: var(--color-text-primary);
   }
 
-  /* Text colors */
-  .text-default {
-    color: rgb(var(--text-primary));
-  }
-
-  .text-secondary {
-    color: rgb(var(--text-secondary));
-  }
-
-  /* Buttons */
-  .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md 
-           transition-colors duration-200 focus:outline-none focus:ring-2 
-           focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900;
-  }
-
-  .btn-secondary {
-    @apply bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 
-           text-gray-900 dark:text-gray-100 px-4 py-2 rounded-md transition-colors duration-200;
-  }
-
-  /* Hover states */
-  .hover-bg {
-    @apply transition-colors duration-200;
-  }
-  
-  .hover-bg:hover {
-    background-color: rgb(var(--hover-background));
+  * {
+    @apply border-border transition-colors duration-200;
   }
 }
 
-/* Toast customization */
-.Toaster__toast {
-  background-color: rgb(var(--card-background)) !important;
-  color: rgb(var(--text-primary)) !important;
-  border: 1px solid rgb(var(--border-color)) !important;
+@layer components {
+  .surface-muted {
+    background-color: var(--color-muted-bg);
+  }
+
+  .text-subtle {
+    color: var(--color-muted-text);
+  }
+
+  .card-mint {
+    background-color: hsl(var(--mint) / 0.4);
+    color: hsl(var(--mint-foreground));
+  }
+
+  .card-lilac {
+    background-color: hsl(var(--lilac) / 0.4);
+    color: hsl(var(--lilac-foreground));
+  }
+
+  .card-blush {
+    background-color: hsl(var(--blush) / 0.45);
+    color: hsl(var(--blush-foreground));
+  }
+
+  .card-sand {
+    background-color: hsl(var(--sand) / 0.45);
+    color: hsl(var(--sand-foreground));
+  }
 }
 
-/* Transitions */
-* {
-  @apply transition-colors duration-200;
+@layer base {
+  .bg-white {
+    background-color: var(--color-surface) !important;
+  }
+
+  .bg-gray-50,
+  .bg-gray-100,
+  .bg-gray-200 {
+    background-color: var(--color-muted-bg) !important;
+  }
+
+  .bg-gray-900 {
+    background-color: hsl(var(--chart-bg)) !important;
+  }
+
+  .text-gray-900,
+  .text-gray-800 {
+    color: var(--color-text-primary) !important;
+  }
+
+  .text-gray-700,
+  .text-gray-600,
+  .text-gray-500,
+  .text-gray-400 {
+    color: var(--color-muted-text) !important;
+  }
+
+  .border-gray-100,
+  .border-gray-200,
+  .border-gray-300 {
+    border-color: var(--color-border) !important;
+  }
+
+  .bg-green-100 {
+    background-color: hsl(var(--success) / 0.18) !important;
+  }
+
+  .text-green-600,
+  .text-green-500,
+  .text-green-400 {
+    color: hsl(var(--success)) !important;
+  }
+
+  .bg-red-50,
+  .bg-red-100 {
+    background-color: hsl(var(--destructive) / 0.18) !important;
+  }
+
+  .text-red-700,
+  .text-red-600,
+  .text-red-500,
+  .text-red-400 {
+    color: hsl(var(--destructive)) !important;
+  }
+
+  .bg-blue-50,
+  .bg-blue-100 {
+    background-color: hsl(var(--accent) / 0.2) !important;
+  }
+
+  .text-blue-600,
+  .text-blue-500 {
+    color: hsl(var(--accent)) !important;
+  }
+
+  .ring-white {
+    --tw-ring-color: var(--color-surface);
+  }
+
+  .ring-gray-900 {
+    --tw-ring-color: hsl(var(--chart-bg));
+  }
 }

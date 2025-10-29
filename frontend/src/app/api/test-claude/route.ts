@@ -1,23 +1,28 @@
 import { NextResponse } from 'next/server';
 
 // Use environment variables for API keys
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || 'YOUR_ANTHROPIC_API_KEY';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'YOUR_OPENAI_API_KEY';
 
 export async function POST(request: Request) {
   try {
     const { prompt } = await request.json();
     
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'OpenAI-Beta': 'assistants=v2'
       },
       body: JSON.stringify({
-        model: 'claude-3-opus-20240229',
-        max_tokens: 1000,
-        messages: [
+        model: 'gpt-4o-mini',
+        temperature: 0.2,
+        max_output_tokens: 1000,
+        input: [
+          {
+            role: 'system',
+            content: 'You are a helpful AI assistant.'
+          },
           {
             role: 'user',
             content: prompt
@@ -29,7 +34,7 @@ export async function POST(request: Request) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error calling Claude API:', error);
+    console.error('Error calling OpenAI API:', error);
     return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
   }
-} 
+}

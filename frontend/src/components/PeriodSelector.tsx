@@ -68,9 +68,9 @@ export default function PeriodSelector({ value, onChange, minYear, maxYear }: Pe
   };
 
   return (
-    <div className="flex flex-col sm:flex-row gap-4 bg-white dark:bg-background-primary p-4 rounded-lg shadow-sm">
+    <div className="flex flex-col sm:flex-row gap-4 bg-card border border-default p-4 rounded-lg shadow-sm">
       <div className="flex-1">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <div className="text-sm font-medium text-primary mb-2">
           {intl.formatMessage({ id: 'reports.period.from' })}
         </div>
         <div className="flex gap-2">
@@ -100,7 +100,7 @@ export default function PeriodSelector({ value, onChange, minYear, maxYear }: Pe
       </div>
 
       <div className="flex-1">
-        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <div className="text-sm font-medium text-primary mb-2">
           {intl.formatMessage({ id: 'reports.period.to' })}
         </div>
         <div className="flex gap-2">

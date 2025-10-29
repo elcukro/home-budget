@@ -114,18 +114,18 @@ export default function InactivityChecker() {
 
   return (
     <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50"
       data-inactivity-warning
       onClick={(e) => e.stopPropagation()}
     >
       <div 
-        className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl border border-gray-200 dark:border-gray-700"
+        className="card w-full max-w-md space-y-4 rounded-xl p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+        <h2 className="text-xl font-semibold text-foreground">
           <FormattedMessage id="inactivity.warning.title" defaultMessage="Session Timeout Warning" />
         </h2>
-        <p className="mb-4 text-gray-700 dark:text-gray-300">
+        <p className="text-subtle">
           <FormattedMessage 
             id="inactivity.warning.message" 
             defaultMessage="Due to inactivity, your session will expire in {seconds} seconds."
@@ -139,7 +139,7 @@ export default function InactivityChecker() {
               console.log('[InactivityChecker] Continue session clicked');
               resetTimers();
             }}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors"
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
           >
             <FormattedMessage id="inactivity.warning.continue" defaultMessage="Continue Session" />
           </button>

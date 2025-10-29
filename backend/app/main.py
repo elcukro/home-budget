@@ -1624,12 +1624,12 @@ async def get_user_financial_data(user_id: str, db: Session):
 
 async def generate_insights(user_data: dict, api_key: str):
     """
-    Generate financial insights using the Claude API.
-    
+    Generate financial insights using the OpenAI API.
+
     Args:
         user_data: Dictionary containing user's financial data (incomes, expenses, loans)
-        api_key: Claude API key from user settings
-        
+        api_key: OpenAI API key from user settings
+
     Returns:
         InsightsResponse object with AI-generated insights
     """
@@ -1676,7 +1676,7 @@ async def generate_insights(user_data: dict, api_key: str):
                 income_categories[category] = 0
             income_categories[category] += income["amount"]
         
-        # Map language codes to full language names for Claude
+        # Map language codes to full language names for OpenAI prompt formatting
         language_names = {
             "en": "English",
             "pl": "Polish",
@@ -1687,7 +1687,7 @@ async def generate_insights(user_data: dict, api_key: str):
         # Get the full language name, default to English if not found
         language_name = language_names.get(language, "English")
         
-        # Create the prompt for Claude
+        # Create the prompt for GPT
         prompt = f"""
 You are a financial advisor analyzing a user's financial data. Based on the data provided, generate insights in the following categories:
 1. Overall Financial Health
@@ -1770,50 +1770,62 @@ Ensure your response is valid JSON and follows the exact structure above. Do not
 Remember to write all text content (titles, descriptions, action items, etc.) in {language_name}.
 """
 
-        # Make the API call to Claude
-        response = await httpx.AsyncClient().post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json"
-            },
-            json={
-                "model": "claude-3-7-sonnet-20250219",
-                "max_tokens": 4000,
-                "messages": [{
-                    "role": "user",
-                    "content": prompt
-                }]
-            },
-            timeout=60.0  # Set a longer timeout for complex analysis
-        )
+        # Make the API call to OpenAI Responses endpoint (supports project-scoped keys)
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/responses",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                    "OpenAI-Beta": "assistants=v2",
+                },
+                json={
+                    "model": "gpt-4o-mini",
+                    "temperature": 0.2,
+                    "input": [
+                        {
+                            "role": "system",
+                            "content": "You are a seasoned financial advisor who provides concise, actionable insights."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                },
+            )
         
         # Check if the request was successful
         if response.status_code != 200:
-            print(f"[Claude API] Error: {response.status_code} - {response.text}")
+            print(f"[OpenAI API] Error: {response.status_code} - {response.text}")
             
             # Provide more specific error messages based on status code
             if response.status_code == 529:
-                raise Exception(f"Claude API error: 529 - Service overloaded. The Claude API is currently experiencing high demand. Please try again later.")
+                raise Exception(f"OpenAI API error: 529 - Service overloaded. The OpenAI API is currently experiencing high demand. Please try again later.")
             elif response.status_code == 401:
-                raise Exception(f"Claude API error: 401 - Invalid API key. Please check your Claude API key in settings.")
+                raise Exception(f"OpenAI API error: 401 - Invalid API key. Please check your OpenAI API key in settings.")
             elif response.status_code == 403:
-                raise Exception(f"Claude API error: 403 - Forbidden. Your API key may not have permission to use this model.")
+                raise Exception(f"OpenAI API error: 403 - Forbidden. Your API key may not have permission to use this model.")
             elif response.status_code == 429:
-                raise Exception(f"Claude API error: 429 - Rate limit exceeded. Please try again later.")
+                raise Exception(f"OpenAI API error: 429 - Rate limit exceeded. Please try again later.")
             else:
-                raise Exception(f"Claude API error: {response.status_code}")
+                raise Exception(f"OpenAI API error: {response.status_code}")
             
         # Parse the response
-        claude_response = response.json()
-        content = claude_response.get("content", [])
-        
-        if not content or len(content) == 0:
-            raise Exception("Empty response from Claude API")
-            
-        # Extract the JSON from the response
-        text_content = content[0].get("text", "")
+        openai_response = response.json()
+        output = openai_response.get("output", [])
+
+        if not output:
+            raise Exception("Empty response from OpenAI API")
+
+        # Responses API returns a list of content blocks; extract text segments
+        content_blocks = output[0].get("content", [])
+        text_segments = [
+            block.get("text", "")
+            for block in content_blocks
+            if block.get("type") in {"output_text", "text"}
+        ]
+        text_content = "\n".join(filter(None, text_segments)).strip()
         
         # Try to parse the JSON response
         try:
@@ -1828,18 +1840,18 @@ Remember to write all text content (titles, descriptions, action items, etc.) in
             # Add metadata
             insights_data["metadata"] = {
                 "generatedAt": datetime.now().isoformat(),
-                "source": "claude-3-7-sonnet"
+                "source": "gpt-4o-mini"
             }
             
             return insights_data
             
         except json.JSONDecodeError as e:
-            print(f"[Claude API] JSON parse error: {e}")
-            print(f"[Claude API] Response content: {text_content}")
-            raise Exception(f"Failed to parse Claude API response: {e}")
+            print(f"[OpenAI API] JSON parse error: {e}")
+            print(f"[OpenAI API] Response content: {text_content}")
+            raise Exception(f"Failed to parse OpenAI API response: {e}")
             
     except Exception as e:
-        print(f"[Claude API] Error generating insights: {str(e)}")
+        print(f"[OpenAI API] Error generating insights: {str(e)}")
         
         # Return a fallback response in case of error
         sample_insight = {
@@ -1847,7 +1859,7 @@ Remember to write all text content (titles, descriptions, action items, etc.) in
             "title": "API Error",
             "description": f"We encountered an error while generating insights: {str(e)}. Please try again later.",
             "priority": "medium",
-            "actionItems": ["Check your Claude API key", "Try again later"],
+            "actionItems": ["Check your OpenAI API key", "Try again later"],
             "metrics": [
                 {
                     "label": "Error",

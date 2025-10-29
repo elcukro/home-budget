@@ -22,7 +22,6 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { FormattedMessage } from 'react-intl';
-import { useTheme } from 'next-themes';
 
 // Register ChartJS components
 ChartJS.register(
@@ -83,7 +82,7 @@ const MonthCard = ({ monthName, data }: { monthName: string; data: MonthlyData }
   const intl = useIntl();
 
   if (isSettingsLoading) {
-    return <div className="animate-pulse bg-gray-200 dark:bg-gray-700 h-24 rounded-lg"></div>;
+    return <div className="animate-pulse bg-muted h-24 rounded-lg"></div>;
   }
 
   // Extract month and year from monthName (e.g., "December 2024")
@@ -97,30 +96,30 @@ const MonthCard = ({ monthName, data }: { monthName: string; data: MonthlyData }
   const currency = settings?.currency || 'USD';
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-3 h-full border border-gray-200 dark:border-gray-700 backdrop-blur-sm bg-opacity-95 dark:bg-opacity-90">
-      <div className="border-b border-gray-200 dark:border-gray-700 pb-2 mb-2">
-        <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100">{displayName}</h3>
-        <div className={`text-xs font-semibold ${data.totals.balance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+    <div className="bg-card border border-default rounded-lg shadow-sm p-3 h-full backdrop-blur-sm bg-opacity-95">
+      <div className="border-b border-default pb-2 mb-2">
+        <h3 className="text-xs font-semibold text-primary">{displayName}</h3>
+        <div className={`text-xs font-semibold ${data.totals.balance >= 0 ? 'text-success' : 'text-destructive'}`}>
           {formatCurrency(data.totals.balance, currency)}
         </div>
       </div>
 
       <div className="space-y-1 text-xs">
         {/* Income */}
-        <div className="flex justify-between items-center text-green-600 dark:text-green-400">
+        <div className="flex justify-between items-center text-success">
           <FontAwesomeIcon icon={faArrowTrendUp} className="w-3 h-3" title={intl.formatMessage({ id: 'reports.income' })} />
           <span className="text-[11px]">{formatCurrency(data.totals.income, currency)}</span>
         </div>
 
         {/* Expenses */}
-        <div className="flex justify-between items-center text-red-600 dark:text-red-400">
+        <div className="flex justify-between items-center text-destructive">
           <FontAwesomeIcon icon={faArrowTrendDown} className="w-3 h-3" title={intl.formatMessage({ id: 'reports.expenses' })} />
           <span className="text-[11px]">{formatCurrency(data.totals.expenses, currency)}</span>
         </div>
 
         {/* Loan Payments */}
         {data.totals.loanPayments > 0 && (
-          <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
+          <div className="flex justify-between items-center text-primary">
             <FontAwesomeIcon icon={faLandmark} className="w-3 h-3" title={intl.formatMessage({ id: 'reports.loanPayments' })} />
             <span className="text-[11px]">{formatCurrency(data.totals.loanPayments, currency)}</span>
           </div>
@@ -133,8 +132,8 @@ const MonthCard = ({ monthName, data }: { monthName: string; data: MonthlyData }
 const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: string }) => {
   const intl = useIntl();
   const { settings } = useSettings();
-  const { theme } = useTheme();
-  const isDarkMode = theme === 'dark';
+  const axisColor = 'rgba(31, 28, 26, 0.9)';
+  const gridColor = 'rgba(31, 28, 26, 0.15)';
   
   const chartData = useMemo(() => {
     const monthEntries = Object.entries(data);
@@ -161,29 +160,29 @@ const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: stri
         {
           label: intl.formatMessage({ id: 'reports.income' }),
           data: totalIncome,
-          borderColor: 'rgb(34, 197, 94)',
-          backgroundColor: 'rgba(34, 197, 94, 0.5)',
+          borderColor: '#4BA56A',
+          backgroundColor: '#4BA56A33',
           tension: 0.3,
         },
         {
           label: intl.formatMessage({ id: 'reports.expenses' }),
           data: totalExpenses,
-          borderColor: 'rgb(239, 68, 68)',
-          backgroundColor: 'rgba(239, 68, 68, 0.5)',
+          borderColor: '#D65A56',
+          backgroundColor: '#D65A5633',
           tension: 0.3,
         },
         {
           label: intl.formatMessage({ id: 'reports.loanPayments' }),
           data: totalLoans,
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.5)',
+          borderColor: '#6B9F91',
+          backgroundColor: '#6B9F9133',
           tension: 0.3,
         },
         {
           label: intl.formatMessage({ id: 'reports.availableCash' }),
           data: availableCash,
-          borderColor: 'rgb(168, 85, 247)',
-          backgroundColor: 'rgba(168, 85, 247, 0.5)',
+          borderColor: '#9FD3C1',
+          backgroundColor: '#9FD3C133',
           tension: 0.3,
         },
       ],
@@ -197,17 +196,17 @@ const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: stri
       legend: {
         position: 'top' as const,
         labels: {
-          color: isDarkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.9)',
+          color: axisColor,
           font: {
             size: 12,
-            weight: isDarkMode ? ('bold' as const) : ('normal' as const)
+            weight: '600' as const,
           }
         },
       },
       tooltip: {
-        titleColor: isDarkMode ? '#ffffff' : '#000000',
-        bodyColor: isDarkMode ? '#ffffff' : '#000000',
-        backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: axisColor,
+        bodyColor: axisColor,
+        backgroundColor: 'rgba(245, 239, 232, 0.95)',
         titleFont: {
           weight: 'bold' as const
         },
@@ -232,36 +231,36 @@ const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: stri
     scales: {
       y: {
         ticks: {
-          color: isDarkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.9)',
+          color: axisColor,
           font: {
             size: 11,
-            weight: isDarkMode ? ('bold' as const) : ('normal' as const)
+            weight: '500' as const,
           },
           callback: function(value: any) {
             return formatCurrency(value, currency);
           }
         },
         grid: {
-          color: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)',
+          color: gridColor,
         }
       },
       x: {
         ticks: {
-          color: isDarkMode ? '#ffffff' : 'rgba(0, 0, 0, 0.9)',
+          color: axisColor,
           font: {
             size: 11,
-            weight: isDarkMode ? ('bold' as const) : ('normal' as const)
+            weight: '500' as const,
           }
         },
         grid: {
-          color: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)',
+          color: gridColor,
         }
       }
     }
   };
 
   return (
-    <div className="w-full h-[400px] bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-8 border border-gray-200 dark:border-gray-700 backdrop-blur-sm bg-opacity-95 dark:bg-opacity-90">
+    <div className="w-full h-[400px] bg-card border border-default rounded-lg shadow-sm p-4 mb-8 backdrop-blur-sm bg-opacity-95">
       <Line options={options} data={chartData} />
     </div>
   );
@@ -381,7 +380,7 @@ const BudgetReport = () => {
         <FormattedMessage id="reports.title" />
       </h1>
 
-      <div className="mb-8 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 border border-gray-200 dark:border-gray-700">
+      <div className="mb-8 bg-card border border-default rounded-lg shadow-sm p-4">
         <PeriodSelector
           value={periodValue}
           onChange={handlePeriodChange}
@@ -392,12 +391,12 @@ const BudgetReport = () => {
 
       {isLoading && (
         <div className="flex justify-center items-center min-h-[200px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+        <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-3 rounded relative mb-4">
           {error}
         </div>
       )}

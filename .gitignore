@@ -1,3 +1,6 @@
+home-budget.sublime-project
+home-budget.sublime-workspace
+
 # Python
 __pycache__/
 *.py[cod]
@@ -59,3 +62,4 @@ dist/
 *.log
 .vercel
 notes.txt
+ING.SECRET.KEY.txt

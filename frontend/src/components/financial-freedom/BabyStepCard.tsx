@@ -59,15 +59,15 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
     // For steps 1-3, completion is determined entirely by progress percentage
     // This ensures the visual indicator is always accurate for auto-calculated steps
     if (step.id <= 3) {
-      if (step.progress >= 100) return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700';
-      if (step.progress > 0) return 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700';
-      return 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700';
+      if (step.progress >= 100) return 'bg-success/15 border-success';
+      if (step.progress > 0) return 'bg-mint/40 border-mint/60';
+      return 'bg-muted border-default';
     } 
     // For steps 4-7, use the existing logic (manually toggled completion)
     else {
-      if (step.isCompleted) return 'bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700';
-      if (step.progress > 0) return 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700';
-      return 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700';
+      if (step.isCompleted) return 'bg-success/15 border-success';
+      if (step.progress > 0) return 'bg-mint/40 border-mint/60';
+      return 'bg-muted border-default';
     }
   };
 
@@ -83,7 +83,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
       <div className="relative w-20 h-20 flex items-center justify-center">
         <svg className="w-20 h-20 transform -rotate-90" viewBox="0 0 100 100">
           <circle
-            className="text-gray-200 dark:text-gray-700 stroke-current"
+            stroke="#E5DDD2"
             strokeWidth="8"
             fill="transparent"
             r={radius}
@@ -91,11 +91,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
             cy="50"
           />
           <circle
-            className={`${
-              isComplete
-                ? 'text-green-500 dark:text-green-400'
-                : 'text-blue-500 dark:text-blue-400'
-            } stroke-current`}
+            stroke={isComplete ? '#4BA56A' : '#6B9F91'}
             strokeWidth="8"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
@@ -108,9 +104,9 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           {isComplete ? (
-            <CheckCircleIcon className="w-8 h-8 text-green-500 dark:text-green-400" />
+            <CheckCircleIcon className="w-8 h-8 text-success" />
           ) : (
-            <span className="text-lg font-bold text-default">{step.progress}%</span>
+            <span className="text-lg font-bold text-primary">{step.progress}%</span>
           )}
         </div>
       </div>
@@ -161,13 +157,13 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
           <div className="flex justify-end space-x-2">
             <button
               onClick={handleCancel}
-              className="px-3 py-1 border border-default rounded-md text-secondary hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="px-3 py-1 border border-default rounded-md text-secondary hover:bg-muted"
             >
               <XMarkIcon className="w-5 h-5" />
             </button>
             <button
               onClick={handleSave}
-              className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              className="px-3 py-1 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
             >
               <CheckIcon className="w-5 h-5" />
             </button>
@@ -299,7 +295,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
         )}
 
         {step.notes && (
-          <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-md">
+          <div className="mt-3 p-2 bg-muted rounded-md">
             <p className="text-xs text-secondary italic">{step.notes}</p>
           </div>
         )}
@@ -311,7 +307,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
     <div className={`p-4 rounded-lg border ${getStepStatusClass()} transition-all`}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-default">
+          <h3 className="text-lg font-semibold text-primary">
             {step.id === 1 
               ? intl.formatMessage({ id: step.titleKey }, { amount: formatCurrency(step.targetAmount || 3000) })
               : step.id === 3
@@ -339,7 +335,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
           <>
             <button
               onClick={() => setIsEditing(true)}
-              className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 flex items-center"
+              className="px-3 py-1 text-xs bg-muted text-secondary rounded-md hover:bg-mint/40 flex items-center transition-colors"
             >
               <PencilIcon className="w-3 h-3 mr-1" />
               {intl.formatMessage({ id: 'financialFreedom.actions.updateProgress' })}
@@ -348,8 +344,8 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
               onClick={handleToggleComplete}
               className={`px-3 py-1 text-xs rounded-md flex items-center ${
                 step.isCompleted
-                  ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-300 dark:hover:bg-yellow-800'
-                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-800'
+                  ? 'bg-sand/60 text-primary hover:bg-sand/80'
+                  : 'bg-success/20 text-success hover:bg-success/30'
               }`}
             >
               <CheckCircleIcon className="w-3 h-3 mr-1" />

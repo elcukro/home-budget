@@ -27,12 +27,12 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg">
-          <h2 className="text-red-800 dark:text-red-400 font-semibold">Something went wrong</h2>
-          <p className="text-red-600 dark:text-red-300 mt-2">{this.state.error?.message}</p>
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-destructive">
+          <h2 className="font-semibold">Something went wrong</h2>
+          <p className="mt-2 text-sm text-destructive-foreground/80">{this.state.error?.message}</p>
           <button
             onClick={() => this.setState({ hasError: false })}
-            className="mt-4 px-4 py-2 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/30 transition-colors"
+            className="mt-4 inline-flex items-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow-sm transition-colors hover:bg-destructive/90"
           >
             Try again
           </button>
@@ -42,4 +42,4 @@ export default class ErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
-} 
+}

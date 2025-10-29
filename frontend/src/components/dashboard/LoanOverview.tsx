@@ -24,16 +24,16 @@ export default function LoanOverview({ loans, formatCurrency }: LoanOverviewProp
   const totalMonthlyPayments = loans.reduce((sum, loan) => sum + loan.monthlyPayment, 0);
 
   return (
-    <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow h-full flex flex-col">
+    <div className="bg-card border border-default p-6 rounded-lg shadow-sm h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h2 className="text-lg font-semibold text-primary">
           {intl.formatMessage({ id: 'dashboard.loans.title' })}
         </h2>
         <div className="text-right">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-secondary">
             {intl.formatMessage({ id: 'dashboard.loans.totalBalance' })}
           </p>
-          <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          <p className="text-xl font-semibold text-primary">
             {formatCurrency(totalBalance)}
           </p>
         </div>
@@ -41,19 +41,19 @@ export default function LoanOverview({ loans, formatCurrency }: LoanOverviewProp
 
       <div className="space-y-4 flex-grow">
         {loans.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-4">
+          <p className="text-secondary text-center py-4">
             {intl.formatMessage({ id: 'dashboard.loans.noLoans' })}
           </p>
         ) : (
           <>
             {loans.map((loan) => (
-              <div key={loan.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <div key={loan.id} className="border border-default rounded-lg p-4 bg-muted">
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                    <h3 className="font-medium text-primary">
                       {loan.description}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-secondary">
                       {intl.formatMessage(
                         { id: 'dashboard.loans.interestRate' },
                         { rate: loan.interestRate.toFixed(2) }
@@ -61,10 +61,10 @@ export default function LoanOverview({ loans, formatCurrency }: LoanOverviewProp
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium text-gray-900 dark:text-gray-100">
+                    <p className="font-medium text-primary">
                       {formatCurrency(loan.balance)}
                     </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-secondary">
                       {intl.formatMessage(
                         { id: 'dashboard.loans.monthlyPayment' },
                         { amount: formatCurrency(loan.monthlyPayment) }
@@ -74,7 +74,7 @@ export default function LoanOverview({ loans, formatCurrency }: LoanOverviewProp
                 </div>
                 
                 <div className="mt-2">
-                  <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="flex justify-between text-xs text-secondary mb-1">
                     <span>
                       {intl.formatMessage(
                         { id: 'dashboard.loans.progress' },
@@ -83,9 +83,9 @@ export default function LoanOverview({ loans, formatCurrency }: LoanOverviewProp
                     </span>
                     <span>{formatCurrency(loan.totalAmount)}</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className="w-full bg-muted rounded-full h-2">
                     <div
-                      className="bg-blue-600 h-2 rounded-full"
+                      className="bg-primary h-2 rounded-full"
                       style={{ width: `${loan.progress * 100}%` }}
                     />
                   </div>
@@ -93,12 +93,12 @@ export default function LoanOverview({ loans, formatCurrency }: LoanOverviewProp
               </div>
             ))}
 
-            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="mt-4 pt-4 border-t border-default">
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600 dark:text-gray-400">
+                <span className="text-secondary">
                   {intl.formatMessage({ id: 'dashboard.loans.totalMonthlyPayments' })}
                 </span>
-                <span className="font-medium text-gray-900 dark:text-gray-100">
+                <span className="font-medium text-primary">
                   {formatCurrency(totalMonthlyPayments)}
                 </span>
               </div>

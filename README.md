@@ -11,7 +11,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - 💵 **Savings Management**: Track your savings with categories and goals, deposits and withdrawals
 - 📈 **Financial Reports**: Generate detailed reports and analytics with interactive charts
 - 🔄 **Recurring Transactions**: Set up and manage recurring income, expenses, and savings
-- 🤖 **AI Financial Insights**: Personalized financial analysis and recommendations powered by Claude AI, with multilingual support and efficient caching for quick access
+- 🤖 **AI Financial Insights**: Personalized financial analysis and recommendations powered by OpenAI GPT, with multilingual support and efficient caching for quick access
 - 🛣️ **Financial Freedom Journey**: Track your progress through Dave Ramsey's 7 Baby Steps with customizable goals and detailed progress tracking
 - 🏦 **Banking Integration**: Securely connect to bank accounts and access transaction data using GoCardless Bank Account Data API
 
@@ -56,7 +56,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - Alembic for database migrations
 - JWT for authentication
 - CORS for secure cross-origin requests
-- Claude AI integration for intelligent financial insights
+- OpenAI GPT integration for intelligent financial insights
 - GoCardless API integration for secure bank account access
 
 ## 📝 Changelog
@@ -106,7 +106,7 @@ A modern, full-stack personal finance management application built with Next.js,
   - Added multilingual support for AI-generated financial insights
   - Implemented efficient caching system with language-specific entries
   - Optimized database queries with indexed lookups
-  - Added comprehensive error handling for Claude API interactions
+  - Added comprehensive error handling for OpenAI API interactions
 
 ## 🚀 Getting Started
 
@@ -116,7 +116,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - Docker and Docker Compose
 - PostgreSQL
 - Google OAuth credentials (for authentication)
-- Claude API key (for AI insights feature)
+- OpenAI API key (for AI insights feature)
 
 ### Installation
 
@@ -142,7 +142,7 @@ Backend (.env):
 DATABASE_URL=postgresql://user:password@localhost:5432/homebudget
 SECRET_KEY=your_secret_key
 CORS_ORIGINS=http://localhost:3000
-CLAUDE_API_KEY=your_claude_api_key
+OPENAI_API_KEY=your_openai_api_key
 GOCARDLESS_SECRET_ID=your_gocardless_secret_id
 GOCARDLESS_SECRET_KEY=your_gocardless_secret_key
 ```
@@ -223,7 +223,7 @@ The Home Budget Application features an intelligent AI-powered financial analysi
 
 ### How It Works
 1. The system analyzes your income, expenses, and loan data
-2. Claude AI generates personalized insights and recommendations
+2. OpenAI GPT generates personalized insights and recommendations
 3. Results are cached in the database with language-specific entries
 4. Cached insights are marked as stale when your financial data changes
 5. You can manually refresh insights at any time

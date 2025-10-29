@@ -65,7 +65,40 @@
       "2025-12": "Grudzień 2025"
     }
   },
+  "validation": {
+    "required": "To pole jest wymagane.",
+    "amount": {
+      "nonPositive": "Wprowadź kwotę większą od 0.",
+      "tooLarge": "Kwota jest zbyt wysoka.",
+      "nonNegative": "Kwota nie może być ujemna."
+    },
+    "description": {
+      "required": "Opis jest wymagany.",
+      "tooLong": "Opis może mieć maksymalnie 100 znaków."
+    },
+    "date": {
+      "future": "Data nie może być w przyszłości.",
+      "tooEarly": "Data nie może być wcześniejsza niż 2000 rok."
+    },
+    "interestRate": {
+      "negative": "Oprocentowanie nie może być ujemne.",
+      "max": "Oprocentowanie nie może przekraczać 100%."
+    },
+    "monthlyPayment": {
+      "negative": "Rata miesięczna nie może być ujemna.",
+      "exceedsAmount": "Rata miesięczna nie może przekraczać wartości pożyczki."
+    },
+    "remainingBalance": {
+      "negative": "Pozostałe saldo nie może być ujemne.",
+      "exceedsAmount": "Pozostałe saldo nie może przekraczać wartości pożyczki."
+    },
+    "categoryRequired": "Wybierz kategorię.",
+    "termMonths": {
+      "min": "Okres musi wynosić co najmniej 1 miesiąc."
+    }
+  },
   "navigation": {
+    "onboarding": "Onboarding",
     "dashboard": "Panel",
     "income": "Przychody",
     "expenses": "Wydatki",
@@ -130,8 +163,8 @@
         "generatedAt": "Wygenerowano {date}",
         "usingCached": "Używanie zapisanej analizy",
         "apiErrors": {
-          "overloaded": "Claude AI jest obecnie przeciążony. Spróbuj ponownie później.",
-          "invalidKey": "Nieprawidłowy klucz API. Sprawdź swój klucz API Claude w ustawieniach.",
+          "overloaded": "OpenAI jest obecnie przeciążone. Spróbuj ponownie później.",
+          "invalidKey": "Nieprawidłowy klucz API. Sprawdź swój klucz API OpenAI w ustawieniach.",
           "forbidden": "Twój klucz API nie ma uprawnień do korzystania z tego modelu.",
           "rateLimit": "Przekroczono limit zapytań. Spróbuj ponownie później.",
           "generic": "Wystąpił błąd podczas generowania analizy. Spróbuj ponownie później."
@@ -207,20 +240,12 @@
   },
   "income": {
     "title": "Zarządzanie Przychodami",
-    "addNew": "Dodaj Nowy Przychód",
-    "incomeHistory": "Lista Przychodów",
-    "source": "Źródło",
-    "amount": "Kwota",
-    "date": "Data",
-    "recurring": "Przychód Cykliczny Miesięczny",
+    "subtitle": "Śledź zarówno cykliczne, jak i jednorazowe źródła przychodu.",
+    "incomeHistory": "Lista przychodów",
     "noEntries": "Brak wpisów przychodów",
-    "category": "Kategoria",
-    "description": "Opis",
-    "tooltips": {
-      "source": "Wprowadź źródło przychodu (np. Wynagrodzenie, Freelance, Inwestycje)",
-      "amount": "Wprowadź kwotę w wybranej walucie",
-      "date": "Wybierz datę otrzymania lub oczekiwanego otrzymania przychodu",
-      "recurring": "Zaznacz, jeśli otrzymujesz ten przychód regularnie co miesiąc (np. wynagrodzenie)"
+    "loadError": "Nie udało się załadować przychodów. Spróbuj ponownie później.",
+    "actions": {
+      "add": "Dodaj przychód"
     },
     "categories": {
       "salary": "Wynagrodzenie",
@@ -235,38 +260,37 @@
       "description": "Opis",
       "amount": "Kwota",
       "date": "Data",
-      "recurring": "Przychód Cykliczny Miesięczny",
-      "submit": "Dodaj Przychód"
+      "recurring": "Przychód cykliczny miesięczny"
     },
     "table": {
       "category": "Kategoria",
       "description": "Opis",
       "amount": "Kwota",
       "date": "Data",
-      "created_at": "Data utworzenia",
-      "actions": "Akcje",
-      "delete": "Usuń"
+      "recurring": "Cykliczny?",
+      "actions": "Akcje"
     },
-    "deleting": "Usuwanie przychodu...",
-    "deleteSuccess": "Przychód został pomyślnie usunięty",
-    "deleteFailed": "Nie udało się usunąć przychodu",
-    "updateSuccess": "Przychód został pomyślnie zaktualizowany",
-    "createSuccess": "Przychód został pomyślnie dodany",
-    "errors": {
-      "deleteFailed": "Nie udało się usunąć przychodu",
-      "updateFailed": "Nie udało się zaktualizować przychodu"
+    "toast": {
+      "createSuccess": "Przychód został pomyślnie dodany.",
+      "updateSuccess": "Przychód został pomyślnie zaktualizowany.",
+      "deleteSuccess": "Przychód został pomyślnie usunięty.",
+      "genericError": "Coś poszło nie tak. Spróbuj ponownie."
+    },
+    "deleteDialog": {
+      "title": "Usuń przychód",
+      "description": "Czy na pewno chcesz usunąć ten przychód? Tego działania nie można cofnąć.",
+      "confirm": "Usuń"
     }
   },
   "expenses": {
     "title": "Zarządzanie Wydatkami",
-    "addNew": "Dodaj Nowy Wydatek",
-    "expenseHistory": "Lista Wydatków",
-    "category": "Kategoria",
-    "description": "Opis",
-    "amount": "Kwota",
-    "date": "Data",
-    "recurring": "Wydatek Cykliczny Miesięczny",
+    "subtitle": "Rejestruj regularne rachunki oraz jednorazowe wydatki.",
+    "expenseHistory": "Lista wydatków",
     "noEntries": "Brak wpisów wydatków",
+    "loadError": "Nie udało się załadować wydatków. Spróbuj ponownie później.",
+    "actions": {
+      "add": "Dodaj wydatek"
+    },
     "categories": {
       "housing": "Mieszkanie",
       "transportation": "Transport",
@@ -277,65 +301,82 @@
       "entertainment": "Rozrywka",
       "other": "Inne"
     },
-    "tooltips": {
-      "category": "Wybierz kategorię, która najlepiej opisuje twój wydatek",
-      "description": "Wprowadź krótki opis wydatku",
-      "amount": "Wprowadź kwotę wydatku w wybranej walucie",
-      "date": "Wybierz datę dokonania wydatku",
-      "recurring": "Zaznacz, jeśli ten wydatek występuje regularnie co miesiąc"
+    "form": {
+      "category": "Kategoria",
+      "category.select": "Wybierz kategorię...",
+      "description": "Opis",
+      "amount": "Kwota",
+      "date": "Data",
+      "recurring": "Wydatek cykliczny miesięczny"
     },
-    "deleting": "Usuwanie wydatku...",
-    "deleteSuccess": "Wydatek został pomyślnie usunięty",
-    "deleteFailed": "Nie udało się usunąć wydatku",
-    "errors": {
-      "deleteFailed": "Nie udało się usunąć wydatku"
+    "table": {
+      "category": "Kategoria",
+      "description": "Opis",
+      "amount": "Kwota",
+      "date": "Data",
+      "recurring": "Cykliczny?",
+      "actions": "Akcje"
+    },
+    "toast": {
+      "createSuccess": "Wydatek został pomyślnie dodany.",
+      "updateSuccess": "Wydatek został pomyślnie zaktualizowany.",
+      "deleteSuccess": "Wydatek został pomyślnie usunięty.",
+      "genericError": "Coś poszło nie tak. Spróbuj ponownie."
+    },
+    "deleteDialog": {
+      "title": "Usuń wydatek",
+      "description": "Czy na pewno chcesz usunąć ten wydatek? Tego działania nie można cofnąć.",
+      "confirm": "Usuń"
     }
   },
   "loans": {
     "title": "Zarządzanie Pożyczkami",
-    "addNew": "Dodaj Nową Pożyczkę",
-    "loanHistory": "Lista Pożyczek",
-    "loanType": "Typ Pożyczki",
-    "type": "Typ",
-    "description": "Opis",
-    "principalAmount": "Kwota Główna",
-    "remainingBalance": "Pozostała Kwota",
-    "interestRate": "Stopa Procentowa",
-    "monthlyPayment": "Rata Miesięczna",
-    "termMonths": "Okres (Miesiące)",
-    "startDate": "Data Rozpoczęcia",
+    "subtitle": "Monitoruj salda, oprocentowanie i harmonogram spłat dla każdej pożyczki.",
+    "loanHistory": "Lista pożyczek",
     "noEntries": "Brak wpisów pożyczek",
+    "loadError": "Nie udało się załadować pożyczek. Spróbuj ponownie później.",
+    "actions": {
+      "add": "Dodaj pożyczkę"
+    },
     "types": {
       "mortgage": "Hipoteka",
-      "car": "Kredyt Samochodowy",
-      "personal": "Pożyczka Osobista",
-      "student": "Kredyt Studencki",
+      "car": "Kredyt samochodowy",
+      "personal": "Pożyczka osobista",
+      "student": "Kredyt studencki",
       "other": "Inne"
     },
-    "tooltips": {
-      "loanType": "Wybierz typ pożyczki",
-      "type": "Wybierz typ pożyczki",
-      "description": "Wprowadź krótki opis pożyczki",
-      "principalAmount": "Wprowadź pierwotną kwotę pożyczki",
-      "remainingBalance": "Wprowadź aktualną pozostałą kwotę do spłaty",
-      "interestRate": "Wprowadź roczną stopę procentową",
-      "monthlyPayment": "Wprowadź stałą kwotę raty miesięcznej",
-      "termMonths": "Wprowadź całkowity okres spłaty w miesiącach",
-      "startDate": "Wybierz datę rozpoczęcia pożyczki"
+    "form": {
+      "type": "Typ pożyczki",
+      "type.select": "Wybierz typ pożyczki...",
+      "description": "Opis",
+      "principalAmount": "Kwota główna",
+      "remainingBalance": "Pozostała kwota",
+      "interestRate": "Stopa procentowa (%)",
+      "monthlyPayment": "Rata miesięczna",
+      "termMonths": "Okres (miesiące)",
+      "startDate": "Data rozpoczęcia"
     },
-    "deleting": "Usuwanie pożyczki...",
-    "deleteSuccess": "Pożyczka została pomyślnie usunięta",
-    "deleteFailed": "Nie udało się usunąć pożyczki",
-    "updating": "Aktualizowanie pożyczki...",
-    "updateSuccess": "Pożyczka została pomyślnie zaktualizowana",
-    "updateFailed": "Nie udało się zaktualizować pożyczki",
-    "adding": "Dodawanie pożyczki...",
-    "addSuccess": "Pożyczka została pomyślnie dodana",
-    "addFailed": "Nie udało się dodać pożyczki",
-    "errors": {
-      "deleteFailed": "Nie udało się usunąć pożyczki",
-      "updateFailed": "Nie udało się zaktualizować pożyczki",
-      "addFailed": "Nie udało się dodać pożyczki"
+    "table": {
+      "type": "Typ pożyczki",
+      "description": "Opis",
+      "principalAmount": "Kwota główna",
+      "remainingBalance": "Pozostała kwota",
+      "interestRate": "Oprocentowanie",
+      "monthlyPayment": "Rata miesięczna",
+      "termMonths": "Okres (miesiące)",
+      "startDate": "Data rozpoczęcia",
+      "actions": "Akcje"
+    },
+    "toast": {
+      "createSuccess": "Pożyczka została pomyślnie dodana.",
+      "updateSuccess": "Pożyczka została pomyślnie zaktualizowana.",
+      "deleteSuccess": "Pożyczka została pomyślnie usunięta.",
+      "genericError": "Coś poszło nie tak. Spróbuj ponownie."
+    },
+    "deleteDialog": {
+      "title": "Usuń pożyczkę",
+      "description": "Czy na pewno chcesz usunąć tę pożyczkę? Tego działania nie można cofnąć.",
+      "confirm": "Usuń"
     }
   },
   "reports": {
@@ -399,16 +440,16 @@
       "pl": "Polski"
     },
     "currencies": {
-      "USD": "Dolar Amerykański ($)",
+      "USD": "Dolar amerykański ($)",
       "EUR": "Euro (€)",
-      "GBP": "Funt Brytyjski (£)",
-      "JPY": "Jen Japoński (¥)",
-      "PLN": "Złoty Polski (zł)"
+      "GBP": "Funt brytyjski (£)",
+      "JPY": "Jen japoński (¥)",
+      "PLN": "Złoty polski (zł)"
     },
     "ai": {
       "title": "Konfiguracja AI Insights",
-      "apiKey": "Klucz API Claude",
-      "apiKeyDescription": "Wprowadź klucz API Claude, aby włączyć spersonalizowane analizy",
+      "apiKey": "Klucz API OpenAI",
+      "apiKeyDescription": "Wprowadź klucz API OpenAI, aby włączyć spersonalizowane analizy",
       "frequency": {
         "label": "Częstotliwość odświeżania analiz",
         "daily": "Codziennie",
@@ -419,10 +460,13 @@
       "lastGenerated": "Ostatnio wygenerowano: {date}",
       "saveSuccess": "Ustawienia AI zostały zapisane pomyślnie",
       "testConnection": "Testuj połączenie",
-      "connectionSuccess": "Pomyślnie połączono z Claude AI",
+      "connectionSuccess": "Pomyślnie połączono z OpenAI",
       "connectionError": "Błąd połączenia: {error}"
     },
-    "save": "Zapisz Ustawienia",
+    "tabs": {
+      "importExport": "Import i eksport",
+      "banking": "Połączenia bankowe"
+    },
     "noData": "Brak dostępnych ustawień",
     "export": {
       "title": "Eksport danych",
@@ -433,16 +477,20 @@
     },
     "import": {
       "title": "Import danych",
-      "description": "Importuj wcześniej wyeksportowane dane w formacie JSON. Spowoduje to dodanie wszystkich zaimportowanych rekordów do bieżących danych.",
-      "confirmTitle": "Potwierdź import danych",
-      "confirmMessage": "Czy chcesz usunąć istniejące dane dotyczące Przychodów, Wydatków i Pożyczek przed zaimportowaniem nowych danych?",
-      "keepExisting": "Zachowaj istniejące dane",
-      "removeExisting": "Usuń istniejące dane"
+      "description": "Importuj wcześniej wyeksportowane dane w formacie JSON. Zostaną one dodane do bieżących rekordów.",
+      "upload": "Importuj dane"
+    },
+    "banking": {
+      "title": "Połączone konta bankowe",
+      "noConnections": "Brak połączeń bankowych.",
+      "requisition": "Rekwizycja",
+      "expires": "Wygasa",
+      "remove": "Usuń"
     },
     "tooltips": {
       "language": "Wybierz preferowany język aplikacji",
       "currency": "Wybierz preferowaną walutę dla obliczeń finansowych",
-      "claudeApiKey": "Wprowadź swój klucz API Claude, aby włączyć analizy AI",
+      "claudeApiKey": "Wprowadź swój klucz API OpenAI, aby włączyć analizy AI",
       "export": "Eksportuj swoje dane w formacie JSON, CSV lub Excel do kopii zapasowej lub analizy",
       "import": "Importuj wcześniej wyeksportowane dane, aby przywrócić lub połączyć je z bieżącymi rekordami",
       "emergencyFundTarget": "Ustaw kwotę docelową dla Kroku 1 (Początkowy Fundusz Awaryjny)",
@@ -452,8 +500,8 @@
       "language": "Język",
       "currency": "Waluta",
       "submit": "Zapisz ustawienia",
-      "claudeApiKey": "Klucz API Claude",
-      "claudeApiKeyPlaceholder": "Wprowadź swój klucz API Claude"
+      "claudeApiKey": "Klucz API OpenAI",
+      "claudeApiKeyPlaceholder": "Wprowadź swój klucz API OpenAI"
     },
     "messages": {
       "success": "Ustawienia zostały zaktualizowane",
@@ -462,10 +510,13 @@
       "notLoggedIn": "Musisz być zalogowany, aby uzyskać dostęp do ustawień",
       "exportSuccess": "Dane zostały wyeksportowane",
       "exportError": "Nie udało się wyeksportować danych",
-      "claudeApiKeyRequired": "Klucz API Claude jest wymagany do analiz AI",
+      "claudeApiKeyRequired": "Klucz API OpenAI jest wymagany do analiz AI",
       "importSuccess": "Dane zostały zaimportowane pomyślnie",
       "importError": "Nie udało się zaimportować danych. Sprawdź format pliku i spróbuj ponownie.",
-      "currencyConverted": "Twój docelowy fundusz awaryjny został przeliczony z {oldCurrency} na {newCurrency}: {amount}"
+      "currencyConverted": "Twój docelowy fundusz awaryjny został przeliczony z {oldCurrency} na {newCurrency}: {amount}",
+      "bankDeleteSuccess": "Połączenie bankowe zostało usunięte.",
+      "bankDeleteError": "Nie udało się usunąć połączenia bankowego.",
+      "confirmBankDelete": "Czy na pewno chcesz usunąć to połączenie bankowe?"
     },
     "financialFreedom": {
       "title": "Ustawienia Wolności Finansowej",
@@ -598,73 +649,75 @@
     }
   },
   "savings": {
-    "title": "Zarządzanie Oszczędnościami",
-    "addNew": "Dodaj Nową Oszczędność",
+    "title": "Zarządzanie oszczędnościami",
+    "subtitle": "Śledź wpłaty, wypłaty i cele oszczędnościowe w jednym miejscu.",
+    "actions": {
+      "add": "Dodaj oszczędność"
+    },
     "categories": {
-      "emergency_fund": "Fundusz Awaryjny",
+      "emergency_fund": "Fundusz awaryjny",
       "retirement": "Emerytura",
-      "college": "Fundusz Edukacyjny",
-      "general": "Ogólne Oszczędności",
+      "college": "Fundusz edukacyjny",
+      "general": "Ogólne oszczędności",
       "investment": "Inwestycje",
       "other": "Inne"
-    },
-    "fields": {
-      "category": "Kategoria",
-      "description": "Opis",
-      "amount": "Kwota",
-      "date": "Data",
-      "isRecurring": "Oszczędność Cykliczna",
-      "targetAmount": "Kwota Docelowa",
-      "savingType": "Typ"
     },
     "types": {
       "deposit": "Wpłata",
       "withdrawal": "Wypłata"
     },
     "summary": {
-      "title": "Podsumowanie Oszczędności",
-      "totalSavings": "Łączne Oszczędności",
-      "monthlyContribution": "Miesięczna Składka",
-      "emergencyFund": {
-        "title": "Fundusz Awaryjny",
-        "target": "Cel: {amount}",
-        "current": "Aktualnie: {amount}",
-        "progress": "Postęp: {percent}%",
-        "remaining": "Pozostało: {amount}"
-      },
-      "categoryTotals": "Sumy Kategorii",
-      "recentTransactions": "Ostatnie Transakcje"
-    },
-    "tooltips": {
-      "category": "Wybierz kategorię dla tej oszczędności",
-      "description": "Wprowadź opis dla tej oszczędności",
-      "amount": "Wprowadź kwotę w wybranej walucie",
-      "date": "Wybierz datę oszczędności",
-      "isRecurring": "Zaznacz, jeśli jest to cykliczna oszczędność miesięczna",
-      "targetAmount": "Opcjonalnie: Ustaw kwotę docelową dla tej oszczędności",
-      "savingType": "Wybierz czy jest to wpłata czy wypłata"
-    },
-    "messages": {
-      "created": "Oszczędność utworzona pomyślnie",
-      "updated": "Oszczędność zaktualizowana pomyślnie",
-      "deleted": "Oszczędność usunięta pomyślnie",
-      "error": {
-        "create": "Błąd podczas tworzenia oszczędności",
-        "update": "Błąd podczas aktualizacji oszczędności",
-        "delete": "Błąd podczas usuwania oszczędności",
-        "fetch": "Błąd podczas pobierania oszczędności"
-      }
+      "totalSavings": "Łączne oszczędności",
+      "monthlyContribution": "Miesięczna składka",
+      "recentTransactions": "Ostatnie transakcje",
+      "noRecent": "Brak ostatnich transakcji"
     },
     "filters": {
-      "title": "Filtry",
-      "category": "Filtruj według Kategorii",
-      "dateRange": "Zakres Dat",
-      "startDate": "Data Początkowa",
-      "endDate": "Data Końcowa",
-      "apply": "Zastosuj Filtry",
-      "clear": "Wyczyść Filtry"
+      "category": "Wszystkie kategorie",
+      "startDate": "Data początkowa",
+      "endDate": "Data końcowa",
+      "apply": "Zastosuj filtry",
+      "clear": "Wyczyść filtry"
     },
-    "noData": "Brak zapisów oszczędności",
-    "loading": "Ładowanie danych oszczędności..."
+    "form": {
+      "category": "Kategoria",
+      "category.select": "Wybierz kategorię...",
+      "description": "Opis",
+      "amount": "Kwota",
+      "date": "Data",
+      "savingType": "Typ",
+      "isRecurring": "Oszczędność cykliczna",
+      "targetAmount": "Kwota docelowa"
+    },
+    "table": {
+      "category": "Kategoria",
+      "description": "Opis",
+      "amount": "Kwota",
+      "date": "Data",
+      "type": "Typ",
+      "recurring": "Cykliczna?",
+      "targetAmount": "Cel",
+      "actions": "Akcje"
+    },
+    "transactions": "Transakcje",
+    "toast": {
+      "createSuccess": "Oszczędność została pomyślnie dodana.",
+      "updateSuccess": "Oszczędność została pomyślnie zaktualizowana.",
+      "deleteSuccess": "Oszczędność została pomyślnie usunięta.",
+      "genericError": "Coś poszło nie tak. Spróbuj ponownie."
+    },
+    "dialog": {
+      "createTitle": "Dodaj wpis oszczędności",
+      "editTitle": "Edytuj wpis oszczędności",
+      "createSubmit": "Dodaj oszczędność",
+      "editSubmit": "Zapisz zmiany"
+    },
+    "deleteDialog": {
+      "title": "Usuń oszczędność",
+      "description": "Czy na pewno chcesz usunąć tę oszczędność? Tego działania nie można cofnąć.",
+      "confirm": "Usuń"
+    },
+    "noEntries": "Brak zapisów oszczędności",
+    "loadError": "Nie udało się załadować oszczędności. Spróbuj ponownie później."
   }
-} 
+}

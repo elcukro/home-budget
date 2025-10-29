@@ -28,8 +28,8 @@ const InsightsStatusBanner: React.FC<InsightsStatusBannerProps> = ({
   };
 
   const getStatusColor = () => {
-    if (!metadata.isCached) return 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300';
-    return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300';
+    if (!metadata.isCached) return 'bg-success/15';
+    return 'bg-mint/40';
   };
 
   // Calculate days since last refresh
@@ -48,7 +48,7 @@ const InsightsStatusBanner: React.FC<InsightsStatusBannerProps> = ({
   };
 
   return (
-    <div className={`mb-6 p-4 rounded-lg ${getStatusColor()}`}>
+    <div className={`mb-6 p-4 rounded-lg ${getStatusColor()} text-primary`}>
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
           <ClockIcon className="h-5 w-5 mt-0.5 flex-shrink-0" />
@@ -125,7 +125,7 @@ const InsightsStatusBanner: React.FC<InsightsStatusBannerProps> = ({
         <button
           onClick={onRefresh}
           disabled={isLoading}
-          className="flex items-center gap-2 px-3 py-2 rounded-md bg-white/10 hover:bg-white/20 transition-colors duration-200"
+          className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 hover:bg-primary/20 text-primary transition-colors duration-200 disabled:opacity-60"
         >
           <ArrowPathIcon className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           <span className="text-sm font-medium">

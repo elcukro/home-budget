@@ -77,6 +77,38 @@
       "2026-12": "December 2026"
     }
   },
+  "validation": {
+    "required": "This field is required.",
+    "amount": {
+      "nonPositive": "Enter an amount greater than 0.",
+      "tooLarge": "The amount is too large.",
+      "nonNegative": "Amount cannot be negative."
+    },
+    "description": {
+      "required": "Description is required.",
+      "tooLong": "Description must be at most 100 characters."
+    },
+    "date": {
+      "future": "Date cannot be in the future.",
+      "tooEarly": "Date cannot be before 2000."
+    },
+    "interestRate": {
+      "negative": "Interest rate cannot be negative.",
+      "max": "Interest rate cannot exceed 100%."
+    },
+    "monthlyPayment": {
+      "negative": "Monthly payment cannot be negative.",
+      "exceedsAmount": "Monthly payment cannot exceed the loan amount."
+    },
+    "remainingBalance": {
+      "negative": "Remaining balance cannot be negative.",
+      "exceedsAmount": "Remaining balance cannot exceed the loan amount."
+    },
+    "categoryRequired": "Select a category.",
+    "termMonths": {
+      "min": "Term must be at least 1 month."
+    }
+  },
   "auth": {
     "welcome": "Welcome to Home Budget",
     "signInPrompt": "Sign in to manage your finances",
@@ -95,6 +127,7 @@
     }
   },
   "navigation": {
+    "onboarding": "Onboarding",
     "dashboard": "Dashboard",
     "income": "Income",
     "expenses": "Expenses",
@@ -160,8 +193,8 @@
         "refreshNeeded": "Your financial data has changed. Refresh insights for updated analysis.",
         "upToDate": "Insights are up to date with your current financial data.",
         "apiErrors": {
-          "overloaded": "Claude AI is currently experiencing high demand. Please try again later.",
-          "invalidKey": "Invalid API key. Please check your Claude API key in settings.",
+          "overloaded": "OpenAI is currently experiencing high demand. Please try again later.",
+          "invalidKey": "Invalid API key. Please check your OpenAI API key in settings.",
           "forbidden": "Your API key doesn't have permission to use this model.",
           "rateLimit": "Rate limit exceeded. Please try again later.",
           "generic": "An error occurred while generating insights. Please try again later."
@@ -237,14 +270,13 @@
   },
   "income": {
     "title": "Income Management",
-    "addNew": "Add New Income",
-    "category": "Category",
-    "incomeHistory": "List of Incomes",
-    "description": "Description",
-    "amount": "Amount",
-    "date": "Date",
-    "recurring": "Recurring Monthly Income",
+    "subtitle": "Track both recurring and one-off income sources.",
+    "incomeHistory": "List of incomes",
     "noEntries": "No income entries yet",
+    "loadError": "Failed to load income data. Please try again later.",
+    "actions": {
+      "add": "Add income"
+    },
     "categories": {
       "salary": "Salary",
       "freelance": "Freelance",
@@ -252,51 +284,43 @@
       "rental": "Rental Income",
       "other": "Other"
     },
-    "tooltips": {
-      "category": "Select the category that best describes your income",
-      "description": "Enter a brief description of the income",
-      "amount": "Enter the income amount in your selected currency",
-      "date": "Select the date when you received or expect to receive this income",
-      "recurring": "Check this if you receive this income regularly each month",
-      "source": "Enter the source of your income (e.g., employer name, investment platform)"
-    },
     "form": {
       "category": "Category",
       "category.select": "Select a category...",
       "description": "Description",
       "amount": "Amount",
       "date": "Date",
-      "recurring": "Recurring Monthly Income",
-      "submit": "Add Income"
+      "recurring": "Recurring monthly income"
     },
     "table": {
       "category": "Category",
       "description": "Description",
       "amount": "Amount",
       "date": "Date",
-      "created_at": "Created At",
-      "actions": "Actions",
-      "delete": "Delete"
+      "recurring": "Recurring?",
+      "actions": "Actions"
     },
-    "deleting": "Deleting income...",
-    "deleteSuccess": "Income deleted successfully",
-    "deleteFailed": "Failed to delete income",
-    "updateSuccess": "Income updated successfully",
-    "errors": {
-      "deleteFailed": "Failed to delete income",
-      "updateFailed": "Failed to update income"
+    "toast": {
+      "createSuccess": "Income added successfully.",
+      "updateSuccess": "Income updated successfully.",
+      "deleteSuccess": "Income removed successfully.",
+      "genericError": "Something went wrong. Please try again."
+    },
+    "deleteDialog": {
+      "title": "Remove income entry",
+      "description": "Are you sure you want to delete this income? This action cannot be undone.",
+      "confirm": "Delete"
     }
   },
   "expenses": {
     "title": "Expense Management",
-    "addNew": "Add New Expense",
-    "category": "Category",
-    "expenseHistory": "List of Expenses",
-    "description": "Description",
-    "amount": "Amount",
-    "date": "Date",
-    "recurring": "Recurring Monthly Expense",
+    "subtitle": "Capture recurring bills and one-off purchases in one place.",
+    "expenseHistory": "List of expenses",
     "noEntries": "No expense entries yet",
+    "loadError": "Failed to load expenses. Please try again later.",
+    "actions": {
+      "add": "Add expense"
+    },
     "categories": {
       "housing": "Housing",
       "transportation": "Transportation",
@@ -307,34 +331,43 @@
       "entertainment": "Entertainment",
       "other": "Other"
     },
-    "tooltips": {
-      "category": "Select the category that best describes your expense",
-      "description": "Enter a brief description of the expense",
-      "amount": "Enter the expense amount in your selected currency",
-      "date": "Select the date when the expense occurred",
-      "recurring": "Check this if this expense occurs regularly each month"
+    "form": {
+      "category": "Category",
+      "category.select": "Select a category...",
+      "description": "Description",
+      "amount": "Amount",
+      "date": "Date",
+      "recurring": "Recurring monthly expense"
     },
-    "deleting": "Deleting expense...",
-    "deleteSuccess": "Expense deleted successfully",
-    "deleteFailed": "Failed to delete expense",
-    "errors": {
-      "deleteFailed": "Failed to delete expense"
+    "table": {
+      "category": "Category",
+      "description": "Description",
+      "amount": "Amount",
+      "date": "Date",
+      "recurring": "Recurring?",
+      "actions": "Actions"
+    },
+    "toast": {
+      "createSuccess": "Expense added successfully.",
+      "updateSuccess": "Expense updated successfully.",
+      "deleteSuccess": "Expense removed successfully.",
+      "genericError": "Something went wrong. Please try again."
+    },
+    "deleteDialog": {
+      "title": "Remove expense entry",
+      "description": "Are you sure you want to delete this expense? This action cannot be undone.",
+      "confirm": "Delete"
     }
   },
   "loans": {
     "title": "Loan Management",
-    "addNew": "Add New Loan",
-    "type": "Type",
-    "loanType": "Loan Type",
-    "loanHistory": "List of Loans",
-    "description": "Description",
-    "principalAmount": "Principal Amount",
-    "remainingBalance": "Remaining Balance",
-    "interestRate": "Interest Rate",
-    "monthlyPayment": "Monthly Payment",
-    "termMonths": "Term (Months)",
-    "startDate": "Start Date",
+    "subtitle": "Monitor balances, interest, and repayment plans for every loan.",
+    "loanHistory": "List of loans",
     "noEntries": "No loan entries yet",
+    "loadError": "Failed to load loans. Please try again later.",
+    "actions": {
+      "add": "Add loan"
+    },
     "types": {
       "mortgage": "Mortgage",
       "car": "Car Loan",
@@ -342,30 +375,38 @@
       "student": "Student Loan",
       "other": "Other"
     },
-    "tooltips": {
-      "type": "Select the type of loan",
-      "loanType": "Select the type of loan you are registering",
-      "description": "Enter a brief description of the loan",
-      "principalAmount": "Enter the original loan amount borrowed",
-      "remainingBalance": "Enter the current outstanding balance of the loan",
-      "interestRate": "Enter the annual interest rate",
-      "monthlyPayment": "Enter your fixed monthly payment amount",
-      "termMonths": "Enter the total duration of the loan in months",
-      "startDate": "Select the date when the loan began"
+    "form": {
+      "type": "Loan type",
+      "type.select": "Select a loan type...",
+      "description": "Description",
+      "principalAmount": "Principal amount",
+      "remainingBalance": "Remaining balance",
+      "interestRate": "Interest rate (%)",
+      "monthlyPayment": "Monthly payment",
+      "termMonths": "Term (months)",
+      "startDate": "Start date"
     },
-    "deleting": "Deleting loan...",
-    "deleteSuccess": "Loan deleted successfully",
-    "deleteFailed": "Failed to delete loan",
-    "updating": "Updating loan...",
-    "updateSuccess": "Loan updated successfully",
-    "updateFailed": "Failed to update loan",
-    "adding": "Adding loan...",
-    "addSuccess": "Loan added successfully",
-    "addFailed": "Failed to add loan",
-    "errors": {
-      "deleteFailed": "Failed to delete loan",
-      "updateFailed": "Failed to update loan",
-      "addFailed": "Failed to add loan"
+    "table": {
+      "type": "Loan type",
+      "description": "Description",
+      "principalAmount": "Principal",
+      "remainingBalance": "Remaining",
+      "interestRate": "Interest",
+      "monthlyPayment": "Monthly payment",
+      "termMonths": "Term (months)",
+      "startDate": "Start date",
+      "actions": "Actions"
+    },
+    "toast": {
+      "createSuccess": "Loan added successfully.",
+      "updateSuccess": "Loan updated successfully.",
+      "deleteSuccess": "Loan removed successfully.",
+      "genericError": "Something went wrong. Please try again."
+    },
+    "deleteDialog": {
+      "title": "Remove loan entry",
+      "description": "Are you sure you want to delete this loan? This action cannot be undone.",
+      "confirm": "Delete"
     }
   },
   "reports": {
@@ -446,8 +487,8 @@
     },
     "ai": {
       "title": "AI Insights Configuration",
-      "apiKey": "Claude API Key",
-      "apiKeyDescription": "Enter your Claude API key to enable personalized insights",
+      "apiKey": "OpenAI API Key",
+      "apiKeyDescription": "Enter your OpenAI API key to enable personalized insights",
       "frequency": {
         "label": "Insights Refresh Frequency",
         "daily": "Daily",
@@ -458,13 +499,13 @@
       "lastGenerated": "Last generated: {date}",
       "saveSuccess": "AI settings saved successfully",
       "testConnection": "Test Connection",
-      "connectionSuccess": "Successfully connected to Claude AI",
+      "connectionSuccess": "Successfully connected to OpenAI",
       "connectionError": "Failed to connect: {error}"
     },
     "tooltips": {
       "language": "Select your preferred language for the application",
       "currency": "Select your preferred currency for financial calculations",
-      "claudeApiKey": "Enter your Claude API key to enable AI-powered insights",
+      "claudeApiKey": "Enter your OpenAI API key to enable AI-powered insights",
       "export": "Export your data in JSON, CSV, or Excel format for backup or analysis",
       "import": "Import your previously exported data to restore or merge with your current records",
       "emergencyFundTarget": "Set your target amount for Baby Step 1 (Initial Emergency Fund)",
@@ -474,8 +515,8 @@
       "language": "Language",
       "currency": "Currency",
       "submit": "Save Settings",
-      "claudeApiKey": "Claude API Key",
-      "claudeApiKeyPlaceholder": "Enter your Claude API key"
+      "claudeApiKey": "OpenAI API Key",
+      "claudeApiKeyPlaceholder": "Enter your OpenAI API key"
     },
     "messages": {
       "success": "Settings updated successfully",
@@ -484,10 +525,17 @@
       "notLoggedIn": "You must be logged in to access settings",
       "exportSuccess": "Data exported successfully",
       "exportError": "Failed to export data",
-      "claudeApiKeyRequired": "Claude API key is required for AI insights",
+      "claudeApiKeyRequired": "OpenAI API key is required for AI insights",
       "importSuccess": "Data imported successfully",
       "importError": "Failed to import data. Please check the file format and try again.",
-      "currencyConverted": "Your emergency fund target has been converted from {oldCurrency} to {newCurrency}: {amount}"
+      "currencyConverted": "Your emergency fund target has been converted from {oldCurrency} to {newCurrency}: {amount}",
+      "bankDeleteSuccess": "Bank connection removed successfully.",
+      "bankDeleteError": "Failed to remove bank connection.",
+      "confirmBankDelete": "Are you sure you want to remove this bank connection?"
+    },
+    "tabs": {
+      "importExport": "Import & Export",
+      "banking": "Bank connections"
     },
     "export": {
       "title": "Export Data",
@@ -499,10 +547,14 @@
     "import": {
       "title": "Import Data",
       "description": "Import your previously exported data in JSON format. This will add all the imported records to your current data.",
-      "confirmTitle": "Confirm Data Import",
-      "confirmMessage": "Do you want to remove your existing Income, Expenses, and Loans data before importing new data?",
-      "keepExisting": "Keep Existing Data",
-      "removeExisting": "Remove Existing Data"
+      "upload": "Import data"
+    },
+    "banking": {
+      "title": "Connected bank accounts",
+      "noConnections": "No bank connections yet.",
+      "requisition": "Requisition",
+      "expires": "Expires",
+      "remove": "Remove"
     }
   },
   "inactivity": {
@@ -613,7 +665,10 @@
   },
   "savings": {
     "title": "Savings Management",
-    "addNew": "Add New Saving",
+    "subtitle": "Track deposits, withdrawals, and saving goals in one view.",
+    "actions": {
+      "add": "Add saving"
+    },
     "categories": {
       "emergency_fund": "Emergency Fund",
       "retirement": "Retirement",
@@ -622,64 +677,63 @@
       "investment": "Investments",
       "other": "Other"
     },
-    "fields": {
-      "category": "Category",
-      "description": "Description",
-      "amount": "Amount",
-      "date": "Date",
-      "isRecurring": "Recurring Saving",
-      "targetAmount": "Target Amount",
-      "savingType": "Type"
-    },
     "types": {
       "deposit": "Deposit",
       "withdrawal": "Withdrawal"
     },
     "summary": {
-      "title": "Savings Summary",
       "totalSavings": "Total Savings",
       "monthlyContribution": "Monthly Contribution",
-      "emergencyFund": {
-        "title": "Emergency Fund",
-        "target": "Target: {amount}",
-        "current": "Current: {amount}",
-        "progress": "Progress: {percent}%",
-        "remaining": "Remaining: {amount}"
-      },
-      "categoryTotals": "Category Totals",
-      "recentTransactions": "Recent Transactions"
-    },
-    "tooltips": {
-      "category": "Select the category for this saving",
-      "description": "Enter a description for this saving",
-      "amount": "Enter the amount in your selected currency",
-      "date": "Select the date of the saving",
-      "isRecurring": "Check if this is a recurring monthly saving",
-      "targetAmount": "Optional: Set a target amount for this saving",
-      "savingType": "Select whether this is a deposit or withdrawal"
-    },
-    "messages": {
-      "created": "Saving created successfully",
-      "updated": "Saving updated successfully",
-      "deleted": "Saving deleted successfully",
-      "error": {
-        "create": "Error creating saving",
-        "update": "Error updating saving",
-        "delete": "Error deleting saving",
-        "fetch": "Error fetching savings"
-      }
+      "recentTransactions": "Recent Transactions",
+      "noRecent": "No recent transactions"
     },
     "filters": {
-      "title": "Filters",
-      "category": "Filter by Category",
-      "dateRange": "Date Range",
-      "startDate": "Start Date",
-      "endDate": "End Date",
-      "apply": "Apply Filters",
-      "clear": "Clear Filters"
+      "category": "All categories",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "apply": "Apply filters",
+      "clear": "Clear filters"
     },
-    "noData": "No savings entries yet",
-    "loading": "Loading savings data..."
+    "form": {
+      "category": "Category",
+      "category.select": "Select a category...",
+      "description": "Description",
+      "amount": "Amount",
+      "date": "Date",
+      "savingType": "Type",
+      "isRecurring": "Recurring saving",
+      "targetAmount": "Target amount"
+    },
+    "table": {
+      "category": "Category",
+      "description": "Description",
+      "amount": "Amount",
+      "date": "Date",
+      "type": "Type",
+      "recurring": "Recurring?",
+      "targetAmount": "Target",
+      "actions": "Actions"
+    },
+    "transactions": "Transactions",
+    "toast": {
+      "createSuccess": "Saving added successfully.",
+      "updateSuccess": "Saving updated successfully.",
+      "deleteSuccess": "Saving removed successfully.",
+      "genericError": "Something went wrong. Please try again."
+    },
+    "dialog": {
+      "createTitle": "Add saving entry",
+      "editTitle": "Edit saving entry",
+      "createSubmit": "Add saving",
+      "editSubmit": "Save changes"
+    },
+    "deleteDialog": {
+      "title": "Remove saving entry",
+      "description": "Are you sure you want to delete this saving? This action cannot be undone.",
+      "confirm": "Delete"
+    },
+    "noEntries": "No savings entries yet",
+    "loadError": "Failed to load savings data. Please try again later."
   },
   "banking": {
     "title": "Banking Data Integration",

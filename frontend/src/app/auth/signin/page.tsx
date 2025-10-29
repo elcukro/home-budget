@@ -63,7 +63,7 @@ export default function SignIn() {
           {error && (
             <div 
               role="alert"
-              className="mb-6 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg border border-red-100 dark:border-red-800"
+              className="mb-6 bg-destructive/15 text-destructive p-4 rounded-lg border border-destructive"
             >
               <div className="flex items-center">
                 <svg 
@@ -92,7 +92,7 @@ export default function SignIn() {
           {/* Sign In Button */}
           <button
             onClick={handleSignIn}
-            className="w-full flex items-center justify-center px-4 py-3 border border-default rounded-lg shadow-sm text-base font-medium text-primary bg-white hover:bg-gray-50 dark:bg-background-primary dark:hover:bg-background-secondary transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+            className="w-full flex items-center justify-center px-4 py-3 border border-default rounded-lg shadow-sm text-base font-medium text-primary bg-card hover:bg-muted transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
             aria-label={intl.formatMessage({ id: 'auth.signInWithGoogle' })}
           >
             <Image

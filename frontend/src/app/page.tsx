@@ -36,11 +36,11 @@ interface CardProps {
 
 function SummaryCard({ title, amount, formatCurrency }: CardProps) {
   return (
-    <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow">
-      <h3 className="text-lg font-medium mb-2 text-default">
+    <div className="bg-card border border-default p-6 rounded-lg shadow-sm">
+      <h3 className="text-lg font-medium mb-2 text-primary">
         {title}
       </h3>
-      <p className="text-2xl font-bold">
+      <p className="text-2xl font-bold text-primary">
         {formatCurrency(amount)}
       </p>
     </div>
@@ -60,22 +60,22 @@ function ActivityCard(props: {
 }) {
   const intl = useIntl();
   const activityTypeColors = {
-    income: 'bg-green-500',
-    expense: 'bg-red-500',
-    loan: 'bg-blue-500',
-    payment: 'bg-purple-500',
-    settings: 'bg-purple-500'
+    income: 'bg-success',
+    expense: 'bg-destructive',
+    loan: 'bg-primary',
+    payment: 'bg-lilac',
+    settings: 'bg-sand'
   };
 
   const type = props.type || 'settings';
   const typeKey = type.toLowerCase() as keyof typeof activityTypeColors;
-  const dotColor = activityTypeColors[typeKey] || 'bg-gray-500';
+  const dotColor = activityTypeColors[typeKey] || 'bg-secondary';
 
   const renderChanges = () => {
     if (!props.changes || props.changes.length === 0) return null;
     
     return (
-      <div className={`mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 transition-all duration-200 ${props.isExpanded ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+      <div className={`mt-2 text-xs text-secondary space-y-1 transition-all duration-200 ${props.isExpanded ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
         {props.changes.map((change, index) => {
           const isMonetary = ['amount', 'principal_amount', 'remaining_balance', 'monthly_payment'].includes(change.field);
           const oldValue = isMonetary ? props.formatCurrency(Number(change.oldValue) || 0) : change.oldValue;
@@ -86,8 +86,8 @@ function ActivityCard(props: {
               <span className="font-medium">
                 {intl.formatMessage({ id: `dashboard.activity.${change.field}` })}:
               </span>
-              <span className="text-red-600 dark:text-red-400 line-through">{oldValue}</span>
-              <span className="text-green-600 dark:text-green-400">{newValue}</span>
+              <span className="text-destructive line-through">{oldValue}</span>
+              <span className="text-success">{newValue}</span>
             </div>
           );
         })}
@@ -99,21 +99,24 @@ function ActivityCard(props: {
 
   return (
     <div className="relative pl-8 pb-4 last:pb-0" role="listitem">
-      <div className={`absolute left-0 top-2 w-2.5 h-2.5 rounded-full ${dotColor} ring-4 ring-white dark:ring-background-primary`} aria-hidden="true"></div>
-      <div className="absolute left-[4px] top-6 bottom-0 w-[2px] bg-gray-200 dark:bg-gray-700" aria-hidden="true"></div>
+      <div
+        className={`absolute left-0 top-2 w-2.5 h-2.5 rounded-full ${dotColor} ring-4 ring-white`}
+        aria-hidden="true"
+      ></div>
+      <div className="absolute left-[4px] top-6 bottom-0 w-[2px] bg-border" aria-hidden="true"></div>
       <div 
-        className="bg-white dark:bg-background-primary p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 dark:border-gray-800 cursor-pointer"
+        className="bg-card p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow border border-default cursor-pointer"
         onClick={props.onToggle}
       >
         <div className="flex justify-between items-start gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h4 className="font-medium text-base text-gray-900 dark:text-gray-100 mb-0.5 truncate" title={props.title}>
+              <h4 className="font-medium text-base text-primary mb-0.5 truncate" title={props.title}>
                 {props.title}
               </h4>
               {props.changes && props.changes.length > 0 && (
                 <svg 
-                  className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${props.isExpanded ? 'rotate-180' : ''}`} 
+                  className={`w-4 h-4 text-secondary transition-transform duration-200 ${props.isExpanded ? 'rotate-180' : ''}`} 
                   fill="none" 
                   stroke="currentColor" 
                   viewBox="0 0 24 24"
@@ -122,18 +125,18 @@ function ActivityCard(props: {
                 </svg>
               )}
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
+            <p className="text-xs text-secondary flex items-center gap-2">
               <span className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`} aria-hidden="true"></span>
               {intl.formatMessage({ id: `dashboard.activity.${props.operation}` })} {intl.formatMessage({ id: `dashboard.activity.${type.toLowerCase()}` })}
             </p>
             {renderChanges()}
           </div>
           <div className="text-right flex-shrink-0">
-            <p className={`font-medium text-base tabular-nums ${amount >= 0 ? 'text-green-700 dark:text-green-500' : 'text-red-700 dark:text-red-500'}`} 
+            <p className={`font-medium text-base tabular-nums ${amount >= 0 ? 'text-success' : 'text-destructive'}`} 
                aria-label={`Amount: ${props.formatCurrency(amount)}`}>
               {props.formatCurrency(amount)}
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-secondary mt-0.5">
               {props.date}
             </p>
           </div>
@@ -269,7 +272,7 @@ export default function Home() {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-3 rounded">
           {error}
         </div>
       </div>
@@ -279,7 +282,7 @@ export default function Home() {
   if (!dashboardData) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center text-gray-500">
+        <div className="text-center text-secondary">
           {intl.formatMessage({ id: 'dashboard.noData' })}
         </div>
       </div>
@@ -289,7 +292,7 @@ export default function Home() {
   return (
     <ProtectedPage>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6 text-default">
+        <h1 className="text-2xl font-bold mb-6 text-primary">
           {intl.formatMessage({ id: 'dashboard.title' })}
         </h1>
 
@@ -336,8 +339,8 @@ export default function Home() {
           />
         </div>
 
-        <div className="bg-white dark:bg-background-primary rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-default">
+        <div className="bg-card border border-default rounded-lg shadow-sm p-6">
+          <h2 className="text-xl font-semibold mb-4 text-primary">
             {intl.formatMessage({ id: 'dashboard.recentActivity' })}
           </h2>
           <div className="space-y-4" role="list">
@@ -356,9 +359,9 @@ export default function Home() {
               />
             ))}
             {dashboardData?.activities && dashboardData.activities.length > 2 && (
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="pt-4 border-t border-default">
                 <button
-                  className="text-primary hover:text-primary-dark dark:hover:text-primary-light font-medium text-sm flex items-center gap-2"
+                  className="text-primary hover:text-primary/80 font-medium text-sm flex items-center gap-2"
                   onClick={toggleShowAllActivities}
                 >
                   {intl.formatMessage({ 

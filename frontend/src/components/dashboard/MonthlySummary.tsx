@@ -26,15 +26,15 @@ interface MonthlySummaryProps {
 const getStatusColor = (status: InsightStatus): string => {
   switch (status) {
     case 'good':
-      return 'bg-green-50 dark:bg-green-900/20';
+      return 'bg-success/15';
     case 'can_be_improved':
-      return 'bg-blue-50 dark:bg-blue-900/20';
+      return 'bg-mint/40';
     case 'ok':
-      return 'bg-yellow-50 dark:bg-yellow-900/20';
+      return 'bg-sand/60';
     case 'bad':
-      return 'bg-red-50 dark:bg-red-900/20';
+      return 'bg-destructive/15';
     default:
-      return 'bg-gray-50 dark:bg-gray-900/20';
+      return 'bg-muted';
   }
 };
 
@@ -55,32 +55,32 @@ const InsightCard: React.FC<{ insight: Insight }> = ({ insight }) => {
   const getPriorityBorder = () => {
     switch (insight.priority) {
       case 'high':
-        return 'border-l-4 border-l-red-500/50';
+        return 'border-l-4 border-l-destructive/70';
       case 'medium':
-        return 'border-l-4 border-l-yellow-500/50';
+        return 'border-l-4 border-l-warning/70';
       case 'low':
-        return 'border-l-4 border-l-green-500/50';
+        return 'border-l-4 border-l-success/70';
     }
   };
 
   return (
-    <div className={`p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 ${getPriorityBorder()}`}>
+    <div className={`p-4 rounded-lg border border-default bg-card ${getPriorityBorder()}`}>
       <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 text-gray-500 dark:text-gray-400">
+        <div className="flex-shrink-0 text-secondary">
           {getIcon()}
         </div>
         <div className="flex-1">
-          <h4 className="font-medium text-gray-900 dark:text-gray-100">
+          <h4 className="font-medium text-primary">
             {insight.title}
           </h4>
-          <p className="mt-1 text-gray-600 dark:text-gray-300">
+          <p className="mt-1 text-secondary">
             {insight.description}
           </p>
           {insight.actionItems && insight.actionItems.length > 0 && (
             <ul className="mt-3 space-y-1">
               {insight.actionItems.map((item, index) => (
-                <li key={index} className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <li key={index} className="text-sm text-secondary flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                   {item}
                 </li>
               ))}
@@ -90,11 +90,11 @@ const InsightCard: React.FC<{ insight: Insight }> = ({ insight }) => {
             <div className="mt-3 grid grid-cols-2 gap-2">
               {insight.metrics.map((metric, index) => (
                 <div key={index} className="text-sm">
-                  <span className="text-gray-500 dark:text-gray-400">{metric.label}: </span>
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{metric.value}</span>
-                  {metric.trend === 'up' && <span className="text-green-500">↑</span>}
-                  {metric.trend === 'down' && <span className="text-red-500">↓</span>}
-                  {metric.trend === 'stable' && <span className="text-gray-500">→</span>}
+                  <span className="text-secondary">{metric.label}: </span>
+                  <span className="font-medium text-primary">{metric.value}</span>
+                  {metric.trend === 'up' && <span className="text-success ml-1">↑</span>}
+                  {metric.trend === 'down' && <span className="text-destructive ml-1">↓</span>}
+                  {metric.trend === 'stable' && <span className="text-secondary ml-1">→</span>}
                 </div>
               ))}
             </div>
@@ -133,16 +133,16 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
         const errorData = await response.json();
         const errorDetail = errorData.detail || 'Failed to fetch insights';
         
-        // Check for specific Claude API errors
-        if (errorDetail.includes('Claude API error: 529')) {
-          throw new Error('Claude API is currently overloaded. Please try again later.');
-        } else if (errorDetail.includes('Claude API error: 401')) {
-          throw new Error('Invalid Claude API key. Please check your settings.');
-        } else if (errorDetail.includes('Claude API error: 403')) {
-          throw new Error('Your Claude API key does not have permission to use this model.');
-        } else if (errorDetail.includes('Claude API error: 429')) {
-          throw new Error('Claude API rate limit exceeded. Please try again later.');
-        } else if (errorDetail.includes('Claude API error')) {
+        // Check for specific OpenAI API errors
+        if (errorDetail.includes('OpenAI API error: 529')) {
+          throw new Error('OpenAI API is currently overloaded. Please try again later.');
+        } else if (errorDetail.includes('OpenAI API error: 401')) {
+          throw new Error('Invalid OpenAI API key. Please check your settings.');
+        } else if (errorDetail.includes('OpenAI API error: 403')) {
+          throw new Error('Your OpenAI API key does not have permission to use this model.');
+        } else if (errorDetail.includes('OpenAI API error: 429')) {
+          throw new Error('OpenAI API rate limit exceeded. Please try again later.');
+        } else if (errorDetail.includes('OpenAI API error')) {
           throw new Error(`${errorDetail}. Please try again later.`);
         } else {
           throw new Error(errorDetail);
@@ -168,26 +168,26 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
     {
       label: intl.formatMessage({ id: 'dashboard.summary.totalIncome' }),
       value: formatCurrency(data?.totalIncome ?? 0),
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-100 dark:bg-green-900',
+      color: 'text-success',
+      bgColor: 'bg-success/15',
     },
     {
       label: intl.formatMessage({ id: 'dashboard.summary.totalExpenses' }),
       value: formatCurrency(data?.totalExpenses ?? 0),
-      color: 'text-red-600 dark:text-red-400',
-      bgColor: 'bg-red-100 dark:bg-red-900',
+      color: 'text-destructive',
+      bgColor: 'bg-destructive/15',
     },
     {
       label: intl.formatMessage({ id: 'dashboard.summary.loanPayments' }),
       value: formatCurrency(data?.totalLoanPayments ?? 0),
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900',
+      color: 'text-primary',
+      bgColor: 'bg-mint/40',
     },
     {
       label: intl.formatMessage({ id: 'dashboard.summary.netCashflow' }),
       value: formatCurrency(data?.netCashflow ?? 0),
-      color: (data?.netCashflow ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
-      bgColor: (data?.netCashflow ?? 0) >= 0 ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900',
+      color: (data?.netCashflow ?? 0) >= 0 ? 'text-success' : 'text-destructive',
+      bgColor: (data?.netCashflow ?? 0) >= 0 ? 'bg-success/15' : 'bg-destructive/15',
     },
     {
       label: intl.formatMessage({ id: 'dashboard.summary.savingsRate' }),
@@ -196,8 +196,8 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
       }),
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-100 dark:bg-purple-900',
+      color: 'text-lilac',
+      bgColor: 'bg-lilac/40',
     },
     {
       label: intl.formatMessage({ id: 'dashboard.summary.debtToIncome' }),
@@ -206,20 +206,20 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
         minimumFractionDigits: 1,
         maximumFractionDigits: 1,
       }),
-      color: 'text-orange-600 dark:text-orange-400',
-      bgColor: 'bg-orange-100 dark:bg-orange-900',
+      color: 'text-warning',
+      bgColor: 'bg-warning/20',
     },
   ];
 
   return (
-    <div className="bg-white dark:bg-background-primary rounded-lg shadow p-6">
+    <div className="bg-card border border-default rounded-lg shadow-sm p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-default">
+        <h2 className="text-xl font-semibold text-primary">
           {intl.formatMessage({ id: 'dashboard.summary.title' })}
         </h2>
         <button
           onClick={() => setShowInsights(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors duration-200"
+          className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors duration-200"
         >
           {intl.formatMessage({ id: 'dashboard.summary.aiInsights.button' })}
         </button>
@@ -229,7 +229,7 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
         {metrics.map((metric, index) => (
           <div
             key={index}
-            className="flex items-center p-4 rounded-lg border border-gray-200 dark:border-gray-700"
+            className="flex items-center p-4 rounded-lg border border-default bg-muted"
           >
             <div className={`w-12 h-12 rounded-full ${metric.bgColor} flex items-center justify-center mr-4`}>
               <span className={`text-lg font-semibold ${metric.color}`}>
@@ -251,14 +251,14 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
       {/* AI Insights Modal */}
       {showInsights && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-background-primary rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-default">
+          <div className="bg-card border border-default rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-default flex justify-between items-center">
+              <h3 className="text-xl font-semibold text-primary">
                 {intl.formatMessage({ id: 'dashboard.summary.aiInsights.modalTitle' })}
               </h3>
               <button
                 onClick={() => setShowInsights(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="text-secondary hover:text-primary transition-colors"
               >
                 <XMarkIcon className="h-6 w-6" />
               </button>
@@ -267,37 +267,37 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
             <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  <span className="ml-3 text-gray-600 dark:text-gray-300">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <span className="ml-3 text-secondary">
                     {intl.formatMessage({ id: 'dashboard.summary.aiInsights.loading' })}
                   </span>
                 </div>
               ) : error === 'API_KEY_MISSING' ? (
                 <div className="text-center py-8">
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">
+                  <p className="text-secondary mb-4">
                     {intl.formatMessage({ id: 'settings.messages.claudeApiKeyRequired' })}
                   </p>
                   <Link
                     href="/settings"
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors duration-200"
+                    className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors duration-200"
                   >
                     {intl.formatMessage({ id: 'navigation.settings' })}
                   </Link>
                 </div>
               ) : error ? (
                 <div className="text-center py-8">
-                  <div className="bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4">
-                    <h4 className="text-red-700 dark:text-red-400 font-medium mb-2">
+                  <div className="bg-destructive/15 border border-destructive rounded-lg p-4 mb-4">
+                    <h4 className="text-destructive font-medium mb-2">
                       {intl.formatMessage({ id: 'dashboard.summary.aiInsights.errorTitle' })}
                     </h4>
-                    <p className="text-red-600 dark:text-red-300">
+                    <p className="text-destructive">
                       {error}
                     </p>
                   </div>
                   
                   <button
                     onClick={() => fetchInsights(true)}
-                    className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors duration-200 mr-2"
+                    className="inline-flex items-center px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors duration-200 mr-2"
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -312,7 +312,7 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
                   
                   <Link
                     href="/settings"
-                    className="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors duration-200"
+                    className="inline-flex items-center px-4 py-2 bg-muted hover:bg-mint/40 text-secondary rounded-lg text-sm font-medium transition-colors duration-200"
                   >
                     {intl.formatMessage({ id: 'navigation.settings' })}
                   </Link>
@@ -328,8 +328,8 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
                   {Object.entries(insights.categories).map(([category, categoryInsights]) => {
                     const status = insights.status[category as keyof typeof insights.status];
                     return (
-                      <div key={category} className={`p-6 rounded-lg ${getStatusColor(status)}`}>
-                        <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100 capitalize mb-4">
+                      <div key={category} className={`p-6 rounded-lg border border-default/60 ${getStatusColor(status)}`}>
+                        <h4 className="text-lg font-medium text-primary capitalize mb-4">
                           {intl.formatMessage({ id: `dashboard.summary.aiInsights.categories.${category}` })}
                         </h4>
                         <div className="space-y-4">
@@ -344,10 +344,10 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
               ) : null}
             </div>
 
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+            <div className="p-6 border-t border-default flex justify-end">
               <button
                 onClick={() => setShowInsights(false)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors duration-200"
+                className="px-4 py-2 bg-muted hover:bg-mint/40 text-secondary rounded-lg text-sm font-medium transition-colors duration-200"
               >
                 {intl.formatMessage({ id: 'dashboard.summary.aiInsights.close' })}
               </button>

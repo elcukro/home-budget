@@ -236,7 +236,7 @@ export default function FinancialFreedomPage() {
   if (error) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+        <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-3 rounded">
           {error}
         </div>
       </div>
@@ -246,7 +246,7 @@ export default function FinancialFreedomPage() {
   if (!data) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center text-gray-500">
+        <div className="text-center text-secondary">
           {intl.formatMessage({ id: 'financialFreedom.noData' })}
         </div>
       </div>
@@ -259,7 +259,7 @@ export default function FinancialFreedomPage() {
     <ProtectedPage>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold mb-2 text-default">
+          <h1 className="text-2xl font-bold mb-2 text-primary">
             {intl.formatMessage({ id: 'financialFreedom.title' })}
           </h1>
           <p className="text-secondary">
@@ -275,7 +275,7 @@ export default function FinancialFreedomPage() {
         </div>
 
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-default">
+          <h2 className="text-xl font-semibold mb-4 text-primary">
             {intl.formatMessage({ id: 'financialFreedom.yourProgress' })}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

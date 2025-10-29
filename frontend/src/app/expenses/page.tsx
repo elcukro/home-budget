@@ -1,322 +1,379 @@
-'use client';
+﻿"use client";
 
-import { useState, useEffect } from 'react';
-import { PencilIcon, TrashIcon, CheckIcon, XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import toast from 'react-hot-toast';
-import { validateAmount, validateDescription, validateDate } from '@/utils/validation';
-import Tooltip from '@/components/Tooltip';
-import { logActivity } from '@/utils/activityLogger';
-import { EditableCell } from '@/components/EditableCell';
-import { useSettings } from '@/contexts/SettingsContext';
-import { FormattedMessage, FormattedNumber, FormattedDate, useIntl } from 'react-intl';
-import { TablePageSkeleton } from '@/components/LoadingSkeleton';
-import { useSession } from 'next-auth/react';
-import { formatCurrency, formatPercentage, getCurrencySymbol } from '@/utils/formatting';
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
+import { FormattedDate, FormattedMessage, useIntl } from "react-intl";
+import { z } from "zod";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { CrudDialog, type FormFieldConfig } from "@/components/crud/CrudDialog";
+import { ConfirmDialog } from "@/components/crud/ConfirmDialog";
+import { useToast } from "@/hooks/use-toast";
+import { useSettings } from "@/contexts/SettingsContext";
+import {
+  parseNumber,
+  validateAmountPositive,
+  validateDateString,
+} from "@/lib/validation";
+import { logActivity } from "@/utils/activityLogger";
+import { TablePageSkeleton } from "@/components/LoadingSkeleton";
+import Tooltip from "@/components/Tooltip";
 
 interface Expense {
-  id: number;
+  id: number | string;
   category: string;
   description: string;
   amount: number;
-  is_recurring: boolean;
   date: string;
+  is_recurring: boolean;
   created_at: string;
 }
 
-interface ExpenseFormData {
-  category: string;
-  description: string;
-  amount: number;
-  is_recurring: boolean;
-  date: string;
-}
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-type SortField = 'category' | 'description' | 'amount' | 'date' | 'created_at';
-type SortDirection = 'asc' | 'desc';
+const expenseSchema = z.object({
+  category: z.string().min(1, "validation.categoryRequired"),
+  description: z
+    .string()
+    .trim()
+    .min(1, "validation.description.required")
+    .max(100, { message: "validation.description.tooLong" }),
+  amount: z
+    .string()
+    .trim()
+    .min(1, "validation.required")
+    .transform((value, ctx) => {
+      const error = validateAmountPositive(value);
+      if (error) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: error.messageId,
+        });
+      }
+      return parseNumber(value) ?? 0;
+    }),
+  date: z
+    .string()
+    .trim()
+    .min(1, "validation.required")
+    .superRefine((value, ctx) => {
+      const error = validateDateString(value);
+      if (error) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: error.messageId,
+        });
+      }
+    }),
+  is_recurring: z.boolean().default(false),
+});
 
-const categoryOptions = [
-  { value: 'housing', label: <FormattedMessage id="expenses.categories.housing" /> },
-  { value: 'transportation', label: <FormattedMessage id="expenses.categories.transportation" /> },
-  { value: 'food', label: <FormattedMessage id="expenses.categories.food" /> },
-  { value: 'utilities', label: <FormattedMessage id="expenses.categories.utilities" /> },
-  { value: 'insurance', label: <FormattedMessage id="expenses.categories.insurance" /> },
-  { value: 'healthcare', label: <FormattedMessage id="expenses.categories.healthcare" /> },
-  { value: 'entertainment', label: <FormattedMessage id="expenses.categories.entertainment" /> },
-  { value: 'other', label: <FormattedMessage id="expenses.categories.other" /> }
-];
+type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
-const validateForm = (data: ExpenseFormData): string | null => {
-  if (!data.category.trim()) {
-    return 'Category is required';
-  }
-  if (!data.description.trim()) {
-    return 'Description is required';
-  }
-  if (data.amount <= 0) {
-    return 'Amount must be greater than 0';
-  }
-  if (!data.date) {
-    return 'Date is required';
-  }
-  return null;
+const todayISO = new Date().toISOString().split("T")[0];
+
+const expenseDefaultValues: ExpenseFormValues = {
+  category: "",
+  description: "",
+  amount: 0,
+  date: todayISO,
+  is_recurring: false,
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const expenseCategoryOptions = [
+  { value: "housing", labelId: "expenses.categories.housing" },
+  { value: "transportation", labelId: "expenses.categories.transportation" },
+  { value: "food", labelId: "expenses.categories.food" },
+  { value: "utilities", labelId: "expenses.categories.utilities" },
+  { value: "insurance", labelId: "expenses.categories.insurance" },
+  { value: "healthcare", labelId: "expenses.categories.healthcare" },
+  { value: "entertainment", labelId: "expenses.categories.entertainment" },
+  { value: "other", labelId: "expenses.categories.other" },
+];
+
+const expenseFieldConfig: FormFieldConfig<ExpenseFormValues>[] = [
+  {
+    name: "category",
+    labelId: "expenses.form.category",
+    component: "select",
+    placeholderId: "expenses.form.category.select",
+    options: expenseCategoryOptions,
+  },
+  {
+    name: "description",
+    labelId: "expenses.form.description",
+    component: "text",
+  },
+  {
+    name: "amount",
+    labelId: "expenses.form.amount",
+    component: "number",
+    step: "0.01",
+    min: 0,
+  },
+  {
+    name: "date",
+    labelId: "expenses.form.date",
+    component: "date",
+  },
+  {
+    name: "is_recurring",
+    labelId: "expenses.form.recurring",
+    component: "switch",
+  },
+];
+
+const mapExpenseToFormValues = (expense: Expense): ExpenseFormValues => ({
+  category: expense.category,
+  description: expense.description,
+  amount: expense.amount,
+  date: expense.date.slice(0, 10),
+  is_recurring: expense.is_recurring,
+});
 
 export default function ExpensesPage() {
-  const { formatCurrency, settings } = useSettings();
   const { data: session } = useSession();
   const intl = useIntl();
+  const { toast } = useToast();
+  const { formatCurrency } = useSettings();
+
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>('created_at');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const [editForm, setEditForm] = useState<{ [key: number]: ExpenseFormData }>({});
-  const [focusField, setFocusField] = useState<string | undefined>();
-  const [formData, setFormData] = useState<ExpenseFormData>({
-    category: '',
-    description: '',
-    amount: 0,
-    date: new Date().toISOString().split('T')[0],
-    is_recurring: false,
-  });
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  const fetchExpenses = async () => {
-    if (!session?.user?.email) {
-      setLoading(false);
-      return;
-    }
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
+  const [activeExpense, setActiveExpense] = useState<Expense | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Failed to fetch expenses');
-      }
-      const data = await response.json();
-      setExpenses(data);
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[Expenses] Error:', err instanceof Error ? err.message : 'Failed to fetch expenses');
-      }
-      setError('Failed to load expenses');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const userEmail = session?.user?.email ?? null;
 
   useEffect(() => {
-    fetchExpenses();
-  }, [session]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!session?.user?.email) {
-      toast.error('You must be logged in to add an expense');
-      return;
-    }
-    
-    const validationError = validateForm(formData);
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-
-    console.log('[Expenses] Submitting new expense:', formData);
-    const promise = fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(formData),
-    }).then(async (response) => {
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[Expenses] Failed to add expense:', errorText);
-        throw new Error(`Failed to add expense: ${errorText}`);
+    const loadExpenses = async () => {
+      if (!userEmail) {
+        setLoading(false);
+        return;
       }
-      const newExpense = await response.json();
-      console.log('[Expenses] Added new expense:', newExpense);
-      setExpenses([...expenses, newExpense]);
-      setFormData({
-        category: '',
-        description: '',
-        amount: 0,
-        date: new Date().toISOString().split('T')[0],
-        is_recurring: false,
-      });
 
-      // Log the create activity
-      await logActivity({
-        entity_type: 'Expense',
-        operation_type: 'create',
-        entity_id: newExpense.id,
-        new_values: {
-          category: newExpense.category,
-          description: newExpense.description,
-          amount: newExpense.amount,
-          date: newExpense.date,
-          is_recurring: newExpense.is_recurring
+      try {
+        setLoading(true);
+        setApiError(null);
+
+        const response = await fetch(
+          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`,
+          {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Failed to fetch expenses");
         }
-      });
-    });
 
-    toast.promise(promise, {
-      loading: 'Adding expense...',
-      success: 'Expense added successfully',
-      error: 'Failed to add expense',
+        const data: Expense[] = await response.json();
+        setExpenses(data);
+      } catch (error) {
+        console.error("[Expenses] Failed to load expenses", error);
+        setApiError(intl.formatMessage({ id: "expenses.loadError" }));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadExpenses();
+  }, [userEmail, intl]);
+
+  const sortedExpenses = useMemo(
+    () =>
+      [...expenses].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      ),
+    [expenses],
+  );
+
+  const handleOpenCreate = () => {
+    setActiveExpense(null);
+    setDialogMode("create");
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (expense: Expense) => {
+    setActiveExpense(expense);
+    setDialogMode("edit");
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      setActiveExpense(null);
+    }
+  };
+
+  const showErrorToast = (messageId: string) => {
+    toast({
+      title: intl.formatMessage({ id: messageId }),
+      variant: "destructive",
     });
   };
 
-  const handleEdit = (expense: Expense, field?: string) => {
-    setFocusField(field);
-    setEditForm({
-      ...editForm,
-      [expense.id]: {
-        category: expense.category,
-        description: expense.description,
-        amount: expense.amount,
-        date: expense.date,
-        is_recurring: expense.is_recurring,
-      },
-    });
-  };
-
-  const handleCancelEdit = (expenseId: number) => {
-    const newEditForm = { ...editForm };
-    delete newEditForm[expenseId];
-    setEditForm(newEditForm);
-  };
-
-  const handleSaveEdit = async (expenseId: number) => {
-    if (!session?.user?.email) {
-      toast.error('You must be logged in to edit an expense');
+  const handleSubmit = async (values: ExpenseFormValues) => {
+    if (!userEmail) {
+      showErrorToast("common.mustBeLoggedIn");
       return;
     }
 
-    const data = editForm[expenseId];
-    const previousExpense = expenses.find(expense => expense.id === expenseId);
-    
-    console.log('[Expenses] Saving edit for expense:', expenseId, data);
-    const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/${expenseId}`, {
-      method: 'PUT',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Expenses] Failed to update expense:', errorText);
-      throw new Error(`Failed to update expense: ${errorText}`);
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...values,
+        amount: values.amount,
+      };
+
+      if (dialogMode === "create") {
+        const response = await fetch(
+          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Failed to create expense");
+        }
+
+        const created: Expense = await response.json();
+        setExpenses((prev) => [...prev, created]);
+
+        await logActivity({
+          entity_type: "Expense",
+          operation_type: "create",
+          entity_id: Number(created.id),
+          new_values: created,
+        });
+
+        toast({
+          title: intl.formatMessage({ id: "expenses.toast.createSuccess" }),
+        });
+      } else if (activeExpense) {
+        const response = await fetch(
+          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses/${activeExpense.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Failed to update expense");
+        }
+
+        const updated: Expense = await response.json();
+
+        setExpenses((prev) =>
+          prev.map((expense) =>
+            expense.id === updated.id ? updated : expense,
+          ),
+        );
+
+        await logActivity({
+          entity_type: "Expense",
+          operation_type: "update",
+          entity_id: Number(updated.id),
+          previous_values: activeExpense,
+          new_values: updated,
+        });
+
+        toast({
+          title: intl.formatMessage({ id: "expenses.toast.updateSuccess" }),
+        });
+      }
+
+      handleDialogClose(false);
+    } catch (error) {
+      console.error("[Expenses] Failed to submit form", error);
+      showErrorToast("expenses.toast.genericError");
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    const newEditForm = { ...editForm };
-    delete newEditForm[expenseId];
-    setEditForm(newEditForm);
-    
-    // Log the update activity
-    await logActivity({
-      entity_type: 'Expense',
-      operation_type: 'update',
-      entity_id: expenseId,
-      previous_values: previousExpense ? { ...previousExpense } : undefined,
-      new_values: { ...data }
-    });
-    
-    fetchExpenses();
   };
 
-  const handleDelete = async (expenseId: number) => {
-    if (!session?.user?.email) {
-      toast.error(intl.formatMessage({ id: 'common.mustBeLoggedIn' }));
+  const handleDelete = async () => {
+    if (!userEmail || !pendingDelete) {
+      setConfirmOpen(false);
       return;
     }
 
-    if (!confirm(intl.formatMessage({ id: 'common.confirmDelete' }))) return;
-    
-    const previousExpense = expenses.find(expense => expense.id === expenseId);
-    console.log('[Expenses] Deleting expense:', expenseId);
-    
-    const promise = fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/${expenseId}`, {
-      method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
-    }).then(async (response) => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses/${pendingDelete.id}`,
+        {
+          method: "DELETE",
+          headers: { Accept: "application/json" },
+        },
+      );
+
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[Expenses] Failed to delete expense:', errorText);
-        throw new Error(intl.formatMessage({ id: 'expenses.errors.deleteFailed' }));
+        throw new Error(errorText || "Failed to delete expense");
       }
-      await fetchExpenses();
 
-      // Log the delete activity
+      setExpenses((prev) =>
+        prev.filter((expense) => expense.id !== pendingDelete.id),
+      );
+
       await logActivity({
-        entity_type: 'Expense',
-        operation_type: 'delete',
-        entity_id: expenseId,
-        previous_values: previousExpense ? {
-          category: previousExpense.category,
-          description: previousExpense.description,
-          amount: previousExpense.amount,
-          date: previousExpense.date,
-          is_recurring: previousExpense.is_recurring
-        } as Record<string, unknown> : undefined
+        entity_type: "Expense",
+        operation_type: "delete",
+        entity_id: Number(pendingDelete.id),
+        previous_values: pendingDelete,
       });
-    });
 
-    toast.promise(promise, {
-      loading: intl.formatMessage({ id: 'expenses.deleting' }),
-      success: intl.formatMessage({ id: 'expenses.deleteSuccess' }),
-      error: intl.formatMessage({ id: 'expenses.deleteFailed' }),
-    });
-  };
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
+      toast({
+        title: intl.formatMessage({ id: "expenses.toast.deleteSuccess" }),
+      });
+    } catch (error) {
+      console.error("[Expenses] Failed to delete expense", error);
+      showErrorToast("expenses.toast.genericError");
+    } finally {
+      setIsDeleting(false);
+      setConfirmOpen(false);
+      setPendingDelete(null);
     }
-  };
-
-  const getSortedExpenses = () => {
-    return [...expenses].sort((a, b) => {
-      const direction = sortDirection === 'asc' ? 1 : -1;
-      
-      switch (sortField) {
-        case 'category':
-          return direction * a.category.localeCompare(b.category);
-        case 'description':
-          return direction * a.description.localeCompare(b.description);
-        case 'amount':
-          return direction * (a.amount - b.amount);
-        case 'date':
-          return direction * (new Date(a.date).getTime() - new Date(b.date).getTime());
-        case 'created_at':
-          return direction * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        default:
-          return 0;
-      }
-    });
-  };
-
-  const renderSortIcon = (field: SortField) => {
-    if (sortField !== field) return null;
-    
-    return sortDirection === 'asc' ? (
-      <ChevronUpIcon className="h-4 w-4 inline-block ml-1" />
-    ) : (
-      <ChevronDownIcon className="h-4 w-4 inline-block ml-1" />
-    );
   };
 
   if (loading) {
@@ -325,313 +382,170 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">
-        <FormattedMessage id="expenses.title" />
-      </h1>
-      
-      {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-md">
-          <FormattedMessage id="common.error" values={{ message: error }} />
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-primary">
+            <FormattedMessage id="expenses.title" />
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            <FormattedMessage id="expenses.subtitle" />
+          </p>
         </div>
+        <Button onClick={handleOpenCreate}>
+          <Plus className="mr-2 h-4 w-4" />
+          <FormattedMessage id="expenses.actions.add" />
+        </Button>
+      </div>
+
+      {apiError && (
+        <Card className="border-destructive/50 bg-destructive/10 text-destructive">
+          <CardContent className="py-4">
+            <p>{apiError}</p>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Add Expense Form */}
-      <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow">
-        <h2 className="text-lg font-medium mb-4 text-default">
-          <FormattedMessage id="expenses.addNew" />
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-secondary">
-              <FormattedMessage id="expenses.category" />
-              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.category" })} icon={true} />
-            </label>
-            <select
-              id="category"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-            >
-              <option value="">
-                {intl.formatMessage({ id: "common.select" })}
-              </option>
-              {categoryOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {intl.formatMessage({ id: `expenses.categories.${option.value}` })}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-secondary">
-              <FormattedMessage id="expenses.description" />
-              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.description" })} icon={true} />
-            </label>
-            <input
-              type="text"
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-secondary">
-              <FormattedMessage id="expenses.amount" /> ({getCurrencySymbol(settings?.currency)})
-              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.amount" })} icon={true} />
-            </label>
-            <input
-              type="number"
-              id="amount"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) })}
-              className="mt-1 block w-full rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-              min="0"
-              step="0.01"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="date" className="block text-sm font-medium text-secondary">
-              <FormattedMessage id="expenses.date" />
-              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.date" })} icon={true} />
-            </label>
-            <input
-              type="date"
-              id="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-default bg-input text-primary px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-            />
-          </div>
-          
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="is_recurring"
-              checked={formData.is_recurring}
-              onChange={(e) => setFormData({ ...formData, is_recurring: e.target.checked })}
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <label htmlFor="is_recurring" className="ml-2 block text-sm text-gray-700">
-              <FormattedMessage id="expenses.recurring" />
-              <Tooltip content={intl.formatMessage({ id: "expenses.tooltips.recurring" })} icon={true} />
-            </label>
-          </div>
-          
-          <button
-            type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <FormattedMessage id="common.add" />
-          </button>
-        </form>
-      </div>
-
-      {/* Expense List */}
-      <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow overflow-hidden">
-        <h2 className="text-lg font-medium mb-4 text-default">
-          <FormattedMessage id="expenses.expenseHistory" />
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-default">
-            <thead className="bg-background-secondary">
-              <tr>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('category')}
-                >
-                  <FormattedMessage id="expenses.category" /> {renderSortIcon('category')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('description')}
-                >
-                  <FormattedMessage id="expenses.description" /> {renderSortIcon('description')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('amount')}
-                >
-                  <FormattedMessage id="expenses.amount" /> {renderSortIcon('amount')}
-                </th>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider cursor-pointer"
-                  onClick={() => handleSort('date')}
-                >
-                  <FormattedMessage id="expenses.date" /> {renderSortIcon('date')}
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">
-                  <FormattedMessage id="expenses.recurring" />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-secondary uppercase tracking-wider">
-                  <FormattedMessage id="common.actions" />
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-default">
-              {getSortedExpenses().map((expense) => (
-                <tr 
-                  key={expense.id} 
-                  className="border-t hover:bg-gray-50 dark:hover:bg-gray-800/50 cursor-pointer"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleEdit(expense, 'category')}>
-                    <EditableCell
-                      isEditing={!!editForm[expense.id]}
-                      value={editForm[expense.id]?.category || expense.category}
-                      type="select"
-                      options={categoryOptions}
-                      onChange={(value) => setEditForm({
-                        ...editForm,
-                        [expense.id]: { ...editForm[expense.id], category: value }
-                      })}
-                      onSave={() => handleSaveEdit(expense.id)}
-                      onCancel={() => handleCancelEdit(expense.id)}
-                      formatter={(value) => <FormattedMessage id={`expenses.categories.${value}`} />}
-                      field="category"
-                      focusField={focusField}
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleEdit(expense, 'description')}>
-                    <EditableCell
-                      isEditing={!!editForm[expense.id]}
-                      value={editForm[expense.id]?.description || expense.description}
-                      type="text"
-                      onChange={(value) => setEditForm({
-                        ...editForm,
-                        [expense.id]: { ...editForm[expense.id], description: value }
-                      })}
-                      onSave={() => handleSaveEdit(expense.id)}
-                      onCancel={() => handleCancelEdit(expense.id)}
-                      field="description"
-                      focusField={focusField}
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleEdit(expense, 'amount')}>
-                    <EditableCell
-                      isEditing={!!editForm[expense.id]}
-                      value={editForm[expense.id]?.amount || expense.amount}
-                      type="number"
-                      onChange={(value) => {
-                        const updatedForm = {
-                          ...editForm,
-                          [expense.id]: { 
-                            ...editForm[expense.id] || {
-                              category: expense.category,
-                              description: expense.description,
-                              amount: expense.amount,
-                              is_recurring: expense.is_recurring,
-                              date: expense.date
-                            },
-                            amount: Number(value)
-                          }
-                        };
-                        setEditForm(updatedForm);
-                      }}
-                      onSave={() => handleSaveEdit(expense.id)}
-                      onCancel={() => handleCancelEdit(expense.id)}
-                      min={0}
-                      step={0.01}
-                      formatter={formatCurrency}
-                      field="amount"
-                      focusField={focusField}
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap" onDoubleClick={() => handleEdit(expense, 'date')}>
-                    <EditableCell
-                      isEditing={!!editForm[expense.id]}
-                      value={editForm[expense.id]?.date || expense.date}
-                      type="date"
-                      onChange={(value) => setEditForm({
-                        ...editForm,
-                        [expense.id]: { ...editForm[expense.id], date: value }
-                      })}
-                      onSave={() => handleSaveEdit(expense.id)}
-                      onCancel={() => handleCancelEdit(expense.id)}
-                      formatter={(value) => (
-                        <FormattedDate
-                          value={value}
-                          year="numeric"
-                          month="short"
-                          day="numeric"
-                        />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-medium">
+            <FormattedMessage id="expenses.expenseHistory" />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sortedExpenses.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              <FormattedMessage id="expenses.noEntries" />
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    <FormattedMessage id="expenses.table.category" />
+                  </TableHead>
+                  <TableHead>
+                    <FormattedMessage id="expenses.table.description" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <FormattedMessage id="expenses.table.amount" />
+                  </TableHead>
+                  <TableHead>
+                    <FormattedMessage id="expenses.table.date" />
+                  </TableHead>
+                  <TableHead>
+                    <FormattedMessage id="expenses.table.recurring" />
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <FormattedMessage id="expenses.table.actions" />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedExpenses.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell>
+                      <FormattedMessage
+                        id={`expenses.categories.${expense.category}`}
+                      />
+                    </TableCell>
+                    <TableCell>{expense.description}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(expense.amount)}
+                    </TableCell>
+                    <TableCell>
+                      <FormattedDate value={new Date(expense.date)} />
+                    </TableCell>
+                    <TableCell>
+                      {expense.is_recurring ? (
+                        <span className="text-emerald-600">
+                          <FormattedMessage id="common.yes" />
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          <FormattedMessage id="common.no" />
+                        </span>
                       )}
-                      field="date"
-                      focusField={focusField}
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={editForm[expense.id]?.is_recurring || expense.is_recurring}
-                      onChange={(e) => {
-                        if (editForm[expense.id]) {
-                          setEditForm({
-                            ...editForm,
-                            [expense.id]: { ...editForm[expense.id], is_recurring: e.target.checked }
-                          });
-                          handleSaveEdit(expense.id);
-                        }
-                      }}
-                      className="rounded border-default bg-input text-blue-600"
-                    />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {editForm[expense.id] ? (
-                      <>
-                        <button
-                          onClick={() => handleSaveEdit(expense.id)}
-                          className="text-green-600 hover:text-green-800"
-                          title={intl.formatMessage({ id: "common.save" })}
+                    </TableCell>
+                    <TableCell className="flex justify-end gap-2">
+                      <Tooltip content={intl.formatMessage({ id: "common.edit" })}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEdit(expense)}
                         >
-                          <CheckIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleCancelEdit(expense.id)}
-                          className="text-red-600 hover:text-red-800 ml-2"
-                          title={intl.formatMessage({ id: "common.cancel" })}
+                          <Pencil className="h-4 w-4" />
+                          <span className="sr-only">
+                            {intl.formatMessage({ id: "common.edit" })}
+                          </span>
+                        </Button>
+                      </Tooltip>
+                      <Tooltip
+                        content={intl.formatMessage({ id: "common.delete" })}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setPendingDelete(expense);
+                            setConfirmOpen(true);
+                          }}
+                          className="text-destructive hover:text-destructive"
                         >
-                          <XMarkIcon className="h-5 w-5" />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleEdit(expense)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title={intl.formatMessage({ id: "common.edit" })}
-                        >
-                          <PencilIcon className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(expense.id)}
-                          className="text-red-600 hover:text-red-800 ml-2"
-                          title={intl.formatMessage({ id: "common.delete" })}
-                        >
-                          <TrashIcon className="h-5 w-5" />
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {expenses.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                    <FormattedMessage id="expenses.noEntries" />
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">
+                            {intl.formatMessage({ id: "common.delete" })}
+                          </span>
+                        </Button>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <CrudDialog
+        open={dialogOpen}
+        mode={dialogMode}
+        onOpenChange={handleDialogClose}
+        titleId={
+          dialogMode === "create"
+            ? "expenses.dialog.createTitle"
+            : "expenses.dialog.editTitle"
+        }
+        submitLabelId={
+          dialogMode === "create"
+            ? "expenses.dialog.createSubmit"
+            : "expenses.dialog.editSubmit"
+        }
+        schema={expenseSchema}
+        defaultValues={expenseDefaultValues}
+        initialValues={
+          dialogMode === "edit" && activeExpense
+            ? mapExpenseToFormValues(activeExpense)
+            : undefined
+        }
+        fields={expenseFieldConfig}
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+      />
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) {
+            setPendingDelete(null);
+          }
+        }}
+        titleId="expenses.deleteDialog.title"
+        descriptionId="expenses.deleteDialog.description"
+        confirmLabelId="expenses.deleteDialog.confirm"
+        onConfirm={handleDelete}
+        isLoading={isDeleting}
+      />
     </div>
   );
-} 
+}

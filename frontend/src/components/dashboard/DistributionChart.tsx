@@ -3,7 +3,6 @@
 import { useIntl } from 'react-intl';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, PieController } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
-import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 // Move registration outside component to ensure it happens only once
@@ -24,8 +23,6 @@ interface DistributionChartProps {
 
 export default function DistributionChart({ title, data, formatCurrency, type }: DistributionChartProps) {
   const intl = useIntl();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
   const [chartKey, setChartKey] = useState(Date.now());
 
   // Re-render chart when locale changes
@@ -36,18 +33,18 @@ export default function DistributionChart({ title, data, formatCurrency, type }:
   // Colors for income and expense charts
   const colorSchemes = {
     income: [
-      'rgba(34, 197, 94, 0.8)',  // green
-      'rgba(59, 130, 246, 0.8)', // blue
-      'rgba(168, 85, 247, 0.8)', // purple
-      'rgba(14, 165, 233, 0.8)', // sky
-      'rgba(45, 212, 191, 0.8)', // teal
+      '#9FD3C1',
+      '#CDBAD6',
+      '#E8C1BC',
+      '#E2D6C6',
+      '#6B9F91',
     ],
     expense: [
-      'rgba(239, 68, 68, 0.8)',  // red
-      'rgba(249, 115, 22, 0.8)', // orange
-      'rgba(234, 179, 8, 0.8)',  // yellow
-      'rgba(217, 70, 239, 0.8)', // fuchsia
-      'rgba(236, 72, 153, 0.8)', // pink
+      '#D65A56',
+      '#E67C3F',
+      '#6B9F91',
+      '#CDBAD6',
+      '#E8C1BC',
     ]
   };
 
@@ -57,7 +54,7 @@ export default function DistributionChart({ title, data, formatCurrency, type }:
       {
         data: data.map(item => item.amount),
         backgroundColor: colorSchemes[type],
-        borderColor: isDark ? 'rgba(30, 41, 59, 1)' : 'rgba(255, 255, 255, 1)',
+        borderColor: '#F5EFE8',
         borderWidth: 2,
       },
     ],
@@ -70,7 +67,7 @@ export default function DistributionChart({ title, data, formatCurrency, type }:
       legend: {
         position: 'right' as const,
         labels: {
-          color: isDark ? '#ffffff' : '#000000',
+          color: '#1F1C1A',
           font: {
             size: 12,
           },
@@ -101,8 +98,8 @@ export default function DistributionChart({ title, data, formatCurrency, type }:
   };
 
   return (
-    <div className="bg-white dark:bg-background-primary p-6 rounded-lg shadow h-full flex flex-col">
-      <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
+    <div className="bg-card border border-default p-6 rounded-lg shadow-sm h-full flex flex-col">
+      <h2 className="text-lg font-semibold mb-4 text-primary">
         {title}
       </h2>
       <div className="relative flex-grow h-[350px]">

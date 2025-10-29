@@ -1,0 +1,202 @@
+[
+  {
+    "data": {
+      "life": {
+        "maritalStatus": "married",
+        "includePartnerFinances": false,
+        "childrenCount": 2,
+        "housingType": "mortgage",
+        "employmentStatus": "employee",
+        "householdCost": 6500
+      },
+      "income": {
+        "salaryNet": 20000,
+        "additionalSources": {
+          "rental": {
+            "enabled": true,
+            "amount": 2200
+          },
+          "bonuses": {
+            "enabled": false,
+            "amount": 0
+          },
+          "freelance": {
+            "enabled": false,
+            "amount": 0
+          },
+          "benefits": {
+            "enabled": true,
+            "amount": 800
+          }
+        },
+        "irregularIncomeAnnual": 0
+      },
+      "expenses": {
+        "housing": 1500,
+        "utilities": 500,
+        "transport": 1000,
+        "food": 2000,
+        "entertainment": 1000,
+        "other": 500
+      },
+      "liabilities": [
+        {
+          "id": "863635d5-9143-40bc-9c04-1701ef5233ae",
+          "type": "mortgage",
+          "remainingAmount": 104000,
+          "monthlyPayment": 1000,
+          "interestRate": 7.17,
+          "endDate": "2040-01-31"
+        },
+        {
+          "id": "67875735-ddda-4d29-8d4e-1b0bd6c04c40",
+          "type": "card",
+          "remainingAmount": 5000,
+          "monthlyPayment": 350,
+          "interestRate": 18,
+          "endDate": ""
+        }
+      ],
+      "assets": {
+        "savings": 50000,
+        "emergencyFundMonths": 6,
+        "investments": {
+          "categories": [],
+          "totalValue": 0
+        },
+        "properties": [
+          {
+            "id": "cf28b070-4569-44ed-aae0-3296374719cf",
+            "name": "DOM",
+            "value": 2000000
+          },
+          {
+            "id": "90a63bc8-8b5e-4850-b4cd-1916cae3cc5f",
+            "name": "Mieszkanie",
+            "value": 500000
+          }
+        ],
+        "vehicles": []
+      },
+      "goals": [
+        {
+          "id": "f8f9d207-0fc2-431a-be24-446a948d30be",
+          "name": "Spłata kredytu PLN",
+          "type": "long",
+          "targetAmount": 100000,
+          "targetDate": "2027-12-31",
+          "priority": 1
+        },
+        {
+          "id": "a65f2002-faeb-4721-b39a-487b9d7138b7",
+          "name": "Inwestycje na emeryturę",
+          "type": "short",
+          "targetAmount": 500000,
+          "targetDate": "2045-12-31",
+          "priority": 2
+        }
+      ]
+    },
+    "submittedAt": "2025-10-14T19:36:57.801Z"
+  },
+  {
+    "data": {
+      "life": {
+        "maritalStatus": "relationship",
+        "includePartnerFinances": false,
+        "childrenCount": 2,
+        "housingType": "mortgage",
+        "employmentStatus": "employee",
+        "householdCost": 6500
+      },
+      "income": {
+        "salaryNet": 20000,
+        "additionalSources": {
+          "rental": {
+            "enabled": true,
+            "amount": 2200
+          },
+          "bonuses": {
+            "enabled": false,
+            "amount": 0
+          },
+          "freelance": {
+            "enabled": false,
+            "amount": 0
+          },
+          "benefits": {
+            "enabled": true,
+            "amount": 800
+          }
+        },
+        "irregularIncomeAnnual": 0
+      },
+      "expenses": {
+        "housing": 2500,
+        "utilities": 400,
+        "transport": 600,
+        "food": 1500,
+        "entertainment": 400,
+        "other": 1000
+      },
+      "liabilities": [
+        {
+          "id": "863635d5-9143-40bc-9c04-1701ef5233ae",
+          "type": "mortgage",
+          "remainingAmount": 104000,
+          "monthlyPayment": 1000,
+          "interestRate": 7.17,
+          "endDate": "2040-01-31"
+        },
+        {
+          "id": "67875735-ddda-4d29-8d4e-1b0bd6c04c40",
+          "type": "card",
+          "remainingAmount": 5000,
+          "monthlyPayment": 350,
+          "interestRate": 18,
+          "endDate": ""
+        }
+      ],
+      "assets": {
+        "savings": 50000,
+        "emergencyFundMonths": 6,
+        "investments": {
+          "categories": [],
+          "totalValue": 0
+        },
+        "properties": [
+          {
+            "id": "cf28b070-4569-44ed-aae0-3296374719cf",
+            "name": "DOM",
+            "value": 2000000
+          },
+          {
+            "id": "90a63bc8-8b5e-4850-b4cd-1916cae3cc5f",
+            "name": "Mieszkanie",
+            "value": 500000
+          }
+        ],
+        "vehicles": []
+      },
+      "goals": [
+        {
+          "id": "f8f9d207-0fc2-431a-be24-446a948d30be",
+          "name": "Spłata kredytu PLN",
+          "type": "long",
+          "targetAmount": 100000,
+          "targetDate": "2027-12-31",
+          "priority": 1
+        },
+        {
+          "id": "a65f2002-faeb-4721-b39a-487b9d7138b7",
+          "name": "Inwestycje na emeryturę",
+          "type": "short",
+          "targetAmount": 500000,
+          "targetDate": "2045-12-31",
+          "priority": 2
+        }
+      ]
+    },
+    "submittedAt": "2025-10-14T21:20:03.110Z"
+  }
+]

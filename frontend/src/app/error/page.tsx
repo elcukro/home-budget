@@ -22,12 +22,12 @@ export default function AuthError() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="max-w-md w-full space-y-8 p-8 bg-card rounded-xl shadow-lg">
+      <div className="max-w-md w-full space-y-8 p-8 card">
         <div className="text-center">
           <h2 className="mt-6 text-3xl font-bold text-primary">
             Authentication Error
           </h2>
-          <p className="mt-2 text-sm text-secondary">
+          <p className="mt-2 text-sm text-subtle">
             {error ? getErrorMessage(error) : "An unknown error occurred"}
           </p>
         </div>
@@ -35,7 +35,7 @@ export default function AuthError() {
         <div className="mt-8">
           <Link
             href="/auth/signin"
-            className="w-full flex justify-center py-2 px-4 border border-default rounded-md shadow-sm text-sm font-medium text-primary bg-white hover:bg-gray-50 dark:bg-background-primary dark:hover:bg-background-secondary"
+            className="w-full flex justify-center rounded-md border border-border bg-card py-2 px-4 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-secondary"
           >
             Return to Sign In
           </Link>
