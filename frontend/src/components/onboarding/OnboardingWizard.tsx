@@ -2094,7 +2094,7 @@ function LifeStep({
       </FieldGroup>
 
       <FormFooter
-        onNext={onNext}
+        onNext={() => onNext()}
         onBack={onBack}
         onSkip={onSkip}
         nextLabel={nextLabel}
@@ -2378,7 +2378,7 @@ function IncomeStep({
       <SalaryDistributionChart salary={data.salaryNet} formatMoney={formatMoney} />
 
       <FormFooter
-        onNext={onNext}
+        onNext={() => onNext()}
         onBack={onBack}
         onSkip={onSkip}
         nextLabel={nextLabel}
@@ -2976,7 +2976,7 @@ function LiabilitiesStep({
       </div>
 
       <FormFooter
-        onNext={onNext}
+        onNext={() => onNext()}
         onBack={onBack}
         onSkip={onSkip}
         nextLabel="Dalej → Oszczędności"
@@ -3520,7 +3520,7 @@ function GoalsStep({
       </Button>
 
       <FormFooter
-        onNext={onNext}
+        onNext={() => onNext()}
         onBack={onBack}
         onSkip={onSkip}
         nextLabel="Przejdź do podsumowania"
