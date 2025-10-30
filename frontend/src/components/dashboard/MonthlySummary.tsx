@@ -111,7 +111,8 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
   const [showInsights, setShowInsights] = useState(false);
   const [insights, setInsights] = useState<EnhancedInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
+  const [errorMessageValues, setErrorMessageValues] = useState<Record<string, unknown> | undefined>(undefined);
   const { data: session } = useSession();
 
   const fetchInsights = async (forceRefresh = false) => {
@@ -121,7 +122,8 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
 
     try {
       setIsLoading(true);
-      setError(null);
+      setErrorMessageId(null);
+      setErrorMessageValues(undefined);
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const url = new URL(`${API_URL}/users/${encodeURIComponent(session.user.email)}/insights`, window.location.origin);
       if (forceRefresh) {
@@ -130,29 +132,54 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
       const response = await fetch(url);
       
       if (!response.ok) {
-        const errorData = await response.json();
-        const errorDetail = errorData.detail || 'Failed to fetch insights';
-        
-        // Check for specific OpenAI API errors
-        if (errorDetail.includes('OpenAI API error: 529')) {
-          throw new Error('OpenAI API is currently overloaded. Please try again later.');
-        } else if (errorDetail.includes('OpenAI API error: 401')) {
-          throw new Error('Invalid OpenAI API key. Please check your settings.');
-        } else if (errorDetail.includes('OpenAI API error: 403')) {
-          throw new Error('Your OpenAI API key does not have permission to use this model.');
-        } else if (errorDetail.includes('OpenAI API error: 429')) {
-          throw new Error('OpenAI API rate limit exceeded. Please try again later.');
-        } else if (errorDetail.includes('OpenAI API error')) {
-          throw new Error(`${errorDetail}. Please try again later.`);
-        } else {
-          throw new Error(errorDetail);
-        }
+        const errorData = await response.json().catch(() => ({}));
+        const detailRaw = typeof errorData.detail === 'string' ? errorData.detail : '';
+
+        const mapDetailToMessage = (
+          detail: string,
+        ): { id: string; values?: Record<string, unknown> } => {
+          if (detail === 'API_KEY_MISSING') {
+            return { id: 'settings.messages.claudeApiKeyRequired' };
+          }
+          if (detail.includes('OpenAI API error: 529')) {
+            return { id: 'dashboard.summary.aiInsights.apiErrors.overloaded' };
+          }
+          if (detail.includes('OpenAI API error: 401')) {
+            return { id: 'dashboard.summary.aiInsights.apiErrors.invalidKey' };
+          }
+          if (detail.includes('OpenAI API error: 403')) {
+            return { id: 'dashboard.summary.aiInsights.apiErrors.forbidden' };
+          }
+          if (detail.includes('OpenAI API error: 429')) {
+            return { id: 'dashboard.summary.aiInsights.apiErrors.rateLimit' };
+          }
+          if (detail.includes('OpenAI API error')) {
+            return { id: 'dashboard.summary.aiInsights.apiErrors.generic' };
+          }
+          if (detail) {
+            return {
+              id: 'dashboard.summary.aiInsights.apiErrors.generic',
+            };
+          }
+          return { id: 'dashboard.summary.aiInsights.apiErrors.generic' };
+        };
+
+        const { id, values } = mapDetailToMessage(detailRaw);
+        setErrorMessageId(id);
+        setErrorMessageValues(values);
+        setInsights(null);
+        return;
       }
-      
+
       const data = await response.json();
       setInsights(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      const fallbackDetail = err instanceof Error ? err.message : undefined;
+      setErrorMessageId('dashboard.summary.aiInsights.apiErrors.generic');
+      setErrorMessageValues(
+        fallbackDetail ? { detail: fallbackDetail } : undefined,
+      );
+      setInsights(null);
     } finally {
       setIsLoading(false);
     }
@@ -272,7 +299,7 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
                     {intl.formatMessage({ id: 'dashboard.summary.aiInsights.loading' })}
                   </span>
                 </div>
-              ) : error === 'API_KEY_MISSING' ? (
+              ) : errorMessageId === 'settings.messages.claudeApiKeyRequired' ? (
                 <div className="text-center py-8">
                   <p className="text-secondary mb-4">
                     {intl.formatMessage({ id: 'settings.messages.claudeApiKeyRequired' })}
@@ -284,14 +311,17 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
                     {intl.formatMessage({ id: 'navigation.settings' })}
                   </Link>
                 </div>
-              ) : error ? (
+              ) : errorMessageId ? (
                 <div className="text-center py-8">
                   <div className="bg-destructive/15 border border-destructive rounded-lg p-4 mb-4">
                     <h4 className="text-destructive font-medium mb-2">
                       {intl.formatMessage({ id: 'dashboard.summary.aiInsights.errorTitle' })}
                     </h4>
                     <p className="text-destructive">
-                      {error}
+                      {intl.formatMessage(
+                        { id: errorMessageId },
+                        errorMessageValues,
+                      )}
                     </p>
                   </div>
                   

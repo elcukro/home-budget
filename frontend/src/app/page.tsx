@@ -191,7 +191,7 @@ export default function Home() {
   const [expandedActivities, setExpandedActivities] = useState<Set<number>>(new Set());
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
   const { data: session } = useSession();
 
   useEffect(() => {
@@ -202,7 +202,7 @@ export default function Home() {
       }
 
       try {
-        setError(null);
+        setErrorMessageId(null);
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
         const response = await fetch(`${API_URL}/users/${encodeURIComponent(session.user.email)}/summary`);
         if (!response.ok) {
@@ -236,7 +236,7 @@ export default function Home() {
         if (process.env.NODE_ENV === 'development') {
           console.error('[Dashboard] Error:', error instanceof Error ? error.message : 'Failed to load dashboard data');
         }
-        setError(error instanceof Error ? error.message : 'Failed to load dashboard data');
+        setErrorMessageId('dashboard.loadError');
       } finally {
         setLoading(false);
       }
@@ -269,11 +269,11 @@ export default function Home() {
     return <DashboardSkeleton />;
   }
 
-  if (error) {
+  if (errorMessageId) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-3 rounded">
-          {error}
+          {intl.formatMessage({ id: errorMessageId })}
         </div>
       </div>
     );

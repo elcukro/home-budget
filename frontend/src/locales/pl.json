@@ -13,6 +13,7 @@
     "no": "Nie",
     "actions": "Akcje",
     "select": "Wybierz...",
+    "notAvailable": "Brak danych",
     "appName": "Budżet domowy",
     "createdAt": "Data utworzenia",
     "mustBeLoggedIn": "Musisz być zalogowany, aby wykonać tę akcję",
@@ -116,6 +117,7 @@
     "showLessActivity": "Pokaż mniej",
     "noActivity": "Brak ostatniej aktywności",
     "noData": "Brak dostępnych danych",
+    "loadError": "Nie udało się załadować danych panelu. Spróbuj ponownie później.",
     "quickActions": {
       "addIncome": "Dodaj nowe źródło przychodu",
       "addExpense": "Dodaj nowy wydatek",
@@ -270,6 +272,12 @@
       "recurring": "Cykliczny?",
       "actions": "Akcje"
     },
+    "dialog": {
+      "createTitle": "Dodaj przychód",
+      "editTitle": "Edytuj przychód",
+      "createSubmit": "Dodaj przychód",
+      "editSubmit": "Zapisz zmiany"
+    },
     "toast": {
       "createSuccess": "Przychód został pomyślnie dodany.",
       "updateSuccess": "Przychód został pomyślnie zaktualizowany.",
@@ -316,6 +324,12 @@
       "date": "Data",
       "recurring": "Cykliczny?",
       "actions": "Akcje"
+    },
+    "dialog": {
+      "createTitle": "Dodaj wydatek",
+      "editTitle": "Edytuj wydatek",
+      "createSubmit": "Dodaj wydatek",
+      "editSubmit": "Zapisz zmiany"
     },
     "toast": {
       "createSuccess": "Wydatek został pomyślnie dodany.",
@@ -573,6 +587,7 @@
     "summary": "Podsumowanie Podróży",
     "overallProgress": "Ogólny Postęp",
     "currentStep": "Aktualny Fokus",
+    "loadError": "Nie udało się załadować danych o wolności finansowej. Spróbuj ponownie później.",
     "noData": "Brak dostępnych danych o wolności finansowej",
     "steps": {
       "step1": {

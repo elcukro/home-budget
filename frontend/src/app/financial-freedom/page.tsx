@@ -59,7 +59,7 @@ export default function FinancialFreedomPage() {
   const { settings, formatCurrency } = useSettings();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<FinancialFreedomData | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
   const [totalNonMortgageDebt, setTotalNonMortgageDebt] = useState<number>(0);
 
   // Single data loading effect - loads all data at once
@@ -70,7 +70,7 @@ export default function FinancialFreedomPage() {
 
     let isMounted = true;
     setLoading(true);
-    setError(null);
+    setErrorMessageId(null);
 
     const loadAllData = async () => {
       try {
@@ -175,7 +175,7 @@ export default function FinancialFreedomPage() {
       } catch (error) {
         console.error('Error loading financial freedom data:', error);
         if (isMounted) {
-          setError('Failed to load financial freedom data. Please try again later.');
+          setErrorMessageId('financialFreedom.loadError');
           setLoading(false);
         }
       }
@@ -233,11 +233,11 @@ export default function FinancialFreedomPage() {
     );
   }
 
-  if (error) {
+  if (errorMessageId) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-destructive/15 border border-destructive text-destructive px-4 py-3 rounded">
-          {error}
+          {intl.formatMessage({ id: errorMessageId })}
         </div>
       </div>
     );

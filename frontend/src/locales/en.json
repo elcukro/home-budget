@@ -13,6 +13,7 @@
     "no": "No",
     "actions": "Actions",
     "select": "Select...",
+    "notAvailable": "Not available",
     "appName": "Home Budget",
     "mustBeLoggedIn": "You must be logged in to perform this action",
     "createdAt": "Created At",
@@ -148,6 +149,7 @@
     "showLessActivity": "Show Less",
     "noActivity": "No recent activity",
     "noData": "No dashboard data available",
+    "loadError": "Failed to load dashboard data. Please try again later.",
     "quickActions": {
       "addIncome": "Record a new source of income",
       "addExpense": "Add a new expense entry",
@@ -300,6 +302,12 @@
       "recurring": "Recurring?",
       "actions": "Actions"
     },
+    "dialog": {
+      "createTitle": "Add income entry",
+      "editTitle": "Edit income entry",
+      "createSubmit": "Add income",
+      "editSubmit": "Save changes"
+    },
     "toast": {
       "createSuccess": "Income added successfully.",
       "updateSuccess": "Income updated successfully.",
@@ -346,6 +354,12 @@
       "date": "Date",
       "recurring": "Recurring?",
       "actions": "Actions"
+    },
+    "dialog": {
+      "createTitle": "Add expense entry",
+      "editTitle": "Edit expense entry",
+      "createSubmit": "Add expense",
+      "editSubmit": "Save changes"
     },
     "toast": {
       "createSuccess": "Expense added successfully.",
@@ -588,6 +602,7 @@
     "summary": "Journey Summary",
     "overallProgress": "Overall Progress",
     "currentStep": "Current Focus",
+    "loadError": "Failed to load financial freedom data. Please try again later.",
     "noData": "No financial freedom data available",
     "steps": {
       "step1": {

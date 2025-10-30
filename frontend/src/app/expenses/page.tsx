@@ -406,6 +406,13 @@ export default function ExpensesPage() {
   }
 
   const hasExpenses = groupedCategories.length > 0;
+  const columnClasses = {
+    description: "w-[40%]",
+    amount: "w-[15%]",
+    date: "w-[20%]",
+    recurring: "w-[10%]",
+    actions: "w-[15%]",
+  };
 
   return (
     <div className="space-y-6">
@@ -447,36 +454,38 @@ export default function ExpensesPage() {
             <div className="space-y-6">
               {groupedCategories.map(([category, group]) => (
                 <div key={category} className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-primary">
-                        <FormattedMessage id={`expenses.categories.${category}`} />
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        <FormattedMessage
-                          id="expenses.categoryTotal"
-                          values={{ amount: formatCurrency(group.total) }}
-                        />
-                      </span>
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-primary">
+                      <FormattedMessage id={`expenses.categories.${category}`} />
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      <FormattedMessage
+                        id="expenses.categoryTotal"
+                        values={{ amount: formatCurrency(group.total) }}
+                      />
+                    </span>
                   </div>
 
-                  <Table>
+                  <Table className="table-fixed">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>
+                        <TableHead className={columnClasses.description}>
                           <FormattedMessage id="expenses.table.description" />
                         </TableHead>
-                        <TableHead className="text-right">
+                        <TableHead
+                          className={`${columnClasses.amount} text-right`}
+                        >
                           <FormattedMessage id="expenses.table.amount" />
                         </TableHead>
-                        <TableHead>
+                        <TableHead className={columnClasses.date}>
                           <FormattedMessage id="expenses.table.date" />
                         </TableHead>
-                        <TableHead>
+                        <TableHead className={columnClasses.recurring}>
                           <FormattedMessage id="expenses.table.recurring" />
                         </TableHead>
-                        <TableHead className="text-right">
+                        <TableHead
+                          className={`${columnClasses.actions} text-right`}
+                        >
                           <FormattedMessage id="expenses.table.actions" />
                         </TableHead>
                       </TableRow>
@@ -484,14 +493,18 @@ export default function ExpensesPage() {
                     <TableBody>
                       {group.items.map((expense) => (
                         <TableRow key={expense.id}>
-                          <TableCell>{expense.description}</TableCell>
-                          <TableCell className="text-right font-medium">
+                          <TableCell className={columnClasses.description}>
+                            {expense.description}
+                          </TableCell>
+                          <TableCell
+                            className={`${columnClasses.amount} text-right font-medium`}
+                          >
                             {formatCurrency(expense.amount)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className={columnClasses.date}>
                             <FormattedDate value={new Date(expense.date)} />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className={columnClasses.recurring}>
                             {expense.is_recurring ? (
                               <span className="text-emerald-600">
                                 <FormattedMessage id="common.yes" />
@@ -502,7 +515,9 @@ export default function ExpensesPage() {
                               </span>
                             )}
                           </TableCell>
-                          <TableCell className="flex justify-end gap-2">
+                          <TableCell
+                            className={`${columnClasses.actions} flex justify-end gap-2`}
+                          >
                             <Tooltip content={intl.formatMessage({ id: "common.edit" })}>
                               <Button
                                 variant="ghost"

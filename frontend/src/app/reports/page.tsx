@@ -306,7 +306,10 @@ const BudgetReport = () => {
 
       setYearlyData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred while fetching the data');
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Reports] Failed to fetch yearly budget', err);
+      }
+      setError(intl.formatMessage({ id: 'reports.messages.fetchError' }));
     } finally {
       setIsLoading(false);
     }
