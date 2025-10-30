@@ -72,89 +72,99 @@ const loanSchema = z
       .max(100, { message: "validation.description.tooLong" }),
     principal_amount: z.preprocess(
       (value) => (typeof value === "number" ? value.toString() : value),
-      z.string()
-      .trim()
-      .min(1, "validation.required")
-      .transform((value, ctx) => {
-        const error = validateAmountPositive(value);
-        if (error) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: error.messageId,
-          });
-        }
-        return parseNumber(value) ?? 0;
-      }),
+      z
+        .string()
+        .trim()
+        .min(1, "validation.required")
+        .transform((value, ctx) => {
+          const error = validateAmountPositive(value);
+          if (error) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: error.messageId,
+            });
+          }
+          return parseNumber(value) ?? 0;
+        })
+    ),
     remaining_balance: z.preprocess(
       (value) => (typeof value === "number" ? value.toString() : value),
-      z.string()
-      .trim()
-      .min(1, "validation.required")
-      .transform((value, ctx) => {
-        const error = validateAmountNonNegative(value);
-        if (error) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: error.messageId,
-          });
-        }
-        return parseNumber(value) ?? 0;
-      }),
+      z
+        .string()
+        .trim()
+        .min(1, "validation.required")
+        .transform((value, ctx) => {
+          const error = validateAmountNonNegative(value);
+          if (error) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: error.messageId,
+            });
+          }
+          return parseNumber(value) ?? 0;
+        })
+    ),
     interest_rate: z.preprocess(
       (value) => (typeof value === "number" ? value.toString() : value),
-      z.string()
-      .trim()
-      .min(1, "validation.required")
-      .transform((value, ctx) => {
-        const parsed = parseNumber(value);
-        if (parsed === null) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "validation.required",
-          });
-          return 0;
-        }
-        const error = validateInterestRate(parsed);
-        if (error) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: error.messageId,
-          });
-        }
-        return parsed;
-      }),
+      z
+        .string()
+        .trim()
+        .min(1, "validation.required")
+        .transform((value, ctx) => {
+          const parsed = parseNumber(value);
+          if (parsed === null) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "validation.required",
+            });
+            return 0;
+          }
+          const error = validateInterestRate(parsed);
+          if (error) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: error.messageId,
+            });
+          }
+          return parsed;
+        })
+    ),
     monthly_payment: z.preprocess(
       (value) => (typeof value === "number" ? value.toString() : value),
-      z.string()
-      .trim()
-      .min(1, "validation.required")
-      .transform((value, ctx) => {
-        const error = validateAmountNonNegative(value);
-        if (error) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: error.messageId,
-          });
-        }
-        return parseNumber(value) ?? 0;
-      }),
+      z
+        .string()
+        .trim()
+        .min(1, "validation.required")
+        .transform((value, ctx) => {
+          const error = validateAmountNonNegative(value);
+          if (error) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: error.messageId,
+            });
+          }
+          return parseNumber(value) ?? 0;
+        })
+    ),
     start_date: z.string().trim().min(1, "validation.required"),
     term_months: z.preprocess(
       (value) => (typeof value === "number" ? value.toString() : value),
-      z.string()
-      .trim()
-      .min(1, "validation.required")
-      .transform((value, ctx) => {
-        const parsed = parseNumber(value);
-        if (parsed === null || !Number.isInteger(parsed) || parsed <= 0) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "validation.termMonths.min",
-          });
-          return 0;
-        }
-        return parsed;
-      }),
+      z
+        .string()
+        .trim()
+        .min(1, "validation.required")
+        .transform((value, ctx) => {
+          const parsed = parseNumber(value);
+          if (parsed === null || !Number.isInteger(parsed) || parsed <= 0) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "validation.termMonths.min",
+            });
+            return 0;
+          }
+          return parsed;
+        })
+    ),
   })
   .superRefine((data, ctx) => {
     const balanceIssue = validateRemainingBalance(
