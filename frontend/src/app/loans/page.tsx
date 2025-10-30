@@ -70,8 +70,9 @@ const loanSchema = z
       .trim()
       .min(1, "validation.description.required")
       .max(100, { message: "validation.description.tooLong" }),
-    principal_amount: z
-      .string()
+    principal_amount: z.preprocess(
+      (value) => (typeof value === "number" ? value.toString() : value),
+      z.string()
       .trim()
       .min(1, "validation.required")
       .transform((value, ctx) => {
@@ -84,8 +85,9 @@ const loanSchema = z
         }
         return parseNumber(value) ?? 0;
       }),
-    remaining_balance: z
-      .string()
+    remaining_balance: z.preprocess(
+      (value) => (typeof value === "number" ? value.toString() : value),
+      z.string()
       .trim()
       .min(1, "validation.required")
       .transform((value, ctx) => {
@@ -98,8 +100,9 @@ const loanSchema = z
         }
         return parseNumber(value) ?? 0;
       }),
-    interest_rate: z
-      .string()
+    interest_rate: z.preprocess(
+      (value) => (typeof value === "number" ? value.toString() : value),
+      z.string()
       .trim()
       .min(1, "validation.required")
       .transform((value, ctx) => {
@@ -120,8 +123,9 @@ const loanSchema = z
         }
         return parsed;
       }),
-    monthly_payment: z
-      .string()
+    monthly_payment: z.preprocess(
+      (value) => (typeof value === "number" ? value.toString() : value),
+      z.string()
       .trim()
       .min(1, "validation.required")
       .transform((value, ctx) => {
@@ -135,8 +139,9 @@ const loanSchema = z
         return parseNumber(value) ?? 0;
       }),
     start_date: z.string().trim().min(1, "validation.required"),
-    term_months: z
-      .string()
+    term_months: z.preprocess(
+      (value) => (typeof value === "number" ? value.toString() : value),
+      z.string()
       .trim()
       .min(1, "validation.required")
       .transform((value, ctx) => {
