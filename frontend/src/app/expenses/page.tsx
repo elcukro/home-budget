@@ -47,6 +47,10 @@ interface Expense {
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+const expenseToActivityValues = (
+  expense: Expense | null | undefined,
+): Record<string, unknown> | undefined => (expense ? { ...expense } : undefined);
+
 const expenseSchema = z.object({
   category: z.string().min(1, "validation.categoryRequired"),
   description: z
@@ -277,7 +281,7 @@ export default function ExpensesPage() {
           entity_type: "Expense",
           operation_type: "create",
           entity_id: Number(created.id),
-          new_values: created,
+          new_values: expenseToActivityValues(created),
         });
 
         toast({
@@ -313,8 +317,8 @@ export default function ExpensesPage() {
           entity_type: "Expense",
           operation_type: "update",
           entity_id: Number(updated.id),
-          previous_values: activeExpense,
-          new_values: updated,
+          previous_values: expenseToActivityValues(activeExpense),
+          new_values: expenseToActivityValues(updated),
         });
 
         toast({
@@ -360,7 +364,7 @@ export default function ExpensesPage() {
         entity_type: "Expense",
         operation_type: "delete",
         entity_id: Number(pendingDelete.id),
-        previous_values: pendingDelete,
+        previous_values: expenseToActivityValues(pendingDelete),
       });
 
       toast({

@@ -199,7 +199,7 @@ const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: stri
           color: axisColor,
           font: {
             size: 12,
-            weight: '600' as const,
+            weight: 600,
           }
         },
       },
@@ -234,7 +234,7 @@ const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: stri
           color: axisColor,
           font: {
             size: 11,
-            weight: '500' as const,
+            weight: 500,
           },
           callback: function(value: any) {
             return formatCurrency(value, currency);
@@ -249,7 +249,7 @@ const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: stri
           color: axisColor,
           font: {
             size: 11,
-            weight: '500' as const,
+            weight: 500,
           }
         },
         grid: {

@@ -80,6 +80,16 @@ interface AdditionalSource {
   amount: number;
 }
 
+const ADDITIONAL_SOURCE_TOOLTIPS: Partial<
+  Record<keyof OnboardingData['income']['additionalSources'], string>
+> = {
+  rental: 'Podaj kwotę, którą faktycznie otrzymujesz co miesiąc po odjęciu kosztów.',
+  bonuses: 'Średnia miesięczna wysokość premii lub nagród z ostatnich 12 miesięcy.',
+  freelance: 'Oszacuj przeciętną miesięczną wartość zleceń lub umów o dzieło.',
+  benefits: 'Świadczenia socjalne, emerytura, renta – wskaż, co wpływa regularnie.',
+  childBenefit: 'Kwota naliczana na podstawie liczby dzieci (maks. 800 zł na dziecko).',
+};
+
 const EXPENSE_CATEGORY_VALUES = [
   'housing',
   'transportation',
@@ -717,16 +727,16 @@ const mergeOnboardingData = (
   current: OnboardingData,
   incoming: OnboardingData
 ): OnboardingData => {
-  const pickString = (currentValue: string, incomingValue?: string) =>
-    currentValue || incomingValue || currentValue;
+  const pickString = <T extends string>(currentValue: T, incomingValue?: T): T =>
+    (currentValue && currentValue.length > 0 ? currentValue : incomingValue ?? currentValue);
 
-  const pickBoolean = (currentValue: boolean, incomingValue?: boolean) =>
+  const pickBoolean = (currentValue: boolean, incomingValue?: boolean): boolean =>
     typeof incomingValue === 'boolean' ? incomingValue : currentValue;
 
-  const pickNumber = (currentValue: number, incomingValue?: number) =>
+  const pickNumber = (currentValue: number, incomingValue?: number): number =>
     currentValue > 0 ? currentValue : incomingValue && incomingValue > 0 ? incomingValue : currentValue;
 
-  const mergedLife = {
+  const mergedLife: OnboardingData['life'] = {
     maritalStatus: pickString(current.life.maritalStatus, incoming.life?.maritalStatus),
     includePartnerFinances: pickBoolean(
       current.life.includePartnerFinances,
@@ -929,9 +939,7 @@ const lifeSchema = z
     hasMortgage: z.boolean().optional(),
     employmentStatus: z.enum(['employee', 'business', 'freelancer', 'unemployed']),
     taxForm: z.enum(TAX_FORM_OPTIONS).or(z.literal('')),
-    householdCost: z
-      .number({ invalid_type_error: 'Podaj miesięczny koszt życia' })
-      .min(0, 'Kwota nie może być ujemna'),
+    householdCost: z.number().min(0, 'Kwota nie może być ujemna'),
   })
   .superRefine((value, ctx) => {
     if (value.employmentStatus === 'business' && !value.taxForm) {
@@ -1681,6 +1689,7 @@ export default function OnboardingWizard() {
               monthlyIncome={metrics.monthlyIncome}
               formatMoney={formatMoney}
               childrenCount={data.life.childrenCount}
+              nextLabel={nextStepLabel ? `Dalej → ${nextStepLabel}` : 'Dalej'}
             />
           )}
 
@@ -1821,13 +1830,13 @@ function FormFooter({
         <span>Dlaczego to ważne? Dzięki tym danym spersonalizujemy Twoje cele.</span>
       </div>
       <div className="flex items-center gap-3">
-        <Button type="button" variant="ghost" onClick={onSkip}>
+        <Button type="button" variant="link" onClick={onSkip} className="text-muted-foreground hover:text-primary">
           Pomiń krok
         </Button>
         <Button type="button" variant="outline" onClick={onBack}>
           Wstecz
         </Button>
-        <Button type="button" onClick={onNext}>
+        <Button type="button" onClick={onNext} className="transition-transform hover:translate-y-[-1px]">
           {isLast ? 'Zakończ' : nextLabel}
         </Button>
       </div>
@@ -2104,6 +2113,7 @@ function IncomeStep({
   monthlyIncome,
   formatMoney,
   childrenCount,
+  nextLabel,
 }: StepBaseProps & {
   data: OnboardingData['income'];
   onChange: (
@@ -2114,7 +2124,35 @@ function IncomeStep({
   monthlyIncome: number;
   formatMoney: (value: number) => string;
   childrenCount: number;
+  nextLabel?: string;
 }) {
+  const irregularMonthly = data.irregularIncomeAnnual / 12;
+  const additionalEntries: Array<
+    [keyof OnboardingData['income']['additionalSources'], string]
+  > = [
+    ['rental', 'Najem'],
+    ['bonuses', 'Premie'],
+    ['freelance', 'Zlecenia'],
+  ];
+
+  if (childrenCount > 0) {
+    additionalEntries.push([
+      'childBenefit',
+      `Świadczenia 800+ (limit ${formatMoney(childrenCount * 800)})`,
+    ]);
+  }
+
+  additionalEntries.push(['benefits', 'Pozostałe świadczenia']);
+
+  const activeAdditionalSources = additionalEntries
+    .map(([key, label]) => ({ key, label, source: data.additionalSources[key] }))
+    .filter(({ source }) => source.enabled);
+
+  const additionalTotal = activeAdditionalSources.reduce(
+    (sum, entry) => sum + entry.source.amount,
+    0
+  );
+
   const toggleSource = (
     key: keyof OnboardingData['income']['additionalSources'],
     enabled: boolean
@@ -2122,12 +2160,19 @@ function IncomeStep({
     const source = data.additionalSources[key];
     if (key === 'childBenefit') {
       const maxBenefit = Math.max(0, childrenCount * 800);
+      const nextAmount =
+        enabled && !source.enabled
+          ? maxBenefit
+          : enabled
+          ? Math.min(Math.max(0, source.amount || maxBenefit), maxBenefit)
+          : 0;
+
       onChange(
         {},
         key,
         {
           enabled: enabled && childrenCount > 0,
-          amount: enabled ? Math.min(source.amount || maxBenefit, maxBenefit) : 0,
+          amount: enabled ? nextAmount : 0,
         }
       );
       return;
@@ -2138,21 +2183,37 @@ function IncomeStep({
       key,
       {
         enabled,
-        amount: enabled ? source.amount : 0,
+        amount: enabled ? (source.amount || 0) : 0,
       }
     );
   };
 
   return (
     <form
-      className="space-y-5"
+      className="space-y-6"
       onSubmit={(event) => {
         event.preventDefault();
         onNext();
       }}
     >
+      <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 shadow-sm">
+        <p className="text-sm font-semibold text-primary">
+          Zobaczmy, z jakich źródeł pochodzą Twoje dochody – to pomoże oszacować potencjał oszczędności i inwestycji.
+        </p>
+        <p className="mt-1 text-xs text-secondary">
+          Im dokładniej określisz wpływy, tym trafniejsze będą kolejne rekomendacje.
+        </p>
+      </div>
+
       <FieldGroup
-        label="Wynagrodzenie miesięczne (netto)"
+        label={
+          <>
+            Wynagrodzenie miesięczne (netto){' '}
+            <TooltipTrigger text="Kwota, która realnie trafia co miesiąc na Twoje konto po opodatkowaniu.">
+              <Info className="h-4 w-4 text-primary" />
+            </TooltipTrigger>
+          </>
+        }
         error={errors['salaryNet']}
         required
       >
@@ -2164,53 +2225,64 @@ function IncomeStep({
       </FieldGroup>
 
       <div className="rounded-lg border border-muted/50 p-4">
-        <p className="mb-2 text-sm font-medium text-primary">Dodatkowe źródła</p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(
-            [
-              ['rental', 'Najem'],
-              ['bonuses', 'Premie'],
-              ['freelance', 'Zlecenia'],
-              ['benefits', 'Świadczenia'],
-              ...(childrenCount > 0
-                ? ([
-                    [
-                      'childBenefit',
-                      `Świadczenia 800+ (max ${formatMoney(childrenCount * 800)})`,
-                    ],
-                  ] as Array<[keyof OnboardingData['income']['additionalSources'], string]>)
-                : []),
-            ] as Array<[keyof OnboardingData['income']['additionalSources'], string]>
-          ).map(([key, label]) => {
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="mb-1 text-sm font-medium text-primary">
+              Dodatkowe źródła
+            </p>
+            <p className="text-xs text-secondary">
+              Włącz źródła, które regularnie zasilają Twój domowy budżet.
+            </p>
+          </div>
+          {childrenCount > 0 && (
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              Masz {childrenCount} {childrenCount === 1 ? 'dziecko' : 'dzieci'} – limit 800+ to {formatMoney(childrenCount * 800)}
+            </span>
+          )}
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {additionalEntries.map(([key, label]) => {
             const source = data.additionalSources[key];
             const isChildBenefit = key === 'childBenefit';
             const maxBenefit = Math.max(0, childrenCount * 800);
-
             if (isChildBenefit && childrenCount === 0) {
               return null;
             }
+            const tooltip = ADDITIONAL_SOURCE_TOOLTIPS[key];
 
             return (
               <div
                 key={key}
-                className="flex flex-col gap-2 rounded-md border border-muted/50 bg-muted/40 p-3"
+                className={cn(
+                  'flex flex-col gap-2 rounded-md border p-3 transition-colors',
+                  source.enabled
+                    ? 'border-success/40 bg-success/10 shadow-sm'
+                    : 'border-muted/60 bg-muted/40'
+                )}
               >
-                <label className="flex items-center gap-2 text-sm font-medium text-primary">
+                <label className="flex items-start gap-2 text-sm font-medium text-primary">
                   <Checkbox
                     checked={source.enabled && (!isChildBenefit || childrenCount > 0)}
-                    onCheckedChange={(checked) =>
-                      toggleSource(key, Boolean(checked))
-                    }
+                    onCheckedChange={(checked) => toggleSource(key, Boolean(checked))}
                     id={`source-${key}`}
                     disabled={isChildBenefit && childrenCount === 0}
                   />
-                  <span>{label}</span>
+                  <span className="flex flex-col gap-1">
+                    <span className="flex items-center gap-2">
+                      {label}
+                      {tooltip && (
+                        <TooltipTrigger text={tooltip}>
+                          <Info className="h-4 w-4 text-primary" />
+                        </TooltipTrigger>
+                      )}
+                    </span>
+                    {isChildBenefit && (
+                      <span className="text-xs text-secondary">
+                        Limit: {formatMoney(maxBenefit)} (800 zł × liczba dzieci)
+                      </span>
+                    )}
+                  </span>
                 </label>
-                {isChildBenefit && (
-                  <p className="text-xs text-secondary">
-                    Limit: {formatMoney(maxBenefit)} (800 zł x liczba dzieci)
-                  </p>
-                )}
                 {source.enabled && (
                   <CurrencyInput
                     value={source.amount}
@@ -2230,34 +2302,87 @@ function IncomeStep({
             );
           })}
         </div>
+
+        {activeAdditionalSources.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
+            <span className="font-medium">Aktywne źródła:</span>
+            {activeAdditionalSources.map(({ key, label }) => (
+              <span
+                key={key}
+                className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary"
+              >
+                {label}
+              </span>
+            ))}
+            <span className="ml-auto font-medium">
+              Razem: {formatMoney(additionalTotal)}
+            </span>
+          </div>
+        )}
       </div>
 
       <FieldGroup
-        label="Dochody nieregularne (rocznie)"
+        label={
+          <>
+            Dochody nieregularne (rocznie){' '}
+            <TooltipTrigger text="Przeliczamy roczne premie lub zwroty podatku na miesięczny ekwiwalent.">
+              <Info className="h-4 w-4 text-primary" />
+            </TooltipTrigger>
+          </>
+        }
         error={errors['irregularIncomeAnnual']}
         hint="Podaj kwoty netto – to, co realnie trafia na konto."
       >
-        <CurrencyInput
-          value={data.irregularIncomeAnnual}
-          onValueChange={(amount) =>
-            onChange({
-              irregularIncomeAnnual: amount,
-            })
-          }
-          placeholder="np. 6 000"
-        />
+        <div className="space-y-2">
+          <CurrencyInput
+            value={data.irregularIncomeAnnual}
+            onValueChange={(amount) =>
+              onChange({
+                irregularIncomeAnnual: amount,
+              })
+            }
+            placeholder="np. 6 000"
+          />
+          <p className="text-xs text-secondary">
+            To odpowiada około{' '}
+            <span className="font-medium text-primary">
+              {formatMoney(Math.round(irregularMonthly))}
+            </span>{' '}
+            miesięcznie.
+          </p>
+        </div>
       </FieldGroup>
 
-      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-        <p className="text-sm font-medium text-primary">
-          Łączny miesięczny dochód
-        </p>
-        <p className="text-2xl font-semibold text-primary">
-          {formatMoney(Math.round(monthlyIncome))}
+      <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-primary">
+            <TrendingUp className="h-5 w-5" />
+            <p className="text-sm font-medium">Łączny miesięczny dochód</p>
+          </div>
+          <AnimatedAmount
+            value={Math.round(monthlyIncome)}
+            formatMoney={formatMoney}
+            tone="low"
+            className="text-xl font-semibold"
+          />
+        </div>
+        <p className="text-xs text-secondary">
+          Na podstawie Twoich danych miesięczny dochód netto wynosi{' '}
+          <span className="font-medium text-primary">
+            {formatMoney(Math.round(monthlyIncome))}
+          </span>
+          . W kolejnym kroku zobaczymy, jak rozkładają się Twoje wydatki.
         </p>
       </div>
 
-      <FormFooter onNext={onNext} onBack={onBack} onSkip={onSkip} />
+      <SalaryDistributionChart salary={data.salaryNet} formatMoney={formatMoney} />
+
+      <FormFooter
+        onNext={onNext}
+        onBack={onBack}
+        onSkip={onSkip}
+        nextLabel={nextLabel}
+      />
     </form>
   );
 }
@@ -3015,27 +3140,6 @@ function SalaryDistributionChart({
       maxBarThickness: 22,
     };
 
-    const highlightDataset =
-      clampedSalary > 0
-        ? [
-            {
-              type: 'scatter' as const,
-              label: 'Twoje wynagrodzenie',
-              data: [
-                {
-                  x: labels[rangeIndex],
-                  y: highlightPercentile,
-                },
-              ],
-              pointBackgroundColor: 'rgba(22, 163, 74, 0.95)',
-              pointBorderColor: '#fff',
-              pointBorderWidth: 2,
-              pointRadius: 5,
-              pointHoverRadius: 6,
-            },
-          ]
-        : [];
-
     const chartOptions: ChartOptions<'bar'> = {
       responsive: true,
       maintainAspectRatio: false,
@@ -3057,7 +3161,7 @@ function SalaryDistributionChart({
         y: {
           grid: { display: false },
           ticks: {
-            callback: (value: number) => `${value}%`,
+            callback: (value: string | number) => (typeof value === 'number' ? `${value}%` : value),
             color: '#6b7280',
             font: { size: 10 },
           },
@@ -3067,9 +3171,9 @@ function SalaryDistributionChart({
       },
     };
 
-    const chartData: ChartData<'bar' | 'scatter'> = {
+    const chartData: ChartData<'bar'> = {
       labels,
-      datasets: [barDataset, ...highlightDataset],
+      datasets: [barDataset],
     };
 
     const percentileRounded = Math.round(highlightPercentile);

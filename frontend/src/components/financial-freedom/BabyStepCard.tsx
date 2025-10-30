@@ -272,7 +272,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
                     { amount: formatCurrency(step.currentAmount || 0) }
                   )}
             </p>
-            {!step.isCompleted && step.targetAmount > 0 && (
+            {!step.isCompleted && (step.targetAmount ?? 0) > 0 && (
               <p className="text-sm text-secondary">
                 {intl.formatMessage(
                   { id: 'financialFreedom.steps.step6.originalAmount' },

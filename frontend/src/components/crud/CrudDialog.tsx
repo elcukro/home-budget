@@ -32,7 +32,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useIntl } from "react-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type FieldValues, type Path } from "react-hook-form";
+import { useForm, type FieldValues, type Path, type Resolver, type DefaultValues } from "react-hook-form";
 import type { ZodType } from "zod";
 
 type FieldComponent =
@@ -96,16 +96,16 @@ export function CrudDialog<TFormValues extends FieldValues>({
   const intl = useIntl();
 
   const form = useForm<TFormValues>({
-    resolver: zodResolver(schema),
-    defaultValues,
+    resolver: zodResolver(schema as any) as Resolver<TFormValues>,
+    defaultValues: defaultValues as DefaultValues<TFormValues>,
     mode: "onSubmit",
   });
 
   useEffect(() => {
     if (open) {
-      form.reset({ ...defaultValues, ...initialValues });
+      form.reset({ ...defaultValues, ...initialValues } as DefaultValues<TFormValues>);
     } else {
-      form.reset(defaultValues);
+      form.reset(defaultValues as DefaultValues<TFormValues>);
     }
   }, [open, initialValues, defaultValues, form]);
 

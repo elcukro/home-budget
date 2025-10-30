@@ -286,7 +286,6 @@ export default function FinancialFreedomPage() {
                 onUpdate={(updates: Partial<BabyStep>) => handleUpdateStep(step.id, updates)}
                 formatCurrency={formatCurrency}
                 currency={settings?.currency || 'USD'}
-                onRefresh={undefined} // Remove refresh capability
               />
             ))}
           </div>

@@ -32,7 +32,7 @@ interface ApiCache {
     timestamp: number;
   };
   mortgageData?: {
-    data: Loan | null;
+    data: CombinedMortgageData | null;
     timestamp: number;
   };
 }

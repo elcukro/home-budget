@@ -4,8 +4,8 @@ export interface ActivityLog {
   entity_type: 'Income' | 'Expense' | 'Loan';
   operation_type: 'create' | 'update' | 'delete';
   entity_id: number;
-  previous_values?: Record<string, unknown>;
-  new_values?: Record<string, unknown>;
+  previous_values?: unknown;
+  new_values?: unknown;
 }
 
 export const logActivity = async (activity: ActivityLog): Promise<void> => {
@@ -17,9 +17,9 @@ export const logActivity = async (activity: ActivityLog): Promise<void> => {
     }
 
     // Filter out created_at and updated_at from values
-    const filterTimestamps = (values?: Record<string, unknown>) => {
-      if (!values) return undefined;
-      const { created_at, updated_at, ...filteredValues } = values;
+    const filterTimestamps = (values?: unknown): Record<string, unknown> | undefined => {
+      if (!values || typeof values !== 'object' || Array.isArray(values)) return undefined;
+      const { created_at, updated_at, ...filteredValues } = values as Record<string, unknown>;
       return filteredValues;
     };
 

@@ -14,6 +14,7 @@ interface CurrencyInputProps
   value: number;
   onValueChange: (value: number) => void;
   allowNegative?: boolean;
+  onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const escapeRegExp = (value: string) =>
@@ -184,8 +185,7 @@ export const CurrencyInput = React.forwardRef<
         className={cn('font-medium', className)}
         placeholder={
           placeholder ??
-          formatNumberForDisplay(allowNegative ? -12345 : 12345) ||
-          '0'
+          (formatNumberForDisplay(allowNegative ? -12345 : 12345) || '0')
         }
       />
     );
