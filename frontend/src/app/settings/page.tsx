@@ -420,9 +420,9 @@ export default function SettingsPage() {
                 {intl.formatMessage({ id: "settings.export.description" })}
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => void handleExport("json")}>JSON</Button>
-                <Button variant="outline" onClick={() => void handleExport("csv")}>CSV</Button>
-                <Button variant="outline" onClick={() => void handleExport("xlsx")}>Excel</Button>
+                <Button variant="outline" onClick={() => void handleExport("json")}>{intl.formatMessage({ id: "settings.export.json" })}</Button>
+                <Button variant="outline" onClick={() => void handleExport("csv")}>{intl.formatMessage({ id: "settings.export.csv" })}</Button>
+                <Button variant="outline" onClick={() => void handleExport("xlsx")}>{intl.formatMessage({ id: "settings.export.xlsx" })}</Button>
               </div>
 
               <Separator />

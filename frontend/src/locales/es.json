@@ -203,7 +203,10 @@
       "description": "Exporta todos tus datos en formato JSON, CSV o Excel. Puedes usar esta exportación para hacer una copia de seguridad o transferir tus datos a otra cuenta.",
       "jsonButton": "Exportar como JSON",
       "csvButton": "Exportar como CSV",
-      "excelButton": "Exportar como Excel"
+      "excelButton": "Exportar como Excel",
+      "json": "JSON",
+      "csv": "CSV",
+      "xlsx": "Excel"
     },
     "import": {
       "title": "Importar datos",
@@ -225,7 +228,8 @@
       "importSuccess": "Datos importados exitosamente",
       "importError": "Error al importar datos. Por favor, verifica el formato del archivo e inténtalo de nuevo.",
       "currencyConverted": "Tu objetivo del fondo de emergencia ha sido convertido de {oldCurrency} a {newCurrency}: {amount}"
-    }
+    },
+    "tabs": {}
   },
   "inactivity": {
     "warning": {
@@ -333,4 +337,4 @@
       "suggestion": "Sugerencia: {text}"
     }
   }
-} 
+}

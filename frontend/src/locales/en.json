@@ -542,7 +542,10 @@
       "description": "Export all your data in JSON, CSV, or Excel format. You can use this export to backup your data or transfer it to another account.",
       "jsonButton": "Export as JSON",
       "csvButton": "Export as CSV",
-      "excelButton": "Export as Excel"
+      "excelButton": "Export as Excel",
+      "json": "JSON",
+      "csv": "CSV",
+      "xlsx": "Excel"
     },
     "import": {
       "title": "Import Data",
@@ -778,4 +781,4 @@
       "selectAccount": "Please select an account first"
     }
   }
-} 
+}
