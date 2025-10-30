@@ -209,13 +209,34 @@ export default function ExpensesPage() {
     void loadExpenses();
   }, [userEmail, intl]);
 
-  const sortedExpenses = useMemo(
-    () =>
-      [...expenses].sort(
+  const expensesByCategory = useMemo(() => {
+    const grouped = expenses.reduce<Record<string, { items: Expense[]; total: number }>>(
+      (acc, expense) => {
+        if (!acc[expense.category]) {
+          acc[expense.category] = { items: [], total: 0 };
+        }
+        acc[expense.category].items.push(expense);
+        acc[expense.category].total += expense.amount;
+        return acc;
+      },
+      {},
+    );
+
+    Object.values(grouped).forEach((group) => {
+      group.items.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      ),
-    [expenses],
-  );
+      );
+    });
+
+    return grouped;
+  }, [expenses]);
+
+  const groupedCategories = useMemo(() => {
+    const entries = Object.entries(expensesByCategory);
+    return entries.sort(([categoryA], [categoryB]) => {
+      return categoryA.localeCompare(categoryB);
+    });
+  }, [expensesByCategory]);
 
   const handleOpenCreate = () => {
     setActiveExpense(null);
@@ -384,6 +405,8 @@ export default function ExpensesPage() {
     return <TablePageSkeleton />;
   }
 
+  const hasExpenses = groupedCategories.length > 0;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -416,96 +439,108 @@ export default function ExpensesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {sortedExpenses.length === 0 ? (
+          {!hasExpenses ? (
             <p className="text-sm text-muted-foreground">
               <FormattedMessage id="expenses.noEntries" />
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <FormattedMessage id="expenses.table.category" />
-                  </TableHead>
-                  <TableHead>
-                    <FormattedMessage id="expenses.table.description" />
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <FormattedMessage id="expenses.table.amount" />
-                  </TableHead>
-                  <TableHead>
-                    <FormattedMessage id="expenses.table.date" />
-                  </TableHead>
-                  <TableHead>
-                    <FormattedMessage id="expenses.table.recurring" />
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <FormattedMessage id="expenses.table.actions" />
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedExpenses.map((expense) => (
-                  <TableRow key={expense.id}>
-                    <TableCell>
-                      <FormattedMessage
-                        id={`expenses.categories.${expense.category}`}
-                      />
-                    </TableCell>
-                    <TableCell>{expense.description}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(expense.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <FormattedDate value={new Date(expense.date)} />
-                    </TableCell>
-                    <TableCell>
-                      {expense.is_recurring ? (
-                        <span className="text-emerald-600">
-                          <FormattedMessage id="common.yes" />
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          <FormattedMessage id="common.no" />
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="flex justify-end gap-2">
-                      <Tooltip content={intl.formatMessage({ id: "common.edit" })}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(expense)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">
-                            {intl.formatMessage({ id: "common.edit" })}
-                          </span>
-                        </Button>
-                      </Tooltip>
-                      <Tooltip
-                        content={intl.formatMessage({ id: "common.delete" })}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setPendingDelete(expense);
-                            setConfirmOpen(true);
-                          }}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">
-                            {intl.formatMessage({ id: "common.delete" })}
-                          </span>
-                        </Button>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="space-y-6">
+              {groupedCategories.map(([category, group]) => (
+                <div key={category} className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-primary">
+                        <FormattedMessage id={`expenses.categories.${category}`} />
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        <FormattedMessage
+                          id="expenses.categoryTotal"
+                          values={{ amount: formatCurrency(group.total) }}
+                        />
+                      </span>
+                    </div>
+                  </div>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>
+                          <FormattedMessage id="expenses.table.description" />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <FormattedMessage id="expenses.table.amount" />
+                        </TableHead>
+                        <TableHead>
+                          <FormattedMessage id="expenses.table.date" />
+                        </TableHead>
+                        <TableHead>
+                          <FormattedMessage id="expenses.table.recurring" />
+                        </TableHead>
+                        <TableHead className="text-right">
+                          <FormattedMessage id="expenses.table.actions" />
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.items.map((expense) => (
+                        <TableRow key={expense.id}>
+                          <TableCell>{expense.description}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(expense.amount)}
+                          </TableCell>
+                          <TableCell>
+                            <FormattedDate value={new Date(expense.date)} />
+                          </TableCell>
+                          <TableCell>
+                            {expense.is_recurring ? (
+                              <span className="text-emerald-600">
+                                <FormattedMessage id="common.yes" />
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                <FormattedMessage id="common.no" />
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="flex justify-end gap-2">
+                            <Tooltip content={intl.formatMessage({ id: "common.edit" })}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleOpenEdit(expense)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">
+                                  {intl.formatMessage({ id: "common.edit" })}
+                                </span>
+                              </Button>
+                            </Tooltip>
+                            <Tooltip
+                              content={intl.formatMessage({ id: "common.delete" })}
+                            >
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setPendingDelete(expense);
+                                  setConfirmOpen(true);
+                                }}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">
+                                  {intl.formatMessage({ id: "common.delete" })}
+                                </span>
+                              </Button>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

@@ -357,7 +357,8 @@
       "title": "Remove expense entry",
       "description": "Are you sure you want to delete this expense? This action cannot be undone.",
       "confirm": "Delete"
-    }
+    },
+    "categoryTotal": "Category total: {amount}"
   },
   "loans": {
     "title": "Loan Management",
@@ -457,6 +458,9 @@
       "expenses": "Expenses",
       "loanPayments": "Loan Payments",
       "amount": "Amount"
+    },
+    "messages": {
+      "fetchError": "Unable to fetch report data. Please try again later."
     }
   },
   "settings": {

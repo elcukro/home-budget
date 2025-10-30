@@ -327,7 +327,8 @@
       "title": "Usuń wydatek",
       "description": "Czy na pewno chcesz usunąć ten wydatek? Tego działania nie można cofnąć.",
       "confirm": "Usuń"
-    }
+    },
+    "categoryTotal": "Suma kategorii: {amount}"
   },
   "loans": {
     "title": "Zarządzanie Pożyczkami",
@@ -427,6 +428,9 @@
       "expenses": "Wydatki",
       "loanPayments": "Spłaty Pożyczek",
       "amount": "Kwota"
+    },
+    "messages": {
+      "fetchError": "Nie udało się pobrać danych raportu. Spróbuj ponownie później."
     }
   },
   "settings": {
