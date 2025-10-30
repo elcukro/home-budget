@@ -2742,11 +2742,13 @@ function LiabilitiesStep({
       </div>
 
       <div className="space-y-4">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const Icon = getTypeIcon(item.type);
           const remainingLabel = item.type === 'leasing'
             ? 'Kwota wykupu pozostała (PLN)'
             : 'Kwota pozostała do spłaty (PLN)';
+          const fieldError = (field: keyof LiabilityItem) =>
+            errors[`${index}.${field}`] ?? errors[field];
           return (
             <div
               key={item.id}
@@ -2772,7 +2774,7 @@ function LiabilitiesStep({
               <div className="grid gap-4 md:grid-cols-2">
                 <FieldGroup
                   label="Rodzaj zobowiązania"
-                  error={errors['type']}
+                  error={fieldError('type')}
                   required
                 >
                   <Select
@@ -2809,6 +2811,7 @@ function LiabilitiesStep({
                     </span>
                   }
                   required
+                  error={fieldError('remainingAmount')}
                 >
                   <CurrencyInput
                     value={item.remainingAmount}
@@ -2831,6 +2834,7 @@ function LiabilitiesStep({
                     </span>
                   }
                   required
+                  error={fieldError('monthlyPayment')}
                 >
                   <CurrencyInput
                     value={item.monthlyPayment}
