@@ -149,7 +149,7 @@ interface LiabilityItem {
   interestRate?: number | null;
   endDate?: string;
   purpose?: string;
-  repaymentType?: 'equal' | 'decreasing' | '';
+  repaymentType?: 'equal' | 'decreasing' | 'unknown';
   propertyValue?: number | null;
 }
 
@@ -818,14 +818,14 @@ const mergeOnboardingData = (
       ? current.liabilities.map((item) => ({
           ...item,
           purpose: item.purpose ?? '',
-          repaymentType: item.repaymentType ?? '',
+          repaymentType: item.repaymentType ?? 'unknown',
           propertyValue: item.propertyValue ?? null,
         }))
       : (incoming.liabilities?.map((item) => ({
           ...item,
           id: item.id || ensureId('liability'),
           purpose: item.purpose ?? '',
-          repaymentType: item.repaymentType ?? '',
+          repaymentType: item.repaymentType ?? 'unknown',
           propertyValue: item.propertyValue ?? null,
         })) ?? []);
 
@@ -1026,7 +1026,7 @@ const liabilitySchema = z.object({
   interestRate: z.number().min(0).max(100).nullable().optional(),
   endDate: z.string().optional(),
   purpose: z.string().optional(),
-  repaymentType: z.enum(['equal', 'decreasing', '']).default(''),
+  repaymentType: z.enum(['equal', 'decreasing', 'unknown']).default('unknown'),
   propertyValue: z.number().min(0).nullable().optional(),
 });
 
@@ -1432,7 +1432,7 @@ export default function OnboardingWizard() {
           interestRate: null,
           endDate: '',
           purpose: '',
-          repaymentType: '',
+          repaymentType: 'unknown',
           propertyValue: null,
         },
       ],
@@ -2715,7 +2715,7 @@ function LiabilitiesStep({
     const currentItem = items.find((liability) => liability.id === id);
     onUpdate(id, {
       type: value,
-      repaymentType: ['card', 'line'].includes(value) ? '' : (currentItem?.repaymentType || 'equal'),
+      repaymentType: ['card', 'line'].includes(value) ? 'unknown' : (currentItem?.repaymentType || 'equal'),
       propertyValue: value === 'mortgage' ? currentItem?.propertyValue ?? null : null,
     });
   };
@@ -2893,7 +2893,7 @@ function LiabilitiesStep({
                       <SelectContent>
                         <SelectItem value="equal">Raty równe</SelectItem>
                         <SelectItem value="decreasing">Raty malejące</SelectItem>
-                        <SelectItem value="">
+                        <SelectItem value="unknown">
                           Nie mam pewności / inne
                         </SelectItem>
                       </SelectContent>
