@@ -2748,7 +2748,9 @@ function LiabilitiesStep({
             ? 'Kwota wykupu pozostała (PLN)'
             : 'Kwota pozostała do spłaty (PLN)';
           const fieldError = (field: keyof LiabilityItem) =>
-            errors[`${index}.${field}`] ?? errors[field];
+            errors[`liabilities.${index}.${field}`] ??
+            errors[`${index}.${field}`] ??
+            errors[field];
           return (
             <div
               key={item.id}
@@ -2884,7 +2886,7 @@ function LiabilitiesStep({
                     hint="(opcjonalnie)"
                   >
                     <Select
-                      value={item.repaymentType || ''}
+                      value={item.repaymentType || 'unknown'}
                       onValueChange={(value) =>
                         onUpdate(item.id, {
                           repaymentType: value as LiabilityItem['repaymentType'],
@@ -3251,10 +3253,10 @@ function AssetsStep({
         />
       </FieldGroup>
 
-      <div>
-        <label className="mb-2 block text-sm font-medium text-primary">
-          Fundusz awaryjny – na ile miesięcy wystarczy?
-        </label>
+      <FieldGroup
+        label="Fundusz awaryjny – na ile miesięcy wystarczy?"
+        error={errors['emergencyFundMonths']}
+      >
         <div className="flex items-center gap-4">
           <input
             type="range"
@@ -3272,7 +3274,7 @@ function AssetsStep({
             {data.emergencyFundMonths} mies.
           </span>
         </div>
-      </div>
+      </FieldGroup>
 
       <div className="rounded-lg border border-muted/60 bg-muted/30 p-4">
         <p className="mb-2 text-sm font-medium text-primary">
@@ -3295,18 +3297,23 @@ function AssetsStep({
           ))}
         </div>
         <div className="mt-3">
-          <CurrencyInput
-            value={data.investments.totalValue}
-            onValueChange={(amount) =>
-              onChange({
-                investments: {
-                  ...data.investments,
-                  totalValue: amount,
-                },
-              })
-            }
-            placeholder="Łączna wartość (PLN)"
-          />
+          <FieldGroup
+            label="Łączna wartość inwestycji (PLN)"
+            error={errors['investments.totalValue']}
+          >
+            <CurrencyInput
+              value={data.investments.totalValue}
+              onValueChange={(amount) =>
+                onChange({
+                  investments: {
+                    ...data.investments,
+                    totalValue: amount,
+                  },
+                })
+              }
+              placeholder="Łączna wartość (PLN)"
+            />
+          </FieldGroup>
         </div>
       </div>
 
@@ -3424,12 +3431,15 @@ function GoalsStep({
       )}
 
       <div className="space-y-4">
-        {goals.map((goal) => (
+        {goals.map((goal, index) => (
           <div
             key={goal.id}
             className="space-y-3 rounded-lg border border-muted/60 bg-muted/30 p-4"
           >
-            <FieldGroup label="Nazwa celu" error={errors[`goals.${goal.id}.name`]}>
+            <FieldGroup
+              label="Nazwa celu"
+              error={errors[`goals.${goal.id}.name`] ?? errors[`goals.${index}.name`] ?? errors[`${index}.name`] ?? errors['name']}
+            >
               <Input
                 value={goal.name}
                 onChange={(event) =>
@@ -3440,7 +3450,10 @@ function GoalsStep({
             </FieldGroup>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <FieldGroup label="Typ celu">
+              <FieldGroup
+                label="Typ celu"
+                error={errors[`goals.${goal.id}.type`] ?? errors[`goals.${index}.type`] ?? errors[`${index}.type`] ?? errors['type']}
+              >
                 <Select
                   value={goal.type}
                   onValueChange={(value) =>
@@ -3462,7 +3475,10 @@ function GoalsStep({
                 </Select>
               </FieldGroup>
 
-              <FieldGroup label="Kwota docelowa (PLN)">
+              <FieldGroup
+                label="Kwota docelowa (PLN)"
+                error={errors[`goals.${goal.id}.targetAmount`] ?? errors[`goals.${index}.targetAmount`] ?? errors[`${index}.targetAmount`] ?? errors['targetAmount']}
+              >
                 <CurrencyInput
                   value={goal.targetAmount}
                   onValueChange={(amount) =>
@@ -3476,7 +3492,10 @@ function GoalsStep({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <FieldGroup label="Termin realizacji">
+              <FieldGroup
+                label="Termin realizacji"
+                error={errors[`goals.${goal.id}.targetDate`] ?? errors[`goals.${index}.targetDate`] ?? errors[`${index}.targetDate`] ?? errors['targetDate']}
+              >
                 <Input
                   type="date"
                   value={goal.targetDate ?? ''}
@@ -3485,7 +3504,10 @@ function GoalsStep({
                   }
                 />
               </FieldGroup>
-              <FieldGroup label="Priorytet (1–5)">
+              <FieldGroup
+                label="Priorytet (1–5)"
+                error={errors[`goals.${goal.id}.priority`] ?? errors[`goals.${index}.priority`] ?? errors[`${index}.priority`] ?? errors['priority']}
+              >
                 <Input
                   type="number"
                   min={1}
@@ -3678,16 +3700,29 @@ function FieldGroup({
   required?: boolean;
   className?: string;
 }) {
+  const hasError = Boolean(error);
   return (
-    <div className={className}>
-      <label className="mb-1 block text-sm font-medium text-primary">
+    <div className={cn('space-y-1', className)}>
+      <label
+        className={cn(
+          'mb-1 block text-sm font-medium text-primary',
+          hasError && 'text-destructive'
+        )}
+      >
         <span className="inline-flex items-center gap-2">
           {label}
           {required && <span className="text-destructive">*</span>}
         </span>
       </label>
-      {hint && <p className="mb-2 text-xs text-secondary">{hint}</p>}
-      <div>{children}</div>
+      {hint && <p className="mb-1 text-xs text-secondary">{hint}</p>}
+      <div
+        className={cn(
+          hasError &&
+            'rounded-md border border-destructive/50 bg-destructive/10 px-2 py-1'
+        )}
+      >
+        {children}
+      </div>
       {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
     </div>
   );
