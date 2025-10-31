@@ -741,5 +741,540 @@
     },
     "noEntries": "Brak zapisów oszczędności",
     "loadError": "Nie udało się załadować oszczędności. Spróbuj ponownie później."
+  },
+  "onboarding": {
+    "header": {
+      "title": "Start finansowego profilu",
+      "subtitle": "Przejdź przez serię kroków, aby zbudować swój finansowy punkt startowy.",
+      "saving": "Zapisywanie danych...",
+      "savedAt": "Zapisano o {time}",
+      "stepIndicator": "Krok {current} z {total}",
+      "welcomeGreeting": "Witaj w Twoim Finansowym Centrum!"
+    },
+    "navigation": {
+      "whyItMatters": "Dlaczego to ważne? Dzięki tym danym spersonalizujemy Twoje cele.",
+      "skipStep": "Pomiń krok",
+      "back": "Wstecz",
+      "finish": "Zakończ",
+      "nextDefault": "Dalej",
+      "nextWithStep": "Dalej → {step}"
+    },
+    "placeholders": {
+      "exampleNumber": "np. {value}",
+      "exampleAmount": "np. {value}"
+    },
+    "steps": {
+      "welcome": {
+        "label": "Powitanie",
+        "description": "Wprowadzenie do procesu onboardingu"
+      },
+      "life": {
+        "label": "Sytuacja życiowa",
+        "description": "Poznaj swój kontekst finansowy"
+      },
+      "income": {
+        "label": "Przychody",
+        "description": "Źródła i poziom dochodów"
+      },
+      "expenses": {
+        "label": "Wydatki",
+        "description": "Powtarzalne koszty miesięczne"
+      },
+      "liabilities": {
+        "label": "Zobowiązania",
+        "description": "Sprawdźmy Twoje kredyty i pożyczki"
+      },
+      "assets": {
+        "label": "Majątek i inwestycje",
+        "description": "Aktywa finansowe i rzeczowe"
+      },
+      "goals": {
+        "label": "Cele finansowe",
+        "description": "Plany i priorytety"
+      },
+      "summary": {
+        "label": "Podsumowanie",
+        "description": "Sprawdź, co udało się zebrać",
+        "cards": {
+          "monthlyIncome": "Miesięczny dochód",
+          "monthlyExpenses": "Miesięczne wydatki",
+          "monthlySurplus": "Nadwyżka miesięczna",
+          "netWorth": "Wartość netto"
+        },
+        "panels": {
+          "income": "Dochody",
+          "expensesLiabilities": "Wydatki i zobowiązania",
+          "assets": "Aktywa",
+          "goals": "Cele"
+        },
+        "income": {
+          "salary": "Wynagrodzenie",
+          "additionalSources": "Źródła dodatkowe",
+          "irregularIncome": "Dochody nieregularne (miesięczny ekwiwalent)",
+          "taxForm": "Forma opodatkowania"
+        },
+        "expenses": {
+          "fixedCosts": "Koszty stałe",
+          "monthlyLiabilities": "Raty miesięczne",
+          "dti": "DTI",
+          "dtiValue": "{value}%"
+        },
+        "assets": {
+          "savings": "Oszczędności",
+          "investments": "Inwestycje",
+          "properties": "Nieruchomości",
+          "emergencyCoverage": "Pokrycie poduszką",
+          "emergencyCoverageValue": "{months} mies."
+        },
+        "goals": {
+          "none": "Brak zdefiniowanych celów",
+          "noneValue": "—",
+          "unnamed": "Cel bez nazwy",
+          "entry": "{amount} • priorytet {priority}"
+        },
+        "actions": {
+          "reset": "Zacznij od nowa",
+          "finish": "Zakończ i przejdź do aplikacji"
+        }
+      }
+    },
+    "summary": {
+      "cards": {
+        "monthlyIncome": "Miesięczny dochód",
+        "monthlyExpenses": "Miesięczne wydatki",
+        "monthlySurplus": "Nadwyżka miesięczna",
+        "netWorth": "Wartość netto"
+      },
+      "panels": {
+        "income": "Dochody",
+        "expensesLiabilities": "Wydatki i zobowiązania",
+        "assets": "Aktywa",
+        "goals": "Cele"
+      },
+      "income": {
+        "salary": "Wynagrodzenie",
+        "additionalSources": "Źródła dodatkowe",
+        "irregularIncome": "Dochody nieregularne (miesięczny ekwiwalent)",
+        "taxForm": "Forma opodatkowania"
+      },
+      "expenses": {
+        "fixedCosts": "Koszty stałe",
+        "monthlyLiabilities": "Raty miesięczne",
+        "dti": "DTI",
+        "dtiValue": "{value}%"
+      },
+      "assets": {
+        "savings": "Oszczędności",
+        "investments": "Inwestycje",
+        "properties": "Nieruchomości",
+        "emergencyCoverage": "Pokrycie poduszką",
+        "emergencyCoverageValue": "{months} mies."
+      },
+      "goals": {
+        "none": "Brak zdefiniowanych celów",
+        "noneValue": "—",
+        "unnamed": "Cel bez nazwy",
+        "entry": "{amount} • priorytet {priority}"
+      },
+      "actions": {
+        "reset": "Zacznij od nowa",
+        "finish": "Zakończ i przejdź do aplikacji"
+      }
+    },
+    "validation": {
+      "goalRequired": "Dodaj przynajmniej jeden cel lub pomiń krok"
+    },
+    "accessibility": {
+      "moreInfo": "Więcej informacji"
+    },
+    "welcome": {
+      "intro": "W kilka minut pomożemy Ci odkryć, jak wygląda Twoja sytuacja finansowa. Przejdziemy przez sześć krótkich kroków – od dochodów i wydatków po cele finansowe.",
+      "info": "Onboarding to jednorazowe wprowadzenie danych. Wszystko zapisujemy automatycznie – możesz wrócić i edytować informacje w dowolnym momencie.",
+      "start": "Zaczynamy",
+      "skip": "Pomiń onboarding"
+    },
+    "life": {
+      "intro": "Zrozumiemy Twoją sytuację życiową, aby zaproponować dopasowany plan finansowy.",
+      "subIntro": "Kilka spokojnych pytań pozwoli nam przygotować Twój spersonalizowany punkt startowy.",
+      "fields": {
+        "maritalStatus": {
+          "label": "Stan cywilny",
+          "tooltip": "Dzięki temu dopasujemy pytania do Twojej sytuacji rodzinnej.",
+          "options": {
+            "single": "Singiel / singielka",
+            "relationship": "W związku",
+            "married": "Małżeństwo"
+          }
+        },
+        "partnerBudget": {
+          "label": "Czy prowadzicie wspólny budżet?",
+          "hint": "Dzięki temu zobaczysz pełny obraz Waszego gospodarstwa domowego."
+        },
+        "childrenCount": {
+          "label": "Liczba dzieci",
+          "tooltip": "Uwzględnimy edukację, ubrania i zajęcia dodatkowe w dalszym planie."
+        },
+        "childrenAgeRange": {
+          "label": "W jakim wieku są dzieci?",
+          "hint": "Dzięki temu dopasujemy rekomendacje oszczędzania i edukacji.",
+          "placeholder": "Wybierz przedział wiekowy",
+          "options": {
+            "0_6": "0 – 6 lat",
+            "7_12": "7 – 12 lat",
+            "13_plus": "13 lat i więcej",
+            "mixed": "Różne przedziały wiekowe"
+          }
+        },
+        "housingType": {
+          "label": "Typ zamieszkania",
+          "tooltip": "Rata kredytu lub czynsz to często największy stały koszt – warto być precyzyjnym.",
+          "hint": "Wynajem i kredyt mają wpływ na strukturę Twoich wydatków.",
+          "options": {
+            "rent": "Wynajem",
+            "mortgage": "Własne (z kredytem)",
+            "owned": "Własne (bez kredytu)"
+          }
+        },
+        "hasMortgage": {
+          "label": "Masz aktywny kredyt hipoteczny?",
+          "hint": "Dzięki temu dopasujemy rekomendacje dotyczące zadłużenia i poduszki bezpieczeństwa."
+        },
+        "employmentStatus": {
+          "label": "Status zawodowy",
+          "options": {
+            "employee": "Etat",
+            "business": "Działalność",
+            "freelancer": "Freelancer",
+            "unemployed": "Bez zatrudnienia"
+          }
+        },
+        "taxForm": {
+          "label": "Forma opodatkowania",
+          "placeholder": "Wybierz formę opodatkowania",
+          "options": {
+            "scale": "Skala podatkowa",
+            "linear": "Podatek liniowy",
+            "lumpsum": "Ryczałt ewidencjonowany",
+            "card": "Karta podatkowa"
+          }
+        },
+        "householdCost": {
+          "label": "Miesięczny koszt życia gospodarstwa (PLN)",
+          "hint": "Szacuj średnią z ostatnich 3 miesięcy."
+        }
+      }
+    },
+    "income": {
+      "intro": "Zobaczmy, z jakich źródeł pochodzą Twoje dochody – to pomoże oszacować potencjał oszczędności i inwestycji.",
+      "subIntro": "Im dokładniej określisz wpływy, tym trafniejsze będą kolejne rekomendacje.",
+      "fields": {
+        "salaryNet": {
+          "label": "Wynagrodzenie miesięczne (netto)",
+          "tooltip": "Kwota, która realnie trafia co miesiąc na Twoje konto po opodatkowaniu."
+        },
+        "irregularIncome": {
+          "label": "Dochody nieregularne (rocznie)",
+          "tooltip": "Przeliczamy roczne premie lub zwroty podatku na miesięczny ekwiwalent.",
+          "hint": "Podaj kwoty netto – to, co realnie trafia na konto.",
+          "monthlyEquivalent": "To odpowiada około {amount} miesięcznie."
+        }
+      },
+      "additionalSources": {
+        "title": "Dodatkowe źródła",
+        "subtitle": "Włącz źródła, które regularnie zasilają Twój domowy budżet.",
+        "rental": "Najem",
+        "bonuses": "Premie",
+        "freelance": "Zlecenia",
+        "childBenefit": "Świadczenia 800+ (limit {limit})",
+        "benefits": "Pozostałe świadczenia",
+        "childBadge": "Masz {count, plural, one {# dziecko} few {# dzieci} many {# dzieci} other {# dzieci}} – limit 800+ to {limit}",
+        "childBenefitLimit": "Limit: {limit} (800 zł × liczba dzieci)",
+        "activeTitle": "Aktywne źródła:",
+        "total": "Razem: {amount}",
+        "tooltips": {
+          "rental": "Podaj kwotę, którą faktycznie otrzymujesz co miesiąc po odjęciu kosztów.",
+          "bonuses": "Średnia miesięczna wysokość premii lub nagród z ostatnich 12 miesięcy.",
+          "freelance": "Oszacuj przeciętną miesięczną wartość zleceń lub umów o dzieło.",
+          "benefits": "Świadczenia socjalne, emerytura, renta – wskaż, co wpływa regularnie.",
+          "childBenefit": "Kwota naliczana na podstawie liczby dzieci (maks. 800 zł na dziecko)."
+        }
+      },
+      "summary": {
+        "totalMonthlyIncome": "Łączny miesięczny dochód",
+        "description": "Na podstawie Twoich danych miesięczny dochód netto wynosi {amount}. W kolejnym kroku zobaczymy, jak rozkładają się Twoje wydatki."
+      },
+      "distribution": {
+        "datasetLabel": "Procent gospodarstw domowych",
+        "tooltip": "Percentyl: {value}%",
+        "summaryWithSalary": "Twój dochód {amount} przewyższa około {share}% gospodarstw domowych (skala do 30 000 zł netto).",
+        "summaryWithoutSalary": "Wpisz swoje wynagrodzenie, aby zobaczyć, jak wypadasz na tle innych (wykres pokazuje kwoty do 30 000 zł netto)."
+      }
+    },
+    "expenses": {
+      "intro": "Zapisz koszty według kategorii. Możesz dodać własne pozycje w każdej sekcji, aby uchwycić wszystkie stałe wydatki.",
+      "group": {
+        "share": "{value}% budżetu"
+      },
+      "customItem": {
+        "defaultName": "Nowy wydatek",
+        "addAction": "Dodaj własny wydatek",
+        "removeAction": "Usuń wydatek",
+        "namePlaceholder": "Nazwa wydatku"
+      },
+      "fallback": {
+        "genericName": "Wydatek"
+      },
+      "summary": {
+        "totalLabel": "Łączne miesięczne wydatki"
+      },
+      "groups": {
+        "home": {
+          "title": "Dom i mieszkanie",
+          "description": "Stałe koszty utrzymania mieszkania wraz z mediami i drobnymi naprawami.",
+          "hint": "Znając koszty mieszkania, możemy lepiej zaplanować Twoją poduszkę finansową.",
+          "items": {
+            "home-rent": "Czynsz / kredyt hipoteczny",
+            "home-utilities": "Media (prąd, gaz, woda, ogrzewanie)",
+            "home-internet": "Internet, telefon, telewizja",
+            "home-maintenance": "Wyposażenie / drobne naprawy"
+          }
+        },
+        "transport": {
+          "title": "Transport i samochód",
+          "description": "Dojeżdżanie, ubezpieczenia oraz utrzymanie pojazdów.",
+          "hint": "Stałe koszty transportu pomagają ocenić, czy samochód lub dojazdy są optymalne.",
+          "items": {
+            "transport-fuel": "Paliwo",
+            "transport-insurance": "Ubezpieczenie OC/AC",
+            "transport-service": "Serwis i przeglądy",
+            "transport-leasing": "Leasing / rata",
+            "transport-public": "Bilety komunikacji miejskiej"
+          }
+        },
+        "food": {
+          "title": "Żywność i zakupy codzienne",
+          "description": "Codzienne zakupy i posiłki na mieście.",
+          "hint": "Budżet na żywność pokazuje największe nawyki zakupowe i możliwości oszczędności.",
+          "items": {
+            "food-groceries": "Zakupy spożywcze",
+            "food-dining": "Obiady / jedzenie na mieście",
+            "food-coffee": "Kawa / przekąski"
+          }
+        },
+        "family": {
+          "title": "Rodzina i dzieci",
+          "description": "Opieka nad dziećmi, szkoła oraz rodzinne wydatki.",
+          "hint": "Wydatki rodzinne i dziecięce pozwolą nam zaproponować lepiej dopasowane cele edukacyjne.",
+          "items": {
+            "family-education": "Przedszkole / szkoła / zajęcia",
+            "family-clothes": "Ubrania",
+            "family-activities": "Opieka / wyjazdy / prezenty"
+          }
+        },
+        "lifestyle": {
+          "title": "Zdrowie i styl życia",
+          "description": "Aktywność fizyczna oraz zdrowie Twojej rodziny.",
+          "hint": "Inwestycje w zdrowie i styl życia wpływają na Twoją kondycję finansową.",
+          "items": {
+            "lifestyle-fitness": "Siłownia / fitness / karnety",
+            "lifestyle-medicine": "Leki / wizyty lekarskie",
+            "lifestyle-care": "Kosmetyki / fryzjer"
+          }
+        },
+        "subscriptions": {
+          "title": "Abonamenty i subskrypcje",
+          "description": "Usługi online, rozrywka oraz dodatkowe ubezpieczenia.",
+          "hint": "Subskrypcje często umykają z pola widzenia – zapisz je, aby mieć nad nimi kontrolę.",
+          "items": {
+            "subscriptions-streaming": "Netflix / Spotify / YouTube Premium",
+            "subscriptions-apps": "Aplikacje i narzędzia online",
+            "subscriptions-insurance": "Ubezpieczenia dodatkowe"
+          }
+        },
+        "obligations": {
+          "title": "Zobowiązania finansowe",
+          "description": "Regularne płatności kredytowe i pożyczki.",
+          "hint": "Śledzenie zobowiązań ułatwia zarządzanie płynnością i minimalizuje ryzyko zadłużenia.",
+          "items": {
+            "obligations-loans": "Raty kredytów",
+            "obligations-cards": "Karty kredytowe",
+            "obligations-private": "Pożyczki prywatne"
+          }
+        },
+        "pets": {
+          "title": "Zwierzęta i hobby",
+          "description": "Koszty opieki nad zwierzętami oraz rozwijania pasji i zainteresowań.",
+          "hint": "Koszty zwierzaków i hobby pokażą, ile faktycznie przeznaczasz na przyjemności i pasje.",
+          "items": {
+            "pets-animals": "Zwierzęta domowe (karma, weterynarz)",
+            "pets-hobby": "Hobby i pasje (fotografia, wędkarstwo, gry)"
+          }
+        },
+        "insurance": {
+          "title": "Ubezpieczenia i ochrona",
+          "description": "Zabezpieczenie zdrowia, życia oraz majątku.",
+          "hint": "Znając Twoje ubezpieczenia, możemy ocenić, czy korzystasz z odpowiedniej ochrony.",
+          "items": {
+            "insurance-health": "Ubezpieczenie zdrowotne / na życie",
+            "insurance-home": "Ubezpieczenie domu / sprzętu"
+          }
+        },
+        "other": {
+          "title": "Inne / rozrywka",
+          "description": "Pozostałe przyjemności, prezenty i spontaniczne wydatki.",
+          "hint": "Drobne wydatki również potrafią rosnąć – zsumuj je, aby nic nie umknęło uwadze.",
+          "items": {
+            "other-leisure": "Kino / restauracje / wyjazdy",
+            "other-gifts": "Prezenty i okazjonalne zakupy",
+            "other-misc": "Inne drobne wydatki"
+          }
+        }
+      }
+    },
+    "liabilities": {
+      "intro": {
+        "title": "Zobaczmy, jakie masz kredyty i pożyczki – obliczymy Twój wskaźnik zadłużenia (DTI) i pomożemy zaplanować bezpieczną spłatę.",
+        "description": "Podaj wartości orientacyjne – liczy się obraz Twojego zadłużenia, nie perfekcyjna dokładność."
+      },
+      "actions": {
+        "add": "Dodaj kolejne zobowiązanie",
+        "remove": "Usuń zobowiązanie"
+      },
+      "fields": {
+        "type": {
+          "label": "Rodzaj zobowiązania"
+        },
+        "monthlyPayment": {
+          "label": "Miesięczna rata (PLN)"
+        },
+        "remainingAmount": {
+          "label": "Kwota pozostała do spłaty (PLN)",
+          "buyoutLabel": "Kwota wykupu pozostała (PLN)"
+        },
+        "interestRate": {
+          "label": "Oprocentowanie (%)"
+        },
+        "repaymentType": {
+          "label": "Forma spłaty",
+          "hint": "(opcjonalnie)",
+          "options": {
+            "equal": "Raty równe",
+            "decreasing": "Raty malejące",
+            "unknown": "Nie mam pewności / inne"
+          }
+        },
+        "propertyValue": {
+          "label": "Wartość nieruchomości (PLN)",
+          "hint": "(opcjonalnie) pozwoli policzyć wskaźnik LTV."
+        },
+        "endDate": {
+          "label": "Termin zakończenia",
+          "hint": "(opcjonalnie) data ostatniej raty."
+        }
+      },
+      "summary": {
+        "monthly": "Suma miesięcznych rat",
+        "remaining": "Łączne zadłużenie",
+        "dti": "Twój wskaźnik DTI wynosi <strong>{value}%</strong>. Oznacza to, że <strong>{value}%</strong> dochodu przeznaczasz na spłatę zobowiązań."
+      },
+      "types": {
+        "default": {
+          "cardTitle": "Zobowiązanie finansowe"
+        },
+        "mortgage": {
+          "option": "Kredyt hipoteczny",
+          "cardTitle": "Kredyt hipoteczny"
+        },
+        "car": {
+          "option": "Kredyt samochodowy",
+          "cardTitle": "Kredyt samochodowy"
+        },
+        "consumer": {
+          "option": "Pożyczka konsumpcyjna",
+          "cardTitle": "Pożyczka konsumpcyjna"
+        },
+        "card": {
+          "option": "Karta kredytowa / limit",
+          "cardTitle": "Karta kredytowa / limit"
+        },
+        "line": {
+          "option": "Linia kredytowa",
+          "cardTitle": "Linia kredytowa"
+        },
+        "leasing": {
+          "option": "Leasing",
+          "cardTitle": "Leasing"
+        },
+        "nonbank": {
+          "option": "Pożyczka pozabankowa",
+          "cardTitle": "Pożyczka pozabankowa"
+        }
+      }
+    },
+    "goals": {
+      "intro": "Określ swoje cele finansowe – nawet jeden cel pomoże zbudować jasny plan działania.",
+      "actions": {
+        "add": "Dodaj kolejny cel",
+        "remove": "Usuń cel"
+      },
+      "fields": {
+        "name": {
+          "label": "Nazwa celu",
+          "placeholder": "np. Poduszka bezpieczeństwa"
+        },
+        "type": {
+          "label": "Horyzont celu",
+          "options": {
+            "short": "Krótki (do 12 miesięcy)",
+            "medium": "Średni (1–3 lata)",
+            "long": "Długi (powyżej 3 lat)"
+          }
+        },
+        "targetAmount": {
+          "label": "Kwota docelowa (PLN)"
+        },
+        "targetDate": {
+          "label": "Termin realizacji"
+        },
+        "priority": {
+          "label": "Priorytet",
+          "hint": "Oceń w skali 1 (najniżej) – 5 (najwyżej)."
+        }
+      }
+    },
+    "assets": {
+      "fields": {
+        "cash": {
+          "label": "Oszczędności i gotówka (PLN)"
+        },
+        "emergencyFund": {
+          "label": "Fundusz awaryjny – na ile miesięcy wystarczy?",
+          "monthsLabel": "{months} mies."
+        }
+      },
+      "investments": {
+        "title": "Inwestycje (zaznacz co pasuje)",
+        "options": {
+          "stocks": "Akcje",
+          "etf": "ETF",
+          "funds": "Fundusze",
+          "bonds": "Obligacje",
+          "crypto": "Kryptowaluty"
+        },
+        "totalLabel": "Łączna wartość inwestycji (PLN)",
+        "totalPlaceholder": "Łączna wartość (PLN)"
+      },
+      "sections": {
+        "properties": "Nieruchomości",
+        "vehicles": "Pojazdy",
+        "empty": "Brak pozycji.",
+        "namePlaceholder": "Nazwa",
+        "valuePlaceholder": "Wartość (PLN)"
+      },
+      "actions": {
+        "addItem": "Dodaj pozycję",
+        "removeItem": "Usuń pozycję"
+      }
+    }
   }
 }

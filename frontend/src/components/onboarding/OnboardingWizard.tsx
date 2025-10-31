@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import {
@@ -13,11 +13,7 @@ import {
   TrendingUp,
   Target,
   Info,
-  Plus,
-  Trash2,
   FileSpreadsheet,
-  ChevronDown,
-  ChevronRight,
   Baby,
   Heart,
   CreditCard,
@@ -25,9 +21,8 @@ import {
   ShoppingBag,
   PawPrint,
   ShieldCheck,
-  Lightbulb,
-  X,
 } from 'lucide-react';
+import { useIntl, type IntlShape } from 'react-intl';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -46,22 +41,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useSettings } from '@/contexts/SettingsContext';
-import { CurrencyInput } from './CurrencyInput';
 import { cn } from '@/lib/utils';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  Tooltip as ChartTooltip,
-  BarElement,
-} from 'chart.js';
-import type { ChartData, ChartOptions, TooltipItem } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, BarElement, ChartTooltip);
+import { type AmountTone } from './common/AnimatedAmount';
+import WelcomeStep from './steps/WelcomeStep';
+import LifeStep from './steps/LifeStep';
+import IncomeStep from './steps/IncomeStep';
+import ExpensesStep from './steps/ExpensesStep';
+import LiabilitiesStep from './steps/LiabilitiesStep';
+import AssetsStep from './steps/AssetsStep';
+import GoalsStep from './steps/GoalsStep';
+import SummaryStep from './steps/SummaryStep';
 
 const LOCAL_STORAGE_KEY = 'sproutlyfi-onboarding';
 
@@ -75,20 +65,10 @@ type StepId =
   | 'goals'
   | 'summary';
 
-interface AdditionalSource {
+export interface AdditionalSource {
   enabled: boolean;
   amount: number;
 }
-
-const ADDITIONAL_SOURCE_TOOLTIPS: Partial<
-  Record<keyof OnboardingData['income']['additionalSources'], string>
-> = {
-  rental: 'Podaj kwotę, którą faktycznie otrzymujesz co miesiąc po odjęciu kosztów.',
-  bonuses: 'Średnia miesięczna wysokość premii lub nagród z ostatnich 12 miesięcy.',
-  freelance: 'Oszacuj przeciętną miesięczną wartość zleceń lub umów o dzieło.',
-  benefits: 'Świadczenia socjalne, emerytura, renta – wskaż, co wpływa regularnie.',
-  childBenefit: 'Kwota naliczana na podstawie liczby dzieci (maks. 800 zł na dziecko).',
-};
 
 const EXPENSE_CATEGORY_VALUES = [
   'housing',
@@ -103,7 +83,7 @@ const EXPENSE_CATEGORY_VALUES = [
 
 type ExpenseBackendCategory = typeof EXPENSE_CATEGORY_VALUES[number];
 
-type ExpenseGroupKey =
+export type ExpenseGroupKey =
   | 'home'
   | 'transport'
   | 'food'
@@ -121,7 +101,7 @@ interface ExpenseTemplateItem {
   category?: ExpenseBackendCategory;
 }
 
-interface ExpenseGroupDefinition {
+export interface ExpenseGroupDefinition {
   key: ExpenseGroupKey;
   title: string;
   description: string;
@@ -141,7 +121,7 @@ export interface OnboardingExpenseItem {
 
 export type OnboardingExpenses = Record<ExpenseGroupKey, OnboardingExpenseItem[]>;
 
-interface LiabilityItem {
+export interface LiabilityItem {
   id: string;
   type: string;
   remainingAmount: number;
@@ -153,13 +133,13 @@ interface LiabilityItem {
   propertyValue?: number | null;
 }
 
-interface PropertyItem {
+export interface PropertyItem {
   id: string;
   name: string;
   value: number;
 }
 
-interface GoalItem {
+export interface GoalItem {
   id: string;
   name: string;
   type: 'short' | 'medium' | 'long';
@@ -171,150 +151,173 @@ interface GoalItem {
 const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
   {
     key: 'home',
-    title: 'Dom i mieszkanie',
-    description: 'Stałe koszty utrzymania mieszkania wraz z mediami i drobnymi naprawami.',
+    title: 'Home and housing',
+    description: 'Fixed housing costs including utilities and small maintenance.',
     icon: Home,
     defaultCategory: 'housing',
     items: [
-      { id: 'home-rent', name: 'Czynsz / kredyt hipoteczny' },
+      { id: 'home-rent', name: 'Rent / mortgage payment' },
       {
         id: 'home-utilities',
-        name: 'Media (prąd, gaz, woda, ogrzewanie)',
+        name: 'Utilities (electricity, gas, water, heating)',
         category: 'utilities',
       },
       {
         id: 'home-internet',
-        name: 'Internet, telefon, telewizja',
+        name: 'Internet, phone, TV',
         category: 'utilities',
       },
-      { id: 'home-maintenance', name: 'Wyposażenie / drobne naprawy' },
+      { id: 'home-maintenance', name: 'Furnishings / small repairs' },
     ],
   },
   {
     key: 'transport',
-    title: 'Transport i samochód',
-    description: 'Dojeżdżanie, ubezpieczenia oraz utrzymanie pojazdów.',
+    title: 'Transport and car',
+    description: 'Commuting, insurance and keeping vehicles running.',
     icon: Car,
     defaultCategory: 'transportation',
     items: [
-      { id: 'transport-fuel', name: 'Paliwo' },
+      { id: 'transport-fuel', name: 'Fuel' },
       {
         id: 'transport-insurance',
-        name: 'Ubezpieczenie OC/AC',
+        name: 'Car insurance (liability / collision)',
         category: 'insurance',
       },
-      { id: 'transport-service', name: 'Serwis i przeglądy' },
-      { id: 'transport-leasing', name: 'Leasing / rata' },
-      { id: 'transport-public', name: 'Bilety komunikacji miejskiej' },
+      { id: 'transport-service', name: 'Service and inspections' },
+      { id: 'transport-leasing', name: 'Lease / installment' },
+      { id: 'transport-public', name: 'Public transport passes' },
     ],
   },
   {
     key: 'food',
-    title: 'Żywność i zakupy codzienne',
-    description: 'Codzienne zakupy i posiłki na mieście.',
+    title: 'Food and daily shopping',
+    description: 'Daily groceries and meals out.',
     icon: ShoppingBag,
     defaultCategory: 'food',
     items: [
-      { id: 'food-groceries', name: 'Zakupy spożywcze' },
-      { id: 'food-dining', name: 'Obiady / jedzenie na mieście' },
-      { id: 'food-coffee', name: 'Kawa / przekąski' },
+      { id: 'food-groceries', name: 'Groceries' },
+      { id: 'food-dining', name: 'Meals out' },
+      { id: 'food-coffee', name: 'Coffee / snacks' },
     ],
   },
   {
     key: 'family',
-    title: 'Rodzina i dzieci',
-    description: 'Opieka nad dziećmi, szkoła oraz rodzinne wydatki.',
+    title: 'Family and children',
+    description: 'Childcare, schooling and family expenses.',
     icon: Baby,
     defaultCategory: 'other',
     items: [
-      { id: 'family-education', name: 'Przedszkole / szkoła / zajęcia' },
-      { id: 'family-clothes', name: 'Ubrania' },
-      { id: 'family-activities', name: 'Opieka / wyjazdy / prezenty' },
+      { id: 'family-education', name: 'Preschool / school / activities' },
+      { id: 'family-clothes', name: 'Clothing' },
+      { id: 'family-activities', name: 'Care / trips / gifts' },
     ],
   },
   {
     key: 'lifestyle',
-    title: 'Zdrowie i styl życia',
-    description: 'Aktywność fizyczna oraz zdrowie Twojej rodziny.',
+    title: 'Health and lifestyle',
+    description: 'Physical activity and your household\'s health.',
     icon: Heart,
     defaultCategory: 'healthcare',
     items: [
-      { id: 'lifestyle-fitness', name: 'Siłownia / fitness / karnety' },
-      { id: 'lifestyle-medicine', name: 'Leki / wizyty lekarskie' },
-      { id: 'lifestyle-care', name: 'Kosmetyki / fryzjer' },
+      { id: 'lifestyle-fitness', name: 'Gym / fitness / memberships' },
+      { id: 'lifestyle-medicine', name: 'Medicine / doctor visits' },
+      { id: 'lifestyle-care', name: 'Cosmetics / hairdresser' },
     ],
   },
   {
     key: 'subscriptions',
-    title: 'Abonamenty i subskrypcje',
-    description: 'Usługi online, rozrywka oraz dodatkowe ubezpieczenia.',
+    title: 'Subscriptions and memberships',
+    description: 'Online services, entertainment and extra insurance.',
     icon: Tv,
     defaultCategory: 'utilities',
     items: [
-      { id: 'subscriptions-streaming', name: 'Netflix / Spotify / YouTube Premium' },
-      { id: 'subscriptions-apps', name: 'Aplikacje i narzędzia online' },
+      { id: 'subscriptions-streaming', name: 'Streaming (Netflix, Spotify, YouTube Premium)' },
+      { id: 'subscriptions-apps', name: 'Apps and online tools' },
       {
         id: 'subscriptions-insurance',
-        name: 'Ubezpieczenia dodatkowe',
+        name: 'Supplementary insurance',
         category: 'insurance',
       },
     ],
   },
   {
     key: 'obligations',
-    title: 'Zobowiązania finansowe',
-    description: 'Regularne płatności kredytowe i pożyczki.',
+    title: 'Financial obligations',
+    description: 'Regular loan and installment payments.',
     icon: CreditCard,
     defaultCategory: 'other',
     items: [
-      { id: 'obligations-loans', name: 'Raty kredytów' },
-      { id: 'obligations-cards', name: 'Karty kredytowe' },
-      { id: 'obligations-private', name: 'Pożyczki prywatne' },
+      { id: 'obligations-loans', name: 'Loan installments' },
+      { id: 'obligations-cards', name: 'Credit cards' },
+      { id: 'obligations-private', name: 'Private loans' },
     ],
   },
   {
     key: 'pets',
-    title: 'Zwierzęta i hobby',
-    description: 'Koszty opieki nad zwierzętami oraz rozwijania pasji i zainteresowań.',
+    title: 'Pets and hobbies',
+    description: 'Costs of caring for pets and pursuing hobbies.',
     icon: PawPrint,
     defaultCategory: 'other',
     items: [
-      { id: 'pets-animals', name: 'Zwierzęta domowe (karma, weterynarz)' },
-      { id: 'pets-hobby', name: 'Hobby i pasje (fotografia, wędkarstwo, gry)' },
+      { id: 'pets-animals', name: 'Pets (food, vet)' },
+      { id: 'pets-hobby', name: 'Hobbies and passions (photography, fishing, games)' },
     ],
   },
   {
     key: 'insurance',
-    title: 'Ubezpieczenia i ochrona',
-    description: 'Zabezpieczenie zdrowia, życia oraz majątku.',
+    title: 'Insurance and protection',
+    description: 'Protecting health, life and property.',
     icon: ShieldCheck,
     defaultCategory: 'insurance',
     items: [
-      { id: 'insurance-health', name: 'Ubezpieczenie zdrowotne / na życie' },
-      { id: 'insurance-home', name: 'Ubezpieczenie domu / sprzętu' },
+      { id: 'insurance-health', name: 'Health / life insurance' },
+      { id: 'insurance-home', name: 'Home / property insurance' },
     ],
   },
   {
     key: 'other',
-    title: 'Inne / rozrywka',
-    description: 'Pozostałe przyjemności, prezenty i spontaniczne wydatki.',
+    title: 'Other / leisure',
+    description: 'Treats, gifts and spontaneous expenses.',
     icon: Smile,
     defaultCategory: 'entertainment',
     items: [
-      { id: 'other-leisure', name: 'Kino / restauracje / wyjazdy' },
-      { id: 'other-gifts', name: 'Prezenty i okazjonalne zakupy' },
-      { id: 'other-misc', name: 'Inne drobne wydatki' },
+      { id: 'other-leisure', name: 'Cinema / restaurants / trips' },
+      { id: 'other-gifts', name: 'Gifts and occasional shopping' },
+      { id: 'other-misc', name: 'Other small expenses' },
     ],
   },
 ];
 
-const createDefaultExpenses = (): OnboardingExpenses => {
+const getExpenseTemplateLabel = (
+  intl: IntlShape,
+  groupKey: ExpenseGroupKey,
+  itemId: string,
+  fallback: string
+) =>
+  intl.formatMessage({
+    id: `onboarding.expenses.groups.${groupKey}.items.${itemId}`,
+    defaultMessage: fallback,
+  });
+
+const getCustomExpenseLabel = (intl: IntlShape) =>
+  intl.formatMessage({
+    id: 'onboarding.expenses.customItem.defaultName',
+    defaultMessage: 'New expense',
+  });
+
+const getGenericExpenseLabel = (intl: IntlShape) =>
+  intl.formatMessage({
+    id: 'onboarding.expenses.fallback.genericName',
+    defaultMessage: 'Expense',
+  });
+
+const createDefaultExpenses = (intl: IntlShape): OnboardingExpenses => {
   const result = {} as OnboardingExpenses;
   for (const group of EXPENSE_GROUPS) {
     result[group.key] = group.items.map((item) => ({
       id: item.id,
       templateId: item.id,
-      name: item.name,
+      name: getExpenseTemplateLabel(intl, group.key, item.id, item.name),
       amount: 0,
       category: item.category ?? group.defaultCategory,
       isCustom: false,
@@ -324,26 +327,17 @@ const createDefaultExpenses = (): OnboardingExpenses => {
 };
 
 const EXPENSE_GROUP_HINTS: Record<ExpenseGroupKey, string> = {
-  home: 'Znając koszty mieszkania, możemy lepiej zaplanować Twoją poduszkę finansową.',
-  transport: 'Stałe koszty transportu pomagają ocenić, czy samochód lub dojazdy są optymalne.',
-  food: 'Budżet na żywność pokazuje największe nawyki zakupowe i możliwości oszczędności.',
-  family: 'Wydatki rodzinne i dziecięce pozwolą nam zaproponować lepiej dopasowane cele edukacyjne.',
-  lifestyle: 'Inwestycje w zdrowie i styl życia wpływają na Twoją kondycję finansową.',
-  subscriptions: 'Subskrypcje często umykają z pola widzenia – zapisz je, aby mieć nad nimi kontrolę.',
-  obligations: 'Śledzenie zobowiązań ułatwia zarządzanie płynnością i minimalizuje ryzyko zadłużenia.',
-  pets: 'Koszty zwierzaków i hobby pokażą, ile faktycznie przeznaczasz na przyjemności i pasje.',
-  insurance: 'Znając Twoje ubezpieczenia, możemy ocenić, czy korzystasz z odpowiedniej ochrony.',
-  other: 'Drobne wydatki również potrafią rosnąć – zsumuj je, aby nic nie umknęło uwadze.',
+  home: 'Knowing your housing costs helps us plan your safety net.',
+  transport: 'Tracking transport costs shows whether your car or commute is optimal.',
+  food: 'Food spending highlights habits and potential savings.',
+  family: 'Family spending helps us tailor education-focused goals.',
+  lifestyle: 'Investments in health and lifestyle influence your financial fitness.',
+  subscriptions: 'Subscriptions often slip by – log them to stay in control.',
+  obligations: 'Tracking obligations makes it easier to manage cash flow.',
+  pets: 'Pet and hobby costs show how much you really spend on fun and passions.',
+  insurance: 'Understanding your insurance helps assess your coverage.',
+  other: 'Small expenses add up – total them so nothing slips through.',
 };
-
-const createFlagState = (initial: boolean) =>
-  EXPENSE_GROUPS.reduce(
-    (acc, group) => {
-      acc[group.key] = initial;
-      return acc;
-    },
-    {} as Record<ExpenseGroupKey, boolean>
-  );
 
 type LegacyExpenses = {
   housing?: number;
@@ -368,8 +362,11 @@ const isValidExpenseCategory = (value: unknown): value is ExpenseBackendCategory
   typeof value === 'string' &&
   EXPENSE_CATEGORY_VALUES.includes(value as ExpenseBackendCategory);
 
-const convertLegacyExpenses = (legacy: LegacyExpenses): OnboardingExpenses => {
-  const result = createDefaultExpenses();
+const convertLegacyExpenses = (
+  legacy: LegacyExpenses,
+  intl: IntlShape
+): OnboardingExpenses => {
+  const result = createDefaultExpenses(intl);
   const mapping: Array<{ legacyKey: keyof LegacyExpenses; group: ExpenseGroupKey; itemId: string }> = [
     { legacyKey: 'housing', group: 'home', itemId: 'home-rent' },
     { legacyKey: 'utilities', group: 'home', itemId: 'home-utilities' },
@@ -389,7 +386,7 @@ const convertLegacyExpenses = (legacy: LegacyExpenses): OnboardingExpenses => {
         result[group].push({
           id: ensureId(`${group}-legacy`),
           templateId: itemId,
-          name: itemId,
+          name: getExpenseTemplateLabel(intl, group, itemId, itemId),
           amount,
           category: EXPENSE_GROUPS.find((g) => g.key === group)?.defaultCategory ?? 'other',
           isCustom: true,
@@ -401,17 +398,17 @@ const convertLegacyExpenses = (legacy: LegacyExpenses): OnboardingExpenses => {
   return result;
 };
 
-const normalizeExpenses = (value: unknown): OnboardingExpenses => {
+const normalizeExpenses = (value: unknown, intl: IntlShape): OnboardingExpenses => {
   if (!value || typeof value !== 'object') {
-    return createDefaultExpenses();
+    return createDefaultExpenses(intl);
   }
 
   const legacyCandidate = value as LegacyExpenses;
   if (Object.prototype.hasOwnProperty.call(legacyCandidate, 'housing')) {
-    return convertLegacyExpenses(legacyCandidate);
+    return convertLegacyExpenses(legacyCandidate, intl);
   }
 
-  const base = createDefaultExpenses();
+  const base = createDefaultExpenses(intl);
   const record = value as Record<string, unknown>;
 
   for (const group of EXPENSE_GROUPS) {
@@ -446,7 +443,7 @@ const normalizeExpenses = (value: unknown): OnboardingExpenses => {
         customItems.push({
           id: rawId ?? ensureId(`${group.key}-custom`),
           templateId: rawTemplateId,
-          name: rawName ?? 'Własny wydatek',
+          name: rawName ?? getCustomExpenseLabel(intl),
           amount,
           category,
           isCustom: true,
@@ -462,13 +459,14 @@ const normalizeExpenses = (value: unknown): OnboardingExpenses => {
 
 const mergeExpensesData = (
   current: OnboardingExpenses,
-  incoming?: unknown
+  incoming: unknown,
+  intl: IntlShape
 ): OnboardingExpenses => {
-  const normalizedCurrent = normalizeExpenses(current);
+  const normalizedCurrent = normalizeExpenses(current, intl);
   if (!incoming) {
     return normalizedCurrent;
   }
-  const normalizedIncoming = normalizeExpenses(incoming);
+  const normalizedIncoming = normalizeExpenses(incoming, intl);
   const result = {} as OnboardingExpenses;
 
   for (const group of EXPENSE_GROUPS) {
@@ -499,10 +497,23 @@ const mergeExpensesData = (
               : existing.name,
         });
       } else {
+        const fallbackName =
+          item.templateId && typeof item.templateId === 'string'
+            ? getExpenseTemplateLabel(
+                intl,
+                group.key,
+                item.templateId,
+                getGenericExpenseLabel(intl)
+              )
+            : getGenericExpenseLabel(intl);
+        const incomingName =
+          typeof item.name === 'string' && item.name.trim().length > 0
+            ? item.name
+            : fallbackName;
         map.set(item.id || ensureId(`${group.key}-expense`), {
           ...item,
           id: item.id || ensureId(`${group.key}-expense`),
-          name: item.name || 'Wydatek',
+          name: incomingName,
           amount: sanitizeAmount(item.amount),
           category: isValidExpenseCategory(item.category)
             ? item.category
@@ -562,20 +573,6 @@ const expenseGroupTotals = (
       0
     ),
   }));
-
-type AmountTone = 'low' | 'medium' | 'high';
-
-const toneClassMap: Record<AmountTone, string> = {
-  low: 'text-success',
-  medium: 'text-warning',
-  high: 'text-destructive',
-};
-
-const getShareTone = (share: number): AmountTone => {
-  if (share <= 0.2) return 'low';
-  if (share <= 0.35) return 'medium';
-  return 'high';
-};
 
 const getTotalTone = (total: number, monthlyIncome?: number): AmountTone => {
   if (monthlyIncome && monthlyIncome > 0) {
@@ -638,15 +635,7 @@ export interface OnboardingData {
   goals: GoalItem[];
 }
 
-const TAX_FORM_LABELS: Record<OnboardingData['life']['taxForm'], string> = {
-  '': '',
-  scale: 'Skala podatkowa',
-  linear: 'Podatek liniowy',
-  lumpsum: 'Ryczałt ewidencjonowany',
-  card: 'Karta podatkowa',
-};
-
-const defaultData: OnboardingData = {
+const createDefaultOnboardingData = (intl: IntlShape): OnboardingData => ({
   life: {
     maritalStatus: '',
     includePartnerFinances: false,
@@ -669,7 +658,7 @@ const defaultData: OnboardingData = {
     },
     irregularIncomeAnnual: 0,
   },
-  expenses: createDefaultExpenses(),
+  expenses: createDefaultExpenses(intl),
   liabilities: [],
   assets: {
     savings: 0,
@@ -682,9 +671,9 @@ const defaultData: OnboardingData = {
     vehicles: [],
   },
   goals: [],
-};
+});
 
-interface OnboardingMetrics {
+export interface OnboardingMetrics {
   monthlyIncome: number;
   totalExpenses: number;
   liabilitiesMonthly: number;
@@ -703,29 +692,10 @@ const ensureId = (prefix: string) => {
   return `${prefix}-${Math.random().toString(36).slice(2, 11)}`;
 };
 
-const SALARY_DISTRIBUTION_POINTS: Array<{ income: number; percentile: number }> = [
-  { income: 0, percentile: 2 },
-  { income: 2000, percentile: 12 },
-  { income: 3000, percentile: 27 },
-  { income: 4000, percentile: 41 },
-  { income: 5000, percentile: 55 },
-  { income: 6000, percentile: 66 },
-  { income: 7000, percentile: 75 },
-  { income: 9000, percentile: 85 },
-  { income: 11000, percentile: 91 },
-  { income: 13000, percentile: 95 },
-  { income: 16000, percentile: 97 },
-  { income: 20000, percentile: 99 },
-  { income: 25000, percentile: 99.5 },
-  { income: 30000, percentile: 99.8 },
-];
-const MIN_SALARY_IN_CHART = SALARY_DISTRIBUTION_POINTS[0].income;
-const MAX_SALARY_IN_CHART =
-  SALARY_DISTRIBUTION_POINTS[SALARY_DISTRIBUTION_POINTS.length - 1].income;
-
 const mergeOnboardingData = (
   current: OnboardingData,
-  incoming: OnboardingData
+  incoming: OnboardingData,
+  intl: IntlShape
 ): OnboardingData => {
   const pickString = <T extends string>(currentValue: T, incomingValue?: T): T =>
     (currentValue && currentValue.length > 0 ? currentValue : incomingValue ?? currentValue);
@@ -811,7 +781,11 @@ const mergeOnboardingData = (
     ),
   };
 
-  const mergedExpenses = mergeExpensesData(current.expenses, incoming.expenses);
+  const mergedExpenses = mergeExpensesData(
+    current.expenses,
+    incoming.expenses,
+    intl
+  );
 
   const mergedLiabilities =
     current.liabilities.length > 0
@@ -1064,23 +1038,23 @@ const goalSchema = z.object({
 
 interface StepDefinition {
   id: StepId;
-  label: string;
-  description: string;
+  labelId: string;
+  descriptionId: string;
   icon: React.ComponentType<{ className?: string }>;
   validate?: (data: OnboardingData) => z.ZodIssue[] | null;
 }
 
-const steps: StepDefinition[] = [
+const STEP_DEFINITIONS: StepDefinition[] = [
   {
     id: 'welcome',
-    label: 'Powitanie',
-    description: 'Wprowadzenie do procesu onboardingu',
+    labelId: 'onboarding.steps.welcome.label',
+    descriptionId: 'onboarding.steps.welcome.description',
     icon: Smile,
   },
   {
     id: 'life',
-    label: 'Sytuacja życiowa',
-    description: 'Poznaj swój kontekst finansowy',
+    labelId: 'onboarding.steps.life.label',
+    descriptionId: 'onboarding.steps.life.description',
     icon: User,
     validate: (data) => {
       const result = lifeSchema.safeParse(data.life);
@@ -1089,8 +1063,8 @@ const steps: StepDefinition[] = [
   },
   {
     id: 'income',
-    label: 'Przychody',
-    description: 'Źródła i poziom dochodów',
+    labelId: 'onboarding.steps.income.label',
+    descriptionId: 'onboarding.steps.income.description',
     icon: Wallet,
     validate: (data) => {
       const result = incomeSchema.safeParse(data.income);
@@ -1099,8 +1073,8 @@ const steps: StepDefinition[] = [
   },
   {
     id: 'expenses',
-    label: 'Wydatki',
-    description: 'Powtarzalne koszty miesięczne',
+    labelId: 'onboarding.steps.expenses.label',
+    descriptionId: 'onboarding.steps.expenses.description',
     icon: Home,
     validate: (data) => {
       const result = expensesSchema.safeParse(data.expenses);
@@ -1109,8 +1083,8 @@ const steps: StepDefinition[] = [
   },
   {
     id: 'liabilities',
-    label: 'Zobowiązania',
-    description: 'Sprawdźmy Twoje kredyty i pożyczki',
+    labelId: 'onboarding.steps.liabilities.label',
+    descriptionId: 'onboarding.steps.liabilities.description',
     icon: TrendingDown,
     validate: (data) => {
       if (data.liabilities.length === 0) return null;
@@ -1120,8 +1094,8 @@ const steps: StepDefinition[] = [
   },
   {
     id: 'assets',
-    label: 'Majątek i inwestycje',
-    description: 'Aktywa finansowe i rzeczowe',
+    labelId: 'onboarding.steps.assets.label',
+    descriptionId: 'onboarding.steps.assets.description',
     icon: TrendingUp,
     validate: (data) => {
       const result = assetsSchema.safeParse(data.assets);
@@ -1130,15 +1104,15 @@ const steps: StepDefinition[] = [
   },
   {
     id: 'goals',
-    label: 'Cele finansowe',
-    description: 'Plany i priorytety',
+    labelId: 'onboarding.steps.goals.label',
+    descriptionId: 'onboarding.steps.goals.description',
     icon: Target,
     validate: (data) => {
       if (data.goals.length === 0) {
         return [
           {
             code: z.ZodIssueCode.custom,
-            message: 'Dodaj przynajmniej jeden cel lub pomiń krok',
+            message: 'onboarding.validation.goalRequired',
             path: ['goals'],
           },
         ];
@@ -1149,8 +1123,8 @@ const steps: StepDefinition[] = [
   },
   {
     id: 'summary',
-    label: 'Podsumowanie',
-    description: 'Sprawdź, co udało się zebrać',
+    labelId: 'onboarding.steps.summary.label',
+    descriptionId: 'onboarding.steps.summary.description',
     icon: FileSpreadsheet,
   },
 ];
@@ -1159,12 +1133,40 @@ type StepErrors = Record<string, string>;
 
 export default function OnboardingWizard() {
   const router = useRouter();
+  const intl = useIntl();
   const { formatCurrency: formatCurrencySetting } = useSettings();
   const formatMoney = useCallback(
     (amount: number) => formatCurrencySetting(amount || 0),
     [formatCurrencySetting]
   );
-  const [data, setData] = useState<OnboardingData>(defaultData);
+  const taxFormLabels = useMemo(
+    () => ({
+      '': '',
+      scale: intl.formatMessage({ id: 'onboarding.life.fields.taxForm.options.scale' }),
+      linear: intl.formatMessage({ id: 'onboarding.life.fields.taxForm.options.linear' }),
+      lumpsum: intl.formatMessage({ id: 'onboarding.life.fields.taxForm.options.lumpsum' }),
+      card: intl.formatMessage({ id: 'onboarding.life.fields.taxForm.options.card' }),
+    }),
+    [intl]
+  );
+
+  const steps = useMemo(
+    () =>
+      STEP_DEFINITIONS.map((step) => ({
+        ...step,
+        label: intl.formatMessage({ id: step.labelId }),
+        description: intl.formatMessage({ id: step.descriptionId }),
+      })),
+    [intl]
+  );
+  const t = useCallback(
+    (id: string, values?: Record<string, string | number>) =>
+      intl.formatMessage({ id }, values),
+    [intl]
+  );
+  const [data, setData] = useState<OnboardingData>(() =>
+    createDefaultOnboardingData(intl)
+  );
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [errors, setErrors] = useState<StepErrors>({});
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>(
@@ -1179,14 +1181,18 @@ export default function OnboardingWizard() {
     let isMounted = true;
 
     const loadInitialData = async () => {
-      let workingData = defaultData;
+      let workingData = createDefaultOnboardingData(intl);
 
       try {
         const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
 
         if (stored) {
           const parsed = JSON.parse(stored) as OnboardingData;
-          workingData = mergeOnboardingData(defaultData, parsed);
+          workingData = mergeOnboardingData(
+            createDefaultOnboardingData(intl),
+            parsed,
+            intl
+          );
           if (isMounted) {
             setData(workingData);
           }
@@ -1212,7 +1218,11 @@ export default function OnboardingWizard() {
             const lastSubmission = submissions[submissions.length - 1];
             if (lastSubmission?.data && isMounted) {
               setData((prev) =>
-                mergeOnboardingData(prev, lastSubmission.data as OnboardingData)
+                mergeOnboardingData(
+                  prev,
+                  lastSubmission.data as OnboardingData,
+                  intl
+                )
               );
             }
           }
@@ -1231,7 +1241,7 @@ export default function OnboardingWizard() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [intl]);
 
   useEffect(() => {
     if (!hasHydrated.current || typeof window === 'undefined') return;
@@ -1300,11 +1310,11 @@ export default function OnboardingWizard() {
   }, [router]);
 
   const handleReset = useCallback(() => {
-    setData(defaultData);
+    setData(createDefaultOnboardingData(intl));
     setErrors({});
     setCurrentStepIndex(0);
     localStorage.removeItem(LOCAL_STORAGE_KEY);
-  }, []);
+  }, [intl]);
 
   const handleComplete = useCallback(async () => {
     setSaveStatus('saving');
@@ -1589,6 +1599,9 @@ export default function OnboardingWizard() {
     currentStepIndex >= steps.length - 1
       ? null
       : steps[Math.min(currentStepIndex + 1, steps.length - 1)]?.label;
+  const nextButtonLabel = nextStepLabel
+    ? t('onboarding.navigation.nextWithStep', { step: nextStepLabel })
+    : t('onboarding.navigation.nextDefault');
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8">
@@ -1596,24 +1609,29 @@ export default function OnboardingWizard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-semibold text-primary">
-              Start finansowego profilu
+              {t('onboarding.header.title')}
             </h1>
             <p className="text-secondary">
-              Przejdź przez serię kroków, aby zbudować swój finansowy punkt
-              startowy.
+              {t('onboarding.header.subtitle')}
             </p>
           </div>
           <div className="text-right text-xs text-muted-foreground">
-            {saveStatus === 'saving' && <span>Zapisywanie danych...</span>}
+            {saveStatus === 'saving' && (
+              <span>{t('onboarding.header.saving')}</span>
+            )}
             {saveStatus === 'saved' && lastSavedAt && (
-              <span>Zapisano o {lastSavedAt}</span>
+              <span>{t('onboarding.header.savedAt', { time: lastSavedAt })}</span>
             )}
           </div>
         </div>
         <div>
           <div className="flex items-center justify-between text-xs font-medium text-secondary">
             <span>
-              Krok {displayStepNumber} z {stepsWithoutEdges}:{' '}
+              {t('onboarding.header.stepIndicator', {
+                current: displayStepNumber,
+                total: stepsWithoutEdges,
+              })}
+              :{' '}
               <span className="text-primary">{currentStep.label}</span>
             </span>
             <span>{progress}%</span>
@@ -1632,11 +1650,11 @@ export default function OnboardingWizard() {
           <div className="flex items-center gap-3">
             <currentStep.icon className="h-8 w-8 text-primary" />
             <div>
-              <CardTitle className="text-2xl">{`${
-                currentStepIndex === 0
-                  ? 'Witaj w Twoim Finansowym Centrum!'
-                  : currentStep.label
-              }`}</CardTitle>
+              <CardTitle className="text-2xl">
+                {currentStepIndex === 0
+                  ? t('onboarding.header.welcomeGreeting')
+                  : currentStep.label}
+              </CardTitle>
               <CardDescription
                 className={cn(
                   'text-secondary',
@@ -1663,7 +1681,10 @@ export default function OnboardingWizard() {
           )}
         >
           {currentStep.id === 'welcome' && (
-            <WelcomeStep onStart={() => handleNext()} onSkip={handleSkipAll} />
+            <WelcomeStep
+              onStart={() => handleNext()}
+              onSkip={handleSkipAll}
+            />
           )}
 
           {currentStep.id === 'life' && (
@@ -1674,7 +1695,7 @@ export default function OnboardingWizard() {
               onNext={() => handleNext()}
               onBack={handleBack}
               onSkip={handleSkipStep}
-              nextLabel={nextStepLabel ? `Dalej → ${nextStepLabel}` : 'Dalej'}
+              nextLabel={nextButtonLabel}
             />
           )}
 
@@ -1689,7 +1710,7 @@ export default function OnboardingWizard() {
               monthlyIncome={metrics.monthlyIncome}
               formatMoney={formatMoney}
               childrenCount={data.life.childrenCount}
-              nextLabel={nextStepLabel ? `Dalej → ${nextStepLabel}` : 'Dalej'}
+              nextLabel={nextButtonLabel}
             />
           )}
 
@@ -1703,6 +1724,10 @@ export default function OnboardingWizard() {
               onSkip={handleSkipStep}
               formatMoney={formatMoney}
               monthlyIncome={metrics.monthlyIncome}
+              expenseGroups={EXPENSE_GROUPS}
+              expenseGroupHints={EXPENSE_GROUP_HINTS}
+              generateId={ensureId}
+              getTotalTone={getTotalTone}
             />
           )}
 
@@ -1757,6 +1782,7 @@ export default function OnboardingWizard() {
             <SummaryStep
               data={data}
               metrics={metrics}
+              taxFormLabels={taxFormLabels}
               onBack={handleBack}
               onReset={handleReset}
               onFinish={handleComplete}
@@ -1765,2011 +1791,6 @@ export default function OnboardingWizard() {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-interface StepBaseProps {
-  onNext: () => void;
-  onBack: () => void;
-  onSkip: () => void;
-  errors: StepErrors;
-}
-
-function WelcomeStep({
-  onStart,
-  onSkip,
-}: {
-  onStart: () => void;
-  onSkip: () => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <p className="text-lg text-primary">
-        W kilka minut pomożemy Ci odkryć, jak wygląda Twoja sytuacja finansowa.
-        Przejdziemy przez sześć krótkich kroków – od dochodów i wydatków po cele
-        finansowe.
-      </p>
-      <div className="rounded-lg border border-dashed border-muted p-4 text-sm text-secondary">
-        <div className="flex items-start gap-3">
-          <Info className="mt-0.5 h-4 w-4 text-primary" />
-          <p>
-            Onboarding to jednorazowe wprowadzenie danych. Wszystko zapisujemy
-            automatycznie – możesz wrócić i edytować informacje w dowolnym
-            momencie.
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={onStart}>Zaczynamy</Button>
-        <Button variant="outline" onClick={onSkip}>
-          Pomiń onboarding
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function FormFooter({
-  onNext,
-  onBack,
-  onSkip,
-  nextLabel = 'Dalej',
-  isLast = false,
-}: {
-  onNext: () => void;
-  onBack: () => void;
-  onSkip: () => void;
-  nextLabel?: string;
-  isLast?: boolean;
-}) {
-  return (
-    <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <Info className="h-4 w-4" />
-        <span>Dlaczego to ważne? Dzięki tym danym spersonalizujemy Twoje cele.</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <Button type="button" variant="link" onClick={onSkip} className="text-muted-foreground hover:text-primary">
-          Pomiń krok
-        </Button>
-        <Button type="button" variant="outline" onClick={onBack}>
-          Wstecz
-        </Button>
-        <Button type="button" onClick={onNext} className="transition-transform hover:translate-y-[-1px]">
-          {isLast ? 'Zakończ' : nextLabel}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function LifeStep({
-  data,
-  onChange,
-  onNext,
-  onBack,
-  onSkip,
-  errors,
-  nextLabel,
-}: StepBaseProps & {
-  data: OnboardingData['life'];
-  onChange: (updates: Partial<OnboardingData['life']>) => void;
-  nextLabel?: string;
-}) {
-  const shouldAskPartnerBudget =
-    data.maritalStatus === 'relationship' || data.maritalStatus === 'married';
-
-  return (
-    <form
-      className="space-y-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onNext();
-      }}
-    >
-      <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 shadow-sm">
-        <p className="text-sm font-semibold text-primary">
-          Zrozumiemy Twoją sytuację życiową, aby zaproponować dopasowany plan finansowy.
-        </p>
-        <p className="mt-1 text-xs text-secondary">
-          Kilka spokojnych pytań pozwoli nam przygotować Twój spersonalizowany punkt startowy.
-        </p>
-      </div>
-
-      <FieldGroup
-        label={
-          <>
-            Stan cywilny{' '}
-            <TooltipTrigger text="Dzięki temu dopasujemy pytania do Twojej sytuacji rodzinnej.">
-              <Info className="h-4 w-4 text-primary" />
-            </TooltipTrigger>
-          </>
-        }
-        error={errors['maritalStatus']}
-        required
-      >
-        <Select
-          value={data.maritalStatus}
-          onValueChange={(value) =>
-            onChange({
-              maritalStatus: value as OnboardingData['life']['maritalStatus'],
-              includePartnerFinances:
-                value === 'married' ? data.includePartnerFinances : false,
-            })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Wybierz..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="single">Singiel / singielka</SelectItem>
-            <SelectItem value="relationship">W związku</SelectItem>
-            <SelectItem value="married">Małżeństwo</SelectItem>
-          </SelectContent>
-        </Select>
-      </FieldGroup>
-
-      {shouldAskPartnerBudget && (
-        <div className="flex items-center justify-between rounded-lg border border-muted/60 bg-muted/30 px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-primary">
-              Czy prowadzicie wspólny budżet?
-            </p>
-            <p className="text-xs text-secondary">
-              Dzięki temu zobaczysz pełny obraz Waszego gospodarstwa domowego.
-            </p>
-          </div>
-          <Switch
-            checked={data.includePartnerFinances}
-            onCheckedChange={(checked) =>
-              onChange({ includePartnerFinances: checked })
-            }
-          />
-        </div>
-      )}
-
-      <FieldGroup
-        label={
-          <>
-            Liczba dzieci{' '}
-            <TooltipTrigger text="Uwzględnimy edukację, ubrania i zajęcia dodatkowe w dalszym planie.">
-              <Info className="h-4 w-4 text-primary" />
-            </TooltipTrigger>
-          </>
-        }
-        error={errors['childrenCount']}
-      >
-        <Input
-          type="number"
-          min={0}
-          max={10}
-          value={data.childrenCount}
-          onChange={(event) =>
-            onChange({ childrenCount: Number(event.target.value) || 0 })
-          }
-          placeholder="np. 2"
-        />
-      </FieldGroup>
-
-      {data.childrenCount > 0 && (
-        <FieldGroup
-          label="W jakim wieku są dzieci?"
-          error={errors['childrenAgeRange']}
-          hint="Dzięki temu dopasujemy rekomendacje oszczędzania i edukacji."
-        >
-          <Select
-            value={data.childrenAgeRange ?? ''}
-            onValueChange={(value) =>
-              onChange({
-                childrenAgeRange: value as OnboardingData['life']['childrenAgeRange'],
-              })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Wybierz przedział wiekowy" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0-6">0 – 6 lat</SelectItem>
-              <SelectItem value="7-12">7 – 12 lat</SelectItem>
-              <SelectItem value="13+">13 lat i więcej</SelectItem>
-              <SelectItem value="mixed">Różne przedziały wiekowe</SelectItem>
-            </SelectContent>
-          </Select>
-        </FieldGroup>
-      )}
-
-      <FieldGroup
-        label={
-          <>
-            Typ zamieszkania{' '}
-            <TooltipTrigger text="Rata kredytu lub czynsz to często największy stały koszt – warto być precyzyjnym.">
-              <Info className="h-4 w-4 text-primary" />
-            </TooltipTrigger>
-          </>
-        }
-        hint="Wynajem i kredyt mają wpływ na strukturę Twoich wydatków."
-        error={errors['housingType']}
-        required
-      >
-        <Select
-          value={data.housingType}
-          onValueChange={(value) =>
-            onChange({
-              housingType: value as OnboardingData['life']['housingType'],
-            })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Wybierz..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="rent">Wynajem</SelectItem>
-            <SelectItem value="mortgage">Własne (z kredytem)</SelectItem>
-            <SelectItem value="owned">Własne (bez kredytu)</SelectItem>
-          </SelectContent>
-        </Select>
-      </FieldGroup>
-
-      {data.housingType === 'mortgage' && (
-        <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-primary">Masz aktywny kredyt hipoteczny?</p>
-            <p className="text-xs text-secondary">
-              Dzięki temu dopasujemy rekomendacje dotyczące zadłużenia i poduszki bezpieczeństwa.
-            </p>
-          </div>
-          <Switch
-            checked={data.hasMortgage ?? false}
-            onCheckedChange={(checked) => onChange({ hasMortgage: checked })}
-          />
-        </div>
-      )}
-
-      <FieldGroup
-        label="Status zawodowy"
-        error={errors['employmentStatus']}
-        required
-      >
-        <Select
-          value={data.employmentStatus}
-          onValueChange={(value) =>
-            onChange({
-              employmentStatus:
-                value as OnboardingData['life']['employmentStatus'],
-            })
-          }
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Wybierz..." />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="employee">Etat</SelectItem>
-            <SelectItem value="business">Działalność</SelectItem>
-            <SelectItem value="freelancer">Freelancer</SelectItem>
-            <SelectItem value="unemployed">Bez zatrudnienia</SelectItem>
-          </SelectContent>
-        </Select>
-      </FieldGroup>
-
-      {data.employmentStatus === 'business' && (
-        <FieldGroup
-          label="Forma opodatkowania"
-          error={errors['taxForm']}
-          required
-        >
-          <Select
-            value={data.taxForm}
-            onValueChange={(value) =>
-              onChange({
-                taxForm: value as OnboardingData['life']['taxForm'],
-              })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Wybierz formę opodatkowania" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="scale">Skala podatkowa</SelectItem>
-              <SelectItem value="linear">Podatek liniowy</SelectItem>
-              <SelectItem value="lumpsum">Ryczałt ewidencjonowany</SelectItem>
-              <SelectItem value="card">Karta podatkowa</SelectItem>
-            </SelectContent>
-          </Select>
-        </FieldGroup>
-      )}
-
-      <FieldGroup
-        label="Miesięczny koszt życia gospodarstwa (PLN)"
-        error={errors['householdCost']}
-        required
-        hint="Szacuj średnią z ostatnich 3 miesięcy."
-        className="pt-2"
-      >
-        <CurrencyInput
-          value={data.householdCost}
-          onValueChange={(amount) => onChange({ householdCost: amount })}
-          placeholder="np. 4 800"
-        />
-      </FieldGroup>
-
-      <FormFooter
-        onNext={() => onNext()}
-        onBack={onBack}
-        onSkip={onSkip}
-        nextLabel={nextLabel}
-      />
-    </form>
-  );
-}
-
-function IncomeStep({
-  data,
-  onChange,
-  onNext,
-  onBack,
-  onSkip,
-  errors,
-  monthlyIncome,
-  formatMoney,
-  childrenCount,
-  nextLabel,
-}: StepBaseProps & {
-  data: OnboardingData['income'];
-  onChange: (
-    updates: Partial<OnboardingData['income']>,
-    nested?: keyof OnboardingData['income']['additionalSources'],
-    nestedUpdates?: Partial<AdditionalSource>
-  ) => void;
-  monthlyIncome: number;
-  formatMoney: (value: number) => string;
-  childrenCount: number;
-  nextLabel?: string;
-}) {
-  const irregularMonthly = data.irregularIncomeAnnual / 12;
-  const additionalEntries: Array<
-    [keyof OnboardingData['income']['additionalSources'], string]
-  > = [
-    ['rental', 'Najem'],
-    ['bonuses', 'Premie'],
-    ['freelance', 'Zlecenia'],
-  ];
-
-  if (childrenCount > 0) {
-    additionalEntries.push([
-      'childBenefit',
-      `Świadczenia 800+ (limit ${formatMoney(childrenCount * 800)})`,
-    ]);
-  }
-
-  additionalEntries.push(['benefits', 'Pozostałe świadczenia']);
-
-  const activeAdditionalSources = additionalEntries
-    .map(([key, label]) => ({ key, label, source: data.additionalSources[key] }))
-    .filter(({ source }) => source.enabled);
-
-  const additionalTotal = activeAdditionalSources.reduce(
-    (sum, entry) => sum + entry.source.amount,
-    0
-  );
-
-  const toggleSource = (
-    key: keyof OnboardingData['income']['additionalSources'],
-    enabled: boolean
-  ) => {
-    const source = data.additionalSources[key];
-    if (key === 'childBenefit') {
-      const maxBenefit = Math.max(0, childrenCount * 800);
-      const nextAmount =
-        enabled && !source.enabled
-          ? maxBenefit
-          : enabled
-          ? Math.min(Math.max(0, source.amount || maxBenefit), maxBenefit)
-          : 0;
-
-      onChange(
-        {},
-        key,
-        {
-          enabled: enabled && childrenCount > 0,
-          amount: enabled ? nextAmount : 0,
-        }
-      );
-      return;
-    }
-
-    onChange(
-      {},
-      key,
-      {
-        enabled,
-        amount: enabled ? (source.amount || 0) : 0,
-      }
-    );
-  };
-
-  return (
-    <form
-      className="space-y-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onNext();
-      }}
-    >
-      <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 shadow-sm">
-        <p className="text-sm font-semibold text-primary">
-          Zobaczmy, z jakich źródeł pochodzą Twoje dochody – to pomoże oszacować potencjał oszczędności i inwestycji.
-        </p>
-        <p className="mt-1 text-xs text-secondary">
-          Im dokładniej określisz wpływy, tym trafniejsze będą kolejne rekomendacje.
-        </p>
-      </div>
-
-      <FieldGroup
-        label={
-          <>
-            Wynagrodzenie miesięczne (netto){' '}
-            <TooltipTrigger text="Kwota, która realnie trafia co miesiąc na Twoje konto po opodatkowaniu.">
-              <Info className="h-4 w-4 text-primary" />
-            </TooltipTrigger>
-          </>
-        }
-        error={errors['salaryNet']}
-        required
-      >
-        <CurrencyInput
-          value={data.salaryNet}
-          onValueChange={(amount) => onChange({ salaryNet: amount })}
-          placeholder="np. 7 500"
-        />
-      </FieldGroup>
-
-      <div className="rounded-lg border border-muted/50 p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="mb-1 text-sm font-medium text-primary">
-              Dodatkowe źródła
-            </p>
-            <p className="text-xs text-secondary">
-              Włącz źródła, które regularnie zasilają Twój domowy budżet.
-            </p>
-          </div>
-          {childrenCount > 0 && (
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              Masz {childrenCount} {childrenCount === 1 ? 'dziecko' : 'dzieci'} – limit 800+ to {formatMoney(childrenCount * 800)}
-            </span>
-          )}
-        </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {additionalEntries.map(([key, label]) => {
-            const source = data.additionalSources[key];
-            const isChildBenefit = key === 'childBenefit';
-            const maxBenefit = Math.max(0, childrenCount * 800);
-            if (isChildBenefit && childrenCount === 0) {
-              return null;
-            }
-            const tooltip = ADDITIONAL_SOURCE_TOOLTIPS[key];
-
-            return (
-              <div
-                key={key}
-                className={cn(
-                  'flex flex-col gap-2 rounded-md border p-3 transition-colors',
-                  source.enabled
-                    ? 'border-success/40 bg-success/10 shadow-sm'
-                    : 'border-muted/60 bg-muted/40'
-                )}
-              >
-                <label className="flex items-start gap-2 text-sm font-medium text-primary">
-                  <Checkbox
-                    checked={source.enabled && (!isChildBenefit || childrenCount > 0)}
-                    onCheckedChange={(checked) => toggleSource(key, Boolean(checked))}
-                    id={`source-${key}`}
-                    disabled={isChildBenefit && childrenCount === 0}
-                  />
-                  <span className="flex flex-col gap-1">
-                    <span className="flex items-center gap-2">
-                      {label}
-                      {tooltip && (
-                        <TooltipTrigger text={tooltip}>
-                          <Info className="h-4 w-4 text-primary" />
-                        </TooltipTrigger>
-                      )}
-                    </span>
-                    {isChildBenefit && (
-                      <span className="text-xs text-secondary">
-                        Limit: {formatMoney(maxBenefit)} (800 zł × liczba dzieci)
-                      </span>
-                    )}
-                  </span>
-                </label>
-                {source.enabled && (
-                  <CurrencyInput
-                    value={source.amount}
-                    onValueChange={(amount) =>
-                      onChange({}, key, {
-                        enabled: true,
-                        amount: isChildBenefit
-                          ? Math.min(Math.max(0, amount), maxBenefit)
-                          : amount,
-                      })
-                    }
-                    placeholder={isChildBenefit ? formatMoney(maxBenefit) : 'np. 1 200'}
-                    className="h-9"
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {activeAdditionalSources.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-primary">
-            <span className="font-medium">Aktywne źródła:</span>
-            {activeAdditionalSources.map(({ key, label }) => (
-              <span
-                key={key}
-                className="rounded-full bg-primary/10 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary"
-              >
-                {label}
-              </span>
-            ))}
-            <span className="ml-auto font-medium">
-              Razem: {formatMoney(additionalTotal)}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <FieldGroup
-        label={
-          <>
-            Dochody nieregularne (rocznie){' '}
-            <TooltipTrigger text="Przeliczamy roczne premie lub zwroty podatku na miesięczny ekwiwalent.">
-              <Info className="h-4 w-4 text-primary" />
-            </TooltipTrigger>
-          </>
-        }
-        error={errors['irregularIncomeAnnual']}
-        hint="Podaj kwoty netto – to, co realnie trafia na konto."
-      >
-        <div className="space-y-2">
-          <CurrencyInput
-            value={data.irregularIncomeAnnual}
-            onValueChange={(amount) =>
-              onChange({
-                irregularIncomeAnnual: amount,
-              })
-            }
-            placeholder="np. 6 000"
-          />
-          <p className="text-xs text-secondary">
-            To odpowiada około{' '}
-            <span className="font-medium text-primary">
-              {formatMoney(Math.round(irregularMonthly))}
-            </span>{' '}
-            miesięcznie.
-          </p>
-        </div>
-      </FieldGroup>
-
-      <div className="flex flex-col gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-primary">
-            <TrendingUp className="h-5 w-5" />
-            <p className="text-sm font-medium">Łączny miesięczny dochód</p>
-          </div>
-          <AnimatedAmount
-            value={Math.round(monthlyIncome)}
-            formatMoney={formatMoney}
-            tone="low"
-            className="text-xl font-semibold"
-          />
-        </div>
-        <p className="text-xs text-secondary">
-          Na podstawie Twoich danych miesięczny dochód netto wynosi{' '}
-          <span className="font-medium text-primary">
-            {formatMoney(Math.round(monthlyIncome))}
-          </span>
-          . W kolejnym kroku zobaczymy, jak rozkładają się Twoje wydatki.
-        </p>
-      </div>
-
-      <SalaryDistributionChart salary={data.salaryNet} formatMoney={formatMoney} />
-
-      <FormFooter
-        onNext={() => onNext()}
-        onBack={onBack}
-        onSkip={onSkip}
-        nextLabel={nextLabel}
-      />
-    </form>
-  );
-}
-
-function ExpensesStep({
-  data,
-  onUpdate,
-  onNext,
-  onBack,
-  onSkip,
-  errors,
-  formatMoney,
-  monthlyIncome,
-}: StepBaseProps & {
-  data: OnboardingExpenses;
-  onUpdate: (updater: (prev: OnboardingExpenses) => OnboardingExpenses) => void;
-  formatMoney: (value: number) => string;
-  monthlyIncome: number;
-}) {
-  const [expandedGroups, setExpandedGroups] = useState<Record<ExpenseGroupKey, boolean>>(
-    () => createFlagState(true)
-  );
-
-  const totals = useMemo(() => expenseGroupTotals(data), [data]);
-  const totalExpenses = useMemo(() => sumExpenses(data), [data]);
-  const totalsByGroup = useMemo(
-    () =>
-      totals.reduce(
-        (acc, entry) => {
-          acc[entry.key] = entry.total;
-          return acc;
-        },
-        {} as Record<ExpenseGroupKey, number>
-      ),
-    [totals]
-  );
-
-  const toggleGroup = useCallback((groupKey: ExpenseGroupKey) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupKey]: !prev[groupKey],
-    }));
-  }, []);
-
-  const handleAmountChange = useCallback(
-    (groupKey: ExpenseGroupKey, itemId: string, amount: number) => {
-      onUpdate((prev) => ({
-        ...prev,
-        [groupKey]: (prev[groupKey] ?? []).map((item) =>
-          item.id === itemId ? { ...item, amount: Math.max(0, amount) } : item
-        ),
-      }));
-    },
-    [onUpdate]
-  );
-
-  const handleNameChange = useCallback(
-    (groupKey: ExpenseGroupKey, itemId: string, name: string) => {
-      onUpdate((prev) => ({
-        ...prev,
-        [groupKey]: (prev[groupKey] ?? []).map((item) =>
-          item.id === itemId ? { ...item, name } : item
-        ),
-      }));
-    },
-    [onUpdate]
-  );
-
-  const handleAddCustomItem = useCallback(
-    (groupKey: ExpenseGroupKey) => {
-      const groupDefinition = EXPENSE_GROUPS.find((group) => group.key === groupKey);
-      const newId = ensureId(`${groupKey}-custom`);
-      const newItem: OnboardingExpenseItem = {
-        id: newId,
-        templateId: undefined,
-        name: 'Nowy wydatek',
-        amount: 0,
-        category: groupDefinition?.defaultCategory ?? 'other',
-        isCustom: true,
-      };
-
-      onUpdate((prev) => ({
-        ...prev,
-        [groupKey]: [...(prev[groupKey] ?? []), newItem],
-      }));
-
-      setExpandedGroups((prev) => ({
-        ...prev,
-        [groupKey]: true,
-      }));
-    },
-    [onUpdate]
-  );
-
-  const handleRemoveItem = useCallback(
-    (groupKey: ExpenseGroupKey, itemId: string) => {
-      onUpdate((prev) => ({
-        ...prev,
-        [groupKey]: (prev[groupKey] ?? []).filter((item) => item.id !== itemId),
-      }));
-    },
-    [onUpdate]
-  );
-
-  const totalTone = getTotalTone(totalExpenses, monthlyIncome);
-
-  return (
-    <form
-      className="space-y-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onNext();
-      }}
-    >
-      <div className="rounded-lg border border-muted/50 bg-muted/30 px-4 py-3 text-sm text-secondary">
-        Zapisz koszty według kategorii. Możesz dodać własne pozycje w każdej sekcji,
-        aby uchwycić wszystkie stałe wydatki.
-      </div>
-
-      <div className="space-y-4">
-        {EXPENSE_GROUPS.map((group) => {
-          const Icon = group.icon;
-          const items = data[group.key] ?? [];
-          const groupTotal = totalsByGroup[group.key] ?? 0;
-          const isExpanded = expandedGroups[group.key];
-          const groupHasError = Object.keys(errors).some((key) =>
-            key.startsWith(`${group.key}.`)
-          );
-          const share =
-            totalExpenses > 0 ? Math.round((groupTotal / totalExpenses) * 100) : 0;
-          const tone = getTotalTone(groupTotal, monthlyIncome);
-
-          return (
-            <div
-              key={group.key}
-              className={cn(
-                'rounded-xl border border-muted/60 bg-card shadow-sm transition-colors',
-                groupHasError && 'border-destructive/50'
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => toggleGroup(group.key)}
-                className="flex w-full items-center gap-4 rounded-t-xl px-4 py-4 text-left hover:bg-muted/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-semibold text-primary">{group.title}</p>
-                  <p className="text-xs text-secondary">{group.description}</p>
-                  <p className="text-xs text-secondary/80">
-                    {EXPENSE_GROUP_HINTS[group.key]}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  <AnimatedAmount
-                    value={groupTotal}
-                    tone={tone}
-                    formatMoney={formatMoney}
-                    className="text-base font-semibold"
-                  />
-                  {totalExpenses > 0 && (
-                    <span className="text-xs text-secondary">{share}% budżetu</span>
-                  )}
-                </div>
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-secondary" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-secondary" />
-                )}
-              </button>
-
-              {isExpanded && (
-                <div className="space-y-4 border-t border-muted/50 px-4 py-4">
-                  <div className="space-y-3">
-                    {items.map((item, index) => {
-                      const amountError = errors[`${group.key}.${index}.amount`];
-                      const nameError = errors[`${group.key}.${index}.name`];
-                      return (
-                        <div
-                          key={item.id}
-                          className="rounded-lg border border-muted/50 bg-background px-3 py-3"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            {item.isCustom ? (
-                              <Input
-                                value={item.name}
-                                onChange={(event) =>
-                                  handleNameChange(group.key, item.id, event.target.value)
-                                }
-                                placeholder="Nazwa wydatku"
-                                className="h-9"
-                              />
-                            ) : (
-                              <p className="text-sm font-medium text-primary">{item.name}</p>
-                            )}
-                            {item.isCustom && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveItem(group.key, item.id)}
-                                className="rounded-full p-1 text-secondary transition-colors hover:text-destructive"
-                                aria-label="Usuń wydatek"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                          {nameError && (
-                            <p className="mt-1 text-xs text-destructive">{nameError}</p>
-                          )}
-                          <div className="mt-3">
-                            <CurrencyInput
-                              value={item.amount}
-                              onValueChange={(amount) =>
-                                handleAmountChange(group.key, item.id, amount)
-                              }
-                              placeholder="np. 400"
-                              className="h-9"
-                            />
-                            {amountError && (
-                              <p className="mt-1 text-xs text-destructive">{amountError}</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleAddCustomItem(group.key)}
-                    className="inline-flex items-center gap-2 border-dashed border-muted/60 text-xs"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Dodaj własny wydatek
-                  </Button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
-        <span>Łączne miesięczne wydatki</span>
-        <AnimatedAmount
-          value={totalExpenses}
-          tone={totalTone}
-          formatMoney={formatMoney}
-          className="text-base font-semibold"
-        />
-      </div>
-
-      <FormFooter onNext={onNext} onBack={onBack} onSkip={onSkip} />
-    </form>
-  );
-}
-
-function LiabilitiesStep({
-  items,
-  onAdd,
-  onUpdate,
-  onRemove,
-  onNext,
-  onBack,
-  onSkip,
-  errors,
-  monthlyIncome,
-  formatMoney,
-}: StepBaseProps & {
-  items: LiabilityItem[];
-  onAdd: () => void;
-  onUpdate: (id: string, updates: Partial<LiabilityItem>) => void;
-  onRemove: (id: string) => void;
-  monthlyIncome: number;
-  formatMoney: (value: number) => string;
-}) {
-  const totals = useMemo(() => {
-    const totalMonthly = items.reduce(
-      (sum, item) => sum + (item.monthlyPayment || 0),
-      0
-    );
-    const totalRemaining = items.reduce(
-      (sum, item) => sum + (item.remainingAmount || 0),
-      0
-    );
-    const dti = monthlyIncome > 0 ? (totalMonthly / monthlyIncome) * 100 : 0;
-    return { totalMonthly, totalRemaining, dti };
-  }, [items, monthlyIncome]);
-
-  const getCardTitle = (type: string) => {
-    switch (type) {
-      case 'mortgage':
-        return 'Kredyt hipoteczny';
-      case 'car':
-        return 'Kredyt samochodowy';
-      case 'consumer':
-        return 'Pożyczka konsumpcyjna';
-      case 'card':
-        return 'Karta kredytowa / limit';
-      case 'line':
-        return 'Linia kredytowa';
-      case 'leasing':
-        return 'Leasing';
-      case 'nonbank':
-        return 'Pożyczka pozabankowa';
-      default:
-        return 'Zobowiązanie finansowe';
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'mortgage':
-        return Home;
-      case 'car':
-        return Car;
-      case 'card':
-        return Wallet;
-      case 'leasing':
-        return TrendingDown;
-      default:
-        return Target;
-    }
-  };
-
-  const handleTypeChange = (id: string, value: string) => {
-    const currentItem = items.find((liability) => liability.id === id);
-    onUpdate(id, {
-      type: value,
-      repaymentType: ['card', 'line'].includes(value) ? 'unknown' : (currentItem?.repaymentType || 'equal'),
-      propertyValue: value === 'mortgage' ? currentItem?.propertyValue ?? null : null,
-    });
-  };
-
-  const shouldShowEndDate = (type: string) =>
-    !['card', 'line'].includes(type);
-
-  const shouldShowRepaymentType = (type: string) =>
-    !['card', 'line', 'nonbank'].includes(type);
-
-  const shouldShowPropertyValue = (type: string) => type === 'mortgage';
-
-  return (
-    <div className="space-y-5">
-      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-4">
-        <p className="text-sm font-semibold text-primary">
-          Zobaczmy, jakie masz kredyty i pożyczki – obliczymy Twój wskaźnik
-          zadłużenia (DTI) i pomożemy zaplanować bezpieczną spłatę.
-        </p>
-        <p className="mt-1 text-xs text-secondary">
-          Podaj wartości orientacyjne – liczy się obraz Twojego zadłużenia, nie
-          perfekcyjna dokładność.
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        {items.map((item, index) => {
-          const Icon = getTypeIcon(item.type);
-          const remainingLabel = item.type === 'leasing'
-            ? 'Kwota wykupu pozostała (PLN)'
-            : 'Kwota pozostała do spłaty (PLN)';
-          const fieldError = (field: keyof LiabilityItem) =>
-            errors[`liabilities.${index}.${field}`] ??
-            errors[`${index}.${field}`] ??
-            errors[field];
-          return (
-            <div
-              key={item.id}
-              className="space-y-4 rounded-xl border border-muted/60 bg-[#fafaf9] p-4 shadow-sm"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-primary">
-                  <Icon className="h-5 w-5" />
-                  <p className="text-sm font-semibold">
-                    {getCardTitle(item.type)}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onRemove(item.id)}
-                  className="rounded-full p-1 text-secondary transition-colors hover:text-destructive"
-                  aria-label="Usuń zobowiązanie"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <FieldGroup
-                  label="Rodzaj zobowiązania"
-                  error={fieldError('type')}
-                  required
-                >
-                  <Select
-                    value={item.type}
-                    onValueChange={(value) => handleTypeChange(item.id, value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="np. kredyt hipoteczny" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mortgage">Kredyt hipoteczny</SelectItem>
-                      <SelectItem value="car">Kredyt samochodowy</SelectItem>
-                      <SelectItem value="consumer">
-                        Pożyczka konsumpcyjna
-                      </SelectItem>
-                      <SelectItem value="card">
-                        Karta kredytowa / limit
-                      </SelectItem>
-                      <SelectItem value="line">Linia kredytowa</SelectItem>
-                      <SelectItem value="leasing">Leasing</SelectItem>
-                      <SelectItem value="nonbank">Pożyczka pozabankowa</SelectItem>
-                      <SelectItem value="other">Inne</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FieldGroup>
-
-                <FieldGroup
-                  label={
-                    <span className="inline-flex items-center gap-1">
-                      {remainingLabel}
-                      <TooltipTrigger text="Podaj orientacyjną kwotę – wystarczy ostatnia wartość z wyciągu bankowego.">
-                        <Info className="h-3.5 w-3.5 text-primary" />
-                      </TooltipTrigger>
-                    </span>
-                  }
-                  required
-                  error={fieldError('remainingAmount')}
-                >
-                  <CurrencyInput
-                    value={item.remainingAmount}
-                    onValueChange={(amount) =>
-                      onUpdate(item.id, {
-                        remainingAmount: amount,
-                      })
-                    }
-                    placeholder="np. 180 000"
-                  />
-                </FieldGroup>
-
-                <FieldGroup
-                  label={
-                    <span className="inline-flex items-center gap-1">
-                      Rata miesięczna (PLN)
-                      <TooltipTrigger text="Uwzględnij pełną miesięczną ratę – wlicz odsetki i kapitał.">
-                        <Info className="h-3.5 w-3.5 text-primary" />
-                      </TooltipTrigger>
-                    </span>
-                  }
-                  required
-                  error={fieldError('monthlyPayment')}
-                >
-                  <CurrencyInput
-                    value={item.monthlyPayment}
-                    onValueChange={(amount) =>
-                      onUpdate(item.id, {
-                        monthlyPayment: amount,
-                      })
-                    }
-                    placeholder="np. 1 800"
-                  />
-                </FieldGroup>
-
-                <FieldGroup
-                  label="Cel zobowiązania"
-                  hint="(opcjonalnie) np. mieszkanie, samochód, sprzęt."
-                >
-                  <Input
-                    value={item.purpose ?? ''}
-                    onChange={(event) =>
-                      onUpdate(item.id, { purpose: event.target.value })
-                    }
-                    placeholder="np. zakup mieszkania"
-                  />
-                </FieldGroup>
-
-                <FieldGroup label="Oprocentowanie (%)" hint="(opcjonalnie)">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={item.interestRate ?? ''}
-                    onChange={(event) =>
-                      onUpdate(item.id, {
-                        interestRate:
-                          event.target.value === ''
-                            ? null
-                            : Number(event.target.value) || 0,
-                      })
-                    }
-                    placeholder="np. 6.2"
-                  />
-                </FieldGroup>
-
-                {shouldShowRepaymentType(item.type) && (
-                  <FieldGroup
-                    label="Forma spłaty"
-                    hint="(opcjonalnie)"
-                  >
-                    <Select
-                      value={item.repaymentType || 'unknown'}
-                      onValueChange={(value) =>
-                        onUpdate(item.id, {
-                          repaymentType: value as LiabilityItem['repaymentType'],
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Wybierz..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="equal">Raty równe</SelectItem>
-                        <SelectItem value="decreasing">Raty malejące</SelectItem>
-                        <SelectItem value="unknown">
-                          Nie mam pewności / inne
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FieldGroup>
-                )}
-
-                {shouldShowPropertyValue(item.type) && (
-                  <FieldGroup
-                    label="Wartość nieruchomości (PLN)"
-                    hint="(opcjonalnie) pozwoli policzyć wskaźnik LTV."
-                  >
-                    <CurrencyInput
-                      value={item.propertyValue ?? 0}
-                      onValueChange={(amount) =>
-                        onUpdate(item.id, { propertyValue: amount })
-                      }
-                      placeholder="np. 520 000"
-                    />
-                  </FieldGroup>
-                )}
-
-                {shouldShowEndDate(item.type) && (
-                  <FieldGroup
-                    label="Termin zakończenia"
-                    hint="(opcjonalnie) data ostatniej raty."
-                    className="md:col-span-2"
-                  >
-                    <Input
-                      type="date"
-                      value={item.endDate ?? ''}
-                      onChange={(event) =>
-                        onUpdate(item.id, { endDate: event.target.value })
-                      }
-                    />
-                  </FieldGroup>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onAdd}
-          className="inline-flex items-center gap-2 border-primary/40 bg-primary/5 text-primary shadow-sm transition-transform hover:translate-y-[-1px]"
-        >
-          <Plus className="h-4 w-4" />
-          Dodaj kolejne zobowiązanie
-        </Button>
-
-        <div className="rounded-lg border border-muted/50 bg-card px-4 py-3 text-xs text-secondary">
-          <p>
-            Suma miesięcznych rat:{' '}
-            <span className="font-semibold text-primary">
-              {formatMoney(totals.totalMonthly)}
-            </span>
-          </p>
-          <p>
-            Łączne zadłużenie:{' '}
-            <span className="font-semibold text-primary">
-              {formatMoney(totals.totalRemaining)}
-            </span>
-          </p>
-          <p>
-            Twój wskaźnik DTI wynosi{' '}
-            <span className="font-semibold text-primary">
-              {totals.dti.toFixed(1)}%
-            </span>
-            . Oznacza to, że{' '}
-            <span className="font-semibold text-primary">
-              {totals.dti.toFixed(1)}%
-            </span>{' '}
-            dochodu przeznaczasz na spłatę zobowiązań.
-          </p>
-        </div>
-      </div>
-
-      <FormFooter
-        onNext={() => onNext()}
-        onBack={onBack}
-        onSkip={onSkip}
-        nextLabel="Dalej → Oszczędności"
-      />
-    </div>
-  );
-}
-
-
-function AnimatedAmount({
-  value,
-  formatMoney,
-  tone = 'low',
-  className,
-}: {
-  value: number;
-  formatMoney: (value: number) => string;
-  tone?: AmountTone;
-  className?: string;
-}) {
-  const animatedValue = useAnimatedNumber(value);
-  const [bump, setBump] = useState(false);
-
-  useEffect(() => {
-    setBump(true);
-    const timeout = window.setTimeout(() => setBump(false), 220);
-    return () => window.clearTimeout(timeout);
-  }, [value]);
-
-  return (
-    <span
-      className={cn(
-        'inline-flex min-w-[4.5rem] justify-end tabular-nums transition-transform duration-200',
-        toneClassMap[tone],
-        bump && 'scale-[1.04]',
-        className
-      )}
-    >
-      {formatMoney(animatedValue)}
-    </span>
-  );
-}
-
-function useAnimatedNumber(value: number, duration = 260) {
-  const [display, setDisplay] = useState(value);
-  const previousValue = useRef(value);
-
-  useEffect(() => {
-    let raf = 0;
-    const start = performance.now();
-    const initial = previousValue.current;
-    const delta = value - initial;
-
-    if (Math.abs(delta) < 0.01) {
-      setDisplay(value);
-      previousValue.current = value;
-      return;
-    }
-
-    const step = (timestamp: number) => {
-      const progress = Math.min((timestamp - start) / duration, 1);
-      setDisplay(initial + delta * progress);
-      if (progress < 1) {
-        raf = requestAnimationFrame(step);
-      } else {
-        previousValue.current = value;
-      }
-    };
-
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [value, duration]);
-
-  useEffect(() => {
-    previousValue.current = value;
-    setDisplay(value);
-  }, []);
-
-  return display;
-}
-
-function TooltipTrigger({ text, children }: { text: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span className="relative inline-flex items-center">
-      <button
-        type="button"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        className="rounded-full p-0 text-primary transition-colors hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary/40"
-        aria-label="Więcej informacji"
-      >
-        {children}
-      </button>
-      <span
-        role="tooltip"
-        className={`pointer-events-none absolute left-1/2 top-full z-30 mt-2 w-60 -translate-x-1/2 rounded-md border border-muted/60 bg-card px-3 py-2 text-left text-xs text-secondary shadow-lg transition-opacity duration-200 ${open ? 'opacity-100' : 'opacity-0'}`}
-      >
-        {text}
-      </span>
-    </span>
-  );
-}
-
-function SalaryDistributionChart({
-  salary,
-  formatMoney,
-}: {
-  salary: number;
-  formatMoney: (value: number) => string;
-}) {
-  const { chartData, chartOptions, summaryText } = useMemo(() => {
-    const labels = SALARY_DISTRIBUTION_POINTS.map((point) =>
-      point.income >= 1000 ? `${Math.round(point.income / 1000)}k` : `${point.income}`
-    );
-
-    const clampedSalary = salary > 0
-      ? Math.min(Math.max(salary, MIN_SALARY_IN_CHART), MAX_SALARY_IN_CHART)
-      : 0;
-
-    let lower = SALARY_DISTRIBUTION_POINTS[0];
-    let upper = SALARY_DISTRIBUTION_POINTS[SALARY_DISTRIBUTION_POINTS.length - 1];
-    let rangeIndex = SALARY_DISTRIBUTION_POINTS.length - 1;
-
-    if (clampedSalary > 0) {
-      for (let i = 0; i < SALARY_DISTRIBUTION_POINTS.length - 1; i += 1) {
-        const current = SALARY_DISTRIBUTION_POINTS[i];
-        const next = SALARY_DISTRIBUTION_POINTS[i + 1];
-        if (clampedSalary >= current.income && clampedSalary <= next.income) {
-          lower = current;
-          upper = next;
-          rangeIndex = Math.min(i + 1, SALARY_DISTRIBUTION_POINTS.length - 1);
-          break;
-        }
-      }
-    }
-
-    const baseColors = SALARY_DISTRIBUTION_POINTS.map(() => 'rgba(37, 99, 235, 0.45)');
-    const borderColors = SALARY_DISTRIBUTION_POINTS.map(() => 'rgba(37, 99, 235, 0.6)');
-
-    let highlightPercentile = lower.percentile;
-    if (clampedSalary > 0) {
-      const range = upper.income - lower.income || 1;
-      const ratio = (clampedSalary - lower.income) / range;
-      highlightPercentile =
-        lower.percentile + ratio * (upper.percentile - lower.percentile);
-      baseColors[rangeIndex] = 'rgba(22, 163, 74, 0.9)';
-      borderColors[rangeIndex] = 'rgba(22, 163, 74, 1)';
-    }
-
-    const barDataset = {
-      type: 'bar' as const,
-      label: 'Procent gospodarstw domowych',
-      data: SALARY_DISTRIBUTION_POINTS.map((point) => point.percentile),
-      backgroundColor: baseColors,
-      borderColor: borderColors,
-      borderWidth: 1,
-      borderRadius: 6,
-      maxBarThickness: 22,
-    };
-
-    const chartOptions: ChartOptions<'bar'> = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (context: TooltipItem<'bar'>) =>
-              `Percentyl: ${context.parsed.y?.toFixed(0)}%`,
-          },
-        },
-      },
-      interaction: { intersect: false, mode: 'nearest' },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: { maxTicksLimit: 6, color: '#6b7280', font: { size: 10 } },
-        },
-        y: {
-          grid: { display: false },
-          ticks: {
-            callback: (value: string | number) => (typeof value === 'number' ? `${value}%` : value),
-            color: '#6b7280',
-            font: { size: 10 },
-          },
-          min: 0,
-          max: 100,
-        },
-      },
-    };
-
-    const chartData: ChartData<'bar'> = {
-      labels,
-      datasets: [barDataset],
-    };
-
-    const percentileRounded = Math.round(highlightPercentile);
-    const aboveShare = Math.max(0, 100 - percentileRounded);
-    const summaryText =
-      salary > 0
-        ? `Twój dochód ${formatMoney(salary)} przewyższa około ${aboveShare}% gospodarstw domowych (skala do 30 000 zł netto).`
-        : 'Wpisz swoje wynagrodzenie, aby zobaczyć, jak wypadasz na tle innych (wykres pokazuje kwoty do 30 000 zł netto).';
-
-    return { chartData, chartOptions, summaryText };
-  }, [salary, formatMoney]);
-
-  return (
-    <div className="space-y-2">
-      <div className="overflow-hidden rounded-lg border border-muted/50 bg-card px-2 py-2">
-        <div style={{ height: 140 }}>
-          <Bar data={chartData} options={chartOptions} />
-        </div>
-      </div>
-      <p className="text-xs text-secondary">{summaryText}</p>
-    </div>
-  );
-}
-function AssetsStep({
-  data,
-  onChange,
-  onAddProperty,
-  onUpdateProperty,
-  onRemoveProperty,
-  onNext,
-  onBack,
-  onSkip,
-  errors,
-}: StepBaseProps & {
-  data: OnboardingData['assets'];
-  onChange: (updates: Partial<OnboardingData['assets']>) => void;
-  onAddProperty: (collection: 'properties' | 'vehicles') => void;
-  onUpdateProperty: (
-    collection: 'properties' | 'vehicles',
-    id: string,
-    updates: Partial<PropertyItem>
-  ) => void;
-  onRemoveProperty: (collection: 'properties' | 'vehicles', id: string) => void;
-}) {
-  const investmentOptions = [
-    { value: 'stocks', label: 'Akcje' },
-    { value: 'etf', label: 'ETF' },
-    { value: 'funds', label: 'Fundusze' },
-    { value: 'bonds', label: 'Obligacje' },
-    { value: 'crypto', label: 'Kryptowaluty' },
-  ];
-
-  const toggleInvestment = (value: string, checked: boolean) => {
-    onChange({
-      investments: {
-        ...data.investments,
-        categories: checked
-          ? Array.from(new Set([...data.investments.categories, value]))
-          : data.investments.categories.filter((item) => item !== value),
-      },
-    });
-  };
-
-  return (
-    <div className="space-y-5">
-      <FieldGroup label="Oszczędności i gotówka (PLN)" error={errors['savings']}>
-        <CurrencyInput
-          value={data.savings}
-          onValueChange={(amount) => onChange({ savings: amount })}
-          placeholder="np. 20 000"
-        />
-      </FieldGroup>
-
-      <FieldGroup
-        label="Fundusz awaryjny – na ile miesięcy wystarczy?"
-        error={errors['emergencyFundMonths']}
-      >
-        <div className="flex items-center gap-4">
-          <input
-            type="range"
-            min={0}
-            max={12}
-            value={data.emergencyFundMonths}
-            onChange={(event) =>
-              onChange({
-                emergencyFundMonths: Number(event.target.value) || 0,
-              })
-            }
-            className="h-1 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
-          />
-          <span className="w-14 text-right text-sm font-medium text-primary">
-            {data.emergencyFundMonths} mies.
-          </span>
-        </div>
-      </FieldGroup>
-
-      <div className="rounded-lg border border-muted/60 bg-muted/30 p-4">
-        <p className="mb-2 text-sm font-medium text-primary">
-          Inwestycje (zaznacz co pasuje)
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {investmentOptions.map((option) => (
-            <label
-              key={option.value}
-              className="flex cursor-pointer items-center gap-2 rounded-md border border-muted/60 bg-card px-3 py-2 text-sm"
-            >
-              <Checkbox
-                checked={data.investments.categories.includes(option.value)}
-                onCheckedChange={(checked) =>
-                  toggleInvestment(option.value, Boolean(checked))
-                }
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
-        <div className="mt-3">
-          <FieldGroup
-            label="Łączna wartość inwestycji (PLN)"
-            error={errors['investments.totalValue']}
-          >
-            <CurrencyInput
-              value={data.investments.totalValue}
-              onValueChange={(amount) =>
-                onChange({
-                  investments: {
-                    ...data.investments,
-                    totalValue: amount,
-                  },
-                })
-              }
-              placeholder="Łączna wartość (PLN)"
-            />
-          </FieldGroup>
-        </div>
-      </div>
-
-      <PropertySection
-        title="Nieruchomości"
-        items={data.properties}
-        onAdd={() => onAddProperty('properties')}
-        onUpdate={(id, updates) =>
-          onUpdateProperty('properties', id, updates)
-        }
-        onRemove={(id) => onRemoveProperty('properties', id)}
-      />
-
-      <PropertySection
-        title="Pojazdy"
-        items={data.vehicles}
-        onAdd={() => onAddProperty('vehicles')}
-        onUpdate={(id, updates) => onUpdateProperty('vehicles', id, updates)}
-        onRemove={(id) => onRemoveProperty('vehicles', id)}
-      />
-
-      <FormFooter onNext={onNext} onBack={onBack} onSkip={onSkip} />
-    </div>
-  );
-}
-
-function PropertySection({
-  title,
-  items,
-  onAdd,
-  onUpdate,
-  onRemove,
-}: {
-  title: string;
-  items: PropertyItem[];
-  onAdd: () => void;
-  onUpdate: (id: string, updates: Partial<PropertyItem>) => void;
-  onRemove: (id: string) => void;
-}) {
-  return (
-    <div className="rounded-lg border border-muted/60 bg-muted/20 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-medium text-primary">{title}</p>
-        <Button type="button" variant="outline" size="sm" onClick={onAdd}>
-          <Plus className="h-4 w-4" />
-          Dodaj
-        </Button>
-      </div>
-      {items.length === 0 && (
-        <p className="text-xs text-secondary">
-          Brak danych – możesz dodać pozycję, ale to krok opcjonalny.
-        </p>
-      )}
-      <div className="space-y-3">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex flex-col gap-3 rounded-md border border-muted bg-card p-3 sm:flex-row"
-          >
-            <Input
-              value={item.name}
-              onChange={(event) =>
-                onUpdate(item.id, { name: event.target.value })
-              }
-              placeholder="Nazwa / opis"
-            />
-            <CurrencyInput
-              value={item.value}
-              onValueChange={(amount) =>
-                onUpdate(item.id, { value: amount })
-              }
-              placeholder="Wartość (PLN)"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-destructive"
-              onClick={() => onRemove(item.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function GoalsStep({
-  goals,
-  onAdd,
-  onUpdate,
-  onRemove,
-  onNext,
-  onBack,
-  onSkip,
-  errors,
-}: StepBaseProps & {
-  goals: GoalItem[];
-  onAdd: () => void;
-  onUpdate: (id: string, updates: Partial<GoalItem>) => void;
-  onRemove: (id: string) => void;
-}) {
-  return (
-    <div className="space-y-5">
-      <p className="text-sm text-secondary">
-        Określ swoje cele finansowe – nawet jeden cel pomoże zbudować jasny plan
-        działania.
-      </p>
-
-      {errors['goals'] && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-          {errors['goals']}
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {goals.map((goal, index) => (
-          <div
-            key={goal.id}
-            className="space-y-3 rounded-lg border border-muted/60 bg-muted/30 p-4"
-          >
-            <FieldGroup
-              label="Nazwa celu"
-              error={errors[`goals.${goal.id}.name`] ?? errors[`goals.${index}.name`] ?? errors[`${index}.name`] ?? errors['name']}
-            >
-              <Input
-                value={goal.name}
-                onChange={(event) =>
-                  onUpdate(goal.id, { name: event.target.value })
-                }
-                placeholder="np. Poduszka bezpieczeństwa"
-              />
-            </FieldGroup>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <FieldGroup
-                label="Typ celu"
-                error={errors[`goals.${goal.id}.type`] ?? errors[`goals.${index}.type`] ?? errors[`${index}.type`] ?? errors['type']}
-              >
-                <Select
-                  value={goal.type}
-                  onValueChange={(value) =>
-                    onUpdate(goal.id, {
-                      type: value as GoalItem['type'],
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Wybierz..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="short">Krótki (do 12 miesięcy)</SelectItem>
-                    <SelectItem value="medium">
-                      Średni (1–3 lata)
-                    </SelectItem>
-                    <SelectItem value="long">Długi (&gt; 3 lata)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FieldGroup>
-
-              <FieldGroup
-                label="Kwota docelowa (PLN)"
-                error={errors[`goals.${goal.id}.targetAmount`] ?? errors[`goals.${index}.targetAmount`] ?? errors[`${index}.targetAmount`] ?? errors['targetAmount']}
-              >
-                <CurrencyInput
-                  value={goal.targetAmount}
-                  onValueChange={(amount) =>
-                    onUpdate(goal.id, {
-                      targetAmount: amount,
-                    })
-                  }
-                  placeholder="np. 30 000"
-                />
-              </FieldGroup>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <FieldGroup
-                label="Termin realizacji"
-                error={errors[`goals.${goal.id}.targetDate`] ?? errors[`goals.${index}.targetDate`] ?? errors[`${index}.targetDate`] ?? errors['targetDate']}
-              >
-                <Input
-                  type="date"
-                  value={goal.targetDate ?? ''}
-                  onChange={(event) =>
-                    onUpdate(goal.id, { targetDate: event.target.value })
-                  }
-                />
-              </FieldGroup>
-              <FieldGroup
-                label="Priorytet (1–5)"
-                error={errors[`goals.${goal.id}.priority`] ?? errors[`goals.${index}.priority`] ?? errors[`${index}.priority`] ?? errors['priority']}
-              >
-                <Input
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={goal.priority}
-                  onChange={(event) =>
-                    onUpdate(goal.id, {
-                      priority: Number(event.target.value) || 1,
-                    })
-                  }
-                />
-              </FieldGroup>
-            </div>
-
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-destructive"
-              onClick={() => onRemove(goal.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-              Usuń cel
-            </Button>
-          </div>
-        ))}
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onAdd}
-        className="inline-flex items-center gap-2"
-      >
-        <Plus className="h-4 w-4" />
-        Dodaj kolejny cel
-      </Button>
-
-      <FormFooter
-        onNext={() => onNext()}
-        onBack={onBack}
-        onSkip={onSkip}
-        nextLabel="Przejdź do podsumowania"
-      />
-    </div>
-  );
-}
-
-function SummaryStep({
-  data,
-  metrics,
-  onBack,
-  onReset,
-  onFinish,
-  formatMoney,
-}: {
-  data: OnboardingData;
-  metrics: OnboardingMetrics;
-  onBack: () => void;
-  onReset: () => void;
-  onFinish: () => void;
-  formatMoney: (value: number) => string;
-}) {
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <SummaryCard
-          title="Miesięczny dochód"
-          value={formatMoney(metrics.monthlyIncome)}
-          tone="positive"
-        />
-        <SummaryCard
-          title="Miesięczne wydatki"
-          value={formatMoney(metrics.totalExpenses)}
-          tone="neutral"
-        />
-        <SummaryCard
-          title="Nadwyżka miesięczna"
-          value={formatMoney(metrics.surplus)}
-          tone={metrics.surplus >= 0 ? 'positive' : 'warning'}
-        />
-        <SummaryCard
-          title="Wartość netto"
-          value={formatMoney(metrics.netWorth)}
-          tone="positive"
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <InfoPanel
-          title="Dochody"
-          items={[
-            ['Wynagrodzenie', formatMoney(data.income.salaryNet)],
-            [
-              'Źródła dodatkowe',
-              formatMoney(
-                Object.values(data.income.additionalSources).reduce(
-                  (sum, src) => sum + (src.enabled ? src.amount : 0),
-                  0
-                )
-              ),
-            ],
-            [
-              'Dochody nieregularne',
-              formatMoney(data.income.irregularIncomeAnnual / 12),
-            ],
-            ...(data.life.taxForm
-              ? ([
-                  ['Forma opodatkowania', TAX_FORM_LABELS[data.life.taxForm]],
-                ] as Array<[string, string]>)
-              : []),
-          ]}
-        />
-        <InfoPanel
-          title="Wydatki i zobowiązania"
-          items={[
-            [
-              'Koszty stałe',
-              formatMoney(metrics.totalExpenses),
-            ],
-            [
-              'Raty miesięczne',
-              formatMoney(metrics.liabilitiesMonthly),
-            ],
-            ['DTI', `${metrics.dti.toFixed(0)}%`],
-          ]}
-        />
-        <InfoPanel
-          title="Aktywa"
-          items={[
-            ['Oszczędności', formatMoney(data.assets.savings)],
-            [
-              'Inwestycje',
-              formatMoney(data.assets.investments.totalValue),
-            ],
-            [
-              'Wartość nieruchomości',
-              formatMoney(
-                data.assets.properties.reduce(
-                  (sum, item) => sum + item.value,
-                  0
-                )
-              ),
-            ],
-            [
-              'Pokrycie poduszką',
-              `${metrics.emergencyCoverage.toFixed(1)} mies.`,
-            ],
-          ]}
-        />
-        <InfoPanel
-          title="Cele"
-          items={
-            data.goals.length === 0
-              ? [['Brak zdefiniowanych celów', '—']]
-              : data.goals.map((goal) => [
-                  goal.name,
-                  `${formatMoney(goal.targetAmount)} • priorytet ${goal.priority}`,
-                ])
-          }
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="ghost" onClick={onReset}>
-          Zacznij od nowa
-        </Button>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={onBack}>
-            Wstecz
-          </Button>
-          <Button onClick={onFinish}>Zakończ i przejdź do aplikacji</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FieldGroup({
-  label,
-  children,
-  error,
-  hint,
-  required,
-  className,
-}: {
-  label: ReactNode;
-  children: ReactNode;
-  error?: string;
-  hint?: string;
-  required?: boolean;
-  className?: string;
-}) {
-  const hasError = Boolean(error);
-  return (
-    <div className={cn('space-y-1', className)}>
-      <label
-        className={cn(
-          'mb-1 block text-sm font-medium text-primary',
-          hasError && 'text-destructive'
-        )}
-      >
-        <span className="inline-flex items-center gap-2">
-          {label}
-          {required && <span className="text-destructive">*</span>}
-        </span>
-      </label>
-      {hint && <p className="mb-1 text-xs text-secondary">{hint}</p>}
-      <div
-        className={cn(
-          hasError &&
-            'rounded-md border border-destructive/50 bg-destructive/10 px-2 py-1'
-        )}
-      >
-        {children}
-      </div>
-      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
-    </div>
-  );
-}
-
-function SummaryCard({
-  title,
-  value,
-  tone = 'neutral',
-}: {
-  title: string;
-  value: string;
-  tone?: 'positive' | 'neutral' | 'warning';
-}) {
-  const toneClasses =
-    tone === 'positive'
-      ? 'bg-success/15 text-success'
-      : tone === 'warning'
-      ? 'bg-warning/15 text-warning-foreground'
-      : 'bg-muted';
-
-  return (
-    <div className={`rounded-lg border border-muted/60 p-4 ${toneClasses}`}>
-      <p className="text-sm font-medium">{title}</p>
-      <p className="text-2xl font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function InfoPanel({
-  title,
-  items,
-}: {
-  title: string;
-  items: Array<[string, string]>;
-}) {
-  return (
-    <div className="rounded-lg border border-muted/60 bg-card p-4">
-      <p className="mb-3 text-sm font-semibold text-primary">{title}</p>
-      <dl className="space-y-2 text-sm">
-        {items.map(([label, value]) => (
-          <div key={label} className="flex items-center justify-between gap-4">
-            <dt className="text-secondary">{label}</dt>
-            <dd className="font-medium text-primary">{value}</dd>
-          </div>
-        ))}
-      </dl>
     </div>
   );
 }

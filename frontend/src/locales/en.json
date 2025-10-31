@@ -799,5 +799,540 @@
       "requisitionId": "Please enter a requisition ID",
       "selectAccount": "Please select an account first"
     }
+  },
+  "onboarding": {
+    "header": {
+      "title": "Financial profile setup",
+      "subtitle": "Work through a few steps to build your starting point.",
+      "saving": "Saving data...",
+      "savedAt": "Saved at {time}",
+      "stepIndicator": "Step {current} of {total}",
+      "welcomeGreeting": "Welcome to your Financial Hub!"
+    },
+    "navigation": {
+      "whyItMatters": "Why does it matter? These details let us personalize your goals.",
+      "skipStep": "Skip step",
+      "back": "Back",
+      "finish": "Finish",
+      "nextDefault": "Next",
+      "nextWithStep": "Next → {step}"
+    },
+    "placeholders": {
+      "exampleNumber": "e.g. {value}",
+      "exampleAmount": "e.g. {value}"
+    },
+    "steps": {
+      "welcome": {
+        "label": "Welcome",
+        "description": "Introduction to onboarding"
+      },
+      "life": {
+        "label": "Life situation",
+        "description": "Capture your financial context"
+      },
+      "income": {
+        "label": "Income",
+        "description": "Sources and income level"
+      },
+      "expenses": {
+        "label": "Expenses",
+        "description": "Recurring monthly costs"
+      },
+      "liabilities": {
+        "label": "Liabilities",
+        "description": "Loans and repayments"
+      },
+      "assets": {
+        "label": "Assets",
+        "description": "Financial and tangible assets"
+      },
+      "goals": {
+        "label": "Financial goals",
+        "description": "Plans and priorities"
+      },
+      "summary": {
+        "label": "Summary",
+        "description": "Review what we captured",
+        "cards": {
+          "monthlyIncome": "Monthly income",
+          "monthlyExpenses": "Monthly expenses",
+          "monthlySurplus": "Monthly surplus",
+          "netWorth": "Net worth"
+        },
+        "panels": {
+          "income": "Income",
+          "expensesLiabilities": "Expenses and liabilities",
+          "assets": "Assets",
+          "goals": "Goals"
+        },
+        "income": {
+          "salary": "Salary",
+          "additionalSources": "Additional sources",
+          "irregularIncome": "Irregular income (monthly equivalent)",
+          "taxForm": "Tax regime"
+        },
+        "expenses": {
+          "fixedCosts": "Fixed costs",
+          "monthlyLiabilities": "Monthly liabilities",
+          "dti": "DTI",
+          "dtiValue": "{value}%"
+        },
+        "assets": {
+          "savings": "Savings",
+          "investments": "Investments",
+          "properties": "Properties",
+          "emergencyCoverage": "Emergency fund coverage",
+          "emergencyCoverageValue": "{months} mo."
+        },
+        "goals": {
+          "none": "No goals defined",
+          "noneValue": "—",
+          "unnamed": "Unnamed goal",
+          "entry": "{amount} • priority {priority}"
+        },
+        "actions": {
+          "reset": "Start over",
+          "finish": "Finish and continue to the app"
+        }
+      }
+    },
+    "summary": {
+      "cards": {
+        "monthlyIncome": "Monthly income",
+        "monthlyExpenses": "Monthly expenses",
+        "monthlySurplus": "Monthly surplus",
+        "netWorth": "Net worth"
+      },
+      "panels": {
+        "income": "Income",
+        "expensesLiabilities": "Expenses and liabilities",
+        "assets": "Assets",
+        "goals": "Goals"
+      },
+      "income": {
+        "salary": "Salary",
+        "additionalSources": "Additional sources",
+        "irregularIncome": "Irregular income (monthly equivalent)",
+        "taxForm": "Tax regime"
+      },
+      "expenses": {
+        "fixedCosts": "Fixed costs",
+        "monthlyLiabilities": "Monthly liabilities",
+        "dti": "DTI",
+        "dtiValue": "{value}%"
+      },
+      "assets": {
+        "savings": "Savings",
+        "investments": "Investments",
+        "properties": "Properties",
+        "emergencyCoverage": "Emergency fund coverage",
+        "emergencyCoverageValue": "{months} mo."
+      },
+      "goals": {
+        "none": "No goals defined",
+        "noneValue": "—",
+        "unnamed": "Unnamed goal",
+        "entry": "{amount} • priority {priority}"
+      },
+      "actions": {
+        "reset": "Start over",
+        "finish": "Finish and continue to the app"
+      }
+    },
+    "validation": {
+      "goalRequired": "Add at least one goal or skip this step"
+    },
+    "accessibility": {
+      "moreInfo": "More information"
+    },
+    "welcome": {
+      "intro": "In just a few minutes we'll map your finances. We'll cover six short steps – from income and expenses to financial goals.",
+      "info": "Onboarding is a one-time data entry. Everything saves automatically so you can return and edit anytime.",
+      "start": "Let's begin",
+      "skip": "Skip onboarding"
+    },
+    "life": {
+      "intro": "Let's understand your life situation so we can propose a tailored plan.",
+      "subIntro": "A few calm questions will help us prepare a personalized starting point.",
+      "fields": {
+        "maritalStatus": {
+          "label": "Marital status",
+          "tooltip": "This helps us adapt the questions to your family situation.",
+          "options": {
+            "single": "Single",
+            "relationship": "In a relationship",
+            "married": "Married"
+          }
+        },
+        "partnerBudget": {
+          "label": "Do you manage a shared budget?",
+          "hint": "This gives a full picture of your household finances."
+        },
+        "childrenCount": {
+          "label": "Number of children",
+          "tooltip": "We'll factor in education, clothing, and activities later on."
+        },
+        "childrenAgeRange": {
+          "label": "How old are the children?",
+          "hint": "We tailor savings and education tips accordingly.",
+          "placeholder": "Select an age range",
+          "options": {
+            "0_6": "0 – 6 years",
+            "7_12": "7 – 12 years",
+            "13_plus": "13 years and up",
+            "mixed": "Mixed ages"
+          }
+        },
+        "housingType": {
+          "label": "Housing type",
+          "tooltip": "Rent or mortgage is often the biggest fixed cost – it's worth being precise.",
+          "hint": "Rentals and mortgages shape how your expenses look.",
+          "options": {
+            "rent": "Rent",
+            "mortgage": "Owned (with mortgage)",
+            "owned": "Owned (no mortgage)"
+          }
+        },
+        "hasMortgage": {
+          "label": "Do you have an active mortgage?",
+          "hint": "We can then tailor debt and emergency fund suggestions."
+        },
+        "employmentStatus": {
+          "label": "Employment status",
+          "options": {
+            "employee": "Employee",
+            "business": "Business owner",
+            "freelancer": "Freelancer",
+            "unemployed": "Not employed"
+          }
+        },
+        "taxForm": {
+          "label": "Tax regime",
+          "placeholder": "Select tax regime",
+          "options": {
+            "scale": "Progressive scale",
+            "linear": "Flat tax",
+            "lumpsum": "Lump-sum",
+            "card": "Tax card"
+          }
+        },
+        "householdCost": {
+          "label": "Monthly household cost (local currency)",
+          "hint": "Use the average from the last 3 months."
+        }
+      }
+    },
+    "income": {
+      "intro": "Let's see where your income comes from – it helps estimate saving potential.",
+      "subIntro": "The more precise you are, the better the recommendations.",
+      "fields": {
+        "salaryNet": {
+          "label": "Monthly salary (net)",
+          "tooltip": "The amount deposited to your account after tax."
+        },
+        "irregularIncome": {
+          "label": "Irregular income (annual)",
+          "tooltip": "We convert yearly bonuses or tax refunds into a monthly equivalent.",
+          "hint": "Enter net amounts – what truly reaches your account.",
+          "monthlyEquivalent": "This equals roughly {amount} per month."
+        }
+      },
+      "additionalSources": {
+        "title": "Additional sources",
+        "subtitle": "Enable the inflows that regularly boost your budget.",
+        "rental": "Rental",
+        "bonuses": "Bonuses",
+        "freelance": "Freelance",
+        "childBenefit": "Child benefit (cap {limit})",
+        "benefits": "Other benefits",
+        "childBadge": "You have {count, plural, one {# child} other {# children}} – the 800+ cap is {limit}",
+        "childBenefitLimit": "Cap: {limit} (800 each child)",
+        "activeTitle": "Active sources:",
+        "total": "Total: {amount}",
+        "tooltips": {
+          "rental": "Enter the amount you receive each month after costs.",
+          "bonuses": "Average monthly bonus across the last 12 months.",
+          "freelance": "Estimate the average monthly value of contracts.",
+          "benefits": "Social benefits, pensions – anything that arrives regularly.",
+          "childBenefit": "Calculated per child (max 800 per child)."
+        }
+      },
+      "summary": {
+        "totalMonthlyIncome": "Total monthly income",
+        "description": "Based on your data, net monthly income is {amount}. Next we'll look at your spending."
+      },
+      "distribution": {
+        "datasetLabel": "Share of households",
+        "tooltip": "Percentile: {value}%",
+        "summaryWithSalary": "Your income {amount} is higher than about {share}% of households (chart up to 30k net).",
+        "summaryWithoutSalary": "Enter your salary to see your position (chart shows up to 30k net)."
+      }
+    },
+    "expenses": {
+      "intro": "Record your costs by category. Add custom entries in any section to capture every recurring expense.",
+      "group": {
+        "share": "{value}% of budget"
+      },
+      "customItem": {
+        "defaultName": "New expense",
+        "addAction": "Add custom expense",
+        "removeAction": "Remove expense",
+        "namePlaceholder": "Expense name"
+      },
+      "fallback": {
+        "genericName": "Expense"
+      },
+      "summary": {
+        "totalLabel": "Total monthly expenses"
+      },
+      "groups": {
+        "home": {
+          "title": "Home and housing",
+          "description": "Fixed housing costs including utilities and small maintenance.",
+          "hint": "Knowing your housing costs helps us plan your safety net.",
+          "items": {
+            "home-rent": "Rent / mortgage payment",
+            "home-utilities": "Utilities (electricity, gas, water, heating)",
+            "home-internet": "Internet, phone, TV",
+            "home-maintenance": "Furnishings / small repairs"
+          }
+        },
+        "transport": {
+          "title": "Transport and car",
+          "description": "Commuting, insurance and keeping vehicles running.",
+          "hint": "Tracking transport costs shows whether your car or commute is optimal.",
+          "items": {
+            "transport-fuel": "Fuel",
+            "transport-insurance": "Car insurance (liability / collision)",
+            "transport-service": "Service and inspections",
+            "transport-leasing": "Lease / installment",
+            "transport-public": "Public transport passes"
+          }
+        },
+        "food": {
+          "title": "Food and daily shopping",
+          "description": "Daily groceries and meals out.",
+          "hint": "Food spending highlights habits and potential savings.",
+          "items": {
+            "food-groceries": "Groceries",
+            "food-dining": "Meals out",
+            "food-coffee": "Coffee / snacks"
+          }
+        },
+        "family": {
+          "title": "Family and children",
+          "description": "Childcare, schooling and family expenses.",
+          "hint": "Family spending helps us tailor education-focused goals.",
+          "items": {
+            "family-education": "Preschool / school / activities",
+            "family-clothes": "Clothing",
+            "family-activities": "Care / trips / gifts"
+          }
+        },
+        "lifestyle": {
+          "title": "Health and lifestyle",
+          "description": "Physical activity and your household's health.",
+          "hint": "Investments in health and lifestyle influence your financial fitness.",
+          "items": {
+            "lifestyle-fitness": "Gym / fitness / memberships",
+            "lifestyle-medicine": "Medicine / doctor visits",
+            "lifestyle-care": "Cosmetics / hairdresser"
+          }
+        },
+        "subscriptions": {
+          "title": "Subscriptions and memberships",
+          "description": "Online services, entertainment and extra insurance.",
+          "hint": "Subscriptions often slip by – log them to stay in control.",
+          "items": {
+            "subscriptions-streaming": "Streaming (Netflix, Spotify, YouTube Premium)",
+            "subscriptions-apps": "Apps and online tools",
+            "subscriptions-insurance": "Supplementary insurance"
+          }
+        },
+        "obligations": {
+          "title": "Financial obligations",
+          "description": "Regular loan and installment payments.",
+          "hint": "Tracking obligations makes it easier to manage cash flow.",
+          "items": {
+            "obligations-loans": "Loan installments",
+            "obligations-cards": "Credit cards",
+            "obligations-private": "Private loans"
+          }
+        },
+        "pets": {
+          "title": "Pets and hobbies",
+          "description": "Costs of caring for pets and pursuing hobbies.",
+          "hint": "Pet and hobby costs show how much you really spend on fun and passions.",
+          "items": {
+            "pets-animals": "Pets (food, vet)",
+            "pets-hobby": "Hobbies and passions (photography, fishing, games)"
+          }
+        },
+        "insurance": {
+          "title": "Insurance and protection",
+          "description": "Protecting health, life and property.",
+          "hint": "Understanding your insurance helps assess your coverage.",
+          "items": {
+            "insurance-health": "Health / life insurance",
+            "insurance-home": "Home / property insurance"
+          }
+        },
+        "other": {
+          "title": "Other / leisure",
+          "description": "Treats, gifts and spontaneous expenses.",
+          "hint": "Small expenses add up – total them so nothing slips through.",
+          "items": {
+            "other-leisure": "Cinema / restaurants / trips",
+            "other-gifts": "Gifts and occasional shopping",
+            "other-misc": "Other small expenses"
+          }
+        }
+      }
+    },
+    "liabilities": {
+      "intro": {
+        "title": "Let's look at your loans and debts – we'll calculate your debt-to-income ratio (DTI) and help plan a safe repayment.",
+        "description": "Provide approximate amounts – we care about the overall picture, not perfect precision."
+      },
+      "actions": {
+        "add": "Add another liability",
+        "remove": "Remove liability"
+      },
+      "fields": {
+        "type": {
+          "label": "Liability type"
+        },
+        "monthlyPayment": {
+          "label": "Monthly payment (PLN)"
+        },
+        "remainingAmount": {
+          "label": "Outstanding balance (PLN)",
+          "buyoutLabel": "Remaining buyout amount (PLN)"
+        },
+        "interestRate": {
+          "label": "Interest rate (%)"
+        },
+        "repaymentType": {
+          "label": "Repayment method",
+          "hint": "(optional)",
+          "options": {
+            "equal": "Equal installments",
+            "decreasing": "Decreasing installments",
+            "unknown": "Not sure / other"
+          }
+        },
+        "propertyValue": {
+          "label": "Property value (PLN)",
+          "hint": "(optional) helps us estimate your LTV."
+        },
+        "endDate": {
+          "label": "Payoff date",
+          "hint": "(optional) last scheduled payment date."
+        }
+      },
+      "summary": {
+        "monthly": "Total monthly payments",
+        "remaining": "Total outstanding balance",
+        "dti": "Your DTI is <strong>{value}%</strong>. That means <strong>{value}%</strong> of your income goes toward debt payments."
+      },
+      "types": {
+        "default": {
+          "cardTitle": "Financial liability"
+        },
+        "mortgage": {
+          "option": "Mortgage",
+          "cardTitle": "Mortgage"
+        },
+        "car": {
+          "option": "Car loan",
+          "cardTitle": "Car loan"
+        },
+        "consumer": {
+          "option": "Consumer loan",
+          "cardTitle": "Consumer loan"
+        },
+        "card": {
+          "option": "Credit card / credit limit",
+          "cardTitle": "Credit card / credit limit"
+        },
+        "line": {
+          "option": "Credit line",
+          "cardTitle": "Credit line"
+        },
+        "leasing": {
+          "option": "Leasing",
+          "cardTitle": "Leasing"
+        },
+        "nonbank": {
+          "option": "Non-bank loan",
+          "cardTitle": "Non-bank loan"
+        }
+      }
+    },
+    "goals": {
+      "intro": "Set your financial goals – even one goal gives us a clear direction for your plan.",
+      "actions": {
+        "add": "Add another goal",
+        "remove": "Remove goal"
+      },
+      "fields": {
+        "name": {
+          "label": "Goal name",
+          "placeholder": "e.g. Emergency fund"
+        },
+        "type": {
+          "label": "Goal horizon",
+          "options": {
+            "short": "Short-term (up to 12 months)",
+            "medium": "Medium-term (1–3 years)",
+            "long": "Long-term (over 3 years)"
+          }
+        },
+        "targetAmount": {
+          "label": "Target amount (PLN)"
+        },
+        "targetDate": {
+          "label": "Target date"
+        },
+        "priority": {
+          "label": "Priority",
+          "hint": "Rate from 1 (lowest) to 5 (highest)."
+        }
+      }
+    },
+    "assets": {
+      "fields": {
+        "cash": {
+          "label": "Savings and cash (PLN)"
+        },
+        "emergencyFund": {
+          "label": "Emergency fund – how many months does it cover?",
+          "monthsLabel": "{months} mo."
+        }
+      },
+      "investments": {
+        "title": "Investments (select all that apply)",
+        "options": {
+          "stocks": "Stocks",
+          "etf": "ETF",
+          "funds": "Funds",
+          "bonds": "Bonds",
+          "crypto": "Cryptocurrency"
+        },
+        "totalLabel": "Total investment value (PLN)",
+        "totalPlaceholder": "Total amount (PLN)"
+      },
+      "sections": {
+        "properties": "Properties",
+        "vehicles": "Vehicles",
+        "empty": "No entries yet.",
+        "namePlaceholder": "Name",
+        "valuePlaceholder": "Value (PLN)"
+      },
+      "actions": {
+        "addItem": "Add item",
+        "removeItem": "Remove item"
+      }
+    }
   }
 }
