@@ -1,7 +1,7 @@
 import { getSession } from 'next-auth/react';
 
 export interface ActivityLog {
-  entity_type: 'Income' | 'Expense' | 'Loan';
+  entity_type: 'Income' | 'Expense' | 'Loan' | 'Saving';
   operation_type: 'create' | 'update' | 'delete';
   entity_id: number;
   previous_values?: unknown;

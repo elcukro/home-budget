@@ -75,6 +75,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [bankingConnections, setBankingConnections] = useState<BankingConnection[]>([]);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [shouldClearBeforeImport, setShouldClearBeforeImport] = useState<boolean>(false);
 
   const userEmail = session?.user?.email ?? null;
 
@@ -188,39 +189,58 @@ export default function SettingsPage() {
   };
 
   const handleImport = async () => {
-    if (!userEmail || !importFile) {
+    if (!importFile) {
       return;
     }
 
-    const formData = new FormData();
-    formData.append("file", importFile);
-
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/import`,
-        {
-          method: "POST",
-          body: formData,
+      if (shouldClearBeforeImport) {
+        const confirmPrimary = window.confirm(
+          intl.formatMessage({ id: "settings.import.confirmClearPrimary" }),
+        );
+        if (!confirmPrimary) {
+          return;
+        }
+        const confirmSecondary = window.confirm(
+          intl.formatMessage({ id: "settings.import.confirmClearSecondary" }),
+        );
+        if (!confirmSecondary) {
+          return;
+        }
+      }
+
+      const fileContent = await importFile.text();
+      const payload = JSON.parse(fileContent);
+
+      const response = await fetch('/api/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          data: payload,
+          clearExisting: shouldClearBeforeImport,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(await response.text());
       }
 
       toast({
-        title: intl.formatMessage({ id: "settings.messages.importSuccess" }),
+        title: intl.formatMessage({ id: 'settings.messages.importSuccess' }),
       });
       setImportFile(null);
       if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+        fileInputRef.current.value = '';
       }
+      setShouldClearBeforeImport(false);
       void fetchSettings();
     } catch (err) {
       console.error("[Settings] Import failed", err);
       toast({
-        title: intl.formatMessage({ id: "settings.messages.importError" }),
-        variant: "destructive",
+        title: intl.formatMessage({ id: 'settings.messages.importError' }),
+        variant: 'destructive',
       });
     }
   };
@@ -442,6 +462,21 @@ export default function SettingsPage() {
                   <p className="text-sm text-muted-foreground">
                     {intl.formatMessage({ id: "settings.import.description" })}
                   </p>
+                  <fieldset className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="import_clear_existing"
+                      checked={shouldClearBeforeImport}
+                      onChange={(event) => setShouldClearBeforeImport(event.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <Label
+                      htmlFor="import_clear_existing"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {intl.formatMessage({ id: "settings.import.clearExistingLabel" })}
+                    </Label>
+                  </fieldset>
                 </div>
                 <div className="flex gap-2">
                   <Button disabled={!importFile} onClick={() => void handleImport()}>

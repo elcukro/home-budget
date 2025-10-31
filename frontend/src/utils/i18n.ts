@@ -15,14 +15,23 @@ export type NestedMessages = {
 
 // Load messages for a specific locale
 export async function loadMessages(locale: SupportedLocale): Promise<Record<string, string>> {
+  const fallbackMessages = flattenMessages(
+    (await import('../locales/en.json')).default,
+  );
+
+  if (locale === 'en') {
+    return fallbackMessages;
+  }
+
   try {
-    const messages = await import(`../locales/${locale}.json`);
-    return flattenMessages(messages.default);
+    const localeMessages = await import(`../locales/${locale}.json`);
+    return {
+      ...fallbackMessages,
+      ...flattenMessages(localeMessages.default),
+    };
   } catch (error) {
     console.error(`Failed to load messages for locale: ${locale}`, error);
-    // Fallback to English if translation file is missing
-    const fallbackMessages = await import('../locales/en.json');
-    return flattenMessages(fallbackMessages.default);
+    return fallbackMessages;
   }
 }
 

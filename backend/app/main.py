@@ -129,6 +129,11 @@ class Activity(ActivityBase):
     user_id: str
     timestamp: datetime
 
+
+class ImportPayload(BaseModel):
+    data: dict
+    clear_existing: bool = False
+
 # Monthly Budget Report models
 class MonthlyBudgetData(BaseModel):
     incomes: List[Income]
@@ -741,14 +746,94 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
             paid_amount = total_amount - loan.remaining_balance
             progress = paid_amount / total_amount if total_amount > 0 else 0
             
-            loans_data.append({
-                "id": str(loan.id),
-                "description": loan.description,
-                "balance": float(loan.remaining_balance),
-                "monthlyPayment": float(loan.monthly_payment),
-                "interestRate": float(loan.interest_rate),
-                "progress": float(progress),
-                "totalAmount": float(total_amount)
+        loans_data.append({
+            "id": str(loan.id),
+            "description": loan.description,
+            "balance": float(loan.remaining_balance),
+            "monthlyPayment": float(loan.monthly_payment),
+            "interestRate": float(loan.interest_rate),
+            "progress": float(progress),
+            "totalAmount": float(total_amount)
+        })
+
+        recent_activities = db.query(models.Activity).filter(
+            models.Activity.user_id == user_id
+        ).order_by(models.Activity.timestamp.desc()).limit(20).all()
+
+        numeric_fields = {
+            'amount',
+            'principal_amount',
+            'remaining_balance',
+            'monthly_payment',
+            'target_amount',
+        }
+
+        def build_changes(activity: models.Activity) -> List[dict]:
+            changes: List[dict] = []
+            previous = activity.previous_values or {}
+            new = activity.new_values or {}
+
+            if activity.operation_type == 'create':
+                for key, value in new.items():
+                    if key in {'created_at', 'updated_at'}:
+                        continue
+                    if key in numeric_fields or isinstance(value, (int, float, str)):
+                        changes.append({
+                            'field': key,
+                            'oldValue': None,
+                            'newValue': value,
+                        })
+            elif activity.operation_type == 'delete':
+                for key, value in previous.items():
+                    if key in {'created_at', 'updated_at'}:
+                        continue
+                    if key in numeric_fields or isinstance(value, (int, float, str)):
+                        changes.append({
+                            'field': key,
+                            'oldValue': value,
+                            'newValue': None,
+                        })
+            else:
+                for key, old_value in previous.items():
+                    if key in {'created_at', 'updated_at'}:
+                        continue
+                    new_value = new.get(key)
+                    if old_value != new_value:
+                        if key in numeric_fields or isinstance(old_value, (int, float, str)) or isinstance(new_value, (int, float, str)):
+                            changes.append({
+                                'field': key,
+                                'oldValue': old_value,
+                                'newValue': new_value,
+                            })
+            return changes
+
+        def activity_amount(activity: models.Activity) -> float:
+            source = activity.new_values or activity.previous_values or {}
+            try:
+                if activity.entity_type == 'Income':
+                    return float(source.get('amount', 0) or 0)
+                if activity.entity_type == 'Expense':
+                    return -float(source.get('amount', 0) or 0)
+                if activity.entity_type == 'Loan':
+                    return -float(source.get('monthly_payment', 0) or 0)
+                if activity.entity_type == 'Saving':
+                    amount = float(source.get('amount', 0) or 0)
+                    return amount if source.get('saving_type') != 'withdrawal' else -amount
+            except (TypeError, ValueError):
+                pass
+            return 0.0
+
+        activities_payload = []
+        for activity in recent_activities:
+            base = activity.new_values or activity.previous_values or {}
+            activities_payload.append({
+                "id": activity.id,
+                "title": base.get('description') or activity.entity_type,
+                "amount": activity_amount(activity),
+                "type": activity.entity_type.lower(),
+                "date": activity.timestamp.isoformat() if activity.timestamp else datetime.utcnow().isoformat(),
+                "operation": activity.operation_type,
+                "changes": build_changes(activity),
             })
 
         summary = {
@@ -762,7 +847,8 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
             "income_distribution": income_distribution,
             "expense_distribution": expense_distribution,
             "cash_flow": cash_flow,
-            "loans": loans_data
+            "loans": loans_data,
+            "activities": activities_payload,
         }
         print(f"[FastAPI] Summary data: {summary}")
         return summary
@@ -1322,11 +1408,70 @@ async def export_user_data(
 @app.post("/users/{user_id}/import")
 async def import_user_data(
     user_id: str,
-    data: dict,
-    clear_existing: bool = False,
+    payload: ImportPayload,
     db: Session = Depends(database.get_db)
 ):
     try:
+        data = payload.data
+        clear_existing = payload.clear_existing
+        def serialize_expense(expense: models.Expense) -> dict:
+            return {
+                "category": expense.category,
+                "description": expense.description,
+                "amount": expense.amount,
+                "is_recurring": expense.is_recurring,
+                "date": expense.date.isoformat() if expense.date else None,
+            }
+
+        def serialize_income(income: models.Income) -> dict:
+            return {
+                "category": income.category,
+                "description": income.description,
+                "amount": income.amount,
+                "is_recurring": income.is_recurring,
+                "date": income.date.isoformat() if income.date else None,
+            }
+
+        def serialize_loan(loan: models.Loan) -> dict:
+            return {
+                "loan_type": loan.loan_type,
+                "description": loan.description,
+                "principal_amount": loan.principal_amount,
+                "remaining_balance": loan.remaining_balance,
+                "interest_rate": loan.interest_rate,
+                "monthly_payment": loan.monthly_payment,
+                "term_months": loan.term_months,
+                "start_date": loan.start_date.isoformat() if loan.start_date else None,
+            }
+
+        def serialize_saving(saving: models.Saving) -> dict:
+            return {
+                "category": saving.category,
+                "description": saving.description,
+                "amount": saving.amount,
+                "is_recurring": saving.is_recurring,
+                "date": saving.date.isoformat() if saving.date else None,
+                "target_amount": saving.target_amount,
+                "saving_type": saving.saving_type,
+            }
+
+        def add_activity(
+            entity_type: str,
+            operation: str,
+            entity_id: int,
+            previous_values: Optional[dict] = None,
+            new_values: Optional[dict] = None,
+        ):
+            activity = models.Activity(
+                user_id=user_id,
+                entity_type=entity_type,
+                operation_type=operation,
+                entity_id=entity_id,
+                previous_values=previous_values,
+                new_values=new_values,
+            )
+            db.add(activity)
+
         # Verify user exists
         user = db.query(models.User).filter(models.User.id == user_id).first()
         if not user:
@@ -1334,19 +1479,46 @@ async def import_user_data(
 
         # Clear existing data if requested
         if clear_existing:
-            # Delete existing expenses
-            db.query(models.Expense).filter(models.Expense.user_id == user_id).delete()
-            
-            # Delete existing incomes
-            db.query(models.Income).filter(models.Income.user_id == user_id).delete()
-            
-            # Delete existing loans
-            db.query(models.Loan).filter(models.Loan.user_id == user_id).delete()
-            
-            # Delete existing savings
-            db.query(models.Saving).filter(models.Saving.user_id == user_id).delete()
-            
-            # Commit the deletions
+            existing_expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
+            for expense in existing_expenses:
+                add_activity(
+                    entity_type="Expense",
+                    operation="delete",
+                    entity_id=expense.id,
+                    previous_values=serialize_expense(expense),
+                )
+                db.delete(expense)
+
+            existing_incomes = db.query(models.Income).filter(models.Income.user_id == user_id).all()
+            for income in existing_incomes:
+                add_activity(
+                    entity_type="Income",
+                    operation="delete",
+                    entity_id=income.id,
+                    previous_values=serialize_income(income),
+                )
+                db.delete(income)
+
+            existing_loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
+            for loan in existing_loans:
+                add_activity(
+                    entity_type="Loan",
+                    operation="delete",
+                    entity_id=loan.id,
+                    previous_values=serialize_loan(loan),
+                )
+                db.delete(loan)
+
+            existing_savings = db.query(models.Saving).filter(models.Saving.user_id == user_id).all()
+            for saving in existing_savings:
+                add_activity(
+                    entity_type="Saving",
+                    operation="delete",
+                    entity_id=saving.id,
+                    previous_values=serialize_saving(saving),
+                )
+                db.delete(saving)
+
             db.commit()
             print(f"[FastAPI] Cleared existing data for user: {user_id}")
 
@@ -1373,6 +1545,13 @@ async def import_user_data(
                     is_recurring=expense_data.get("is_recurring", False)
                 )
                 db.add(expense)
+                db.flush()
+                add_activity(
+                    entity_type="Expense",
+                    operation="create",
+                    entity_id=expense.id,
+                    new_values=serialize_expense(expense),
+                )
 
         # Import incomes
         if "incomes" in data:
@@ -1386,6 +1565,13 @@ async def import_user_data(
                     is_recurring=income_data.get("is_recurring", False)
                 )
                 db.add(income)
+                db.flush()
+                add_activity(
+                    entity_type="Income",
+                    operation="create",
+                    entity_id=income.id,
+                    new_values=serialize_income(income),
+                )
 
         # Import loans
         if "loans" in data:
@@ -1402,6 +1588,13 @@ async def import_user_data(
                     start_date=datetime.fromisoformat(loan_data["start_date"].replace("Z", "+00:00"))
                 )
                 db.add(loan)
+                db.flush()
+                add_activity(
+                    entity_type="Loan",
+                    operation="create",
+                    entity_id=loan.id,
+                    new_values=serialize_loan(loan),
+                )
                 
         # Import savings
         if "savings" in data:
@@ -1417,6 +1610,13 @@ async def import_user_data(
                     saving_type=saving_data["saving_type"]
                 )
                 db.add(saving)
+                db.flush()
+                add_activity(
+                    entity_type="Saving",
+                    operation="create",
+                    entity_id=saving.id,
+                    new_values=serialize_saving(saving),
+                )
 
         db.commit()
         return {"message": "Data imported successfully"}

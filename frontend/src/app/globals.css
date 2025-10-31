@@ -2,6 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
+.gsi-material-button {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: auto;
+  min-width: min-content;
+  max-width: 400px;
+  height: 40px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 20px;
+  background-color: #f2f2f2;
+  color: #1f1f1f;
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.25px;
+  cursor: pointer;
+  transition: background-color 0.218s, box-shadow 0.218s;
+  overflow: hidden;
+}
+
+.gsi-material-button .gsi-material-button-content-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.gsi-material-button .gsi-material-button-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+}
+
+.gsi-material-button .gsi-material-button-contents {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gsi-material-button .gsi-material-button-state {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 29, 53, 0.12);
+  opacity: 0;
+  transition: opacity 0.218s;
+}
+
+.gsi-material-button:not(:disabled):hover {
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3),
+    0 1px 3px 1px rgba(60, 64, 67, 0.15);
+}
+
+.gsi-material-button:not(:disabled):hover .gsi-material-button-state {
+  opacity: 0.08;
+}
+
+.gsi-material-button:not(:disabled):focus .gsi-material-button-state,
+.gsi-material-button:not(:disabled):active .gsi-material-button-state {
+  opacity: 0.12;
+}
+
+.gsi-material-button:disabled {
+  cursor: default;
+  background-color: rgba(255, 255, 255, 0.38);
+}
+
+.gsi-material-button:disabled .gsi-material-button-contents,
+.gsi-material-button:disabled .gsi-material-button-icon {
+  opacity: 0.38;
+}
+
 @layer base {
   :root {
     --color-bg: #F5EFE8;

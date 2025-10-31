@@ -23,6 +23,8 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useIntl, type IntlShape } from 'react-intl';
+import { useSession } from 'next-auth/react';
+import { logActivity } from '@/utils/activityLogger';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -337,6 +339,64 @@ const EXPENSE_GROUP_HINTS: Record<ExpenseGroupKey, string> = {
   pets: 'Pet and hobby costs show how much you really spend on fun and passions.',
   insurance: 'Understanding your insurance helps assess your coverage.',
   other: 'Small expenses add up – total them so nothing slips through.',
+};
+
+const EXPENSE_CATEGORY_MAP: Record<ExpenseGroupKey, string> = {
+  home: 'housing',
+  transport: 'transportation',
+  food: 'food',
+  family: 'other',
+  lifestyle: 'healthcare',
+  subscriptions: 'utilities',
+  obligations: 'other',
+  pets: 'other',
+  insurance: 'insurance',
+  other: 'entertainment',
+};
+
+const ADDITIONAL_SOURCE_META: Record<
+  keyof OnboardingData['income']['additionalSources'],
+  { category: string; labelId: string }
+> = {
+  rental: {
+    category: 'rental',
+    labelId: 'onboarding.income.additionalSources.rental',
+  },
+  bonuses: {
+    category: 'other',
+    labelId: 'onboarding.income.additionalSources.bonuses',
+  },
+  freelance: {
+    category: 'freelance',
+    labelId: 'onboarding.income.additionalSources.freelance',
+  },
+  benefits: {
+    category: 'other',
+    labelId: 'onboarding.income.additionalSources.benefits',
+  },
+  childBenefit: {
+    category: 'other',
+    labelId: 'onboarding.income.additionalSources.childBenefit',
+  },
+};
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const toISODate = (value: Date | string) => {
+  const date = typeof value === 'string' ? new Date(value) : value;
+  return Number.isNaN(date.getTime())
+    ? new Date().toISOString().split('T')[0]
+    : date.toISOString().split('T')[0];
+};
+
+const differenceInMonths = (start: Date, end: Date) => {
+  const startCopy = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endCopy = new Date(end.getFullYear(), end.getMonth(), 1);
+  const years = endCopy.getFullYear() - startCopy.getFullYear();
+  const months = endCopy.getMonth() - startCopy.getMonth();
+  const total = years * 12 + months;
+  return total > 0 ? total : 1;
 };
 
 type LegacyExpenses = {
@@ -1134,6 +1194,7 @@ type StepErrors = Record<string, string>;
 export default function OnboardingWizard() {
   const router = useRouter();
   const intl = useIntl();
+  const { data: session } = useSession();
   const { formatCurrency: formatCurrencySetting } = useSettings();
   const formatMoney = useCallback(
     (amount: number) => formatCurrencySetting(amount || 0),
@@ -1316,9 +1377,422 @@ export default function OnboardingWizard() {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
   }, [intl]);
 
+  const syncFinancialData = useCallback(async () => {
+    const userEmail = session?.user?.email;
+    if (!userEmail) {
+      console.warn('[Onboarding] No authenticated user – skipping financial sync');
+      return;
+    }
+
+    const todayISO = new Date().toISOString().split('T')[0];
+    const jsonHeaders = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    };
+
+    const assertOk = async (response: Response, context: string) => {
+      if (!response.ok) {
+        let detail = '';
+        try {
+          const body = await response.json();
+          detail =
+            body?.detail ||
+            body?.error ||
+            body?.message ||
+            JSON.stringify(body);
+        } catch {
+          detail = '';
+        }
+        throw new Error(
+          `[Onboarding] ${context} failed: ${
+            detail || `${response.status} ${response.statusText}`
+          }`
+        );
+      }
+    };
+
+    // --- Income sync ---
+    try {
+      const existingIncomeRes = await fetch('/api/income');
+      if (existingIncomeRes.ok) {
+        const existingIncome: Array<Record<string, unknown>> =
+          (await existingIncomeRes.json()) ?? [];
+        for (const income of existingIncome) {
+          const incomeId = Number(income.id);
+          if (Number.isFinite(incomeId)) {
+            await logActivity({
+              entity_type: 'Income',
+              operation_type: 'delete',
+              entity_id: incomeId,
+              previous_values: income,
+            });
+            await assertOk(
+              await fetch(`/api/income/${incomeId}`, { method: 'DELETE' }),
+              `delete income ${incomeId}`
+            );
+          }
+        }
+      }
+
+      const incomePayloads: Array<{
+        category: string;
+        description: string;
+        amount: number;
+        is_recurring: boolean;
+        date: string;
+      }> = [];
+
+      if (data.income.salaryNet > 0) {
+        incomePayloads.push({
+          category: 'salary',
+          description: intl.formatMessage({
+            id: 'onboarding.income.fields.salaryNet.label',
+          }),
+          amount: data.income.salaryNet,
+          is_recurring: true,
+          date: todayISO,
+        });
+      }
+
+      (Object.entries(data.income.additionalSources) as Array<
+        [
+          keyof OnboardingData['income']['additionalSources'],
+          AdditionalSource
+        ]
+      >).forEach(([key, source]) => {
+        if (!source.enabled || source.amount <= 0) {
+          return;
+        }
+        const meta = ADDITIONAL_SOURCE_META[key];
+        incomePayloads.push({
+          category: meta.category,
+          description: intl.formatMessage({ id: meta.labelId }),
+          amount: source.amount,
+          is_recurring: true,
+          date: todayISO,
+        });
+      });
+
+      const irregularMonthly = data.income.irregularIncomeAnnual / 12;
+      if (irregularMonthly > 0) {
+        incomePayloads.push({
+          category: 'other',
+          description: intl.formatMessage({
+            id: 'onboarding.income.fields.irregularIncome.label',
+          }),
+          amount: irregularMonthly,
+          is_recurring: false,
+          date: todayISO,
+        });
+      }
+
+      for (const payload of incomePayloads) {
+        const response = await fetch('/api/income', {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify(payload),
+        });
+        await assertOk(response, `create income (${payload.description})`);
+        const createdIncome = await response.json();
+        if (createdIncome?.id !== undefined) {
+          await logActivity({
+            entity_type: 'Income',
+            operation_type: 'create',
+            entity_id: Number(createdIncome.id),
+            new_values: createdIncome,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[Onboarding] Failed to sync income', error);
+      throw error;
+    }
+
+    // --- Expenses sync ---
+    try {
+      const expensesEndpoint = `${API_BASE_URL}/users/${encodeURIComponent(
+        userEmail
+      )}/expenses`;
+
+      const existingExpensesRes = await fetch(expensesEndpoint);
+      if (existingExpensesRes.ok) {
+        const existingExpenses: Array<Record<string, unknown>> =
+          (await existingExpensesRes.json()) ?? [];
+        for (const expense of existingExpenses) {
+          const expenseId = Number(expense.id);
+          if (!Number.isFinite(expenseId)) continue;
+          await logActivity({
+            entity_type: 'Expense',
+            operation_type: 'delete',
+            entity_id: expenseId,
+            previous_values: expense,
+          });
+          await assertOk(
+            await fetch(`${expensesEndpoint}/${expenseId}`, {
+              method: 'DELETE',
+              headers: jsonHeaders,
+            }),
+            `delete expense ${expenseId}`
+          );
+        }
+      }
+
+      for (const group of Object.keys(data.expenses) as ExpenseGroupKey[]) {
+        const category = EXPENSE_CATEGORY_MAP[group] ?? 'other';
+        const items = data.expenses[group] ?? [];
+        for (const item of items) {
+          if (!item.amount || item.amount <= 0) {
+            continue;
+          }
+          const translationKey = `onboarding.expenses.groups.${group}.items.${
+            item.templateId ?? item.id
+          }`;
+          const description = item.name
+            ? item.name
+            : intl.messages[translationKey]
+              ? intl.formatMessage({ id: translationKey })
+              : intl.formatMessage({
+                  id: `onboarding.expenses.groups.${group}.title`,
+                });
+
+          const response = await fetch(expensesEndpoint, {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify({
+              category,
+              description,
+              amount: item.amount,
+              is_recurring: true,
+              date: todayISO,
+            }),
+          });
+          await assertOk(response, `create expense (${description})`);
+          const createdExpense = await response.json();
+          if (createdExpense?.id !== undefined) {
+            await logActivity({
+              entity_type: 'Expense',
+              operation_type: 'create',
+              entity_id: Number(createdExpense.id),
+              new_values: createdExpense,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[Onboarding] Failed to sync expenses', error);
+      throw error;
+    }
+
+    // --- Loans sync ---
+    try {
+      const loansQuery = `${API_BASE_URL}/loans?user_id=${encodeURIComponent(
+        userEmail
+      )}`;
+      const existingLoansRes = await fetch(loansQuery);
+      if (existingLoansRes.ok) {
+        const existingLoans: Array<Record<string, unknown>> =
+          (await existingLoansRes.json()) ?? [];
+        for (const loan of existingLoans) {
+          const loanId = Number(loan.id);
+          if (!Number.isFinite(loanId)) continue;
+          await logActivity({
+            entity_type: 'Loan',
+            operation_type: 'delete',
+            entity_id: loanId,
+            previous_values: loan,
+          });
+          await assertOk(
+            await fetch(
+              `${API_BASE_URL}/users/${encodeURIComponent(
+                userEmail
+              )}/loans/${loanId}`,
+              {
+                method: 'DELETE',
+                headers: jsonHeaders,
+              }
+            ),
+            `delete loan ${loanId}`
+          );
+        }
+      }
+
+      for (const liability of data.liabilities) {
+        const hasAmount =
+          (liability.remainingAmount ?? 0) > 0 ||
+          (liability.monthlyPayment ?? 0) > 0;
+        if (!hasAmount) continue;
+
+        const fallbackLoanLabel = intl.formatMessage({
+          id: 'onboarding.liabilities.types.default.cardTitle',
+        });
+        const labelKey = `onboarding.liabilities.types.${liability.type || 'default'}.cardTitle`;
+        const description = intl.messages[labelKey]
+          ? intl.formatMessage({ id: labelKey })
+          : fallbackLoanLabel;
+
+        const startDate = new Date();
+        const endDate = liability.endDate ? new Date(liability.endDate) : null;
+        const termMonths = endDate
+          ? differenceInMonths(startDate, endDate)
+          : 12;
+
+        const principalAmount =
+          liability.propertyValue && liability.propertyValue > 0
+            ? liability.propertyValue
+            : liability.remainingAmount;
+
+        const response = await fetch(
+          `${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`,
+          {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify({
+              loan_type: liability.type || 'loan',
+              description,
+              principal_amount: principalAmount,
+              remaining_balance: liability.remainingAmount,
+              interest_rate: liability.interestRate ?? 0,
+              monthly_payment: liability.monthlyPayment,
+              start_date: toISODate(startDate),
+              term_months: termMonths,
+            }),
+          }
+        );
+        await assertOk(response, `create loan (${description})`);
+        const createdLoan = await response.json();
+        if (createdLoan?.id !== undefined) {
+          await logActivity({
+            entity_type: 'Loan',
+            operation_type: 'create',
+            entity_id: Number(createdLoan.id),
+            new_values: createdLoan,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[Onboarding] Failed to sync loans', error);
+      throw error;
+    }
+
+    // --- Savings sync ---
+    try {
+      const existingSavingsRes = await fetch('/api/savings');
+      if (existingSavingsRes.ok) {
+        const existingSavings: Array<Record<string, unknown>> =
+          (await existingSavingsRes.json()) ?? [];
+        for (const saving of existingSavings) {
+          const savingId = Number(saving.id);
+          if (!Number.isFinite(savingId)) continue;
+          await logActivity({
+            entity_type: 'Saving',
+            operation_type: 'delete',
+            entity_id: savingId,
+            previous_values: saving,
+          });
+          await assertOk(
+            await fetch(`/api/savings/${savingId}`, { method: 'DELETE' }),
+            `delete saving ${savingId}`
+          );
+        }
+      }
+
+      const savingsPayloads: Array<{
+        category: string;
+        description: string;
+        amount: number;
+        date: string;
+        is_recurring: boolean;
+        saving_type: 'deposit' | 'withdrawal';
+      }> = [];
+
+      if (data.assets.savings > 0) {
+        savingsPayloads.push({
+          category: 'emergency_fund',
+          description: intl.formatMessage({
+            id: 'onboarding.assets.fields.cash.label',
+          }),
+          amount: data.assets.savings,
+          date: todayISO,
+          is_recurring: false,
+          saving_type: 'deposit',
+        });
+      }
+
+      if (data.assets.investments.totalValue > 0) {
+        savingsPayloads.push({
+          category: 'investment',
+          description: intl.formatMessage({
+            id: 'onboarding.assets.investments.title',
+          }),
+          amount: data.assets.investments.totalValue,
+          date: todayISO,
+          is_recurring: false,
+          saving_type: 'deposit',
+        });
+      }
+
+      data.assets.properties.forEach((property) => {
+        if (property.value > 0) {
+          savingsPayloads.push({
+            category: 'general',
+            description:
+              property.name ||
+              intl.formatMessage({
+                id: 'onboarding.assets.sections.properties',
+              }),
+            amount: property.value,
+            date: todayISO,
+            is_recurring: false,
+            saving_type: 'deposit',
+          });
+        }
+      });
+
+      data.assets.vehicles.forEach((vehicle) => {
+        if (vehicle.value > 0) {
+          savingsPayloads.push({
+            category: 'other',
+            description:
+              vehicle.name ||
+              intl.formatMessage({
+                id: 'onboarding.assets.sections.vehicles',
+              }),
+            amount: vehicle.value,
+            date: todayISO,
+            is_recurring: false,
+            saving_type: 'deposit',
+          });
+        }
+      });
+
+      for (const payload of savingsPayloads) {
+        const response = await fetch('/api/savings', {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify(payload),
+        });
+        await assertOk(response, `create saving (${payload.description})`);
+        const createdSaving = await response.json();
+        if (createdSaving?.id !== undefined) {
+          await logActivity({
+            entity_type: 'Saving',
+            operation_type: 'create',
+            entity_id: Number(createdSaving.id),
+            new_values: createdSaving,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[Onboarding] Failed to sync savings', error);
+      throw error;
+    }
+  }, [data, intl, session?.user?.email]);
+
   const handleComplete = useCallback(async () => {
     setSaveStatus('saving');
     try {
+      await syncFinancialData();
+
       const response = await fetch('/api/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1340,7 +1814,7 @@ export default function OnboardingWizard() {
       setSaveStatus('idle');
       alert('Nie udało się zapisać danych. Spróbuj ponownie.');
     }
-  }, [data, router]);
+  }, [data, router, syncFinancialData]);
 
   const setLife = (updates: Partial<OnboardingData['life']>) =>
     setData((prev) => {

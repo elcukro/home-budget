@@ -214,7 +214,10 @@
       "confirmTitle": "Confirmar importación de datos",
       "confirmMessage": "¿Deseas eliminar tus datos existentes de Ingresos, Gastos y Préstamos antes de importar nuevos datos?",
       "keepExisting": "Mantener datos existentes",
-      "removeExisting": "Eliminar datos existentes"
+      "removeExisting": "Eliminar datos existentes",
+      "confirmClearPrimary": "¿Deseas limpiar tus ingresos, gastos, préstamos y ahorros actuales antes de importar?",
+      "confirmClearSecondary": "Esta acción eliminará permanentemente tus registros actuales. ¿Quieres continuar?",
+      "clearExistingLabel": "Reemplazar los datos existentes con el archivo importado"
     },
     "tooltips": {
       "export": "Descarga todos tus datos financieros, incluyendo gastos, ingresos, préstamos y configuraciones",

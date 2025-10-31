@@ -43,9 +43,9 @@ export const config = {
     /*
      * Match all paths except:
      * 1. api routes (/api/*)
-     * 2. static files (_next/static/*, _next/image/*, favicon.ico)
+     * 2. static assets (_next/static/*, _next/image/*, favicon.ico, public files with extensions)
      * 3. auth pages (/auth/*)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|auth/signin).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|auth/.*|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$).*)',
   ],
-}; 
+};

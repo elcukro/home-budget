@@ -55,18 +55,28 @@ const incomeSchema = z.object({
     .min(1, "validation.description.required")
     .max(100, { message: "validation.description.tooLong" }),
   amount: z
-    .string()
-    .trim()
-    .min(1, "validation.required")
+    .union([z.string(), z.number()])
     .transform((value, ctx) => {
-      const error = validateAmountPositive(value);
+      const raw =
+        typeof value === "number" ? value.toString() : value.trim();
+
+      if (!raw) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "validation.required",
+        });
+        return 0;
+      }
+
+      const error = validateAmountPositive(raw);
       if (error) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: error.messageId,
         });
       }
-      return parseNumber(value) ?? 0;
+
+      return parseNumber(raw) ?? 0;
     }),
   date: z
     .string()

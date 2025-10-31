@@ -63,6 +63,7 @@ function ActivityCard(props: {
     income: 'bg-success',
     expense: 'bg-destructive',
     loan: 'bg-primary',
+    saving: 'bg-emerald-500',
     payment: 'bg-lilac',
     settings: 'bg-sand'
   };

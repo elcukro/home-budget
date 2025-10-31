@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     // Get the JSON data from the request
-    const data = await request.json();
+    const { data, clearExisting = false } = await request.json();
 
     // Send the data to the backend
     const response = await fetch(
@@ -25,7 +25,10 @@ export async function POST(request: Request) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          data,
+          clear_existing: Boolean(clearExisting),
+        }),
       }
     );
 

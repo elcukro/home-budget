@@ -568,7 +568,10 @@
     "import": {
       "title": "Import Data",
       "description": "Import your previously exported data in JSON format. This will add all the imported records to your current data.",
-      "upload": "Import data"
+      "upload": "Import data",
+      "confirmClearPrimary": "Do you want to clear your existing income, expense, loan, and savings data before importing?",
+      "confirmClearSecondary": "This action permanently deletes your current entries. Do you want to continue?",
+      "clearExistingLabel": "Replace existing data with the imported file"
     },
     "banking": {
       "title": "Connected bank accounts",
