@@ -112,7 +112,7 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
   const [insights, setInsights] = useState<EnhancedInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
-  const [errorMessageValues, setErrorMessageValues] = useState<Record<string, unknown> | undefined>(undefined);
+  const [errorMessageValues, setErrorMessageValues] = useState<Record<string, string | number> | undefined>(undefined);
   const { data: session } = useSession();
 
   const fetchInsights = async (forceRefresh = false) => {
@@ -137,7 +137,7 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
 
         const mapDetailToMessage = (
           detail: string,
-        ): { id: string; values?: Record<string, unknown> } => {
+        ): { id: string; values?: Record<string, string | number> } => {
           if (detail === 'API_KEY_MISSING') {
             return { id: 'settings.messages.claudeApiKeyRequired' };
           }

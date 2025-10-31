@@ -101,6 +101,7 @@ export default function SignIn() {
               width={20}
               height={20}
               className="mr-3"
+              unoptimized
               aria-hidden="true"
             />
             <span>{intl.formatMessage({ id: 'auth.continueWithGoogle' })}</span>
