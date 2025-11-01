@@ -41,11 +41,12 @@ interface CashFlowData {
 }
 
 interface CashFlowChartProps {
+  title?: string;
   data: CashFlowData[];
   formatCurrency: (amount: number) => string;
 }
 
-export default function CashFlowChart({ data, formatCurrency }: CashFlowChartProps) {
+export default function CashFlowChart({ title, data, formatCurrency }: CashFlowChartProps) {
   const intl = useIntl();
   const [chartKey, setChartKey] = useState(Date.now());
 
@@ -61,9 +62,15 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
 
   // Format month labels to show only month names without year
   const monthLabels = data.map(item => {
-    const monthPart = item.month.split('-')[1];
-    return intl.formatMessage({ id: `common.months.${monthPart}` });
+    const [, monthPart] = item.month.split('-');
+    return intl.formatMessage({ id: `common.monthsShort.${monthPart}` });
   });
+
+  const cumulativeNet = data.reduce<number[]>((acc, item, index) => {
+    const previousValue = index > 0 ? acc[index - 1] : 0;
+    acc.push(previousValue + item.netFlow);
+    return acc;
+  }, []);
 
   const chartData = {
     labels: monthLabels,
@@ -106,6 +113,18 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
         pointRadius: 4,
         pointHoverRadius: 6,
       },
+      {
+        type: 'line' as const,
+        label: intl.formatMessage({ id: 'dashboard.cashFlow.cumulative' }),
+        data: cumulativeNet,
+        borderColor: '#6366F1',
+        backgroundColor: '#6366F133',
+        borderWidth: 2,
+        tension: 0.35,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        borderDash: [6, 3],
+      },
     ],
   };
 
@@ -119,6 +138,10 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
       mode: 'index' as const,
       intersect: false,
     },
+    animation: {
+      duration: 600,
+      easing: 'easeOutQuart',
+    },
     plugins: {
       legend: {
         position: 'top' as const,
@@ -127,14 +150,44 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
           font: {
             size: 12,
           },
+          usePointStyle: true,
         },
       },
       tooltip: {
         callbacks: {
+          title: (contexts: any) => {
+            if (!contexts?.length) return '';
+            const index = contexts[0].dataIndex;
+            const dataPoint = data[index];
+            if (!dataPoint) return '';
+            const [year, month] = dataPoint.month.split('-');
+            const monthLabel = intl.formatMessage({ id: `common.months.${month}` });
+            return `${monthLabel} ${year || currentYear}`;
+          },
           label: (context: any) => {
-            const label = context.dataset.label || '';
             const value = Math.abs(context.raw);
-            return `${label}: ${formatCurrency(value)}`;
+            const labelId = context.dataset.label || '';
+            return `${labelId}: ${formatCurrency(value)}`;
+          },
+          afterBody: (contexts: any) => {
+            if (!contexts?.length) return '';
+            const index = contexts[0].dataIndex;
+            const current = data[index];
+            const previous = index > 0 ? data[index - 1] : undefined;
+            const delta = previous ? current.netFlow - previous.netFlow : 0;
+            const deltaFormatted = formatCurrency(Math.abs(delta));
+            const direction = delta >= 0
+              ? intl.formatMessage({ id: 'dashboard.cashFlow.tooltip.deltaUp' })
+              : intl.formatMessage({ id: 'dashboard.cashFlow.tooltip.deltaDown' });
+            const netLabel = intl.formatMessage(
+              { id: 'dashboard.cashFlow.tooltip.net' },
+              { amount: formatCurrency(current.netFlow) },
+            );
+            const changeLabel = intl.formatMessage(
+              { id: 'dashboard.cashFlow.tooltip.change' },
+              { direction, amount: deltaFormatted },
+            );
+            return `${netLabel}\n${changeLabel}`;
           },
         },
       },
@@ -160,14 +213,18 @@ export default function CashFlowChart({ data, formatCurrency }: CashFlowChartPro
     },
   };
 
-  // Create title with year
-  const chartTitle = `${intl.formatMessage({ id: 'dashboard.cashFlow.title' })} ${currentYear}`;
+  const heading = title || intl.formatMessage({ id: 'dashboard.cashFlow.title' });
 
   return (
     <div className="bg-card border border-default p-6 rounded-lg shadow-sm h-full flex flex-col">
-      <h2 className="text-lg font-semibold mb-4 text-primary">
-        {chartTitle}
-      </h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-primary">
+          {heading}
+        </h2>
+        <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-secondary">
+          {currentYear}
+        </span>
+      </div>
       <div className="relative flex-grow h-[500px]">
         <Chart key={chartKey} type="bar" data={chartData} options={options} />
       </div>

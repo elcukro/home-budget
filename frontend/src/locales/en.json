@@ -76,6 +76,29 @@
       "2026-10": "October 2026",
       "2026-11": "November 2026",
       "2026-12": "December 2026"
+    },
+    "monthsShort": {
+      "1": "Jan",
+      "2": "Feb",
+      "3": "Mar",
+      "4": "Apr",
+      "5": "May",
+      "6": "Jun",
+      "7": "Jul",
+      "8": "Aug",
+      "9": "Sep",
+      "10": "Oct",
+      "11": "Nov",
+      "12": "Dec",
+      "01": "Jan",
+      "02": "Feb",
+      "03": "Mar",
+      "04": "Apr",
+      "05": "May",
+      "06": "Jun",
+      "07": "Jul",
+      "08": "Aug",
+      "09": "Sep"
     }
   },
   "validation": {
@@ -150,6 +173,25 @@
     "noActivity": "No recent activity",
     "noData": "No dashboard data available",
     "loadError": "Failed to load dashboard data. Please try again later.",
+    "subtitle": "Monitor your cashflow, track repayments, and stay purposeful with every złoty.",
+    "sections": {
+      "summary": {
+        "title": "Monthly summary",
+        "description": "Key performance indicators for the current month."
+      },
+      "distribution": {
+        "title": "Income & expenses breakdown",
+        "description": "See how your cash is distributed across categories."
+      },
+      "cashFlow": {
+        "title": "Cash flow timeline",
+        "description": "Track how income, expenses, and loan payments move through the year."
+      },
+      "loans": {
+        "title": "Loan overview",
+        "description": "Progress on repayments and remaining balances."
+      }
+    },
     "quickActions": {
       "addIncome": "Record a new source of income",
       "addExpense": "Add a new expense entry",
@@ -164,6 +206,59 @@
       "netCashflow": "Net Cashflow",
       "savingsRate": "Savings Rate",
       "debtToIncome": "Debt to Income Ratio",
+      "vsPreviousPeriod": "vs {period}",
+      "currentPeriod": "Current period",
+      "previousPeriodFallback": "previous period",
+      "labels": {
+        "incomeSub": "vs {period}",
+        "expensesSub": "vs {period}",
+        "loanSub": "vs {period}",
+        "netCashflowSub": "vs {period}"
+      },
+      "targets": {
+        "savingsRate": "Target: 30% savings rate",
+        "debtToIncome": "Goal: keep debt below 35% of income"
+      },
+      "tooltips": {
+        "income": "Total take-home for the selected month.",
+        "expenses": "All outflows including recurring commitments.",
+        "loanPayments": "Sum of monthly loan repayments.",
+        "netCashflow": "Income minus expenses and loan payments.",
+        "savingsRate": "Portion of income saved after expenses and loans.",
+        "debtToIncome": "Share of income going to debt servicing."
+      },
+      "insights": {
+        "income": {
+          "up": "Income increased by {amount} compared to {period}.",
+          "down": "Income dropped by {amount} compared to {period}. Keep an eye on recurring inflows.",
+          "steady": "Income stayed in line with {period}."
+        },
+        "expenses": {
+          "up": "Spending rose by {amount} vs {period}. Consider trimming discretionary costs.",
+          "down": "Spending fell by {amount} vs {period}. Nice job keeping costs lean.",
+          "steady": "Spending stayed close to {period}."
+        },
+        "loanPayments": {
+          "up": "Loan payments increased by {amount} vs {period}. Make sure cashflow covers the change.",
+          "down": "Loan payments decreased by {amount} vs {period}.", 
+          "steady": "Loan payments remained steady compared to {period}."
+        },
+        "netCashflow": {
+          "up": "Net cashflow improved by {amount} vs {period}. Consider putting the surplus to work.",
+          "down": "Net cashflow decreased by {amount} vs {period}. Investigate the gap before it widens.",
+          "steady": "Net cashflow stayed on par with {period}."
+        },
+        "savingsRate": {
+          "up": "Savings rate improved by {amount} vs {period}. Keep building the buffer.",
+          "down": "Savings rate slipped by {amount} vs {period}. Consider reviewing recurring expenses.",
+          "steady": "Savings rate stayed steady with {period}."
+        },
+        "debtToIncome": {
+          "up": "Debt-to-income rose by {amount} vs {period}. Try to clear balances or pause new borrowing.",
+          "down": "Debt-to-income fell by {amount} vs {period}. Great progress on debt pressure.",
+          "steady": "Debt-to-income held steady compared to {period}."
+        }
+      },
       "aiInsights": {
         "button": "AI Insights",
         "modalTitle": "AI Financial Insights",
@@ -203,24 +298,47 @@
         }
       }
     },
+    "distribution": {
+      "total": {
+        "income": "Total income",
+        "expense": "Total expenses"
+      }
+    },
     "cashFlow": {
       "title": "Cash Flow",
       "income": "Income",
       "expenses": "Expenses",
       "loanPayments": "Loan Payments",
       "netFlow": "Net Flow",
-      "availableCash": "Available Cash"
+      "cumulative": "Cumulative Net",
+      "availableCash": "Available Cash",
+      "tooltip": {
+        "net": "Net flow: {amount}",
+        "deltaUp": "up",
+        "deltaDown": "down",
+        "change": "Change vs previous: {direction} {amount}"
+      }
     },
     "loans": {
       "title": "Loans Overview",
+      "subtitle": "Track balances, payments, and payoff momentum.",
       "noLoans": "No active loans",
       "totalBalance": "Total Balance",
       "interestRate": "Interest Rate: {rate}%",
       "monthlyPayment": "Monthly Payment: {amount}",
       "progress": "Progress: {percentage}%",
-      "totalMonthlyPayments": "Total Monthly Payments"
+      "totalMonthlyPayments": "Total Monthly Payments",
+      "totalOriginal": "Original: {amount}",
+      "remainingBalance": "Remaining: {amount}",
+      "paidSoFar": "Paid so far",
+      "interestPaidYtd": "Interest paid YTD",
+      "nextPayment": "Next payment",
+      "expandDetails": "Show loan details",
+      "collapseDetails": "Hide loan details",
+      "hint": "Tip: expand a loan to see payoff progress, interest paid, and upcoming due dates."
     },
     "activity": {
+      "title": "Recent Activity",
       "create": "Created",
       "update": "Updated",
       "delete": "Deleted",
@@ -246,7 +364,20 @@
         "expense": "{operation} {type} with description: {description}, amount: {amount}",
         "loan": "{operation} {type} with description: {description}, amount: {amount}"
       },
-      "undefined": "unknown activity"
+      "undefined": "unknown activity",
+      "sectionDescription": "Automatic log of every change made to your finances.",
+      "quickAdd": "Add transaction",
+      "showAll": "Show all",
+      "showLess": "Show less",
+      "filters": {
+        "all": "All",
+        "income": "Income",
+        "expense": "Expense",
+        "loan": "Loan",
+        "saving": "Savings",
+        "payment": "Payment"
+      },
+      "emptyStateFiltered": "No activity matches this filter yet."
     },
     "categories": {
       "income": {
@@ -327,7 +458,9 @@
     "noEntries": "No expense entries yet",
     "loadError": "Failed to load expenses. Please try again later.",
     "actions": {
-      "add": "Add expense"
+      "add": "Add expense",
+      "edit": "Edit expense",
+      "delete": "Delete expense"
     },
     "categories": {
       "housing": "Housing",
@@ -338,6 +471,32 @@
       "healthcare": "Healthcare",
       "entertainment": "Entertainment",
       "other": "Other"
+    },
+    "summary": {
+      "title": "Spending snapshot",
+      "totalLabel": "Total spend (filtered)",
+      "description": "Based on the current filters.",
+      "topCategories": "Top categories",
+      "noData": "Add a few expenses to see breakdowns."
+    },
+    "filters": {
+      "sortLabel": "Sort by",
+      "directionLabel": "Direction",
+      "recurringLabel": "Type",
+      "sort": {
+        "date": "Date",
+        "amount": "Amount",
+        "description": "Description"
+      },
+      "direction": {
+        "asc": "Oldest first",
+        "desc": "Newest first"
+      },
+      "recurring": {
+        "all": "All",
+        "recurring": "Recurring",
+        "oneoff": "One-off"
+      }
     },
     "form": {
       "category": "Category",
@@ -352,8 +511,12 @@
       "description": "Description",
       "amount": "Amount",
       "date": "Date",
-      "recurring": "Recurring?",
+      "recurring": "Cycle",
       "actions": "Actions"
+    },
+    "recurring": {
+      "yes": "Recurring",
+      "no": "One-off"
     },
     "dialog": {
       "createTitle": "Add expense entry",
@@ -372,7 +535,18 @@
       "description": "Are you sure you want to delete this expense? This action cannot be undone.",
       "confirm": "Delete"
     },
-    "categoryTotal": "Category total: {amount}"
+    "categoryTotal": "Category total",
+    "categorySubtotal": "Subtotal",
+    "hints": {
+      "housing": "Rent, utilities, and everything that keeps your home running.",
+      "transportation": "Fuel, tickets, and upkeep for getting around.",
+      "food": "Groceries and meals that power the household.",
+      "utilities": "Energy, internet, and other essential services.",
+      "insurance": "Policies that protect your income and assets.",
+      "healthcare": "Medical care and wellness costs.",
+      "entertainment": "Fun money for experiences, media, and hobbies.",
+      "other": "Miscellaneous spending that doesn’t fit elsewhere."
+    }
   },
   "loans": {
     "title": "Loan Management",
@@ -382,6 +556,27 @@
     "loadError": "Failed to load loans. Please try again later.",
     "actions": {
       "add": "Add loan"
+    },
+    "summaryPanel": {
+      "totalMonthlyLabel": "Total monthly payment",
+      "totalMonthlyDescription": "Combined monthly installments across all loans.",
+      "totalBalanceLabel": "Total loan balance",
+      "totalBalanceDescription": "Outstanding balance remaining on all loans.",
+      "nextPaymentLabel": "Next payment",
+      "nextPaymentDescription": "Keep an eye on the upcoming due date.",
+      "noUpcomingPayment": "No upcoming payment scheduled."
+    },
+    "summary": {
+      "started": "Started: {date}",
+      "remaining": "Remaining balance",
+      "monthlyPayment": "Monthly payment",
+      "interestRate": "Interest rate",
+      "term": "Total term",
+      "monthsSuffix": "mos",
+      "monthsRemaining": "About {months} months left",
+      "progressLabel": "Paid off {percentage}",
+      "progressDescription": "Paid {paid} of {principal}",
+      "nextPayment": "Next payment: {date}"
     },
     "types": {
       "mortgage": "Mortgage",
@@ -407,16 +602,50 @@
       "principalAmount": "Principal",
       "remainingBalance": "Remaining",
       "interestRate": "Interest",
+      "interestTooltip": "Nominal annual rate (APR).",
       "monthlyPayment": "Monthly payment",
       "termMonths": "Term (months)",
       "startDate": "Start date",
       "actions": "Actions"
+    },
+    "filters": {
+      "typeLabel": "Loan type",
+      "sortLabel": "Sort by",
+      "directionLabel": "Order",
+      "type": {
+        "all": "All"
+      },
+      "sort": {
+        "startDate": "Start date",
+        "remainingBalance": "Remaining balance",
+        "principalAmount": "Principal amount",
+        "monthlyPayment": "Monthly payment"
+      },
+      "direction": {
+        "asc": "Ascending",
+        "desc": "Descending"
+      },
+      "noResults": "No loans match the selected filters."
     },
     "toast": {
       "createSuccess": "Loan added successfully.",
       "updateSuccess": "Loan updated successfully.",
       "deleteSuccess": "Loan removed successfully.",
       "genericError": "Something went wrong. Please try again."
+    },
+    "dialog": {
+      "createTitle": "Add loan",
+      "editTitle": "Edit loan",
+      "createSubmit": "Add loan",
+      "editSubmit": "Save changes"
+    },
+    "schedule": {
+      "view": "View schedule",
+      "dialogTitle": "Repayment schedule: {loan}",
+      "dialogDescription": "Estimated view of the next {count} instalments based on the current monthly payment.",
+      "empty": "No schedule data is available for this loan yet.",
+      "remaining": "Balance after payment: {amount}",
+      "note": "Note: this schedule is indicative and may not reflect interest adjustments or additional fees."
     },
     "deleteDialog": {
       "title": "Remove loan entry",
@@ -838,8 +1067,12 @@
         "description": "Sources and income level"
       },
       "expenses": {
-        "label": "Expenses",
+        "label": "Monthly expenses",
         "description": "Recurring monthly costs"
+      },
+      "irregularExpenses": {
+        "label": "Irregular expenses",
+        "description": "Annual costs that appear less frequently"
       },
       "liabilities": {
         "label": "Liabilities",
@@ -919,7 +1152,9 @@
         "taxForm": "Tax regime"
       },
       "expenses": {
-        "fixedCosts": "Fixed costs",
+        "fixedCosts": "Monthly expenses (recurring)",
+        "irregularMonthly": "Irregular expenses (monthly equivalent)",
+        "irregularAnnual": "Irregular expenses (annual)",
         "monthlyLiabilities": "Monthly liabilities",
         "dti": "DTI",
         "dtiValue": "{value}%"
@@ -1072,7 +1307,7 @@
       }
     },
     "expenses": {
-      "intro": "Record your costs by category. Add custom entries in any section to capture every recurring expense.",
+      "intro": "Capture your monthly costs by category. Add custom entries in any section to cover every recurring bill.",
       "group": {
         "share": "{value}% of budget"
       },
@@ -1094,10 +1329,18 @@
           "description": "Fixed housing costs including utilities and small maintenance.",
           "hint": "Knowing your housing costs helps us plan your safety net.",
           "items": {
-            "home-rent": "Rent / mortgage payment",
-            "home-utilities": "Utilities (electricity, gas, water, heating)",
-            "home-internet": "Internet, phone, TV",
-            "home-maintenance": "Furnishings / small repairs"
+            "home-rental-tax": "Rental tax payment",
+            "home-mortgage": "Mortgage repayment",
+            "home-rent": "Apartment rent",
+            "home-electricity": "Electricity",
+            "home-gas": "Gas",
+            "home-water": "Water (beyond allowance)",
+            "home-heating": "Heating",
+            "home-phone": "Phone plan",
+            "home-tv": "Cable / satellite TV",
+            "home-internet": "Internet",
+            "home-maintenance": "Furnishings / small repairs",
+            "home-utilities": "Utilities (legacy item)"
           }
         },
         "transport": {
@@ -1109,7 +1352,8 @@
             "transport-insurance": "Car insurance (liability / collision)",
             "transport-service": "Service and inspections",
             "transport-leasing": "Lease / installment",
-            "transport-public": "Public transport passes"
+            "transport-public": "Public transport tickets",
+            "transport-parking": "Parking fees"
           }
         },
         "food": {
@@ -1129,7 +1373,11 @@
           "items": {
             "family-education": "Preschool / school / activities",
             "family-clothes": "Clothing",
-            "family-activities": "Care / trips / gifts"
+            "family-activities": "Care / trips / gifts",
+            "family-extracurricular-son": "Extracurricular classes (son)",
+            "family-extracurricular-daughter": "Extracurricular classes (daughter)",
+            "family-toys": "Toys and accessories",
+            "family-afterschool": "After-school care / day room"
           }
         },
         "lifestyle": {
@@ -1138,8 +1386,11 @@
           "hint": "Investments in health and lifestyle influence your financial fitness.",
           "items": {
             "lifestyle-fitness": "Gym / fitness / memberships",
-            "lifestyle-medicine": "Medicine / doctor visits",
-            "lifestyle-care": "Cosmetics / hairdresser"
+            "lifestyle-medicine": "Medical care",
+            "lifestyle-care": "Cosmetics / hairdresser",
+            "lifestyle-hygiene": "Personal hygiene",
+            "lifestyle-relax": "Relaxation & leisure (pool, bowling, theatre)",
+            "lifestyle-education": "Personal education"
           }
         },
         "subscriptions": {
@@ -1158,7 +1409,9 @@
           "hint": "Tracking obligations makes it easier to manage cash flow.",
           "items": {
             "obligations-loans": "Loan installments",
-            "obligations-cards": "Credit cards",
+            "obligations-card-fees": "Monthly credit card fees",
+            "obligations-cards": "Credit cards (legacy item)",
+            "obligations-bank-fees": "Other banking fees",
             "obligations-private": "Private loans"
           }
         },
@@ -1177,7 +1430,8 @@
           "hint": "Understanding your insurance helps assess your coverage.",
           "items": {
             "insurance-health": "Health / life insurance",
-            "insurance-home": "Home / property insurance"
+            "insurance-home": "Home / property insurance",
+            "insurance-personal": "Individual insurance"
           }
         },
         "other": {
@@ -1187,9 +1441,42 @@
           "items": {
             "other-leisure": "Cinema / restaurants / trips",
             "other-gifts": "Gifts and occasional shopping",
-            "other-misc": "Other small expenses"
+            "other-misc": "Other small expenses",
+            "other-gambling": "Lottery / gambling",
+            "other-donations": "Donations and charity"
           }
         }
+      }
+    },
+    "irregularExpenses": {
+      "intro": "Log larger expenses that happen a few times a year so we can smooth them into your plan.",
+      "annualHint": "Enter annual amounts – we’ll show the monthly equivalent automatically.",
+      "totalAnnual": "Total irregular expenses (annual)",
+      "totalMonthly": "Monthly equivalent",
+      "custom": {
+        "defaultName": "New irregular expense",
+        "add": "Add irregular expense",
+        "remove": "Remove",
+        "namePlaceholder": "Expense name"
+      },
+      "items": {
+        "homeInsurance": "Home insurance",
+        "trainings": "Training & courses",
+        "carInsurance": "Car insurance",
+        "carService": "Car service (inspections, repairs)",
+        "domains": "Domain renewals",
+        "realEstateAgency": "Real estate agency fee",
+        "gifts": "Gifts",
+        "clothing": "Clothing",
+        "propertyTax": "Property taxes and land fees",
+        "softwareHosting": "Software & hosting",
+        "vacations": "Vacations",
+        "schoolTextbooks": "School textbooks",
+        "schoolInsurance": "School insurance",
+        "classFund": "Class fund",
+        "unplanned": "Other unplanned spend",
+        "newComputer": "New computer purchase",
+        "robotVacuum": "Robot vacuum purchase"
       }
     },
     "liabilities": {

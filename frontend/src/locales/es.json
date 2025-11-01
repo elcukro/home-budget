@@ -12,7 +12,53 @@
     "no": "No",
     "actions": "Acciones",
     "select": "Seleccionar...",
-    "appName": "Presupuesto del hogar"
+    "appName": "Presupuesto del hogar",
+    "months": {
+      "1": "Enero",
+      "2": "Febrero",
+      "3": "Marzo",
+      "4": "Abril",
+      "5": "Mayo",
+      "6": "Junio",
+      "7": "Julio",
+      "8": "Agosto",
+      "9": "Septiembre",
+      "10": "Octubre",
+      "11": "Noviembre",
+      "12": "Diciembre",
+      "01": "Enero",
+      "02": "Febrero",
+      "03": "Marzo",
+      "04": "Abril",
+      "05": "Mayo",
+      "06": "Junio",
+      "07": "Julio",
+      "08": "Agosto",
+      "09": "Septiembre"
+    },
+    "monthsShort": {
+      "1": "Ene",
+      "2": "Feb",
+      "3": "Mar",
+      "4": "Abr",
+      "5": "May",
+      "6": "Jun",
+      "7": "Jul",
+      "8": "Ago",
+      "9": "Sep",
+      "10": "Oct",
+      "11": "Nov",
+      "12": "Dic",
+      "01": "Ene",
+      "02": "Feb",
+      "03": "Mar",
+      "04": "Abr",
+      "05": "May",
+      "06": "Jun",
+      "07": "Jul",
+      "08": "Ago",
+      "09": "Sep"
+    }
   },
   "navigation": {
     "dashboard": "Panel",
@@ -37,6 +83,7 @@
       "monthlyBalance": "Balance Mensual"
     },
     "activity": {
+      "title": "Actividad reciente",
       "create": "Creado",
       "update": "Actualizado",
       "delete": "Eliminado",
@@ -57,6 +104,66 @@
       }
     },
     "summary": {
+      "title": "Resumen mensual",
+      "totalIncome": "Ingresos totales",
+      "totalExpenses": "Gastos totales",
+      "loanPayments": "Pagos de préstamos",
+      "netCashflow": "Flujo de caja neto",
+      "savingsRate": "Tasa de ahorro",
+      "debtToIncome": "Relación deuda-ingreso",
+      "vsPreviousPeriod": "vs {period}",
+      "currentPeriod": "Período actual",
+      "previousPeriodFallback": "período anterior",
+      "labels": {
+        "incomeSub": "vs {period}",
+        "expensesSub": "vs {period}",
+        "loanSub": "vs {period}",
+        "netCashflowSub": "vs {period}"
+      },
+      "targets": {
+        "savingsRate": "Objetivo: tasa de ahorro del 30%",
+        "debtToIncome": "Objetivo: deuda por debajo del 35% del ingreso"
+      },
+      "tooltips": {
+        "income": "Ingresos netos del periodo seleccionado.",
+        "expenses": "Todos los egresos, incluidos pagos recurrentes.",
+        "loanPayments": "Suma de los pagos de préstamos del mes.",
+        "netCashflow": "Ingresos menos gastos y préstamos.",
+        "savingsRate": "Porción del ingreso que logras ahorrar.",
+        "debtToIncome": "Porcentaje del ingreso destinado a deuda."
+      },
+      "insights": {
+        "income": {
+          "up": "Los ingresos aumentaron en {amount} respecto a {period}.",
+          "down": "Los ingresos disminuyeron en {amount} respecto a {period}. Revisa tus entradas recurrentes.",
+          "steady": "Los ingresos se mantuvieron similares a {period}."
+        },
+        "expenses": {
+          "up": "Los gastos subieron {amount} frente a {period}. Recorta costos discrecionales.",
+          "down": "Los gastos bajaron {amount} frente a {period}. ¡Buen control!",
+          "steady": "Los gastos se mantuvieron cercanos a {period}."
+        },
+        "loanPayments": {
+          "up": "Los pagos de préstamos aumentaron {amount} respecto a {period}. Asegura flujo suficiente.",
+          "down": "Los pagos de préstamos bajaron {amount} respecto a {period}.",
+          "steady": "Los pagos de préstamos se mantuvieron estables frente a {period}."
+        },
+        "netCashflow": {
+          "up": "El flujo neto mejoró {amount} frente a {period}. Aprovecha ese excedente.",
+          "down": "El flujo neto cayó {amount} frente a {period}. Investiga dónde se generó la brecha.",
+          "steady": "El flujo neto se mantuvo similar a {period}."
+        },
+        "savingsRate": {
+          "up": "La tasa de ahorro subió {amount} frente a {period}. ¡Sigue así!",
+          "down": "La tasa de ahorro bajó {amount} frente a {period}. Revisa gastos recurrentes.",
+          "steady": "La tasa de ahorro se mantuvo estable respecto a {period}."
+        },
+        "debtToIncome": {
+          "up": "La relación deuda-ingreso subió {amount} frente a {period}. Intenta frenar nuevas deudas.",
+          "down": "La relación deuda-ingreso bajó {amount} frente a {period}. Buen avance.",
+          "steady": "La relación deuda-ingreso se mantuvo igual que {period}."
+        }
+      },
       "aiInsights": {
         "button": "Ver análisis de IA",
         "modalTitle": "Análisis de IA de tu presupuesto",
@@ -79,6 +186,86 @@
         }
       }
     }
+    ,
+    "distribution": {
+      "total": {
+        "income": "Total de ingresos",
+        "expense": "Total de gastos"
+      }
+    },
+    "cashFlow": {
+      "title": "Flujo de efectivo",
+      "income": "Ingresos",
+      "expenses": "Gastos",
+      "loanPayments": "Pagos de préstamos",
+      "netFlow": "Flujo neto",
+      "cumulative": "Acumulado neto",
+      "availableCash": "Efectivo disponible",
+      "tooltip": {
+        "net": "Flujo neto: {amount}",
+        "deltaUp": "alza",
+        "deltaDown": "baja",
+        "change": "Cambio vs anterior: {direction} {amount}"
+      }
+    },
+    "loans": {
+      "title": "Resumen de préstamos",
+      "subtitle": "Sigue saldos, pagos y ritmo de amortización.",
+      "noLoans": "No hay préstamos activos",
+      "totalBalance": "Saldo total",
+      "interestRate": "Tasa de interés: {rate}%",
+      "monthlyPayment": "Pago mensual: {amount}",
+      "progress": "Avance: {percentage}%",
+      "totalMonthlyPayments": "Pagos mensuales totales",
+      "totalOriginal": "Monto original: {amount}",
+      "remainingBalance": "Restante: {amount}",
+      "paidSoFar": "Pagado hasta ahora",
+      "interestPaidYtd": "Intereses pagados YTD",
+      "nextPayment": "Próximo pago",
+      "expandDetails": "Mostrar detalles del préstamo",
+      "collapseDetails": "Ocultar detalles del préstamo",
+      "hint": "Sugerencia: despliega un préstamo para ver el avance de pago, intereses y próxima fecha."
+    },
+    "activity": {
+      "create": "Creado",
+      "update": "Actualizado",
+      "delete": "Eliminado",
+      "income": "ingreso",
+      "expense": "gasto",
+      "loan": "préstamo",
+      "payment": "pago",
+      "settings": "configuración",
+      "source": "fuente",
+      "description": "descripción",
+      "amount": "monto",
+      "category": "categoría",
+      "principal_amount": "monto principal",
+      "remaining_balance": "saldo restante",
+      "interest_rate": "tasa de interés",
+      "term_months": "plazo (meses)",
+      "monthly_payment": "pago mensual",
+      "timestamp": "{date} a las {time}",
+      "updated_at": "Actualizado el {date} a las {time}",
+      "details": {
+        "income": "{operation} {type} con fuente: {source}, monto: {amount}",
+        "expense": "{operation} {type} con descripción: {description}, monto: {amount}",
+        "loan": "{operation} {type} con descripción: {description}, monto: {amount}"
+      },
+      "undefined": "actividad desconocida",
+      "sectionDescription": "Registro automático de cada cambio en tus finanzas.",
+      "quickAdd": "Agregar transacción",
+      "showAll": "Ver todo",
+      "showLess": "Ver menos",
+      "filters": {
+        "all": "Todo",
+        "income": "Ingresos",
+        "expense": "Gastos",
+        "loan": "Préstamos",
+        "saving": "Ahorros",
+        "payment": "Pagos"
+      },
+      "emptyStateFiltered": "No hay actividad para este filtro."
+    }
   },
   "income": {
     "title": "Gestión de Ingresos",
@@ -97,13 +284,15 @@
   },
   "expenses": {
     "title": "Gestión de Gastos",
-    "addNew": "Agregar Nuevo Gasto",
-    "category": "Categoría",
-    "description": "Descripción",
-    "amount": "Monto",
-    "date": "Fecha",
-    "recurring": "Gasto Mensual Recurrente",
+    "subtitle": "Registra facturas recurrentes y compras puntuales en un solo lugar.",
+    "expenseHistory": "Lista de gastos",
     "noEntries": "Aún no hay gastos",
+    "loadError": "No se pudieron cargar los gastos. Inténtalo de nuevo más tarde.",
+    "actions": {
+      "add": "Agregar gasto",
+      "edit": "Editar gasto",
+      "delete": "Eliminar gasto"
+    },
     "categories": {
       "housing": "Vivienda",
       "transportation": "Transporte",
@@ -114,12 +303,80 @@
       "entertainment": "Entretenimiento",
       "other": "Otros"
     },
-    "tooltips": {
-      "category": "Seleccione la categoría que mejor describe su gasto",
-      "description": "Ingrese una breve descripción del gasto",
-      "amount": "Ingrese el monto del gasto en su moneda seleccionada",
-      "date": "Seleccione la fecha cuando ocurrió el gasto",
-      "recurring": "Marque esto si este gasto ocurre regularmente cada mes"
+    "summary": {
+      "title": "Resumen de gastos",
+      "totalLabel": "Gasto total (filtrado)",
+      "description": "Basado en los filtros actuales.",
+      "topCategories": "Categorías principales",
+      "noData": "Agrega algunos gastos para ver el desglose."
+    },
+    "filters": {
+      "sortLabel": "Ordenar por",
+      "directionLabel": "Dirección",
+      "recurringLabel": "Tipo",
+      "sort": {
+        "date": "Fecha",
+        "amount": "Monto",
+        "description": "Descripción"
+      },
+      "direction": {
+        "asc": "Más antiguos primero",
+        "desc": "Más recientes primero"
+      },
+      "recurring": {
+        "all": "Todos",
+        "recurring": "Recurrentes",
+        "oneoff": "Únicos"
+      }
+    },
+    "form": {
+      "category": "Categoría",
+      "category.select": "Selecciona una categoría...",
+      "description": "Descripción",
+      "amount": "Monto",
+      "date": "Fecha",
+      "recurring": "¿Es un gasto mensual recurrente?"
+    },
+    "table": {
+      "category": "Categoría",
+      "description": "Descripción",
+      "amount": "Monto",
+      "date": "Fecha",
+      "recurring": "Ciclo",
+      "actions": "Acciones"
+    },
+    "recurring": {
+      "yes": "Recurrente",
+      "no": "Único"
+    },
+    "dialog": {
+      "createTitle": "Agregar gasto",
+      "editTitle": "Editar gasto",
+      "createSubmit": "Agregar gasto",
+      "editSubmit": "Guardar cambios"
+    },
+    "toast": {
+      "createSuccess": "Gasto agregado correctamente.",
+      "updateSuccess": "Gasto actualizado correctamente.",
+      "deleteSuccess": "Gasto eliminado correctamente.",
+      "genericError": "Algo salió mal. Inténtalo nuevamente."
+    },
+    "deleteDialog": {
+      "title": "Eliminar gasto",
+      "description": "¿Seguro que quieres eliminar este gasto? Esta acción no se puede deshacer.",
+      "confirm": "Eliminar"
+    },
+    "categoryTotal": "Total de la categoría",
+    "categorySubtotal": "Subtotal",
+    "hints": {
+      "housing": "Alquiler, hipoteca y todo lo necesario para mantener tu hogar.",
+      "transportation": "Combustible, billetes y mantenimiento para desplazarte.",
+      "food": "Compras diarias y comidas fuera de casa.",
+      "utilities": "Energía, internet y otros servicios básicos.",
+      "insurance": "Pólizas que protegen tus ingresos y patrimonio.",
+      "healthcare": "Gastos médicos y bienestar.",
+      "entertainment": "Entretenimiento, ocio y hobbies.",
+      "other": "Gastos varios que no encajan en otras categorías."
     }
   },
   "loans": {
@@ -134,6 +391,27 @@
     "termMonths": "Plazo (Meses)",
     "startDate": "Fecha de Inicio",
     "noEntries": "Aún no hay préstamos",
+    "summary": {
+      "started": "Inicio: {date}",
+      "remaining": "Saldo pendiente",
+      "monthlyPayment": "Pago mensual",
+      "interestRate": "Tasa de interés",
+      "term": "Plazo total",
+      "monthsSuffix": "meses",
+      "monthsRemaining": "Quedan aprox. {months} meses",
+      "progressLabel": "Pagado {percentage}",
+      "progressDescription": "Pagado {paid} de {principal}",
+      "nextPayment": "Próximo pago: {date}"
+    },
+    "summaryPanel": {
+      "totalMonthlyLabel": "Pago mensual total",
+      "totalMonthlyDescription": "Suma de las cuotas mensuales de todos los préstamos.",
+      "totalBalanceLabel": "Saldo total de préstamos",
+      "totalBalanceDescription": "Importe pendiente por pagar en todos los préstamos.",
+      "nextPaymentLabel": "Próximo pago",
+      "nextPaymentDescription": "Revisa el próximo vencimiento para evitar retrasos.",
+      "noUpcomingPayment": "No hay pagos próximos programados."
+    },
     "types": {
       "mortgage": "Hipoteca",
       "car": "Préstamo de Auto",
@@ -150,6 +428,42 @@
       "monthlyPayment": "Ingrese su monto de pago mensual fijo",
       "termMonths": "Ingrese la duración total del préstamo en meses",
       "startDate": "Seleccione la fecha cuando comenzó el préstamo"
+    },
+    "filters": {
+      "typeLabel": "Tipo de préstamo",
+      "sortLabel": "Ordenar por",
+      "directionLabel": "Orden",
+      "type": {
+        "all": "Todos"
+      },
+      "sort": {
+        "startDate": "Fecha de inicio",
+        "remainingBalance": "Saldo pendiente",
+        "principalAmount": "Monto principal",
+        "monthlyPayment": "Pago mensual"
+      },
+      "direction": {
+        "asc": "Ascendente",
+        "desc": "Descendente"
+      },
+      "noResults": "No hay préstamos que coincidan con los filtros seleccionados."
+    },
+    "dialog": {
+      "createTitle": "Agregar préstamo",
+      "editTitle": "Editar préstamo",
+      "createSubmit": "Agregar préstamo",
+      "editSubmit": "Guardar cambios"
+    },
+    "schedule": {
+      "view": "Ver cronograma",
+      "dialogTitle": "Cronograma de pagos: {loan}",
+      "dialogDescription": "Vista estimada de las próximas {count} cuotas basada en el pago mensual actual.",
+      "empty": "Aún no hay información de cronograma para este préstamo.",
+      "remaining": "Saldo después del pago: {amount}",
+      "note": "Nota: el cronograma es orientativo y puede no reflejar ajustes de intereses u otros cargos."
+    },
+    "table": {
+      "interestTooltip": "Tasa nominal anual (APR)."
     }
   },
   "reports": {
@@ -338,6 +652,65 @@
       "timeToComplete": "Tiempo estimado para completar el paso actual: {time}",
       "nextMilestone": "Próximo hito: {milestone}",
       "suggestion": "Sugerencia: {text}"
+    }
+  },
+  "onboarding": {
+    "steps": {
+      "expenses": {
+        "label": "Gastos mensuales",
+        "description": "Costos recurrentes cada mes"
+      },
+      "irregularExpenses": {
+        "label": "Gastos irregulares",
+        "description": "Pagos grandes que suceden pocas veces al año"
+      }
+    },
+    "expenses": {
+      "intro": "Registra tus gastos mensuales por categoría. Puedes añadir partidas personalizadas para cubrir todo lo recurrente.",
+      "summary": {
+        "totalLabel": "Gastos mensuales totales"
+      }
+    },
+    "irregularExpenses": {
+      "intro": "Anota los gastos grandes que aparecen de forma esporádica para repartirlos en tu presupuesto.",
+      "annualHint": "Introduce importes anuales; mostraremos el equivalente mensual automáticamente.",
+      "totalAnnual": "Total de gastos irregulares (anual)",
+      "totalMonthly": "Equivalente mensual",
+      "custom": {
+        "defaultName": "Nuevo gasto irregular",
+        "add": "Añadir gasto irregular",
+        "remove": "Eliminar",
+        "namePlaceholder": "Nombre del gasto"
+      },
+      "items": {
+        "homeInsurance": "Seguro del hogar",
+        "trainings": "Formaciones",
+        "carInsurance": "Auto - seguro",
+        "carService": "Auto - servicio (mantenimiento, reparaciones)",
+        "domains": "Dominios de Internet",
+        "realEstateAgency": "Agencia inmobiliaria - comisión de alquiler",
+        "gifts": "Regalos",
+        "clothing": "Ropa",
+        "propertyTax": "Impuestos de propiedad y otras tasas",
+        "softwareHosting": "Gastos de hosting y software",
+        "vacations": "Vacaciones",
+        "schoolTextbooks": "Libros escolares para los niños",
+        "schoolInsurance": "Seguro escolar para los niños",
+        "classFund": "Fondo de clase",
+        "unplanned": "Otros gastos imprevistos",
+        "newComputer": "Compra de una computadora nueva",
+        "robotVacuum": "Compra de aspiradora robot"
+      }
+    },
+    "summary": {
+      "expenses": {
+        "fixedCosts": "Gastos mensuales (recurrentes)",
+        "irregularMonthly": "Gastos irregulares (equivalente mensual)",
+        "irregularAnnual": "Gastos irregulares (anual)",
+        "monthlyLiabilities": "Pagos mensuales de deudas",
+        "dti": "Relación deuda-ingreso",
+        "dtiValue": "{value}%"
+      }
     }
   }
 }

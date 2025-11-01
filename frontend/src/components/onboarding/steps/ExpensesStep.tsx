@@ -54,7 +54,8 @@ export default function ExpensesStep({
 
   const [expandedGroups, setExpandedGroups] = useState<Record<ExpenseGroupKey, boolean>>(() =>
     expenseGroups.reduce<Record<ExpenseGroupKey, boolean>>((acc, group) => {
-      acc[group.key] = true;
+      const hasPrefilledAmount = (data[group.key] ?? []).some((item) => (item.amount ?? 0) > 0);
+      acc[group.key] = hasPrefilledAmount;
       return acc;
     }, {} as Record<ExpenseGroupKey, boolean>)
   );

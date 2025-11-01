@@ -2,14 +2,28 @@
 
 import ProtectedPage from "@/components/ProtectedPage";
 import { useIntl } from "react-intl";
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { DashboardSkeleton } from '@/components/LoadingSkeleton';
 import MonthlySummary from '@/components/dashboard/MonthlySummary';
 import DistributionChart from '@/components/dashboard/DistributionChart';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
 import LoanOverview from '@/components/dashboard/LoanOverview';
+import SectionHeader from '@/components/dashboard/SectionHeader';
+import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
+import {
+  TrendingUp,
+  TrendingDown,
+  PieChart,
+  PiggyBank,
+  BarChart2,
+  Activity as ActivityIcon,
+  Wallet,
+  ShoppingBag,
+  Plus,
+} from 'lucide-react';
+import Link from 'next/link';
 
 interface Summary {
   totalIncome: number;
@@ -27,6 +41,40 @@ interface Activity {
   operation: 'create' | 'update' | 'delete';
   changes?: Array<{ field: string; oldValue?: any; newValue?: any; }>;
 }
+
+type ActivityFilter = 'all' | 'income' | 'expense' | 'loan' | 'saving' | 'payment';
+
+const getRelativeTimeLabel = (dateIso: string, locale: string) => {
+  try {
+    const date = new Date(dateIso);
+    if (Number.isNaN(date.getTime())) return '';
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const minute = 60 * 1000;
+    const hour = 60 * minute;
+    const day = 24 * hour;
+    const month = 30 * day;
+
+    const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+
+    if (Math.abs(diffMs) < hour) {
+      const minutes = Math.round(diffMs / minute);
+      return rtf.format(minutes, 'minute');
+    }
+    if (Math.abs(diffMs) < day) {
+      const hours = Math.round(diffMs / hour);
+      return rtf.format(hours, 'hour');
+    }
+    if (Math.abs(diffMs) < month) {
+      const days = Math.round(diffMs / day);
+      return rtf.format(days, 'day');
+    }
+    const months = Math.round(diffMs / month);
+    return rtf.format(months, 'month');
+  } catch (error) {
+    return '';
+  }
+};
 
 interface CardProps {
   title: string;
@@ -67,10 +115,20 @@ function ActivityCard(props: {
     payment: 'bg-lilac',
     settings: 'bg-sand'
   };
+  const activityTypeIcons = {
+    income: <Wallet className="h-5 w-5" />,
+    expense: <ShoppingBag className="h-5 w-5" />,
+    loan: <TrendingDown className="h-5 w-5" />,
+    saving: <PiggyBank className="h-5 w-5" />,
+    payment: <BarChart2 className="h-5 w-5" />,
+    settings: <ActivityIcon className="h-5 w-5" />,
+  };
 
   const type = props.type || 'settings';
   const typeKey = type.toLowerCase() as keyof typeof activityTypeColors;
   const dotColor = activityTypeColors[typeKey] || 'bg-secondary';
+  const typeIcon = activityTypeIcons[typeKey] || <ActivityIcon className="h-5 w-5" />;
+  const relativeLabel = getRelativeTimeLabel(props.date, intl.locale);
 
   const renderChanges = () => {
     if (!props.changes || props.changes.length === 0) return null;
@@ -112,6 +170,7 @@ function ActivityCard(props: {
         <div className="flex justify-between items-start gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
+              <span className="text-secondary">{typeIcon}</span>
               <h4 className="font-medium text-base text-primary mb-0.5 truncate" title={props.title}>
                 {props.title}
               </h4>
@@ -137,8 +196,8 @@ function ActivityCard(props: {
                aria-label={`Amount: ${props.formatCurrency(amount)}`}>
               {props.formatCurrency(amount)}
             </p>
-            <p className="text-xs text-secondary mt-0.5">
-              {props.date}
+            <p className="text-xs text-secondary mt-0.5" title={new Date(props.date).toLocaleString()}>
+              {relativeLabel || intl.formatDate(new Date(props.date), { dateStyle: 'medium' })}
             </p>
           </div>
         </div>
@@ -181,6 +240,8 @@ interface DashboardData {
     interestRate: number;
     progress: number;
     totalAmount: number;
+    interestPaidYtd?: number;
+    nextPaymentDate?: string;
   }>;
   activities: Activity[];
 }
@@ -191,9 +252,99 @@ export default function Home() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [expandedActivities, setExpandedActivities] = useState<Set<number>>(new Set());
   const [showAllActivities, setShowAllActivities] = useState(false);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [loading, setLoading] = useState(true);
   const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
   const { data: session } = useSession();
+
+  const summaryComparisons = useMemo(() => {
+    if (!dashboardData) {
+      return {
+        deltas: {
+          income: 0,
+          expenses: 0,
+          loanPayments: 0,
+          netCashflow: 0,
+          savingsRate: 0,
+          debtToIncome: 0,
+        },
+        referenceLabel: '',
+      };
+    }
+
+    const entries = (dashboardData.cashFlow || [])
+      .map((item) => {
+        const [year, month] = item.month.split('-').map(Number);
+        const entryDate = new Date(year, (month || 1) - 1, 1);
+        return { ...item, entryDate };
+      })
+      .sort((a, b) => a.entryDate.getTime() - b.entryDate.getTime());
+
+    if (entries.length === 0) {
+      return {
+        deltas: {
+          income: 0,
+          expenses: 0,
+          loanPayments: 0,
+          netCashflow: 0,
+          savingsRate: 0,
+          debtToIncome: 0,
+        },
+        referenceLabel: '',
+      };
+    }
+
+    const today = new Date();
+    const currentEntry = [...entries]
+      .reverse()
+      .find((entry) => entry.entryDate <= today) || entries[entries.length - 1];
+    const currentIndex = entries.findIndex((entry) => entry === currentEntry);
+    const previousEntry = currentIndex > 0 ? entries[currentIndex - 1] : null;
+
+    const deltas = {
+      income: previousEntry ? currentEntry.income - previousEntry.income : 0,
+      expenses: previousEntry ? currentEntry.expenses - previousEntry.expenses : 0,
+      loanPayments: previousEntry ? currentEntry.loanPayments - previousEntry.loanPayments : 0,
+      netCashflow: previousEntry ? currentEntry.netFlow - previousEntry.netFlow : 0,
+      savingsRate: 0,
+      debtToIncome: 0,
+    };
+
+    if (previousEntry) {
+      const currentSavingsRate = currentEntry.income
+        ? (currentEntry.income - currentEntry.expenses - currentEntry.loanPayments) / currentEntry.income
+        : 0;
+      const previousSavingsRate = previousEntry.income
+        ? (previousEntry.income - previousEntry.expenses - previousEntry.loanPayments) / previousEntry.income
+        : 0;
+      deltas.savingsRate = currentSavingsRate - previousSavingsRate;
+
+      const currentDTI = currentEntry.income ? currentEntry.loanPayments / currentEntry.income : 0;
+      const previousDTI = previousEntry.income ? previousEntry.loanPayments / previousEntry.income : 0;
+      deltas.debtToIncome = currentDTI - previousDTI;
+    }
+
+    const referenceFormatter = new Intl.DateTimeFormat(intl.locale, { month: 'long' });
+    const referenceLabel = previousEntry ? referenceFormatter.format(previousEntry.entryDate) : '';
+
+    return {
+      deltas,
+      referenceLabel,
+    };
+  }, [dashboardData, intl.locale]);
+
+  const activityFilterOptions = useMemo(
+    () =>
+      ([
+        { value: 'all', label: intl.formatMessage({ id: 'dashboard.activity.filters.all' }) },
+        { value: 'income', label: intl.formatMessage({ id: 'dashboard.activity.filters.income' }) },
+        { value: 'expense', label: intl.formatMessage({ id: 'dashboard.activity.filters.expense' }) },
+        { value: 'loan', label: intl.formatMessage({ id: 'dashboard.activity.filters.loan' }) },
+        { value: 'saving', label: intl.formatMessage({ id: 'dashboard.activity.filters.saving' }) },
+        { value: 'payment', label: intl.formatMessage({ id: 'dashboard.activity.filters.payment' }) },
+      ] as Array<{ value: ActivityFilter; label: string }>),
+    [intl.locale],
+  );
 
   useEffect(() => {
     const fetchData = async () => {
@@ -228,7 +379,17 @@ export default function Home() {
           incomeDistribution: data.income_distribution || [],
           expenseDistribution: data.expense_distribution || [],
           cashFlow: data.cash_flow || [],
-          loans: data.loans || [],
+          loans: (data.loans || []).map((loan: any) => ({
+            id: loan.id,
+            description: loan.description,
+            balance: loan.balance ?? 0,
+            monthlyPayment: loan.monthly_payment ?? loan.monthlyPayment ?? 0,
+            interestRate: loan.interest_rate ?? loan.interestRate ?? 0,
+            progress: loan.progress ?? 0,
+            totalAmount: loan.total_amount ?? loan.totalAmount ?? 0,
+            interestPaidYtd: loan.interest_paid_ytd ?? loan.interestPaidYtd,
+            nextPaymentDate: loan.next_payment_date ?? loan.nextPaymentDate,
+          })),
           activities: data.activities || []
         };
         
@@ -246,6 +407,10 @@ export default function Home() {
     fetchData();
   }, [session]);
 
+  useEffect(() => {
+    setShowAllActivities(false);
+  }, [activityFilter]);
+
   const toggleActivity = (id: number) => {
     setExpandedActivities(prev => {
       const newSet = new Set(prev);
@@ -262,9 +427,22 @@ export default function Home() {
     setShowAllActivities(prev => !prev);
   };
 
+  const filteredActivities = useMemo(() => {
+    if (!dashboardData) return [];
+    const allActivities = dashboardData.activities || [];
+    if (activityFilter === 'all') {
+      return allActivities;
+    }
+    return allActivities.filter(
+      (activity) => (activity.type || '').toLowerCase() === activityFilter,
+    );
+  }, [activityFilter, dashboardData]);
+
+  const previewCount = 3;
   const displayedActivities = showAllActivities
-    ? dashboardData?.activities || []
-    : (dashboardData?.activities || []).slice(0, 2);
+    ? filteredActivities
+    : filteredActivities.slice(0, previewCount);
+  const canToggleActivities = filteredActivities.length > previewCount;
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -292,95 +470,145 @@ export default function Home() {
 
   return (
     <ProtectedPage>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6 text-primary">
-          {intl.formatMessage({ id: 'dashboard.title' })}
-        </h1>
+      <div className="container mx-auto px-4 py-10 space-y-10">
+        <header className="flex flex-col gap-2">
+          <h1 className="text-3xl font-semibold text-primary">
+            {intl.formatMessage({ id: 'dashboard.title' })}
+          </h1>
+          <p className="text-sm text-secondary">
+            {intl.formatMessage({ id: 'dashboard.subtitle' })}
+          </p>
+        </header>
 
-        <div className="grid grid-cols-1 gap-6 mb-6">
-          <MonthlySummary
-            data={dashboardData?.summary || {
-              totalIncome: 0,
-              totalExpenses: 0,
-              totalLoanPayments: 0,
-              netCashflow: 0,
-              savingsRate: 0,
-              debtToIncome: 0
-            }}
-            formatCurrency={formatCurrency}
+        <section className="space-y-4">
+          <SectionHeader
+            icon={<TrendingUp className="h-5 w-5" />}
+            title={intl.formatMessage({ id: 'dashboard.sections.summary.title' })}
+            description={intl.formatMessage({ id: 'dashboard.sections.summary.description' })}
           />
-        </div>
+          <div className="sticky top-16 z-20">
+            <MonthlySummary
+              data={dashboardData.summary}
+              deltas={summaryComparisons.deltas}
+              referenceLabel={summaryComparisons.referenceLabel}
+              formatCurrency={formatCurrency}
+            />
+          </div>
+        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 min-h-[400px]">
-          <DistributionChart
-            title={intl.formatMessage({ id: 'dashboard.incomeDistribution' })}
-            data={dashboardData?.incomeDistribution || []}
-            formatCurrency={formatCurrency}
-            type="income"
+        <section className="space-y-4">
+          <SectionHeader
+            icon={<PieChart className="h-5 w-5" />}
+            title={intl.formatMessage({ id: 'dashboard.sections.distribution.title' })}
+            description={intl.formatMessage({ id: 'dashboard.sections.distribution.description' })}
           />
-          <DistributionChart
-            title={intl.formatMessage({ id: 'dashboard.expenseDistribution' })}
-            data={dashboardData?.expenseDistribution || []}
-            formatCurrency={formatCurrency}
-            type="expense"
-          />
-        </div>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <DistributionChart
+              title={intl.formatMessage({ id: 'dashboard.incomeDistribution' })}
+              data={dashboardData.incomeDistribution}
+              formatCurrency={formatCurrency}
+              type="income"
+            />
+            <DistributionChart
+              title={intl.formatMessage({ id: 'dashboard.expenseDistribution' })}
+              data={dashboardData.expenseDistribution}
+              formatCurrency={formatCurrency}
+              type="expense"
+            />
+          </div>
+        </section>
 
-        <div className="grid grid-cols-1 gap-6 mb-6 min-h-[550px]">
+        <section className="space-y-4">
+          <SectionHeader
+            icon={<BarChart2 className="h-5 w-5" />}
+            title={intl.formatMessage({ id: 'dashboard.sections.cashFlow.title' })}
+            description={intl.formatMessage({ id: 'dashboard.sections.cashFlow.description' })}
+          />
           <CashFlowChart
-            data={dashboardData?.cashFlow || []}
+            title={intl.formatMessage({ id: 'dashboard.cashFlow.title' })}
+            data={dashboardData.cashFlow}
             formatCurrency={formatCurrency}
           />
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 gap-6 mb-6 min-h-[400px]">
-          <LoanOverview
-            loans={dashboardData?.loans || []}
-            formatCurrency={formatCurrency}
+        <section className="space-y-4">
+          <SectionHeader
+            icon={<PiggyBank className="h-5 w-5" />}
+            title={intl.formatMessage({ id: 'dashboard.sections.loans.title' })}
+            description={intl.formatMessage({ id: 'dashboard.sections.loans.description' })}
           />
-        </div>
+          <LoanOverview loans={dashboardData.loans} formatCurrency={formatCurrency} />
+        </section>
 
-        <div className="bg-card border border-default rounded-lg shadow-sm p-6">
-          <h2 className="text-xl font-semibold mb-4 text-primary">
-            {intl.formatMessage({ id: 'dashboard.recentActivity' })}
-          </h2>
-          <div className="space-y-4" role="list">
-            {displayedActivities.map((activity) => (
-              <ActivityCard
-                key={activity.id}
-                title={activity.title}
-                amount={activity.amount}
-                type={activity.type}
-                date={activity.date}
-                operation={activity.operation}
-                changes={activity.changes}
-                formatCurrency={formatCurrency}
-                isExpanded={expandedActivities.has(activity.id)}
-                onToggle={() => toggleActivity(activity.id)}
-              />
-            ))}
-            {dashboardData?.activities && dashboardData.activities.length > 2 && (
-              <div className="pt-4 border-t border-default">
-                <button
-                  className="text-primary hover:text-primary/80 font-medium text-sm flex items-center gap-2"
-                  onClick={toggleShowAllActivities}
-                >
-                  {intl.formatMessage({ 
-                    id: showAllActivities ? 'dashboard.showLessActivity' : 'dashboard.viewAllActivity' 
+        <section className="space-y-4">
+          <SectionHeader
+            icon={<ActivityIcon className="h-5 w-5" />}
+            title={intl.formatMessage({ id: 'dashboard.activity.title' })}
+            description={intl.formatMessage({ id: 'dashboard.activity.sectionDescription' })}
+            action={
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                <div className="flex flex-wrap items-center gap-2">
+                  {activityFilterOptions.map((option) => {
+                    const isActive = activityFilter === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setActivityFilter(option.value)}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                          isActive
+                            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                            : 'border-default bg-card text-secondary hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    );
                   })}
-                  <svg 
-                    className={`w-4 h-4 transition-transform duration-200 ${showAllActivities ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  {canToggleActivities && (
+                    <Button variant="outline" size="sm" onClick={toggleShowAllActivities}>
+                      {showAllActivities
+                        ? intl.formatMessage({ id: 'dashboard.activity.showLess' })
+                        : intl.formatMessage({ id: 'dashboard.activity.showAll' })}
+                    </Button>
+                  )}
+                  <Button variant="default" size="sm" asChild>
+                    <Link href="/expenses">
+                      <Plus className="mr-2 h-4 w-4" />
+                      {intl.formatMessage({ id: 'dashboard.activity.quickAdd' })}
+                    </Link>
+                  </Button>
+                </div>
               </div>
+            }
+          />
+          <div className="bg-card border border-default rounded-xl shadow-sm p-6" role="list">
+            {displayedActivities.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {activityFilter === 'all'
+                  ? intl.formatMessage({ id: 'dashboard.activity.emptyState' })
+                  : intl.formatMessage({ id: 'dashboard.activity.emptyStateFiltered' })}
+              </p>
+            ) : (
+              displayedActivities.map((activity) => (
+                <ActivityCard
+                  key={`${activity.id}-${activity.date}`}
+                  title={activity.title}
+                  amount={activity.amount}
+                  type={activity.type}
+                  date={activity.date}
+                  operation={activity.operation}
+                  changes={activity.changes}
+                  formatCurrency={formatCurrency}
+                  isExpanded={expandedActivities.has(activity.id)}
+                  onToggle={() => toggleActivity(activity.id)}
+                />
+              ))
             )}
           </div>
-        </div>
+        </section>
       </div>
     </ProtectedPage>
   );

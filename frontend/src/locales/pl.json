@@ -64,6 +64,29 @@
       "2025-10": "Październik 2025",
       "2025-11": "Listopad 2025",
       "2025-12": "Grudzień 2025"
+    },
+    "monthsShort": {
+      "1": "Sty",
+      "2": "Lut",
+      "3": "Mar",
+      "4": "Kwi",
+      "5": "Maj",
+      "6": "Cze",
+      "7": "Lip",
+      "8": "Sie",
+      "9": "Wrz",
+      "10": "Paź",
+      "11": "Lis",
+      "12": "Gru",
+      "01": "Sty",
+      "02": "Lut",
+      "03": "Mar",
+      "04": "Kwi",
+      "05": "Maj",
+      "06": "Cze",
+      "07": "Lip",
+      "08": "Sie",
+      "09": "Wrz"
     }
   },
   "validation": {
@@ -103,7 +126,7 @@
     "dashboard": "Panel",
     "income": "Przychody",
     "expenses": "Wydatki",
-    "loans": "Pożyczki",
+    "loans": "Kredyty",
     "reports": "Raporty",
     "financialFreedom": "Wolność Finansowa",
     "settings": "Ustawienia",
@@ -118,6 +141,25 @@
     "noActivity": "Brak ostatniej aktywności",
     "noData": "Brak dostępnych danych",
     "loadError": "Nie udało się załadować danych panelu. Spróbuj ponownie później.",
+    "subtitle": "Monitoruj przepływy gotówki, spłaty zobowiązań i zarządzaj każdą złotówką świadomie.",
+    "sections": {
+      "summary": {
+        "title": "Podsumowanie miesiąca",
+        "description": "Najważniejsze wskaźniki dla bieżącego okresu."
+      },
+      "distribution": {
+        "title": "Podział przychodów i wydatków",
+        "description": "Zobacz, na co faktycznie przeznaczasz pieniądze."
+      },
+      "cashFlow": {
+        "title": "Przepływy pieniężne",
+        "description": "Śledź zmiany dochodów, wydatków i rat w skali roku."
+      },
+      "loans": {
+        "title": "Przegląd zobowiązań",
+        "description": "Postęp spłat i pozostałe salda pożyczek."
+      }
+    },
     "quickActions": {
       "addIncome": "Dodaj nowe źródło przychodu",
       "addExpense": "Dodaj nowy wydatek",
@@ -128,10 +170,63 @@
       "title": "Podsumowanie Miesięczne",
       "totalIncome": "Całkowity Przychód",
       "totalExpenses": "Całkowite Wydatki",
-      "loanPayments": "Spłaty Pożyczek",
+      "loanPayments": "Spłaty Kredytów",
       "netCashflow": "Przepływ Netto",
       "savingsRate": "Wskaźnik Oszczędności",
       "debtToIncome": "Wskaźnik Zadłużenia",
+      "vsPreviousPeriod": "vs {period}",
+      "currentPeriod": "Bieżący okres",
+      "previousPeriodFallback": "poprzedni okres",
+      "labels": {
+        "incomeSub": "vs {period}",
+        "expensesSub": "vs {period}",
+        "loanSub": "vs {period}",
+        "netCashflowSub": "vs {period}"
+      },
+      "targets": {
+        "savingsRate": "Cel: 30% wskaźnika oszczędności",
+        "debtToIncome": "Cel: zadłużenie poniżej 35% dochodu"
+      },
+      "tooltips": {
+        "income": "Łączne wpływy netto w tym miesiącu.",
+        "expenses": "Wszystkie wydatki, w tym koszty stałe i abonamenty.",
+        "loanPayments": "Suma rat kredytów w tym miesiącu.",
+        "netCashflow": "Przychody pomniejszone o wydatki i raty.",
+        "savingsRate": "Jaka część dochodu została odłożona.",
+        "debtToIncome": "Udział dochodu przeznaczonego na spłatę długów."
+      },
+      "insights": {
+        "income": {
+          "up": "Przychody wzrosły o {amount} względem {period}.",
+          "down": "Przychody spadły o {amount} względem {period}. Warto zweryfikować stałe wpływy.",
+          "steady": "Przychody utrzymały się na poziomie zbliżonym do {period}."
+        },
+        "expenses": {
+          "up": "Wydatki wzrosły o {amount} względem {period}. Rozważ ograniczenie kosztów uznaniowych.",
+          "down": "Wydatki spadły o {amount} względem {period}. Świetna dyscyplina!",
+          "steady": "Wydatki pozostały podobne do {period}."
+        },
+        "loanPayments": {
+          "up": "Raty wzrosły o {amount} względem {period}. Upewnij się, że przepływy pokryją zmianę.",
+          "down": "Raty spadły o {amount} względem {period}.",
+          "steady": "Raty pozostały na zbliżonym poziomie do {period}."
+        },
+        "netCashflow": {
+          "up": "Przepływ netto poprawił się o {amount} względem {period}. Wykorzystaj nadwyżkę mądrze.",
+          "down": "Przepływ netto spadł o {amount} względem {period}. Przeanalizuj, gdzie powstała luka.",
+          "steady": "Przepływ netto jest zbliżony do {period}."
+        },
+        "savingsRate": {
+          "up": "Wskaźnik oszczędności wzrósł o {amount} względem {period}. Tak trzymać!",
+          "down": "Wskaźnik oszczędności spadł o {amount} względem {period}. Przeanalizuj abonamenty i wydatki stałe.",
+          "steady": "Wskaźnik oszczędności pozostał stabilny względem {period}."
+        },
+        "debtToIncome": {
+          "up": "Wskaźnik zadłużenia wzrósł o {amount} względem {period}. Wstrzymaj się z nowymi zobowiązaniami.",
+          "down": "Wskaźnik zadłużenia spadł o {amount} względem {period}. To dobry kierunek!",
+          "steady": "Wskaźnik zadłużenia pozostał bez zmian względem {period}."
+        }
+      },
       "aiInsights": {
         "button": "Analiza AI",
         "modalTitle": "Analiza finansowa AI",
@@ -158,7 +253,7 @@
         "dataChanges": "Zmiany od ostatniego odświeżenia",
         "incomeChange": "Dochody: {change}",
         "expensesChange": "Wydatki: {change}",
-        "loansChange": "Pożyczki: {change}",
+        "loansChange": "Kredyty: {change}",
         "refresh": "Odśwież analizę",
         "refreshNeeded": "Twoje dane finansowe uległy zmianie. Odśwież analizę, aby uzyskać aktualne wyniki.",
         "upToDate": "Analiza jest aktualna z Twoimi obecnymi danymi finansowymi.",
@@ -173,30 +268,53 @@
         }
       }
     },
+    "distribution": {
+      "total": {
+        "income": "Suma przychodów",
+        "expense": "Suma wydatków"
+      }
+    },
     "cashFlow": {
       "title": "Przepływ Pieniędzy",
       "income": "Przychody",
       "expenses": "Wydatki",
-      "loanPayments": "Spłaty Pożyczek",
+      "loanPayments": "Spłaty Kredytów",
       "netFlow": "Przepływ Netto",
-      "availableCash": "Dostępna Gotówka"
+      "cumulative": "Skumulowany wynik",
+      "availableCash": "Dostępna Gotówka",
+      "tooltip": {
+        "net": "Przepływ netto: {amount}",
+        "deltaUp": "w górę",
+        "deltaDown": "w dół",
+        "change": "Zmiana vs poprzedni: {direction} {amount}"
+      }
     },
     "loans": {
       "title": "Przegląd Pożyczek",
+      "subtitle": "Śledź salda, raty i tempo spłaty.",
       "noLoans": "Brak aktywnych pożyczek",
       "totalBalance": "Całkowite Saldo",
       "interestRate": "Oprocentowanie: {rate}%",
       "monthlyPayment": "Rata Miesięczna: {amount}",
       "progress": "Postęp: {percentage}%",
-      "totalMonthlyPayments": "Suma Rat Miesięcznych"
+      "totalMonthlyPayments": "Suma Rat Miesięcznych",
+      "totalOriginal": "Kwota początkowa: {amount}",
+      "remainingBalance": "Pozostało: {amount}",
+      "paidSoFar": "Spłacono dotychczas",
+      "interestPaidYtd": "Odsetki YTD",
+      "nextPayment": "Następna rata",
+      "expandDetails": "Pokaż szczegóły pożyczki",
+      "collapseDetails": "Ukryj szczegóły pożyczki",
+      "hint": "Wskazówka: rozwiń pożyczkę, aby zobaczyć postęp spłaty, odsetki oraz termin kolejnej płatności."
     },
     "activity": {
+      "title": "Aktywność",
       "create": "Utworzono",
       "update": "Zaktualizowano",
       "delete": "Usunięto",
       "income": "przychód",
       "expense": "wydatek",
-      "loan": "pożyczka",
+      "loan": "kredyt",
       "payment": "płatność",
       "settings": "ustawienia",
       "source": "źródło",
@@ -216,7 +334,20 @@
         "expense": "{operation} {type} z opisem: {description}, kwota: {amount}",
         "loan": "{operation} {type} z opisem: {description}, kwota: {amount}"
       },
-      "undefined": "nieznana aktywność"
+      "undefined": "nieznana aktywność",
+      "sectionDescription": "Automatyczny zapis wszystkich zmian w Twoich finansach.",
+      "quickAdd": "Dodaj transakcję",
+      "showAll": "Pokaż wszystko",
+      "showLess": "Pokaż mniej",
+      "filters": {
+        "all": "Wszystko",
+        "income": "Przychody",
+        "expense": "Wydatki",
+        "loan": "Kredyty",
+        "saving": "Oszczędności",
+        "payment": "Płatności"
+      },
+      "emptyStateFiltered": "Brak aktywności dla wybranego filtra."
     },
     "categories": {
       "income": {
@@ -269,8 +400,12 @@
       "description": "Opis",
       "amount": "Kwota",
       "date": "Data",
-      "recurring": "Cykliczny?",
+      "recurring": "Charakter",
       "actions": "Akcje"
+    },
+    "recurring": {
+      "yes": "Cykliczny",
+      "no": "Jednorazowy"
     },
     "dialog": {
       "createTitle": "Dodaj przychód",
@@ -297,7 +432,9 @@
     "noEntries": "Brak wpisów wydatków",
     "loadError": "Nie udało się załadować wydatków. Spróbuj ponownie później.",
     "actions": {
-      "add": "Dodaj wydatek"
+      "add": "Dodaj wydatek",
+      "edit": "Edytuj wydatek",
+      "delete": "Usuń wydatek"
     },
     "categories": {
       "housing": "Mieszkanie",
@@ -308,6 +445,32 @@
       "healthcare": "Opieka Zdrowotna",
       "entertainment": "Rozrywka",
       "other": "Inne"
+    },
+    "summary": {
+      "title": "Podsumowanie wydatków",
+      "totalLabel": "Suma wydatków (po filtrze)",
+      "description": "Wartości bazują na aktualnych filtrach.",
+      "topCategories": "Największe kategorie",
+      "noData": "Dodaj kilka wydatków, aby zobaczyć rozkład."
+    },
+    "filters": {
+      "sortLabel": "Sortuj według",
+      "directionLabel": "Kierunek",
+      "recurringLabel": "Typ",
+      "sort": {
+        "date": "Data",
+        "amount": "Kwota",
+        "description": "Opis"
+      },
+      "direction": {
+        "asc": "Od najstarszych",
+        "desc": "Od najnowszych"
+      },
+      "recurring": {
+        "all": "Wszystkie",
+        "recurring": "Cykliczne",
+        "oneoff": "Jednorazowe"
+      }
     },
     "form": {
       "category": "Kategoria",
@@ -342,16 +505,48 @@
       "description": "Czy na pewno chcesz usunąć ten wydatek? Tego działania nie można cofnąć.",
       "confirm": "Usuń"
     },
-    "categoryTotal": "Suma kategorii: {amount}"
+    "categoryTotal": "Suma kategorii",
+    "categorySubtotal": "Razem",
+    "hints": {
+      "housing": "Czynsz, media i wszystko, co utrzymuje dom w ruchu.",
+      "transportation": "Paliwo, bilety i utrzymanie środków transportu.",
+      "food": "Zakupy spożywcze oraz posiłki poza domem.",
+      "utilities": "Energia, internet i inne niezbędne usługi.",
+      "insurance": "Polisy chroniące Twoje dochody i majątek.",
+      "healthcare": "Zdrowie, leki oraz profilaktyka.",
+      "entertainment": "Rozrywka, hobby i przyjemności.",
+      "other": "Pozostałe wydatki, których nie da się łatwo przypisać."
+    }
   },
   "loans": {
-    "title": "Zarządzanie Pożyczkami",
-    "subtitle": "Monitoruj salda, oprocentowanie i harmonogram spłat dla każdej pożyczki.",
-    "loanHistory": "Lista pożyczek",
-    "noEntries": "Brak wpisów pożyczek",
-    "loadError": "Nie udało się załadować pożyczek. Spróbuj ponownie później.",
+    "title": "Zarządzanie Kredytami",
+    "subtitle": "Monitoruj salda, oprocentowanie i harmonogram spłat dla każdego kredytu.",
+    "loanHistory": "Lista kredytów",
+    "noEntries": "Brak zarejestrowanych kredytów",
+    "loadError": "Nie udało się załadować kredytów. Spróbuj ponownie później.",
     "actions": {
-      "add": "Dodaj pożyczkę"
+      "add": "Dodaj kredyt"
+    },
+    "summaryPanel": {
+      "totalMonthlyLabel": "Łączna rata miesięczna",
+      "totalMonthlyDescription": "Suma rat wszystkich kredytów, niezależnie od filtra.",
+      "totalBalanceLabel": "Łączne saldo kredytów",
+      "totalBalanceDescription": "Pozostała kwota do spłaty we wszystkich kredytach.",
+      "nextPaymentLabel": "Najbliższa rata",
+      "nextPaymentDescription": "Monitoruj termin, aby nie przegapić kolejnej płatności.",
+      "noUpcomingPayment": "Brak zaplanowanej raty."
+    },
+    "summary": {
+      "started": "Start: {date}",
+      "remaining": "Pozostało",
+      "monthlyPayment": "Rata miesięczna",
+      "interestRate": "Oprocentowanie",
+      "term": "Okres całkowity",
+      "monthsSuffix": "mies.",
+      "monthsRemaining": "Pozostało ok. {months} mies.",
+      "progressLabel": "Spłacono {percentage}",
+      "progressDescription": "Spłacono {paid} z {principal}",
+      "nextPayment": "Najbliższa rata: {date}"
     },
     "types": {
       "mortgage": "Hipoteka",
@@ -361,8 +556,8 @@
       "other": "Inne"
     },
     "form": {
-      "type": "Typ pożyczki",
-      "type.select": "Wybierz typ pożyczki...",
+      "type": "Typ kredytu",
+      "type.select": "Wybierz typ kredytu...",
       "description": "Opis",
       "principalAmount": "Kwota główna",
       "remainingBalance": "Pozostała kwota",
@@ -372,25 +567,59 @@
       "startDate": "Data rozpoczęcia"
     },
     "table": {
-      "type": "Typ pożyczki",
+      "type": "Typ kredytu",
       "description": "Opis",
       "principalAmount": "Kwota główna",
       "remainingBalance": "Pozostała kwota",
       "interestRate": "Oprocentowanie",
+      "interestTooltip": "Oprocentowanie nominalne roczne (RRSO).",
       "monthlyPayment": "Rata miesięczna",
       "termMonths": "Okres (miesiące)",
       "startDate": "Data rozpoczęcia",
       "actions": "Akcje"
     },
+    "filters": {
+      "typeLabel": "Typ kredytu",
+      "sortLabel": "Sortuj według",
+      "directionLabel": "Kierunek sortowania",
+      "type": {
+        "all": "Wszystkie"
+      },
+      "sort": {
+        "startDate": "Data rozpoczęcia",
+        "remainingBalance": "Pozostałe saldo",
+        "principalAmount": "Kwota początkowa",
+        "monthlyPayment": "Rata miesięczna"
+      },
+      "direction": {
+        "asc": "Rosnąco",
+        "desc": "Malejąco"
+      },
+      "noResults": "Brak kredytów dla wybranych filtrów."
+    },
     "toast": {
-      "createSuccess": "Pożyczka została pomyślnie dodana.",
-      "updateSuccess": "Pożyczka została pomyślnie zaktualizowana.",
-      "deleteSuccess": "Pożyczka została pomyślnie usunięta.",
+      "createSuccess": "Kredyt został pomyślnie dodany.",
+      "updateSuccess": "Kredyt został pomyślnie zaktualizowany.",
+      "deleteSuccess": "Kredyt został pomyślnie usunięty.",
       "genericError": "Coś poszło nie tak. Spróbuj ponownie."
     },
+    "dialog": {
+      "createTitle": "Dodaj kredyt",
+      "editTitle": "Edytuj kredyt",
+      "createSubmit": "Dodaj kredyt",
+      "editSubmit": "Zapisz zmiany"
+    },
+    "schedule": {
+      "view": "Zobacz harmonogram",
+      "dialogTitle": "Harmonogram spłat: {loan}",
+      "dialogDescription": "Szacowany plan najbliższych {count} rat. Kwoty wyliczone orientacyjnie na podstawie raty miesięcznej.",
+      "empty": "Brak danych do wyświetlenia harmonogramu dla tego kredytu.",
+      "remaining": "Saldo po płatności: {amount}",
+      "note": "Uwaga: harmonogram ma charakter poglądowy i może nie uwzględniać zmian oprocentowania ani dodatkowych opłat."
+    },
     "deleteDialog": {
-      "title": "Usuń pożyczkę",
-      "description": "Czy na pewno chcesz usunąć tę pożyczkę? Tego działania nie można cofnąć.",
+      "title": "Usuń kredyt",
+      "description": "Czy na pewno chcesz usunąć ten kredyt? Tego działania nie można cofnąć.",
       "confirm": "Usuń"
     }
   },
@@ -398,7 +627,7 @@
     "title": "Raporty Finansowe",
     "monthlyBalance": "Bilans Miesięczny",
     "savingsRate": "Wskaźnik Oszczędności",
-    "totalLoanBalance": "Całkowite Saldo Pożyczek",
+    "totalLoanBalance": "Całkowite Saldo Kredytów",
     "monthlyFlow": "Przepływ Pieniężny",
     "expenseDistribution": "Rozkład Wydatków",
     "financialHealth": "Wskaźniki Zdrowia Finansowego",
@@ -781,8 +1010,12 @@
         "description": "Źródła i poziom dochodów"
       },
       "expenses": {
-        "label": "Wydatki",
+        "label": "Wydatki miesięczne",
         "description": "Powtarzalne koszty miesięczne"
+      },
+      "irregularExpenses": {
+        "label": "Wydatki nieregularne",
+        "description": "Większe wydatki pojawiające się kilka razy w roku"
       },
       "liabilities": {
         "label": "Zobowiązania",
@@ -862,7 +1095,9 @@
         "taxForm": "Forma opodatkowania"
       },
       "expenses": {
-        "fixedCosts": "Koszty stałe",
+        "fixedCosts": "Wydatki miesięczne (powtarzalne)",
+        "irregularMonthly": "Wydatki nieregularne (miesięczny ekwiwalent)",
+        "irregularAnnual": "Wydatki nieregularne (rocznie)",
         "monthlyLiabilities": "Raty miesięczne",
         "dti": "DTI",
         "dtiValue": "{value}%"
@@ -1015,7 +1250,7 @@
       }
     },
     "expenses": {
-      "intro": "Zapisz koszty według kategorii. Możesz dodać własne pozycje w każdej sekcji, aby uchwycić wszystkie stałe wydatki.",
+      "intro": "Zapisz wszystkie miesięczne koszty według kategorii. W razie potrzeby dodaj własne pozycje, aby uchwycić stałe obciążenia budżetu.",
       "group": {
         "share": "{value}% budżetu"
       },
@@ -1037,10 +1272,18 @@
           "description": "Stałe koszty utrzymania mieszkania wraz z mediami i drobnymi naprawami.",
           "hint": "Znając koszty mieszkania, możemy lepiej zaplanować Twoją poduszkę finansową.",
           "items": {
-            "home-rent": "Czynsz / kredyt hipoteczny",
-            "home-utilities": "Media (prąd, gaz, woda, ogrzewanie)",
-            "home-internet": "Internet, telefon, telewizja",
-            "home-maintenance": "Wyposażenie / drobne naprawy"
+            "home-rental-tax": "Podatek za wynajem mieszkania",
+            "home-mortgage": "Spłata kredytu hipotecznego",
+            "home-rent": "Czynsz za mieszkanie",
+            "home-electricity": "Prąd",
+            "home-gas": "Gaz",
+            "home-water": "Woda - dodatkowe zużycie ponad zaliczki w czynszu",
+            "home-heating": "Ogrzewanie",
+            "home-phone": "Telefon",
+            "home-tv": "Telewizja kablowa / satelitarna",
+            "home-internet": "Internet",
+            "home-maintenance": "Wyposażenie / drobne naprawy",
+            "home-utilities": "Media (pozycja archiwalna)"
           }
         },
         "transport": {
@@ -1048,11 +1291,12 @@
           "description": "Dojeżdżanie, ubezpieczenia oraz utrzymanie pojazdów.",
           "hint": "Stałe koszty transportu pomagają ocenić, czy samochód lub dojazdy są optymalne.",
           "items": {
-            "transport-fuel": "Paliwo",
+            "transport-fuel": "Samochód - paliwo",
             "transport-insurance": "Ubezpieczenie OC/AC",
             "transport-service": "Serwis i przeglądy",
             "transport-leasing": "Leasing / rata",
-            "transport-public": "Bilety komunikacji miejskiej"
+            "transport-public": "Bilety (komunikacja)",
+            "transport-parking": "Samochód - parkingi"
           }
         },
         "food": {
@@ -1060,7 +1304,7 @@
           "description": "Codzienne zakupy i posiłki na mieście.",
           "hint": "Budżet na żywność pokazuje największe nawyki zakupowe i możliwości oszczędności.",
           "items": {
-            "food-groceries": "Zakupy spożywcze",
+            "food-groceries": "Jedzenie",
             "food-dining": "Obiady / jedzenie na mieście",
             "food-coffee": "Kawa / przekąski"
           }
@@ -1072,7 +1316,11 @@
           "items": {
             "family-education": "Przedszkole / szkoła / zajęcia",
             "family-clothes": "Ubrania",
-            "family-activities": "Opieka / wyjazdy / prezenty"
+            "family-activities": "Opieka / wyjazdy / prezenty",
+            "family-extracurricular-son": "Zajęcia dodatkowe Syna",
+            "family-extracurricular-daughter": "Zajęcia dodatkowe Córki",
+            "family-toys": "Zabawki dla dzieci itp.",
+            "family-afterschool": "Świetlica dla dzieci"
           }
         },
         "lifestyle": {
@@ -1081,8 +1329,11 @@
           "hint": "Inwestycje w zdrowie i styl życia wpływają na Twoją kondycję finansową.",
           "items": {
             "lifestyle-fitness": "Siłownia / fitness / karnety",
-            "lifestyle-medicine": "Leki / wizyty lekarskie",
-            "lifestyle-care": "Kosmetyki / fryzjer"
+            "lifestyle-medicine": "Opieka zdrowotna",
+            "lifestyle-care": "Kosmetyki / fryzjer",
+            "lifestyle-hygiene": "Higiena",
+            "lifestyle-relax": "Relaks - basen, kręgle, teatr, kino, książki, czasopisma",
+            "lifestyle-education": "Edukacja osobista"
           }
         },
         "subscriptions": {
@@ -1101,7 +1352,9 @@
           "hint": "Śledzenie zobowiązań ułatwia zarządzanie płynnością i minimalizuje ryzyko zadłużenia.",
           "items": {
             "obligations-loans": "Raty kredytów",
+            "obligations-card-fees": "Opłaty miesięczne za kartę kredytową",
             "obligations-cards": "Karty kredytowe",
+            "obligations-bank-fees": "Inne opłaty bankowe",
             "obligations-private": "Pożyczki prywatne"
           }
         },
@@ -1120,7 +1373,8 @@
           "hint": "Znając Twoje ubezpieczenia, możemy ocenić, czy korzystasz z odpowiedniej ochrony.",
           "items": {
             "insurance-health": "Ubezpieczenie zdrowotne / na życie",
-            "insurance-home": "Ubezpieczenie domu / sprzętu"
+            "insurance-home": "Ubezpieczenie domu / sprzętu",
+            "insurance-personal": "Ubezpieczenie indywidualne"
           }
         },
         "other": {
@@ -1130,9 +1384,42 @@
           "items": {
             "other-leisure": "Kino / restauracje / wyjazdy",
             "other-gifts": "Prezenty i okazjonalne zakupy",
-            "other-misc": "Inne drobne wydatki"
+            "other-misc": "Inne drobne wydatki",
+            "other-gambling": "Hazard - Lotto i inne",
+            "other-donations": "Darowizny i datki"
           }
         }
+      }
+    },
+    "irregularExpenses": {
+      "intro": "Zanotuj większe wydatki, które pojawiają się sporadycznie w ciągu roku, aby rozłożyć je w planie.",
+      "annualHint": "Podaj kwoty roczne – automatycznie przeliczymy je na miesięczny ekwiwalent.",
+      "totalAnnual": "Suma wydatków nieregularnych (rocznie)",
+      "totalMonthly": "Ekwiwalent miesięczny",
+      "custom": {
+        "defaultName": "Nowy wydatek nieregularny",
+        "add": "Dodaj wydatek nieregularny",
+        "remove": "Usuń",
+        "namePlaceholder": "Nazwa wydatku"
+      },
+      "items": {
+        "homeInsurance": "Ubezpieczenie mieszkania",
+        "trainings": "Szkolenia",
+        "carInsurance": "Samochód - ubezpieczenie",
+        "carService": "Samochód - serwis (przeglądy, naprawy)",
+        "domains": "Domeny internetowe",
+        "realEstateAgency": "Agencja nieruchomości - prowizja za wynajem",
+        "gifts": "Prezenty dla różnych osób",
+        "clothing": "Ubranie",
+        "propertyTax": "Podatki gruntowe i inne opłaty - działka",
+        "softwareHosting": "Wydatki na hosting i programy komputerowe",
+        "vacations": "Wakacje",
+        "schoolTextbooks": "Podręczniki dla dzieci do szkoły",
+        "schoolInsurance": "Ubezpieczenie szkolne dla dzieci",
+        "classFund": "Fundusz klasowy",
+        "unplanned": "Inne, nieplanowane wydatki",
+        "newComputer": "Zakup nowego komputera",
+        "robotVacuum": "Zakup odkurzacza iRobot"
       }
     },
     "liabilities": {

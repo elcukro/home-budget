@@ -88,7 +88,15 @@ export default function SummaryStep({
   const expensesItems: Array<[string, string]> = [
     [
       intl.formatMessage({ id: 'onboarding.summary.expenses.fixedCosts' }),
-      formatMoney(metrics.totalExpenses),
+      formatMoney(metrics.regularMonthlyExpenses),
+    ],
+    [
+      intl.formatMessage({ id: 'onboarding.summary.expenses.irregularMonthly' }),
+      formatMoney(metrics.irregularMonthlyExpenses),
+    ],
+    [
+      intl.formatMessage({ id: 'onboarding.summary.expenses.irregularAnnual' }),
+      formatMoney(metrics.irregularAnnualExpenses),
     ],
     [
       intl.formatMessage({ id: 'onboarding.summary.expenses.monthlyLiabilities' }),
@@ -135,7 +143,9 @@ export default function SummaryStep({
     },
     {
       title: intl.formatMessage({ id: 'onboarding.summary.cards.monthlyExpenses' }),
-      value: formatMoney(metrics.totalExpenses),
+      value: formatMoney(
+        metrics.regularMonthlyExpenses + metrics.irregularMonthlyExpenses
+      ),
       tone: 'neutral' as const,
     },
     {

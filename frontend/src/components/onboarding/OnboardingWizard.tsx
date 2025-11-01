@@ -21,6 +21,7 @@ import {
   ShoppingBag,
   PawPrint,
   ShieldCheck,
+  CalendarClock,
 } from 'lucide-react';
 import { useIntl, type IntlShape } from 'react-intl';
 import { useSession } from 'next-auth/react';
@@ -50,6 +51,7 @@ import WelcomeStep from './steps/WelcomeStep';
 import LifeStep from './steps/LifeStep';
 import IncomeStep from './steps/IncomeStep';
 import ExpensesStep from './steps/ExpensesStep';
+import IrregularExpensesStep from './steps/IrregularExpensesStep';
 import LiabilitiesStep from './steps/LiabilitiesStep';
 import AssetsStep from './steps/AssetsStep';
 import GoalsStep from './steps/GoalsStep';
@@ -62,6 +64,7 @@ type StepId =
   | 'life'
   | 'income'
   | 'expenses'
+  | 'irregularExpenses'
   | 'liabilities'
   | 'assets'
   | 'goals'
@@ -123,6 +126,35 @@ export interface OnboardingExpenseItem {
 
 export type OnboardingExpenses = Record<ExpenseGroupKey, OnboardingExpenseItem[]>;
 
+export type IrregularExpenses = OnboardingExpenseItem[];
+
+const IRREGULAR_EXPENSE_TEMPLATES: Array<{ id: string; labelId: string }> = [
+  { id: 'irregular-home-insurance', labelId: 'onboarding.irregularExpenses.items.homeInsurance' },
+  { id: 'irregular-trainings', labelId: 'onboarding.irregularExpenses.items.trainings' },
+  { id: 'irregular-car-insurance', labelId: 'onboarding.irregularExpenses.items.carInsurance' },
+  { id: 'irregular-car-service', labelId: 'onboarding.irregularExpenses.items.carService' },
+  { id: 'irregular-domains', labelId: 'onboarding.irregularExpenses.items.domains' },
+  { id: 'irregular-real-estate-agency', labelId: 'onboarding.irregularExpenses.items.realEstateAgency' },
+  { id: 'irregular-gifts', labelId: 'onboarding.irregularExpenses.items.gifts' },
+  { id: 'irregular-clothing', labelId: 'onboarding.irregularExpenses.items.clothing' },
+  { id: 'irregular-property-tax', labelId: 'onboarding.irregularExpenses.items.propertyTax' },
+  { id: 'irregular-software-hosting', labelId: 'onboarding.irregularExpenses.items.softwareHosting' },
+  { id: 'irregular-vacations', labelId: 'onboarding.irregularExpenses.items.vacations' },
+  { id: 'irregular-school-textbooks', labelId: 'onboarding.irregularExpenses.items.schoolTextbooks' },
+  { id: 'irregular-school-insurance', labelId: 'onboarding.irregularExpenses.items.schoolInsurance' },
+  { id: 'irregular-class-fund', labelId: 'onboarding.irregularExpenses.items.classFund' },
+  { id: 'irregular-unplanned', labelId: 'onboarding.irregularExpenses.items.unplanned' },
+  { id: 'irregular-new-computer', labelId: 'onboarding.irregularExpenses.items.newComputer' },
+  { id: 'irregular-robot-vacuum', labelId: 'onboarding.irregularExpenses.items.robotVacuum' },
+];
+
+const ensureId = (prefix: string) => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${prefix}-${Math.random().toString(36).slice(2, 11)}`;
+};
+
 export interface LiabilityItem {
   id: string;
   type: string;
@@ -158,17 +190,32 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
     icon: Home,
     defaultCategory: 'housing',
     items: [
-      { id: 'home-rent', name: 'Rent / mortgage payment' },
       {
-        id: 'home-utilities',
-        name: 'Utilities (electricity, gas, water, heating)',
-        category: 'utilities',
+        id: 'home-rental-tax',
+        name: 'Rental tax payment',
+        category: 'housing',
       },
       {
-        id: 'home-internet',
-        name: 'Internet, phone, TV',
+        id: 'home-mortgage',
+        name: 'Mortgage repayment',
+        category: 'housing',
+      },
+      { id: 'home-rent', name: 'Apartment rent', category: 'housing' },
+      { id: 'home-electricity', name: 'Electricity', category: 'utilities' },
+      { id: 'home-gas', name: 'Gas', category: 'utilities' },
+      {
+        id: 'home-water',
+        name: 'Water (above allowance)',
         category: 'utilities',
       },
+      { id: 'home-heating', name: 'Heating', category: 'utilities' },
+      { id: 'home-phone', name: 'Phone plan', category: 'utilities' },
+      {
+        id: 'home-tv',
+        name: 'Cable / satellite TV',
+        category: 'utilities',
+      },
+      { id: 'home-internet', name: 'Internet', category: 'utilities' },
       { id: 'home-maintenance', name: 'Furnishings / small repairs' },
     ],
   },
@@ -188,6 +235,7 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
       { id: 'transport-service', name: 'Service and inspections' },
       { id: 'transport-leasing', name: 'Lease / installment' },
       { id: 'transport-public', name: 'Public transport passes' },
+      { id: 'transport-parking', name: 'Parking fees' },
     ],
   },
   {
@@ -212,6 +260,19 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
       { id: 'family-education', name: 'Preschool / school / activities' },
       { id: 'family-clothes', name: 'Clothing' },
       { id: 'family-activities', name: 'Care / trips / gifts' },
+      {
+        id: 'family-extracurricular-son',
+        name: 'Extracurricular classes (son)',
+      },
+      {
+        id: 'family-extracurricular-daughter',
+        name: 'Extracurricular classes (daughter)',
+      },
+      { id: 'family-toys', name: 'Toys and accessories' },
+      {
+        id: 'family-afterschool',
+        name: 'After-school care / day room',
+      },
     ],
   },
   {
@@ -224,6 +285,15 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
       { id: 'lifestyle-fitness', name: 'Gym / fitness / memberships' },
       { id: 'lifestyle-medicine', name: 'Medicine / doctor visits' },
       { id: 'lifestyle-care', name: 'Cosmetics / hairdresser' },
+      { id: 'lifestyle-hygiene', name: 'Personal hygiene' },
+      {
+        id: 'lifestyle-relax',
+        name: 'Relaxation & leisure (pool, bowling, theatre)',
+      },
+      {
+        id: 'lifestyle-education',
+        name: 'Personal education',
+      },
     ],
   },
   {
@@ -250,7 +320,11 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
     defaultCategory: 'other',
     items: [
       { id: 'obligations-loans', name: 'Loan installments' },
-      { id: 'obligations-cards', name: 'Credit cards' },
+      {
+        id: 'obligations-card-fees',
+        name: 'Monthly credit card fees',
+      },
+      { id: 'obligations-bank-fees', name: 'Other banking fees' },
       { id: 'obligations-private', name: 'Private loans' },
     ],
   },
@@ -274,6 +348,7 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
     items: [
       { id: 'insurance-health', name: 'Health / life insurance' },
       { id: 'insurance-home', name: 'Home / property insurance' },
+      { id: 'insurance-personal', name: 'Individual insurance' },
     ],
   },
   {
@@ -286,6 +361,8 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
       { id: 'other-leisure', name: 'Cinema / restaurants / trips' },
       { id: 'other-gifts', name: 'Gifts and occasional shopping' },
       { id: 'other-misc', name: 'Other small expenses' },
+      { id: 'other-gambling', name: 'Lottery / gambling' },
+      { id: 'other-donations', name: 'Donations and charity' },
     ],
   },
 ];
@@ -622,6 +699,97 @@ const sumExpenses = (expenses: OnboardingExpenses): number =>
 const expensesHaveValues = (expenses: OnboardingExpenses): boolean =>
   flattenExpenses(expenses).some((item) => item.amount > 0);
 
+const createDefaultIrregularExpenses = (intl: IntlShape): IrregularExpenses =>
+  IRREGULAR_EXPENSE_TEMPLATES.map((template) => ({
+    id: template.id,
+    templateId: template.id,
+    name: intl.formatMessage({ id: template.labelId }),
+    amount: 0,
+    category: 'other',
+    isCustom: false,
+  }));
+
+const normalizeIrregularExpenses = (
+  value: unknown,
+  intl: IntlShape
+): IrregularExpenses => {
+  const defaults = createDefaultIrregularExpenses(intl);
+  const defaultsMap = new Map<string, OnboardingExpenseItem>(
+    defaults.map((item) => [item.id, item])
+  );
+  const customItems: IrregularExpenses = [];
+
+  if (Array.isArray(value)) {
+    for (const raw of value as Array<Record<string, unknown>>) {
+      if (!raw || typeof raw !== 'object') continue;
+      const rawId =
+        typeof raw.id === 'string' && raw.id.trim().length > 0
+          ? raw.id.trim()
+          : ensureId('irregular');
+      const amount = sanitizeAmount(raw.amount);
+      const nameValue =
+        typeof raw.name === 'string' && raw.name.trim().length > 0
+          ? raw.name.trim()
+          : null;
+      const isCustom = Boolean(raw.isCustom);
+
+      if (defaultsMap.has(rawId) && !isCustom) {
+        const existing = defaultsMap.get(rawId)!;
+        defaultsMap.set(rawId, {
+          ...existing,
+          amount,
+          name: nameValue ?? existing.name,
+          isCustom: false,
+        });
+        continue;
+      }
+
+      customItems.push({
+        id: rawId,
+        templateId:
+          typeof raw.templateId === 'string' && raw.templateId.trim().length > 0
+            ? raw.templateId.trim()
+            : rawId,
+        name:
+          nameValue ??
+          intl.formatMessage({
+            id: 'onboarding.irregularExpenses.custom.defaultName',
+          }),
+        amount,
+        category: 'other',
+        isCustom: true,
+      });
+    }
+  }
+
+  return [...defaultsMap.values(), ...customItems];
+};
+
+const mergeIrregularExpenses = (
+  current: IrregularExpenses | undefined,
+  incoming: unknown,
+  intl: IntlShape
+): IrregularExpenses => {
+  const normalizedCurrent = normalizeIrregularExpenses(current, intl);
+  const normalizedIncoming = normalizeIrregularExpenses(incoming, intl);
+
+  const hasMeaningfulValues = (items: IrregularExpenses) =>
+    items.some((item) => item.amount > 0 || (item.isCustom && item.name.trim().length > 0));
+
+  if (hasMeaningfulValues(normalizedCurrent)) {
+    return normalizedCurrent;
+  }
+
+  if (hasMeaningfulValues(normalizedIncoming)) {
+    return normalizedIncoming;
+  }
+
+  return normalizedCurrent;
+};
+
+const sumIrregularExpenses = (expenses: IrregularExpenses): number =>
+  expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
+
 const expenseGroupTotals = (
   expenses: OnboardingExpenses
 ): Array<{ key: ExpenseGroupKey; title: string; total: number }> =>
@@ -681,6 +849,7 @@ export interface OnboardingData {
     irregularIncomeAnnual: number;
   };
   expenses: OnboardingExpenses;
+  irregularExpenses: IrregularExpenses;
   liabilities: LiabilityItem[];
   assets: {
     savings: number;
@@ -719,6 +888,7 @@ const createDefaultOnboardingData = (intl: IntlShape): OnboardingData => ({
     irregularIncomeAnnual: 0,
   },
   expenses: createDefaultExpenses(intl),
+  irregularExpenses: createDefaultIrregularExpenses(intl),
   liabilities: [],
   assets: {
     savings: 0,
@@ -735,7 +905,9 @@ const createDefaultOnboardingData = (intl: IntlShape): OnboardingData => ({
 
 export interface OnboardingMetrics {
   monthlyIncome: number;
-  totalExpenses: number;
+  regularMonthlyExpenses: number;
+  irregularAnnualExpenses: number;
+  irregularMonthlyExpenses: number;
   liabilitiesMonthly: number;
   liabilitiesTotal: number;
   assetsTotal: number;
@@ -744,13 +916,6 @@ export interface OnboardingMetrics {
   emergencyCoverage: number;
   netWorth: number;
 }
-
-const ensureId = (prefix: string) => {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `${prefix}-${Math.random().toString(36).slice(2, 11)}`;
-};
 
 const mergeOnboardingData = (
   current: OnboardingData,
@@ -847,6 +1012,12 @@ const mergeOnboardingData = (
     intl
   );
 
+  const mergedIrregularExpenses = mergeIrregularExpenses(
+    current.irregularExpenses,
+    incoming.irregularExpenses,
+    intl
+  );
+
   const mergedLiabilities =
     current.liabilities.length > 0
       ? current.liabilities.map((item) => ({
@@ -907,6 +1078,7 @@ const mergeOnboardingData = (
     life: mergedLife,
     income: mergedIncome,
     expenses: mergedExpenses,
+    irregularExpenses: mergedIrregularExpenses,
     liabilities: mergedLiabilities,
     assets: mergedAssets,
     goals: mergedGoals,
@@ -916,7 +1088,7 @@ const mergeOnboardingData = (
 const hasMeaningfulData = (data: OnboardingData): boolean => {
   if (!data) return false;
 
-  const { life, income, expenses, liabilities, assets, goals } = data;
+  const { life, income, expenses, irregularExpenses, liabilities, assets, goals } = data;
 
   const lifeHasValues =
     Boolean(life.maritalStatus) ||
@@ -936,6 +1108,8 @@ const hasMeaningfulData = (data: OnboardingData): boolean => {
     );
 
   const expensesHasValues = expensesHaveValues(expenses);
+  const irregularHasValues =
+    Array.isArray(irregularExpenses) && irregularExpenses.some((item) => item.amount > 0);
 
   const liabilitiesHasValues = liabilities.length > 0;
 
@@ -952,6 +1126,7 @@ const hasMeaningfulData = (data: OnboardingData): boolean => {
     lifeHasValues ||
     incomeHasValues ||
     expensesHasValues ||
+    irregularHasValues ||
     liabilitiesHasValues ||
     assetsHasValues ||
     goalsHasValues
@@ -1052,6 +1227,16 @@ const expensesSchemaShape = EXPENSE_GROUPS.reduce(
 
 const expensesSchema = z.object(expensesSchemaShape);
 
+const irregularExpenseSchema = z.object({
+  id: z.string(),
+  templateId: z.string().optional(),
+  name: z.string().min(1, 'Podaj nazwę wydatku'),
+  amount: z.number().min(0, 'Kwota nie może być ujemna'),
+  isCustom: z.boolean().optional(),
+});
+
+const irregularExpensesSchema = z.array(irregularExpenseSchema);
+
 const liabilitySchema = z.object({
   id: z.string(),
   type: z.string().min(1, 'Podaj rodzaj zobowiązania'),
@@ -1138,6 +1323,16 @@ const STEP_DEFINITIONS: StepDefinition[] = [
     icon: Home,
     validate: (data) => {
       const result = expensesSchema.safeParse(data.expenses);
+      return result.success ? null : result.error.issues;
+    },
+  },
+  {
+    id: 'irregularExpenses',
+    labelId: 'onboarding.steps.irregularExpenses.label',
+    descriptionId: 'onboarding.steps.irregularExpenses.description',
+    icon: CalendarClock,
+    validate: (data) => {
+      const result = irregularExpensesSchema.safeParse(data.irregularExpenses);
       return result.success ? null : result.error.issues;
     },
   },
@@ -1578,6 +1773,41 @@ export default function OnboardingWizard() {
           }
         }
       }
+
+      const irregularItems = data.irregularExpenses ?? [];
+      for (const item of irregularItems) {
+        const amount = sanitizeAmount(item.amount);
+        if (amount <= 0) continue;
+
+        const description =
+          (typeof item.name === 'string' && item.name.trim().length > 0
+            ? item.name.trim()
+            : intl.formatMessage({
+                id: 'onboarding.irregularExpenses.custom.defaultName',
+              }));
+
+        const response = await fetch(expensesEndpoint, {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({
+            category: item.category ?? 'other',
+            description,
+            amount,
+            is_recurring: false,
+            date: todayISO,
+          }),
+        });
+        await assertOk(response, `create irregular expense (${description})`);
+        const createdExpense = await response.json();
+        if (createdExpense?.id !== undefined) {
+          await logActivity({
+            entity_type: 'Expense',
+            operation_type: 'create',
+            entity_id: Number(createdExpense.id),
+            new_values: createdExpense,
+          });
+        }
+      }
     } catch (error) {
       console.error('[Onboarding] Failed to sync expenses', error);
       throw error;
@@ -1903,6 +2133,12 @@ export default function OnboardingWizard() {
       expenses: updater(prev.expenses),
     }));
 
+  const updateIrregularExpenses = (updater: (prev: IrregularExpenses) => IrregularExpenses) =>
+    setData((prev) => ({
+      ...prev,
+      irregularExpenses: updater(prev.irregularExpenses),
+    }));
+
   const addLiability = () =>
     setData((prev) => ({
       ...prev,
@@ -2016,7 +2252,9 @@ export default function OnboardingWizard() {
       additionalMonthly +
       data.income.irregularIncomeAnnual / 12;
 
-    const totalExpenses = sumExpenses(data.expenses);
+    const regularMonthlyExpenses = sumExpenses(data.expenses);
+    const irregularAnnualExpenses = sumIrregularExpenses(data.irregularExpenses);
+    const irregularMonthlyExpenses = irregularAnnualExpenses / 12;
 
     const liabilitiesMonthly = data.liabilities.reduce(
       (sum, item) => sum + item.monthlyPayment,
@@ -2034,18 +2272,21 @@ export default function OnboardingWizard() {
       data.assets.properties.reduce((sum, item) => sum + item.value, 0) +
       data.assets.vehicles.reduce((sum, item) => sum + item.value, 0);
 
-    const surplus = monthlyIncome - (totalExpenses + liabilitiesMonthly);
+    const surplus =
+      monthlyIncome - (regularMonthlyExpenses + irregularMonthlyExpenses + liabilitiesMonthly);
     const dti = monthlyIncome
       ? (liabilitiesMonthly / monthlyIncome) * 100
       : 0;
-    const emergencyCoverage = totalExpenses
-      ? data.assets.savings / totalExpenses
+    const emergencyCoverage = regularMonthlyExpenses + irregularMonthlyExpenses
+      ? data.assets.savings / (regularMonthlyExpenses + irregularMonthlyExpenses)
       : 0;
     const netWorth = assetsTotal - liabilitiesTotal;
 
     return {
       monthlyIncome,
-      totalExpenses,
+      regularMonthlyExpenses,
+      irregularAnnualExpenses,
+      irregularMonthlyExpenses,
       liabilitiesMonthly,
       liabilitiesTotal,
       assetsTotal,
@@ -2202,6 +2443,20 @@ export default function OnboardingWizard() {
               expenseGroupHints={EXPENSE_GROUP_HINTS}
               generateId={ensureId}
               getTotalTone={getTotalTone}
+            />
+          )}
+
+          {currentStep.id === 'irregularExpenses' && (
+            <IrregularExpensesStep
+              data={data.irregularExpenses}
+              errors={errors}
+              onUpdate={updateIrregularExpenses}
+              onNext={() => handleNext()}
+              onBack={handleBack}
+              onSkip={handleSkipStep}
+              formatMoney={formatMoney}
+              generateId={ensureId}
+              nextLabel={nextButtonLabel}
             />
           )}
 

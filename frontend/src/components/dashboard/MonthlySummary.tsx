@@ -1,7 +1,7 @@
 'use client';
 
 import { useIntl } from 'react-intl';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { Insight, InsightStatus, InsightsResponse } from '@/types/insights';
 import { SparklesIcon, ExclamationCircleIcon, CheckCircleIcon, LightBulbIcon } from '@heroicons/react/24/outline';
@@ -10,6 +10,7 @@ import Link from 'next/link';
 import InsightsStatusBanner from './InsightsStatusBanner';
 import { EnhancedInsightsResponse } from '@/types/cache';
 import { useSession } from 'next-auth/react';
+import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 
 interface MonthlySummaryProps {
   data: {
@@ -20,6 +21,15 @@ interface MonthlySummaryProps {
     savingsRate: number;
     debtToIncome: number;
   };
+  deltas: {
+    income: number;
+    expenses: number;
+    loanPayments: number;
+    netCashflow: number;
+    savingsRate: number;
+    debtToIncome: number;
+  };
+  referenceLabel?: string;
   formatCurrency: (amount: number) => string;
 }
 
@@ -105,7 +115,7 @@ const InsightCard: React.FC<{ insight: Insight }> = ({ insight }) => {
   );
 };
 
-const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency }) => {
+const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, deltas, referenceLabel, formatCurrency }) => {
   const intl = useIntl();
   const { settings } = useSettings();
   const [showInsights, setShowInsights] = useState(false);
@@ -114,6 +124,65 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
   const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
   const [errorMessageValues, setErrorMessageValues] = useState<Record<string, string | number> | undefined>(undefined);
   const { data: session } = useSession();
+  const safeDeltas = deltas || {
+    income: 0,
+    expenses: 0,
+    loanPayments: 0,
+    netCashflow: 0,
+    savingsRate: 0,
+    debtToIncome: 0,
+  };
+  const percentFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(intl.locale, {
+        style: 'percent',
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      }),
+    [intl.locale],
+  );
+
+  const renderDelta = (
+    delta: number,
+    formatter: (value: number) => string,
+    trend: 'positive' | 'negative' | 'neutral',
+    tooltip?: string,
+  ) => {
+    const neutralBadge = (
+      <span
+        className="inline-flex items-center gap-1 rounded-full border border-muted-foreground/40 bg-muted px-2 py-1 text-[11px] font-medium text-secondary"
+        title={tooltip}
+      >
+        <Minus className="h-3 w-3" aria-hidden="true" />
+        {formatter(0)}
+      </span>
+    );
+
+    if (!Number.isFinite(delta) || Math.abs(delta) < 1e-6) {
+      return neutralBadge;
+    }
+
+    const isPositive = delta > 0;
+    const Icon = isPositive ? ArrowUpRight : ArrowDownRight;
+    const visualIsPositive = trend === 'positive' ? isPositive : trend === 'negative' ? !isPositive : false;
+
+    const badgeClasses = visualIsPositive
+      ? 'border-success/40 bg-success/15 text-success'
+      : 'border-destructive/40 bg-destructive/10 text-destructive';
+
+    const absoluteValue = formatter(Math.abs(delta));
+
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold transition-colors ${badgeClasses}`}
+        title={tooltip}
+        aria-label={tooltip}
+      >
+        <Icon className="h-3 w-3" aria-hidden="true" />
+        {absoluteValue}
+      </span>
+    );
+  };
 
   const fetchInsights = async (forceRefresh = false) => {
     if (!session?.user?.email) {
@@ -191,55 +260,135 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
     }
   }, [showInsights]);
 
+  const periodDisplay =
+    referenceLabel ?? intl.formatMessage({ id: 'dashboard.summary.previousPeriodFallback' });
+
+  const insightFor = (
+    key: string,
+    delta: number,
+    formatter: (value: number) => string,
+  ) => {
+    if (!Number.isFinite(delta) || Math.abs(delta) < 1e-6) {
+      return intl.formatMessage({ id: `dashboard.summary.insights.${key}.steady` }, { period: periodDisplay });
+    }
+
+    const directionId = delta > 0 ? 'up' : 'down';
+    return intl.formatMessage(
+      { id: `dashboard.summary.insights.${key}.${directionId}` },
+      {
+        amount: formatter(Math.abs(delta)),
+        period: periodDisplay,
+      },
+    );
+  };
+
   const metrics = [
     {
+      key: 'income',
       label: intl.formatMessage({ id: 'dashboard.summary.totalIncome' }),
       value: formatCurrency(data?.totalIncome ?? 0),
+      delta: safeDeltas.income,
+      formatter: formatCurrency,
+      trend: 'positive' as const,
       color: 'text-success',
-      bgColor: 'bg-success/15',
+      bgColor: 'bg-success/10 hover:bg-success/20 transition-colors',
+      subLabel: intl.formatMessage(
+        { id: 'dashboard.summary.labels.incomeSub' },
+        { period: periodDisplay },
+      ),
+      tooltip: [
+        intl.formatMessage({ id: 'dashboard.summary.tooltips.income' }),
+        insightFor('income', safeDeltas.income, formatCurrency),
+      ].join(' • '),
     },
     {
+      key: 'expenses',
       label: intl.formatMessage({ id: 'dashboard.summary.totalExpenses' }),
       value: formatCurrency(data?.totalExpenses ?? 0),
+      delta: safeDeltas.expenses,
+      formatter: formatCurrency,
+      trend: 'negative' as const,
       color: 'text-destructive',
-      bgColor: 'bg-destructive/15',
+      bgColor: 'bg-destructive/10 hover:bg-destructive/15 transition-colors',
+      subLabel: intl.formatMessage(
+        { id: 'dashboard.summary.labels.expensesSub' },
+        { period: periodDisplay },
+      ),
+      tooltip: [
+        intl.formatMessage({ id: 'dashboard.summary.tooltips.expenses' }),
+        insightFor('expenses', safeDeltas.expenses, formatCurrency),
+      ].join(' • '),
     },
     {
+      key: 'loanPayments',
       label: intl.formatMessage({ id: 'dashboard.summary.loanPayments' }),
       value: formatCurrency(data?.totalLoanPayments ?? 0),
+      delta: safeDeltas.loanPayments,
+      formatter: formatCurrency,
+      trend: 'negative' as const,
       color: 'text-primary',
-      bgColor: 'bg-mint/40',
+      bgColor: 'bg-primary/10 hover:bg-primary/15 transition-colors',
+      subLabel: intl.formatMessage(
+        { id: 'dashboard.summary.labels.loanSub' },
+        { period: periodDisplay },
+      ),
+      tooltip: [
+        intl.formatMessage({ id: 'dashboard.summary.tooltips.loanPayments' }),
+        insightFor('loanPayments', safeDeltas.loanPayments, formatCurrency),
+      ].join(' • '),
     },
     {
+      key: 'netCashflow',
       label: intl.formatMessage({ id: 'dashboard.summary.netCashflow' }),
       value: formatCurrency(data?.netCashflow ?? 0),
+      delta: safeDeltas.netCashflow,
+      formatter: formatCurrency,
+      trend: 'positive' as const,
       color: (data?.netCashflow ?? 0) >= 0 ? 'text-success' : 'text-destructive',
-      bgColor: (data?.netCashflow ?? 0) >= 0 ? 'bg-success/15' : 'bg-destructive/15',
+      bgColor: (data?.netCashflow ?? 0) >= 0 ? 'bg-success/10 hover:bg-success/20 transition-colors' : 'bg-destructive/10 hover:bg-destructive/15 transition-colors',
+      subLabel: intl.formatMessage(
+        { id: 'dashboard.summary.labels.netCashflowSub' },
+        { period: periodDisplay },
+      ),
+      tooltip: [
+        intl.formatMessage({ id: 'dashboard.summary.tooltips.netCashflow' }),
+        insightFor('netCashflow', safeDeltas.netCashflow, formatCurrency),
+      ].join(' • '),
     },
     {
+      key: 'savingsRate',
       label: intl.formatMessage({ id: 'dashboard.summary.savingsRate' }),
-      value: intl.formatNumber(data?.savingsRate ?? 0, {
-        style: 'percent',
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      }),
-      color: 'text-lilac',
-      bgColor: 'bg-lilac/40',
+      value: percentFormatter.format(data?.savingsRate ?? 0),
+      delta: safeDeltas.savingsRate,
+      formatter: (value: number) => percentFormatter.format(value),
+      trend: 'positive' as const,
+      color: 'text-mint',
+      bgColor: 'bg-mint/20 hover:bg-mint/30 transition-colors',
+      subLabel: intl.formatMessage({ id: 'dashboard.summary.targets.savingsRate' }),
+      tooltip: [
+        intl.formatMessage({ id: 'dashboard.summary.tooltips.savingsRate' }),
+        insightFor('savingsRate', safeDeltas.savingsRate, (value: number) => percentFormatter.format(value)),
+      ].join(' • '),
     },
     {
+      key: 'debtToIncome',
       label: intl.formatMessage({ id: 'dashboard.summary.debtToIncome' }),
-      value: intl.formatNumber(data?.debtToIncome ?? 0, {
-        style: 'percent',
-        minimumFractionDigits: 1,
-        maximumFractionDigits: 1,
-      }),
+      value: percentFormatter.format(data?.debtToIncome ?? 0),
+      delta: safeDeltas.debtToIncome,
+      formatter: (value: number) => percentFormatter.format(value),
+      trend: 'negative' as const,
       color: 'text-warning',
-      bgColor: 'bg-warning/20',
+      bgColor: 'bg-warning/20 hover:bg-warning/30 transition-colors',
+      subLabel: intl.formatMessage({ id: 'dashboard.summary.targets.debtToIncome' }),
+      tooltip: [
+        intl.formatMessage({ id: 'dashboard.summary.tooltips.debtToIncome' }),
+        insightFor('debtToIncome', safeDeltas.debtToIncome, (value: number) => percentFormatter.format(value)),
+      ].join(' • '),
     },
   ];
 
   return (
-    <div className="bg-card border border-default rounded-lg shadow-sm p-6">
+    <div className="bg-card/90 backdrop-blur border border-default/80 rounded-2xl shadow-lg p-6 transition-shadow">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-primary">
           {intl.formatMessage({ id: 'dashboard.summary.title' })}
@@ -252,24 +401,26 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, formatCurrency })
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {metrics.map((metric, index) => (
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {metrics.map((metric) => (
           <div
-            key={index}
-            className="flex items-center p-4 rounded-lg border border-default bg-muted"
+            key={metric.key}
+            className={`rounded-xl border border-default bg-card shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 p-4 ${metric.bgColor}`}
+            title={metric.tooltip}
           >
-            <div className={`w-12 h-12 rounded-full ${metric.bgColor} flex items-center justify-center mr-4`}>
-              <span className={`text-lg font-semibold ${metric.color}`}>
-                {index + 1}
-              </span>
-            </div>
-            <div>
-              <p className="text-sm text-secondary mb-1">
-                {metric.label}
-              </p>
-              <p className={`text-lg font-semibold ${metric.color}`}>
-                {metric.value}
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-wide text-secondary">
+                  {metric.label}
+                </p>
+                <p className={`text-xl font-semibold tabular-nums ${metric.color}`}>
+                  {metric.value}
+                </p>
+                <p className="text-xs text-secondary">
+                  {metric.subLabel}
+                </p>
+              </div>
+              {renderDelta(metric.delta, metric.formatter, metric.trend, metric.tooltip)}
             </div>
           </div>
         ))}
