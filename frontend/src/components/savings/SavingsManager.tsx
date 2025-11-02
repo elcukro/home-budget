@@ -52,16 +52,32 @@ import {
 } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 
+type SavingsDateRangePreset =
+  | "all"
+  | "current_month"
+  | "last_month"
+  | "last_quarter"
+  | "last_half"
+  | "last_year";
+
 interface SavingsFilters {
   category?: SavingCategory;
-  startDate?: string;
-  endDate?: string;
+  dateRange?: SavingsDateRangePreset;
   savingType?: SavingType;
 }
 
 const savingTypeOptions = [
   { value: SavingType.DEPOSIT, labelId: "savings.types.deposit" },
   { value: SavingType.WITHDRAWAL, labelId: "savings.types.withdrawal" },
+];
+
+const dateRangeOptions: { value: SavingsDateRangePreset; labelId: string }[] = [
+  { value: "current_month", labelId: "savings.filters.dateRange.currentMonth" },
+  { value: "last_month", labelId: "savings.filters.dateRange.lastMonth" },
+  { value: "last_quarter", labelId: "savings.filters.dateRange.lastQuarter" },
+  { value: "last_half", labelId: "savings.filters.dateRange.lastHalf" },
+  { value: "last_year", labelId: "savings.filters.dateRange.lastYear" },
+  { value: "all", labelId: "savings.filters.dateRange.all" },
 ];
 
 const categoryOptions = Object.values(SavingCategory).map((category) => ({
@@ -157,6 +173,79 @@ const savingDefaultValues: SavingFormValues = {
   target_amount: undefined,
 };
 
+const formatDateForApi = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const resolveDateRange = (
+  preset?: SavingsDateRangePreset,
+): { startDate?: string; endDate?: string } => {
+  if (!preset || preset === "all") {
+    return {};
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  switch (preset) {
+    case "current_month": {
+      const start = new Date(year, month, 1);
+      const end = new Date(year, month + 1, 0);
+      return {
+        startDate: formatDateForApi(start),
+        endDate: formatDateForApi(end),
+      };
+    }
+    case "last_month": {
+      const start = new Date(year, month - 1, 1);
+      const end = new Date(year, month, 0);
+      return {
+        startDate: formatDateForApi(start),
+        endDate: formatDateForApi(end),
+      };
+    }
+    case "last_quarter": {
+      const currentQuarter = Math.floor(month / 3);
+      const previousQuarter = currentQuarter === 0 ? 3 : currentQuarter - 1;
+      const quarterYear = currentQuarter === 0 ? year - 1 : year;
+      const startMonth = previousQuarter * 3;
+      const start = new Date(quarterYear, startMonth, 1);
+      const end = new Date(quarterYear, startMonth + 3, 0);
+      return {
+        startDate: formatDateForApi(start),
+        endDate: formatDateForApi(end),
+      };
+    }
+    case "last_half": {
+      const currentHalf = month < 6 ? 0 : 1;
+      const previousHalf = currentHalf === 0 ? 1 : 0;
+      const halfYear = currentHalf === 0 ? year - 1 : year;
+      const startMonth = previousHalf === 0 ? 0 : 6;
+      const start = new Date(halfYear, startMonth, 1);
+      const end = new Date(halfYear, startMonth + 6, 0);
+      return {
+        startDate: formatDateForApi(start),
+        endDate: formatDateForApi(end),
+      };
+    }
+    case "last_year": {
+      const previousYear = year - 1;
+      const start = new Date(previousYear, 0, 1);
+      const end = new Date(previousYear, 12, 0);
+      return {
+        startDate: formatDateForApi(start),
+        endDate: formatDateForApi(end),
+      };
+    }
+    default:
+      return {};
+  }
+};
+
 const mapSavingToFormValues = (saving: Saving): SavingFormValues => ({
   category: saving.category,
   description: saving.description ?? "",
@@ -188,6 +277,7 @@ export const SavingsManager = () => {
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [activeSaving, setActiveSaving] = useState<Saving | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dialogInitialValues, setDialogInitialValues] = useState<Partial<SavingFormValues> | undefined>(undefined);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Saving | null>(null);
@@ -321,8 +411,9 @@ export const SavingsManager = () => {
 
       const params = new URLSearchParams();
       if (filters.category) params.set("category", filters.category);
-      if (filters.startDate) params.set("start_date", filters.startDate);
-      if (filters.endDate) params.set("end_date", filters.endDate);
+      const { startDate, endDate } = resolveDateRange(filters.dateRange);
+      if (startDate) params.set("start_date", startDate);
+      if (endDate) params.set("end_date", endDate);
 
       const query = params.toString();
       const response = await fetch(`/api/savings${query ? `?${query}` : ""}`);
@@ -337,7 +428,7 @@ export const SavingsManager = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters.category, filters.startDate, filters.endDate, intl]);
+  }, [filters.category, filters.dateRange, intl]);
 
   useEffect(() => {
     void fetchSavings();
@@ -350,12 +441,23 @@ export const SavingsManager = () => {
   const handleOpenCreate = () => {
     setActiveSaving(null);
     setDialogMode("create");
+    setDialogInitialValues(undefined);
+    setDialogOpen(true);
+  };
+
+  const handleOpenWithdraw = () => {
+    setActiveSaving(null);
+    setDialogMode("create");
+    setDialogInitialValues({
+      saving_type: SavingType.WITHDRAWAL,
+    });
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (saving: Saving) => {
     setActiveSaving(saving);
     setDialogMode("edit");
+    setDialogInitialValues(undefined);
     setDialogOpen(true);
   };
 
@@ -363,6 +465,7 @@ export const SavingsManager = () => {
     setDialogOpen(open);
     if (!open) {
       setActiveSaving(null);
+      setDialogInitialValues(undefined);
     }
   };
 
@@ -754,10 +857,16 @@ export const SavingsManager = () => {
             <FormattedMessage id="savings.subtitle" />
           </p>
         </div>
-        <Button onClick={handleOpenCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          <FormattedMessage id="savings.actions.add" />
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={handleOpenWithdraw}>
+            <ArrowDownRight className="mr-2 h-4 w-4" />
+            <FormattedMessage id="savings.actions.withdraw" />
+          </Button>
+          <Button onClick={handleOpenCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            <FormattedMessage id="savings.actions.add" />
+          </Button>
+        </div>
       </div>
 
       {summary && (
@@ -1034,30 +1143,28 @@ export const SavingsManager = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="date"
-                value={filters.startDate ?? ""}
-                onChange={(event) =>
+              <Select
+                value={filters.dateRange ?? "all"}
+                onValueChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
-                    startDate: event.target.value || undefined,
+                    dateRange: value as SavingsDateRangePreset,
                   }))
                 }
-                className="w-[150px]"
-                placeholder={intl.formatMessage({ id: "savings.filters.startDate" })}
-              />
-              <Input
-                type="date"
-                value={filters.endDate ?? ""}
-                onChange={(event) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    endDate: event.target.value || undefined,
-                  }))
-                }
-                className="w-[150px]"
-                placeholder={intl.formatMessage({ id: "savings.filters.endDate" })}
-              />
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue
+                    placeholder={intl.formatMessage({ id: "savings.filters.dateRange" })}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {dateRangeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {intl.formatMessage({ id: option.labelId })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select
                 value={filters.savingType ?? "all"}
                 onValueChange={(value) =>
@@ -1294,16 +1401,28 @@ export const SavingsManager = () => {
         </Button>
       </div>
 
-      <Button
-        onClick={handleOpenCreate}
-        className="fixed bottom-6 right-6 shadow-lg sm:hidden"
-        variant="default"
-        size="lg"
-        aria-label={intl.formatMessage({ id: "savings.actions.add" })}
-      >
-        <Plus className="mr-2 h-5 w-5" />
-        <FormattedMessage id="savings.actions.add" />
-      </Button>
+      <div className="sm:hidden">
+        <Button
+          onClick={handleOpenCreate}
+          className="fixed bottom-6 right-6 shadow-lg"
+          variant="default"
+          size="lg"
+          aria-label={intl.formatMessage({ id: "savings.actions.add" })}
+        >
+          <Plus className="mr-2 h-5 w-5" />
+          <FormattedMessage id="savings.actions.add" />
+        </Button>
+        <Button
+          onClick={handleOpenWithdraw}
+          className="fixed bottom-20 right-6 shadow-lg"
+          variant="outline"
+          size="lg"
+          aria-label={intl.formatMessage({ id: "savings.actions.withdraw" })}
+        >
+          <ArrowDownRight className="mr-2 h-5 w-5" />
+          <FormattedMessage id="savings.actions.withdraw" />
+        </Button>
+      </div>
 
       <CrudDialog
         open={dialogOpen}
@@ -1324,7 +1443,9 @@ export const SavingsManager = () => {
         initialValues={
           dialogMode === "edit" && activeSaving
             ? mapSavingToFormValues(activeSaving)
-            : undefined
+            : dialogMode === "create"
+              ? dialogInitialValues
+              : undefined
         }
         fields={savingFieldConfig}
         onSubmit={handleSubmit}

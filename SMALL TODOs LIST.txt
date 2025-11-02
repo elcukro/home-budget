@@ -26,8 +26,8 @@ Oszczędności – lista zgłoszeń
 
 7. Brak opcji wypłacenia pieniędzy z oszczędności
    Status: wdrożone
-   Notatka: w formularzu istnieje pole `saving_type` z opcjami `savings.types.deposit`/`savings.types.withdrawal`; można rejestrować wypłaty.
+   Notatka: dodano dedykowaną akcję „Zarejestruj wypłatę”, która otwiera formularz z ustawionym typem `withdrawal`, dostępny także na urządzeniach mobilnych (`frontend/src/components/savings/SavingsManager.tsx` + tłumaczenia).
 
 8. Filtrowanie po datach – zamiana dwóch pól daty na predefiniowane zakresy (bieżący miesiąc, ostatni miesiąc, ostatni kwartał, ostatnie półrocze, ostatni rok, wszystko)
-   Status: nie udało się naprawić
-   Notatka: widok filtrów nadal wykorzystuje pola `startDate` i `endDate`; brak implementacji zakresów predefiniowanych.
+   Status: wdrożone
+   Notatka: filtry korzystają teraz z predefiniowanych zakresów dat (`frontend/src/components/savings/SavingsManager.tsx`), a etykiety zostały dodane do tłumaczeń (`frontend/src/locales/*`).

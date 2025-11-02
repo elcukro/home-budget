@@ -370,13 +370,28 @@
     },
     "summary": {
       "title": "Resumen de gastos",
-      "totalLabel": "Gasto total (filtrado)",
-      "description": "Basado en los filtros actuales.",
+      "totalLabel": "Gasto en {period}",
+      "periodAll": "todo el período",
+      "periodChipAll": "Todo el período",
       "topCategories": "Categorías principales",
-      "noData": "Agrega algunos gastos para ver el desglose."
+      "noData": "Agrega algunos gastos para ver el desglose.",
+      "unit": {
+        "month": "mes",
+        "period": "rango"
+      },
+      "unitTooltip": "Los valores reflejan el período seleccionado. Los montos anuales o irregulares se prorratean a una base mensual.",
+      "categoryShare": "{percent}% del gasto visible",
+      "trendTitle": "Tendencia de gastos (últimos 6 meses)",
+      "trendNoData": "Agrega datos de al menos dos meses para ver la tendencia.",
+      "changePositive": "+{percent}% vs {previousPeriod}",
+      "changeNegative": "-{percent}% vs {previousPeriod}",
+      "changeNeutral": "Sin cambios vs {previousPeriod}",
+      "changeNoData": "No hay mes anterior para comparar.",
+      "comparisonUnavailable": "Selecciona un mes para ver la comparación."
     },
     "filters": {
       "sortLabel": "Ordenar por",
+      "periodLabel": "Período",
       "directionLabel": "Dirección",
       "recurringLabel": "Tipo",
       "sort": {
@@ -393,6 +408,13 @@
         "recurring": "Recurrentes",
         "oneoff": "Únicos"
       }
+    },
+    "timeline": {
+      "label": "Explorar meses",
+      "hint": "Salta a meses anteriores para revisar tus gastos.",
+      "previous": "Mes anterior",
+      "next": "Mes siguiente",
+      "all": "Todo el período"
     },
     "form": {
       "category": "Categoría",
@@ -535,12 +557,13 @@
     "title": "Gestión de Ahorros",
     "subtitle": "Supervisa tus depósitos, retiros y metas de ahorro en un solo lugar.",
     "actions": {
-      "add": "Agregar ahorro"
+      "add": "Agregar ahorro",
+      "withdraw": "Registrar retiro"
     },
     "categories": {
-    "emergency_fund": "Fondo de emergencia",
-    "six_month_fund": "Fondo de 6 meses",
-    "retirement": "Jubilación",
+      "emergency_fund": "Fondo de emergencia",
+      "six_month_fund": "Fondo de 6 meses",
+      "retirement": "Jubilación",
       "college": "Fondo educativo",
       "general": "Ahorros generales",
       "investment": "Inversiones",
@@ -583,6 +606,15 @@
       "category": "Todas las categorías",
       "startDate": "Fecha de inicio",
       "endDate": "Fecha de fin",
+      "dateRange": "Rango de fechas",
+      "dateRangeOptions": {
+        "currentMonth": "Mes actual",
+        "lastMonth": "Último mes",
+        "lastQuarter": "Último trimestre",
+        "lastHalf": "Último semestre",
+        "lastYear": "Último año",
+        "all": "Todo"
+      },
       "apply": "Aplicar filtros",
       "clear": "Limpiar filtros",
       "typeLabel": "Tipo de transacción",

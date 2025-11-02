@@ -478,13 +478,28 @@
     },
     "summary": {
       "title": "Podsumowanie wydatków",
-      "totalLabel": "Suma wydatków (po filtrze)",
-      "description": "Wartości bazują na aktualnych filtrach.",
+      "totalLabel": "Wydatki w okresie: {period}",
+      "periodAll": "cały okres",
+      "periodChipAll": "Cały okres",
       "topCategories": "Największe kategorie",
-      "noData": "Dodaj kilka wydatków, aby zobaczyć rozkład."
+      "noData": "Dodaj kilka wydatków, aby zobaczyć rozkład.",
+      "unit": {
+        "month": "miesiąc",
+        "period": "zakres"
+      },
+      "unitTooltip": "Wartości odzwierciedlają wybrany okres. Kwoty roczne lub nieregularne przeliczamy na miesięczne.",
+      "categoryShare": "{percent}% widocznych wydatków",
+      "trendTitle": "Trend wydatków (ostatnie 6 miesięcy)",
+      "trendNoData": "Dodaj dane z co najmniej dwóch miesięcy, aby zobaczyć trend.",
+      "changePositive": "+{percent}% vs {previousPeriod}",
+      "changeNegative": "-{percent}% vs {previousPeriod}",
+      "changeNeutral": "Brak zmian względem {previousPeriod}",
+      "changeNoData": "Brak wcześniejszego miesiąca do porównania.",
+      "comparisonUnavailable": "Wybierz miesiąc, aby zobaczyć porównanie."
     },
     "filters": {
       "sortLabel": "Sortuj według",
+      "periodLabel": "Okres",
       "directionLabel": "Kierunek",
       "recurringLabel": "Typ",
       "sort": {
@@ -501,6 +516,13 @@
         "recurring": "Cykliczne",
         "oneoff": "Jednorazowe"
       }
+    },
+    "timeline": {
+      "label": "Przeglądaj miesiące",
+      "hint": "Wybierz miesiąc, aby podejrzeć wcześniejsze wydatki.",
+      "previous": "Poprzedni miesiąc",
+      "next": "Następny miesiąc",
+      "all": "Cały okres"
     },
     "form": {
       "category": "Kategoria",
@@ -937,12 +959,13 @@
     "title": "Zarządzanie oszczędnościami",
     "subtitle": "Śledź wpłaty, wypłaty i cele oszczędnościowe w jednym miejscu.",
     "actions": {
-      "add": "Dodaj oszczędność"
+      "add": "Dodaj oszczędność",
+      "withdraw": "Zarejestruj wypłatę"
     },
     "categories": {
-    "emergency_fund": "Fundusz awaryjny",
-    "six_month_fund": "Fundusz 6-miesięczny",
-    "retirement": "Emerytura",
+      "emergency_fund": "Fundusz awaryjny",
+      "six_month_fund": "Fundusz 6-miesięczny",
+      "retirement": "Emerytura",
       "college": "Fundusz edukacyjny",
       "general": "Ogólne oszczędności",
       "investment": "Inwestycje",
@@ -985,6 +1008,15 @@
       "category": "Wszystkie kategorie",
       "startDate": "Data początkowa",
       "endDate": "Data końcowa",
+      "dateRange": "Zakres dat",
+      "dateRangeOptions": {
+        "currentMonth": "Bieżący miesiąc",
+        "lastMonth": "Ostatni miesiąc",
+        "lastQuarter": "Ostatni kwartał",
+        "lastHalf": "Ostatnie półrocze",
+        "lastYear": "Ostatni rok",
+        "all": "Wszystko"
+      },
       "apply": "Zastosuj filtry",
       "clear": "Wyczyść filtry",
       "typeLabel": "Typ transakcji",

@@ -504,13 +504,28 @@
     },
     "summary": {
       "title": "Spending snapshot",
-      "totalLabel": "Total spend (filtered)",
-      "description": "Based on the current filters.",
+      "totalLabel": "Spending in {period}",
+      "periodAll": "all time",
+      "periodChipAll": "All time",
       "topCategories": "Top categories",
-      "noData": "Add a few expenses to see breakdowns."
+      "noData": "Add a few expenses to see breakdowns.",
+      "unit": {
+        "month": "month",
+        "period": "selected range"
+      },
+      "unitTooltip": "Values reflect the selected period. Annual or irregular amounts are converted to a monthly figure.",
+      "categoryShare": "{percent}% of visible spending",
+      "trendTitle": "Spending trend (last 6 months)",
+      "trendNoData": "Add at least two months of expenses to see the trend.",
+      "changePositive": "+{percent}% vs {previousPeriod}",
+      "changeNegative": "-{percent}% vs {previousPeriod}",
+      "changeNeutral": "No change vs {previousPeriod}",
+      "changeNoData": "No previous month to compare.",
+      "comparisonUnavailable": "Select a month to compare monthly changes."
     },
     "filters": {
       "sortLabel": "Sort by",
+      "periodLabel": "Period",
       "directionLabel": "Direction",
       "recurringLabel": "Type",
       "sort": {
@@ -527,6 +542,13 @@
         "recurring": "Recurring",
         "oneoff": "One-off"
       }
+    },
+    "timeline": {
+      "label": "Browse months",
+      "hint": "Jump to past months to review spending.",
+      "previous": "Previous month",
+      "next": "Next month",
+      "all": "All time"
     },
     "form": {
       "category": "Category",
@@ -951,12 +973,13 @@
     "title": "Savings Management",
     "subtitle": "Track deposits, withdrawals, and saving goals in one view.",
     "actions": {
-      "add": "Add saving"
+      "add": "Add saving",
+      "withdraw": "Record withdrawal"
     },
     "categories": {
-    "emergency_fund": "Emergency Fund",
-    "six_month_fund": "Six-Month Fund",
-    "retirement": "Retirement",
+      "emergency_fund": "Emergency Fund",
+      "six_month_fund": "Six-Month Fund",
+      "retirement": "Retirement",
       "college": "College Fund",
       "general": "General Savings",
       "investment": "Investments",
@@ -999,6 +1022,15 @@
       "category": "All categories",
       "startDate": "Start date",
       "endDate": "End date",
+      "dateRange": "Date range",
+      "dateRangeOptions": {
+        "currentMonth": "Current month",
+        "lastMonth": "Last month",
+        "lastQuarter": "Last quarter",
+        "lastHalf": "Last half-year",
+        "lastYear": "Last year",
+        "all": "All time"
+      },
       "apply": "Apply filters",
       "clear": "Clear filters",
       "typeLabel": "Transaction type",

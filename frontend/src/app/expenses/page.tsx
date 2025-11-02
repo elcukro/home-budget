@@ -19,6 +19,9 @@ import {
   Trash2,
   UtensilsCrossed,
   Zap,
+  ChevronLeft,
+  ChevronRight,
+  LineChart,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -48,6 +51,7 @@ import {
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/utils/activityLogger";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
+import Tooltip from "@/components/Tooltip";
 
 interface Expense {
   id: number | string;
@@ -237,6 +241,19 @@ const mapExpenseToFormValues = (expense: Expense): ExpenseFormValues => ({
   is_recurring: expense.is_recurring,
 });
 
+const getMonthKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+};
+
+const monthKeyToDate = (key: string): Date => {
+  const [yearStr, monthStr] = key.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr) - 1;
+  return new Date(year, month, 1);
+};
+
 export default function ExpensesPage() {
   const { data: session } = useSession();
   const intl = useIntl();
@@ -261,6 +278,63 @@ export default function ExpensesPage() {
   const [sortKey, setSortKey] = useState<"date" | "amount" | "description">("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [recurringFilter, setRecurringFilter] = useState<"all" | "recurring" | "oneoff">("all");
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+
+  const monthlyTotals = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        key: string;
+        date: Date;
+        total: number;
+      }
+    >();
+
+    expenses.forEach((expense) => {
+      const parsed = new Date(expense.date);
+      if (Number.isNaN(parsed.getTime())) {
+        return;
+      }
+      const key = getMonthKey(parsed);
+      const monthDate = new Date(parsed.getFullYear(), parsed.getMonth(), 1);
+      const existing = map.get(key) ?? { key, date: monthDate, total: 0 };
+      existing.total += expense.amount;
+      map.set(key, existing);
+    });
+
+    return Array.from(map.values()).sort(
+      (a, b) => a.date.getTime() - b.date.getTime(),
+    );
+  }, [expenses]);
+
+  const monthOptions = useMemo(() => {
+    const formatted = monthlyTotals.map((entry) => ({
+      value: entry.key,
+      label: intl.formatDate(entry.date, { month: "long", year: "numeric" }),
+    }));
+
+    return [
+      {
+        value: "all",
+        label: intl.formatMessage({ id: "expenses.summary.periodAll" }),
+      },
+      ...formatted,
+    ];
+  }, [monthlyTotals, intl]);
+
+  useEffect(() => {
+    if (monthlyTotals.length === 0) {
+      setSelectedMonth("all");
+      return;
+    }
+
+    setSelectedMonth((prev) => {
+      if (prev !== "all" && monthlyTotals.some((entry) => entry.key === prev)) {
+        return prev;
+      }
+      return monthlyTotals[monthlyTotals.length - 1]?.key ?? "all";
+    });
+  }, [monthlyTotals]);
 
   useEffect(() => {
     const loadExpenses = async () => {
@@ -301,6 +375,16 @@ export default function ExpensesPage() {
 
   const filteredExpenses = useMemo(() => {
     const filtered = expenses.filter((expense) => {
+      if (selectedMonth !== "all") {
+        const expenseDate = new Date(expense.date);
+        if (Number.isNaN(expenseDate.getTime())) {
+          return false;
+        }
+        if (getMonthKey(expenseDate) !== selectedMonth) {
+          return false;
+        }
+      }
+
       if (recurringFilter === "recurring") return expense.is_recurring;
       if (recurringFilter === "oneoff") return !expense.is_recurring;
       return true;
@@ -321,7 +405,7 @@ export default function ExpensesPage() {
     });
 
     return sorted;
-  }, [expenses, recurringFilter, sortDirection, sortKey, intl.locale]);
+  }, [expenses, recurringFilter, sortDirection, sortKey, intl.locale, selectedMonth]);
 
   const expensesByCategory = useMemo(() => {
     const grouped = filteredExpenses.reduce<Record<string, { items: Expense[]; total: number }>>(
@@ -363,6 +447,179 @@ export default function ExpensesPage() {
       .sort((a, b) => b.total - a.total);
     return sorted.slice(0, 3);
   }, [expensesByCategory]);
+
+  const effectiveMonthKey =
+    selectedMonth === "all"
+      ? monthlyTotals[monthlyTotals.length - 1]?.key
+      : selectedMonth;
+  const selectedMonthEntry = effectiveMonthKey
+    ? monthlyTotals.find((entry) => entry.key === effectiveMonthKey)
+    : undefined;
+  const selectedMonthIndex = selectedMonthEntry
+    ? monthlyTotals.findIndex((entry) => entry.key === selectedMonthEntry.key)
+    : -1;
+  const previousMonthEntry =
+    selectedMonthIndex > 0 ? monthlyTotals[selectedMonthIndex - 1] : undefined;
+
+  const currentPeriodLabel = useMemo(() => {
+    if (selectedMonth === "all") {
+      return intl.formatMessage({ id: "expenses.summary.periodAll" });
+    }
+    if (!selectedMonth) {
+      return intl.formatMessage({ id: "expenses.summary.periodAll" });
+    }
+    return intl.formatDate(monthKeyToDate(selectedMonth), {
+      month: "long",
+      year: "numeric",
+    });
+  }, [selectedMonth, selectedMonthEntry, intl]);
+
+  const comparisonDescriptor = useMemo(() => {
+    if (!selectedMonthEntry) {
+      if (selectedMonth === "all") {
+        return {
+          id: "expenses.summary.comparisonUnavailable",
+        };
+      }
+      return {
+        id: "expenses.summary.changeNoData",
+        values: { previousPeriod: "" },
+      };
+    }
+
+    if (!previousMonthEntry || previousMonthEntry.total <= 0) {
+      return {
+        id: "expenses.summary.changeNoData",
+        values: {
+          previousPeriod: intl.formatDate(selectedMonthEntry.date, {
+            month: "long",
+            year: "numeric",
+          }),
+        },
+      };
+    }
+
+    const diff = selectedMonthEntry.total - previousMonthEntry.total;
+    const percent = Math.abs(diff) / previousMonthEntry.total * 100;
+    const previousPeriodLabel = intl.formatDate(previousMonthEntry.date, {
+      month: "long",
+      year: "numeric",
+    });
+
+    if (Math.abs(diff) < 0.01) {
+      return {
+        id: "expenses.summary.changeNeutral",
+        values: { previousPeriod: previousPeriodLabel },
+      };
+    }
+
+    const percentFormatted = intl.formatNumber(percent, {
+      maximumFractionDigits: 1,
+      minimumFractionDigits: percent >= 100 ? 0 : 1,
+    });
+
+    if (diff > 0) {
+      return {
+        id: "expenses.summary.changePositive",
+        values: {
+          percent: percentFormatted,
+          previousPeriod: previousPeriodLabel,
+        },
+      };
+    }
+
+    return {
+      id: "expenses.summary.changeNegative",
+      values: {
+        percent: percentFormatted,
+        previousPeriod: previousPeriodLabel,
+      },
+    };
+  }, [selectedMonthEntry, previousMonthEntry, intl, selectedMonth]);
+
+  const unitKey = selectedMonth === "all" ? "period" : "month";
+  const unitLabel = intl.formatMessage({
+    id: `expenses.summary.unit.${unitKey}`,
+  });
+
+  const trendSparkline = useMemo(() => {
+    if (monthlyTotals.length < 2) {
+      return null;
+    }
+
+    const data = monthlyTotals.slice(-6);
+    const width = 150;
+    const height = 40;
+    const totals = data.map((entry) => entry.total);
+    const minValue = Math.min(...totals, 0);
+    const maxValue = Math.max(...totals, 0);
+    const range = maxValue - minValue || 1;
+
+    const points = data.map((entry, index) => {
+      const x =
+        data.length === 1 ? width / 2 : (index / (data.length - 1)) * width;
+      const y =
+        height - ((entry.total - minValue) / range) * height;
+      return { x, y };
+    });
+
+    const strokePath = points
+      .map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`)
+      .join(" ");
+    const areaPath = `${strokePath} L${points[points.length - 1].x},${height} L${points[0].x},${height} Z`;
+
+    return {
+      width,
+      height,
+      strokePath,
+      areaPath,
+      startLabel: intl.formatDate(data[0].date, { month: "short" }),
+      endLabel: intl.formatDate(
+        data[data.length - 1].date,
+        { month: "short" },
+      ),
+    };
+  }, [monthlyTotals, intl]);
+
+  const latestMonthKey = monthlyTotals[monthlyTotals.length - 1]?.key;
+  const currentKeyForNavigation =
+    selectedMonth === "all" ? latestMonthKey : selectedMonth;
+  const currentIndexForNavigation =
+    currentKeyForNavigation && monthlyTotals.length > 0
+      ? monthlyTotals.findIndex((entry) => entry.key === currentKeyForNavigation)
+      : -1;
+  const prevMonthKey =
+    currentIndexForNavigation > 0
+      ? monthlyTotals[currentIndexForNavigation - 1].key
+      : undefined;
+  const nextMonthKey =
+    currentIndexForNavigation >= 0 &&
+    currentIndexForNavigation < monthlyTotals.length - 1
+      ? monthlyTotals[currentIndexForNavigation + 1].key
+      : undefined;
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === "all") {
+      if (prevMonthKey) {
+        setSelectedMonth(prevMonthKey);
+      }
+      return;
+    }
+    if (prevMonthKey) {
+      setSelectedMonth(prevMonthKey);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === "all") {
+      return;
+    }
+    if (nextMonthKey) {
+      setSelectedMonth(nextMonthKey);
+    } else if (selectedMonth !== "all" && latestMonthKey) {
+      setSelectedMonth(latestMonthKey);
+    }
+  };
 
   const handleOpenCreate = () => {
     setActiveExpense(null);
@@ -542,7 +799,7 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-emerald-900">
             <FormattedMessage id="expenses.title" />
@@ -550,48 +807,102 @@ export default function ExpensesPage() {
           <p className="text-sm text-muted-foreground">
             <FormattedMessage id="expenses.subtitle" />
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {monthlyTotals.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <label
+                htmlFor="expenses-period"
+                className="text-xs uppercase tracking-wide"
+              >
+                <FormattedMessage id="expenses.filters.periodLabel" />
+              </label>
+              <select
+                id="expenses-period"
+                value={selectedMonth}
+                onChange={(event) => setSelectedMonth(event.target.value)}
+                className="rounded-md border border-muted bg-card px-2 py-1 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                {monthOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <Button onClick={handleOpenCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            <FormattedMessage id="expenses.actions.add" />
+          </Button>
+        </div>
       </div>
-      <Button onClick={handleOpenCreate}>
-        <Plus className="mr-2 h-4 w-4" />
-        <FormattedMessage id="expenses.actions.add" />
-      </Button>
-    </div>
 
       <div className="grid gap-6 rounded-xl border border-muted/60 bg-card/80 p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
-        <div className="flex flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            <FormattedMessage id="expenses.summary.totalLabel" defaultMessage="Total spend" />
-          </span>
-          <p className="text-2xl font-semibold text-emerald-600">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <FormattedMessage
+                id="expenses.summary.totalLabel"
+                values={{ period: currentPeriodLabel }}
+              />
+            </span>
+            {selectedMonth === "all" && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                <FormattedMessage id="expenses.summary.periodChipAll" />
+              </span>
+            )}
+          </div>
+          <p className="text-3xl font-semibold text-emerald-600">
             {formatCurrency(totalSpend)}
           </p>
           <p className="text-xs text-muted-foreground">
-            <FormattedMessage id="expenses.summary.description" defaultMessage="Sum of all visible expenses." />
+            <FormattedMessage
+              id={comparisonDescriptor.id}
+              values={comparisonDescriptor.values ?? {}}
+            />
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:col-span-1 lg:col-span-2">
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">
-            <FormattedMessage id="expenses.summary.topCategories" defaultMessage="Top categories" />
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <FormattedMessage id="expenses.summary.topCategories" />
+            </span>
+            <Tooltip content={intl.formatMessage({ id: "expenses.summary.unitTooltip" })} icon />
+          </div>
           <div className="space-y-3">
             {topCategories.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                <FormattedMessage id="expenses.summary.noData" defaultMessage="Add expenses to see category insights." />
+                <FormattedMessage id="expenses.summary.noData" />
               </p>
             ) : (
               topCategories.map(({ category, total }) => {
-                const percent = totalSpend > 0 ? Math.round((total / totalSpend) * 100) : 0;
+                const percent =
+                  totalSpend > 0 ? Math.round((total / totalSpend) * 100) : 0;
                 return (
-                  <div key={category}>
+                  <div key={category} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs font-medium text-emerald-900">
                       <span>
                         <FormattedMessage id={`expenses.categories.${category}`} />
                       </span>
-                      <span className="text-emerald-600">
-                        {formatCurrency(total)} · {percent}%
+                      <Tooltip content={intl.formatMessage({ id: "expenses.summary.unitTooltip" })}>
+                        <span className="text-emerald-600">
+                          {formatCurrency(total)}{" "}
+                          <span className="text-xs text-muted-foreground">
+                            / {unitLabel}
+                          </span>
+                        </span>
+                      </Tooltip>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>
+                        <FormattedMessage
+                          id="expenses.summary.categoryShare"
+                          values={{ percent }}
+                        />
                       </span>
                     </div>
-                    <div className="mt-2 h-2 rounded-full bg-emerald-100">
+                    <div className="h-2 rounded-full bg-emerald-100">
                       <div
                         className="h-2 rounded-full bg-emerald-500"
                         style={{ width: `${percent}%` }}
@@ -604,7 +915,114 @@ export default function ExpensesPage() {
             )}
           </div>
         </div>
+        <div className="flex flex-col justify-between gap-3 rounded-xl border border-muted/60 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              <FormattedMessage id="expenses.summary.trendTitle" />
+            </span>
+            <LineChart className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+          </div>
+          {trendSparkline ? (
+            <>
+              <svg
+                viewBox={`0 0 ${trendSparkline.width} ${trendSparkline.height}`}
+                className="h-20 w-full text-emerald-500"
+                aria-hidden="true"
+              >
+                <path
+                  d={trendSparkline.areaPath}
+                  fill="currentColor"
+                  opacity={0.15}
+                />
+                <path
+                  d={trendSparkline.strokePath}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>{trendSparkline.startLabel}</span>
+                <span>{trendSparkline.endLabel}</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              <FormattedMessage id="expenses.summary.trendNoData" />
+            </p>
+          )}
+        </div>
       </div>
+      {monthlyTotals.length > 0 && (
+        <div className="space-y-3 rounded-xl border border-muted/60 bg-muted/20 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                <FormattedMessage id="expenses.timeline.label" />
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handlePrevMonth}
+                  disabled={!prevMonthKey}
+                  aria-label={intl.formatMessage({ id: "expenses.timeline.previous" })}
+                >
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleNextMonth}
+                  disabled={!nextMonthKey || selectedMonth === "all"}
+                  aria-label={intl.formatMessage({ id: "expenses.timeline.next" })}
+                >
+                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              <FormattedMessage id="expenses.timeline.hint" />
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 overflow-x-auto">
+            <Button
+              variant={selectedMonth === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedMonth("all")}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs",
+                selectedMonth === "all"
+                  ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                  : "border-muted/60 text-muted-foreground hover:bg-muted/40",
+              )}
+            >
+              <FormattedMessage id="expenses.timeline.all" />
+            </Button>
+            {monthlyTotals.map((entry) => {
+              const isActive = selectedMonth === entry.key;
+              return (
+                <Button
+                  key={entry.key}
+                  variant={isActive ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedMonth(entry.key)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs capitalize",
+                    isActive
+                      ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                      : "border-muted/60 text-muted-foreground hover:bg-muted/40",
+                  )}
+                >
+                  {intl.formatDate(entry.date, { month: "short", year: "2-digit" })}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-muted/60 bg-muted/20 px-5 py-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
