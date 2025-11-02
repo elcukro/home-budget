@@ -1,0 +1,33 @@
+Oszczędności – lista zgłoszeń
+
+1. Strona sama się przeładowuje (nie powinno tak być)
+   Status: wdrożone
+   Notatka: auto-odświeżanie wynikało z licznika bezczynności – brakowało nasłuchu na ruch myszy/scroll, więc nawet aktywne przewijanie kończyło się wylogowaniem. Dodano obsługę `mousemove`, `touchmove`, `wheel` i `scroll`, co zatrzymuje zegar przy normalnym korzystaniu ze strony.
+
+2. Formularz „Dodaj oszczędności” – kolejność pól (autofocus najpierw na kwocie, potem kategoria, opis)
+   Status: wdrożone
+   Notatka: w konfiguracji pól (`frontend/src/components/savings/SavingsManager.tsx`) kwota jest teraz pierwsza i otrzymuje `autoFocus`, po niej pojawia się wybór kategorii i pole opisu.
+
+3. Edycja wpisu – walidacja pól „Kwota” i „Kwota docelowa” (Invalid input: expected string)
+   Status: wdrożone
+   Notatka: schemat formularza (`savingSchema` w `frontend/src/components/savings/SavingsManager.tsx`) przyjmuje teraz również wartości liczbowe i zamienia `null` na `undefined`, więc edycja nie generuje już błędów typu.
+
+4. Brakuje kategorii „Fundusz 6-miesięczny”
+   Status: wdrożone
+   Notatka: rozszerzono enum `SavingCategory` (frontend/backend) oraz tłumaczenia (`frontend/src/locales/*.json`), więc „Fundusz 6-miesięczny” jest dostępny w formularzu i raportach.
+
+5. Saldo nalicza się w nieprawidłowej kolejności w tabeli
+   Status: wdrożone
+   Notatka: sortowanie po dacie bierze teraz pod uwagę czas utworzenia, a saldo wylicza się zgodnie z kolejnością wyświetlanych transakcji (`frontend/src/components/savings/SavingsManager.tsx`), więc kolumna „Saldo po transakcji” nie przeskakuje.
+
+6. Nieprzetłumaczone klucze: `savings.summaryTotals.deposits`, `savings.summaryTotals.withdrawals`, `savings.summaryTotals.net`
+   Status: wdrożone
+   Notatka: dodano tłumaczenia we wszystkich dostępnych lokalizacjach (`frontend/src/locales/en.json`, `pl.json`, `es.json`), więc wartości wyświetlają się poprawnie.
+
+7. Brak opcji wypłacenia pieniędzy z oszczędności
+   Status: wdrożone
+   Notatka: w formularzu istnieje pole `saving_type` z opcjami `savings.types.deposit`/`savings.types.withdrawal`; można rejestrować wypłaty.
+
+8. Filtrowanie po datach – zamiana dwóch pól daty na predefiniowane zakresy (bieżący miesiąc, ostatni miesiąc, ostatni kwartał, ostatnie półrocze, ostatni rok, wszystko)
+   Status: nie udało się naprawić
+   Notatka: widok filtrów nadal wykorzystuje pola `startDate` i `endDate`; brak implementacji zakresów predefiniowanych.

@@ -57,6 +57,7 @@ export const getSavingsSummary = async (): Promise<SavingsSummary> => {
       total_savings: 0,
       category_totals: {
         [SavingCategory.EMERGENCY_FUND]: 0,
+        [SavingCategory.SIX_MONTH_FUND]: 0,
         [SavingCategory.RETIREMENT]: 0,
         [SavingCategory.COLLEGE]: 0,
         [SavingCategory.GENERAL]: 0,

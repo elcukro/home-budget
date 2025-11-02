@@ -7,6 +7,7 @@ from app.database import Base
 
 class SavingCategory(str, enum.Enum):
     EMERGENCY_FUND = "emergency_fund"
+    SIX_MONTH_FUND = "six_month_fund"
     RETIREMENT = "retirement"
     COLLEGE = "college"
     GENERAL = "general"

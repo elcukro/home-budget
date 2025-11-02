@@ -6,6 +6,15 @@ import { FormattedMessage } from 'react-intl';
 
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
 const WARNING_DURATION = 60 * 1000; // 60 seconds in milliseconds
+const DOCUMENT_ACTIVITY_EVENTS = [
+  'mousedown',
+  'keydown',
+  'touchstart',
+  'mousemove',
+  'touchmove',
+  'wheel',
+] as const;
+const WINDOW_ACTIVITY_EVENTS = ['scroll'] as const;
 
 export default function InactivityChecker() {
   const { data: session } = useSession();
@@ -18,7 +27,7 @@ export default function InactivityChecker() {
     console.log('[InactivityChecker] Resetting timers');
     // Clear existing timers
     if (warningTimerRef.current) {
-      clearTimeout(warningTimerRef.current);
+      clearInterval(warningTimerRef.current);
       warningTimerRef.current = null;
     }
     if (activityTimerRef.current) {
@@ -56,10 +65,10 @@ export default function InactivityChecker() {
 
   // Reset timers on user activity
   const handleUserActivity = useCallback((e: Event) => {
-    // Ignore events if they're from the warning modal
+    // Ignore events if they're from within the warning modal itself
     if (
       e.target instanceof Element &&
-      (e.target.closest('[data-inactivity-warning]') || showWarning)
+      e.target.closest('[data-inactivity-warning]')
     ) {
       return;
     }
@@ -68,7 +77,7 @@ export default function InactivityChecker() {
       console.log('[InactivityChecker] User activity detected');
       resetTimers();
     }
-  }, [session, showWarning, resetTimers]);
+  }, [session, resetTimers]);
 
   // Initialize timers when session changes
   useEffect(() => {
@@ -79,7 +88,7 @@ export default function InactivityChecker() {
     return () => {
       // Cleanup timers
       if (warningTimerRef.current) {
-        clearTimeout(warningTimerRef.current);
+        clearInterval(warningTimerRef.current);
         warningTimerRef.current = null;
       }
       if (activityTimerRef.current) {
@@ -93,16 +102,22 @@ export default function InactivityChecker() {
   useEffect(() => {
     console.log('[InactivityChecker] Setting up event listeners, session exists:', !!session);
     if (session) {
-      const events = ['mousedown', 'keydown', 'touchstart'];
-      const options = { passive: true };
+      const options: AddEventListenerOptions = { passive: true };
 
-      events.forEach(event => {
+      DOCUMENT_ACTIVITY_EVENTS.forEach(event => {
         document.addEventListener(event, handleUserActivity, options);
       });
 
+      WINDOW_ACTIVITY_EVENTS.forEach(event => {
+        window.addEventListener(event, handleUserActivity, options);
+      });
+
       return () => {
-        events.forEach(event => {
-          document.removeEventListener(event, handleUserActivity);
+        DOCUMENT_ACTIVITY_EVENTS.forEach(event => {
+          document.removeEventListener(event, handleUserActivity, options);
+        });
+        WINDOW_ACTIVITY_EVENTS.forEach(event => {
+          window.removeEventListener(event, handleUserActivity, options);
         });
       };
     }

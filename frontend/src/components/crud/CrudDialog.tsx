@@ -32,7 +32,14 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useIntl } from "react-intl";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type FieldValues, type Path, type Resolver, type DefaultValues } from "react-hook-form";
+import {
+  useForm,
+  type FieldValues,
+  type Path,
+  type Resolver,
+  type DefaultValues,
+  type UseFormReturn,
+} from "react-hook-form";
 import type { ZodType } from "zod";
 
 type FieldComponent =
@@ -60,6 +67,8 @@ export interface FormFieldConfig<TFormValues extends FieldValues> {
   step?: string;
   min?: number;
   max?: number;
+  autoFocus?: boolean;
+  onValueChange?: (value: unknown, form: UseFormReturn<TFormValues>) => void;
 }
 
 export interface CrudDialogProps<TFormValues extends FieldValues> {
@@ -113,75 +122,6 @@ export function CrudDialog<TFormValues extends FieldValues>({
     await onSubmit(values);
   };
 
-  const renderField = (fieldConfig: FormFieldConfig<TFormValues>) => {
-    const { component, options, placeholderId, step, min, max, disabled } =
-      fieldConfig;
-
-    switch (component) {
-      case "textarea":
-        return (
-          <Textarea
-            disabled={disabled}
-            placeholder={
-              placeholderId
-                ? intl.formatMessage({ id: placeholderId })
-                : undefined
-            }
-          />
-        );
-      case "select":
-        return (
-          <Select disabled={disabled}>
-            <SelectTrigger>
-              <SelectValue
-                placeholder={
-                  placeholderId
-                    ? intl.formatMessage({ id: placeholderId })
-                    : undefined
-                }
-              />
-            </SelectTrigger>
-            <SelectContent>
-              {options?.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {intl.formatMessage({ id: option.labelId })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-      case "switch":
-        return <Switch disabled={disabled} />;
-      case "checkbox":
-        return <Checkbox disabled={disabled} />;
-      case "date":
-        return <Input type="date" disabled={disabled} />;
-      case "number":
-        return (
-          <Input
-            type="number"
-            step={step}
-            min={min}
-            max={max}
-            disabled={disabled}
-            inputMode="decimal"
-          />
-        );
-      case "text":
-      default:
-        return (
-          <Input
-            disabled={disabled}
-            placeholder={
-              placeholderId
-                ? intl.formatMessage({ id: placeholderId })
-                : undefined
-            }
-          />
-        );
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -214,7 +154,10 @@ export function CrudDialog<TFormValues extends FieldValues>({
                       {fieldConfig.component === "select" ? (
                         <Select
                           disabled={fieldConfig.disabled}
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            fieldConfig.onValueChange?.(value, form);
+                          }}
                           value={
                             field.value === undefined ||
                             field.value === null ||
@@ -223,7 +166,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
                               : String(field.value)
                           }
                         >
-                          <SelectTrigger>
+                          <SelectTrigger autoFocus={fieldConfig.autoFocus}>
                             <SelectValue
                               placeholder={
                                 fieldConfig.placeholderId
@@ -248,20 +191,34 @@ export function CrudDialog<TFormValues extends FieldValues>({
                       ) : fieldConfig.component === "switch" ? (
                         <Switch
                           checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            fieldConfig.onValueChange?.(checked, form);
+                          }}
                           disabled={fieldConfig.disabled}
                         />
                       ) : fieldConfig.component === "checkbox" ? (
                         <Checkbox
                           checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            fieldConfig.onValueChange?.(checked, form);
+                          }}
                           disabled={fieldConfig.disabled}
                         />
                       ) : fieldConfig.component === "textarea" ? (
                         <Textarea
                           {...field}
+                          onChange={(event) => {
+                            field.onChange(event);
+                            fieldConfig.onValueChange?.(
+                              event.target.value,
+                              form,
+                            );
+                          }}
                           value={(field.value as string) ?? ""}
                           disabled={fieldConfig.disabled}
+                          autoFocus={fieldConfig.autoFocus}
                           placeholder={
                             fieldConfig.placeholderId
                               ? intl.formatMessage({
@@ -273,6 +230,13 @@ export function CrudDialog<TFormValues extends FieldValues>({
                       ) : (
                         <Input
                           {...field}
+                          onChange={(event) => {
+                            field.onChange(event);
+                            fieldConfig.onValueChange?.(
+                              event.target.value,
+                              form,
+                            );
+                          }}
                           type={
                             fieldConfig.component === "number"
                               ? "number"
@@ -301,6 +265,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
                           min={fieldConfig.min}
                           max={fieldConfig.max}
                           disabled={fieldConfig.disabled}
+                          autoFocus={fieldConfig.autoFocus}
                           placeholder={
                             fieldConfig.placeholderId
                               ? intl.formatMessage({

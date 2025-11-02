@@ -5,6 +5,7 @@ from enum import Enum
 
 class SavingCategory(str, Enum):
     EMERGENCY_FUND = "emergency_fund"
+    SIX_MONTH_FUND = "six_month_fund"
     RETIREMENT = "retirement"
     COLLEGE = "college"
     GENERAL = "general"

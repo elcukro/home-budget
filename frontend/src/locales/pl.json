@@ -18,6 +18,8 @@
     "createdAt": "Data utworzenia",
     "mustBeLoggedIn": "Musisz być zalogowany, aby wykonać tę akcję",
     "refresh": "Odśwież",
+    "recurring": "Cykliczny",
+    "oneOff": "Jednorazowy",
     "months": {
       "1": "Styczeń",
       "2": "Luty",
@@ -379,6 +381,34 @@
     "loadError": "Nie udało się załadować przychodów. Spróbuj ponownie później.",
     "actions": {
       "add": "Dodaj przychód"
+    },
+    "filters": {
+      "monthLabel": "Miesiąc",
+      "month": {
+        "all": "Wszystkie miesiące"
+      }
+    },
+    "summary": {
+      "totalLabel": "Łączne przychody ({month})",
+      "averageLabel": "Średni miesięczny przychód",
+      "averageHint": "Na podstawie zarejestrowanych miesięcy.",
+      "breakdownLabel": "Struktura przychodów",
+      "recurring": "Cykliczne",
+      "oneOff": "Nieregularne",
+      "breakdownHint": "Im więcej przewidywalnych wpływów, tym łatwiej planować budżet."
+    },
+    "summaryTotals": {
+      "recurring": "Suma cyklicznych",
+      "oneOff": "Suma nieregularnych",
+      "total": "Łącznie"
+    },
+    "categoryHints": {
+      "salary": "Stała pensja netto z umowy o pracę.",
+      "freelance": "Przychody z umów zleceń, dzieła lub działalności na boku.",
+      "investments": "Dywidendy, odsetki lub inne zyski z inwestycji.",
+      "rental": "Dochód z wynajmu mieszkania lub nieruchomości.",
+      "other": "Pozostałe źródła – np. darowizny, stypendia czy świadczenia.",
+      "learnMore": "Szczegóły"
     },
     "categories": {
       "salary": "Wynagrodzenie",
@@ -910,8 +940,9 @@
       "add": "Dodaj oszczędność"
     },
     "categories": {
-      "emergency_fund": "Fundusz awaryjny",
-      "retirement": "Emerytura",
+    "emergency_fund": "Fundusz awaryjny",
+    "six_month_fund": "Fundusz 6-miesięczny",
+    "retirement": "Emerytura",
       "college": "Fundusz edukacyjny",
       "general": "Ogólne oszczędności",
       "investment": "Inwestycje",
@@ -925,14 +956,43 @@
       "totalSavings": "Łączne oszczędności",
       "monthlyContribution": "Miesięczna składka",
       "recentTransactions": "Ostatnie transakcje",
-      "noRecent": "Brak ostatnich transakcji"
+      "noRecent": "Brak ostatnich transakcji",
+      "changePositive": "↑ {amount} vs {previousMonth}",
+      "changeNegative": "↓ {amount} vs {previousMonth}",
+      "changeNeutral": "Brak zmian vs {previousMonth}",
+      "changeFirst": "Pierwszy miesiąc oszczędzania (+{amount}) – świetny start!",
+      "changeNoData": "Brak danych historycznych.",
+      "topCategory": "Największy udział: {category}",
+      "monthlyContributionHint": "W tym miesiącu planujesz odłożyć ok. {amount}.",
+      "monthlyContributionDescription": "To średnia suma wpłat z bieżącego miesiąca. Dobry moment, aby urealnić cele oszczędnościowe.",
+      "recentHint": "Najnowsze wpłaty i wypłaty z ostatnich tygodni.",
+      "recentToggle": {
+        "expand": "Pokaż więcej",
+        "collapse": "Pokaż mniej"
+      },
+      "viewAll": "Zobacz wszystkie transakcje",
+      "trendLabel": "Trend 6 miesięcy",
+      "emergencyFund": "Fundusz awaryjny",
+      "emergencyProgress": "Postęp",
+      "emergencyHint": "Odkładaj regularnie, aby osiągnąć pełny fundusz bezpieczeństwa."
+    },
+    "cta": {
+      "title": "Dodaj nowy cel oszczędnościowy",
+      "description": "Nazwij go, ustal kwotę docelową i monitoruj postępy.",
+      "button": "Dodaj cel"
     },
     "filters": {
       "category": "Wszystkie kategorie",
       "startDate": "Data początkowa",
       "endDate": "Data końcowa",
       "apply": "Zastosuj filtry",
-      "clear": "Wyczyść filtry"
+      "clear": "Wyczyść filtry",
+      "typeLabel": "Typ transakcji",
+      "type": {
+        "all": "Wszystkie typy",
+        "deposit": "Wpłaty",
+        "withdrawal": "Wypłaty"
+      }
     },
     "form": {
       "category": "Kategoria",
@@ -952,9 +1012,15 @@
       "type": "Typ",
       "recurring": "Cykliczna?",
       "targetAmount": "Cel",
+      "balanceAfter": "Saldo po transakcji",
       "actions": "Akcje"
     },
     "transactions": "Transakcje",
+    "summaryTotals": {
+      "deposits": "Łączne wpłaty",
+      "withdrawals": "Łączne wypłaty",
+      "net": "Saldo netto"
+    },
     "toast": {
       "createSuccess": "Oszczędność została pomyślnie dodana.",
       "updateSuccess": "Oszczędność została pomyślnie zaktualizowana.",

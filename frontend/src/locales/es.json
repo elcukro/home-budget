@@ -11,6 +11,8 @@
     "yes": "Sí",
     "no": "No",
     "actions": "Acciones",
+    "recurring": "Recurrente",
+    "oneOff": "Único",
     "select": "Seleccionar...",
     "appName": "Presupuesto del hogar",
     "months": {
@@ -268,18 +270,81 @@
     }
   },
   "income": {
-    "title": "Gestión de Ingresos",
-    "addNew": "Agregar Nuevo Ingreso",
-    "source": "Fuente",
-    "amount": "Monto",
-    "date": "Fecha",
-    "recurring": "Ingreso Mensual Recurrente",
-    "noEntries": "Aún no hay ingresos",
-    "tooltips": {
-      "source": "Ingrese la fuente de sus ingresos (ej., Salario, Freelance, Inversión)",
-      "amount": "Ingrese el monto en su moneda seleccionada",
-      "date": "Seleccione la fecha cuando recibió o espera recibir este ingreso",
-      "recurring": "Marque esto si recibe este ingreso regularmente cada mes (ej., salario)"
+    "title": "Gestión de ingresos",
+    "subtitle": "Controla ingresos recurrentes y puntuales en un solo lugar.",
+    "incomeHistory": "Lista de ingresos",
+    "noEntries": "Aún no hay registros de ingreso",
+    "loadError": "No se pudieron cargar los ingresos. Inténtalo más tarde.",
+    "actions": {
+      "add": "Agregar ingreso"
+    },
+    "filters": {
+      "monthLabel": "Mes",
+      "month": {
+        "all": "Todos los meses"
+      }
+    },
+    "summary": {
+      "totalLabel": "Ingresos totales ({month})",
+      "averageLabel": "Promedio mensual",
+      "averageHint": "Calculado con los meses registrados.",
+      "breakdownLabel": "Distribución de ingresos",
+      "recurring": "Recurrentes",
+      "oneOff": "Ocasionales",
+      "breakdownHint": "Busca mantener la mayor parte de tus ingresos estables y planifica los picos."
+    },
+    "summaryTotals": {
+      "recurring": "Total recurrente",
+      "oneOff": "Total ocasional",
+      "total": "Total general"
+    },
+    "categoryHints": {
+      "salary": "Sueldo neto fijo de tu empleo.",
+      "freelance": "Ingresos por trabajos independientes o por contrato.",
+      "investments": "Dividendos, intereses u otros retornos de inversiones.",
+      "rental": "Ingreso neto por alquiler de propiedades.",
+      "other": "Cualquier otra fuente: becas, ayudas, donaciones.",
+      "learnMore": "Ver detalle"
+    },
+    "categories": {
+      "salary": "Salario",
+      "freelance": "Freelance",
+      "investments": "Inversiones",
+      "rental": "Renta",
+      "other": "Otros"
+    },
+    "form": {
+      "category": "Categoría",
+      "category.select": "Selecciona una categoría...",
+      "description": "Descripción",
+      "amount": "Monto",
+      "date": "Fecha",
+      "recurring": "¿Ingreso mensual recurrente?"
+    },
+    "table": {
+      "category": "Categoría",
+      "description": "Descripción",
+      "amount": "Monto",
+      "date": "Fecha",
+      "recurring": "Frecuencia",
+      "actions": "Acciones"
+    },
+    "dialog": {
+      "createTitle": "Agregar ingreso",
+      "editTitle": "Editar ingreso",
+      "createSubmit": "Agregar ingreso",
+      "editSubmit": "Guardar cambios"
+    },
+    "toast": {
+      "createSuccess": "Ingreso agregado correctamente.",
+      "updateSuccess": "Ingreso actualizado correctamente.",
+      "deleteSuccess": "Ingreso eliminado correctamente.",
+      "genericError": "Algo salió mal. Inténtalo de nuevo."
+    },
+    "deleteDialog": {
+      "title": "Eliminar registro de ingreso",
+      "description": "¿Seguro que deseas eliminar este ingreso? Esta acción no se puede deshacer.",
+      "confirm": "Eliminar"
     }
   },
   "expenses": {
@@ -465,6 +530,114 @@
     "table": {
       "interestTooltip": "Tasa nominal anual (APR)."
     }
+  },
+  "savings": {
+    "title": "Gestión de Ahorros",
+    "subtitle": "Supervisa tus depósitos, retiros y metas de ahorro en un solo lugar.",
+    "actions": {
+      "add": "Agregar ahorro"
+    },
+    "categories": {
+    "emergency_fund": "Fondo de emergencia",
+    "six_month_fund": "Fondo de 6 meses",
+    "retirement": "Jubilación",
+      "college": "Fondo educativo",
+      "general": "Ahorros generales",
+      "investment": "Inversiones",
+      "other": "Otros"
+    },
+    "types": {
+      "deposit": "Depósito",
+      "withdrawal": "Retiro"
+    },
+    "summary": {
+      "totalSavings": "Ahorros totales",
+      "monthlyContribution": "Aporte mensual",
+      "recentTransactions": "Transacciones recientes",
+      "noRecent": "No hay transacciones recientes",
+      "changePositive": "↑ {amount} vs {previousMonth}",
+      "changeNegative": "↓ {amount} vs {previousMonth}",
+      "changeNeutral": "Sin cambios vs {previousMonth}",
+      "changeFirst": "Primer mes registrado — ¡ahorraste {amount}!",
+      "changeNoData": "Aún no hay datos históricos.",
+      "topCategory": "Mayor participación: {category}",
+      "monthlyContributionHint": "Planeas ahorrar alrededor de {amount} este mes.",
+      "monthlyContributionDescription": "Basado en los depósitos registrados este mes. Ajusta tu objetivo para mantener el ritmo.",
+      "recentHint": "Últimos depósitos y retiros de las últimas semanas.",
+      "recentToggle": {
+        "expand": "Mostrar más",
+        "collapse": "Mostrar menos"
+      },
+      "viewAll": "Ver todas las transacciones",
+      "trendLabel": "Tendencia 6 meses",
+      "emergencyFund": "Fondo de emergencia",
+      "emergencyProgress": "Progreso",
+      "emergencyHint": "Sigue aportando para alcanzar tu colchón de seguridad."
+    },
+    "cta": {
+      "title": "Agrega un nuevo objetivo de ahorro",
+      "description": "Ponle nombre, define el monto objetivo y sigue tu progreso con cada depósito.",
+      "button": "Crear objetivo"
+    },
+    "filters": {
+      "category": "Todas las categorías",
+      "startDate": "Fecha de inicio",
+      "endDate": "Fecha de fin",
+      "apply": "Aplicar filtros",
+      "clear": "Limpiar filtros",
+      "typeLabel": "Tipo de transacción",
+      "type": {
+        "all": "Todos los tipos",
+        "deposit": "Depósitos",
+        "withdrawal": "Retiros"
+      }
+    },
+    "form": {
+      "category": "Categoría",
+      "category.select": "Selecciona una categoría...",
+      "description": "Descripción",
+      "amount": "Monto",
+      "date": "Fecha",
+      "savingType": "Tipo",
+      "isRecurring": "Ahorro recurrente",
+      "targetAmount": "Monto objetivo"
+    },
+    "table": {
+      "category": "Categoría",
+      "description": "Descripción",
+      "amount": "Monto",
+      "date": "Fecha",
+      "type": "Tipo",
+      "recurring": "¿Recurrente?",
+      "targetAmount": "Objetivo",
+      "balanceAfter": "Saldo después",
+      "actions": "Acciones"
+    },
+    "transactions": "Transacciones",
+    "summaryTotals": {
+      "deposits": "Depósitos totales",
+      "withdrawals": "Retiros totales",
+      "net": "Ahorro neto"
+    },
+    "toast": {
+      "createSuccess": "Ahorro agregado correctamente.",
+      "updateSuccess": "Ahorro actualizado correctamente.",
+      "deleteSuccess": "Ahorro eliminado correctamente.",
+      "genericError": "Algo salió mal. Inténtalo nuevamente."
+    },
+    "dialog": {
+      "createTitle": "Agregar registro de ahorro",
+      "editTitle": "Editar registro de ahorro",
+      "createSubmit": "Agregar ahorro",
+      "editSubmit": "Guardar cambios"
+    },
+    "deleteDialog": {
+      "title": "Eliminar registro de ahorro",
+      "description": "¿Seguro que deseas eliminar este ahorro? Esta acción no se puede deshacer.",
+      "confirm": "Eliminar"
+    },
+    "noEntries": "Aún no hay registros de ahorro",
+    "loadError": "No se pudieron cargar los ahorros. Inténtalo nuevamente más tarde."
   },
   "reports": {
     "title": "Informes Financieros",

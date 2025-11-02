@@ -18,6 +18,8 @@
     "mustBeLoggedIn": "You must be logged in to perform this action",
     "createdAt": "Created At",
     "refresh": "Refresh",
+    "recurring": "Recurring",
+    "oneOff": "One-off",
     "months": {
       "1": "January",
       "2": "February",
@@ -410,6 +412,34 @@
     "actions": {
       "add": "Add income"
     },
+    "filters": {
+      "monthLabel": "Month",
+      "month": {
+        "all": "All months"
+      }
+    },
+    "summary": {
+      "totalLabel": "Total income ({month})",
+      "averageLabel": "Average monthly income",
+      "averageHint": "Based on the months we have on record.",
+      "breakdownLabel": "Recurring vs one-off",
+      "recurring": "Recurring",
+      "oneOff": "One-off",
+      "breakdownHint": "Keep most of your income predictable and plan ahead for ad-hoc cash flow."
+    },
+    "summaryTotals": {
+      "recurring": "Recurring total",
+      "oneOff": "One-off total",
+      "total": "Overall total"
+    },
+    "categoryHints": {
+      "salary": "Regular take-home pay from your employment contract.",
+      "freelance": "Income from freelancing, gigs, or contract projects.",
+      "investments": "Dividends, interest, or other investment returns.",
+      "rental": "Net income from renting out property.",
+      "other": "Any other source such as grants, gifts, or stipends.",
+      "learnMore": "Learn more"
+    },
     "categories": {
       "salary": "Salary",
       "freelance": "Freelance",
@@ -430,7 +460,7 @@
       "description": "Description",
       "amount": "Amount",
       "date": "Date",
-      "recurring": "Recurring?",
+      "recurring": "Frequency",
       "actions": "Actions"
     },
     "dialog": {
@@ -924,8 +954,9 @@
       "add": "Add saving"
     },
     "categories": {
-      "emergency_fund": "Emergency Fund",
-      "retirement": "Retirement",
+    "emergency_fund": "Emergency Fund",
+    "six_month_fund": "Six-Month Fund",
+    "retirement": "Retirement",
       "college": "College Fund",
       "general": "General Savings",
       "investment": "Investments",
@@ -939,14 +970,43 @@
       "totalSavings": "Total Savings",
       "monthlyContribution": "Monthly Contribution",
       "recentTransactions": "Recent Transactions",
-      "noRecent": "No recent transactions"
+      "noRecent": "No recent transactions",
+      "changePositive": "↑ {amount} vs {previousMonth}",
+      "changeNegative": "↓ {amount} vs {previousMonth}",
+      "changeNeutral": "No change vs {previousMonth}",
+      "changeFirst": "First month recorded — {amount} saved!",
+      "changeNoData": "No historical data yet.",
+      "topCategory": "Largest share: {category}",
+      "monthlyContributionHint": "You're planning to save about {amount} this month.",
+      "monthlyContributionDescription": "Based on deposits recorded this month. Adjust your goal to stay on track.",
+      "recentHint": "Latest deposits and withdrawals from recent weeks.",
+      "recentToggle": {
+        "expand": "Show more",
+        "collapse": "Show less"
+      },
+      "viewAll": "View all transactions",
+      "trendLabel": "6-month trend",
+      "emergencyFund": "Emergency fund",
+      "emergencyProgress": "Progress",
+      "emergencyHint": "Keep contributing regularly to reach your safety cushion."
+    },
+    "cta": {
+      "title": "Add a new savings goal",
+      "description": "Name your goal, set a target amount, and track your progress with each deposit.",
+      "button": "Create goal"
     },
     "filters": {
       "category": "All categories",
       "startDate": "Start date",
       "endDate": "End date",
       "apply": "Apply filters",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "typeLabel": "Transaction type",
+      "type": {
+        "all": "All types",
+        "deposit": "Deposits",
+        "withdrawal": "Withdrawals"
+      }
     },
     "form": {
       "category": "Category",
@@ -966,9 +1026,15 @@
       "type": "Type",
       "recurring": "Recurring?",
       "targetAmount": "Target",
+      "balanceAfter": "Balance after",
       "actions": "Actions"
     },
     "transactions": "Transactions",
+    "summaryTotals": {
+      "deposits": "Total deposits",
+      "withdrawals": "Total withdrawals",
+      "net": "Net savings"
+    },
     "toast": {
       "createSuccess": "Saving added successfully.",
       "updateSuccess": "Saving updated successfully.",
