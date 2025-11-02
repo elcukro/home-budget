@@ -1,9 +1,15 @@
+import logging
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from .. import models, database
 from pydantic import BaseModel
+from ..logging_utils import make_conditional_print
+
+logger = logging.getLogger(__name__)
+print = make_conditional_print(__name__)
 
 router = APIRouter(
     prefix="/users",

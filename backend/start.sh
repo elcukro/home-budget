@@ -37,26 +37,61 @@ fi
 
 # Wait for PostgreSQL to be ready.
 echo "Waiting for PostgreSQL at ${POSTGRES_HOST}:${POSTGRES_PORT}..."
-until pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; do
-  sleep 1
-done
-echo "PostgreSQL is ready!"
+if pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; then
+  echo "PostgreSQL is ready!"
+else
+  if [[ "${POSTGRES_HOST}" == "localhost" || "${POSTGRES_HOST}" == "127.0.0.1" ]]; then
+    POSTGRES_BIN=${POSTGRES_BIN:-/opt/homebrew/opt/postgresql@14/bin/postgres}
+    POSTGRES_DATA_DIR=${POSTGRES_DATA_DIR:-/opt/homebrew/var/postgresql@14}
+    POSTGRES_LOG_FILE=${POSTGRES_LOG_FILE:-/tmp/home-budget-postgres.log}
 
-# Migration scripts are disabled for manual execution during local development.
-# echo "Running migrations..."
-# python migrations/add_financial_freedom_table.py || {
-#   echo "Migration failed, trying alternative approach..."
-#   python create_financial_freedom_table.py
-# }
+    if [[ ! -x "${POSTGRES_BIN}" ]]; then
+      echo "PostgreSQL binary not found at ${POSTGRES_BIN}. Install PostgreSQL or update POSTGRES_BIN."
+      exit 1
+    fi
+    if [[ ! -d "${POSTGRES_DATA_DIR}" ]]; then
+      echo "PostgreSQL data directory ${POSTGRES_DATA_DIR} does not exist. Initialize it or update POSTGRES_DATA_DIR."
+      exit 1
+    fi
 
-# Check database schema
-echo "Checking database schema..."
-python check_schema.py
+    echo "PostgreSQL not running; starting with ${POSTGRES_BIN} -D ${POSTGRES_DATA_DIR}"
+    "${POSTGRES_BIN}" -D "${POSTGRES_DATA_DIR}" >>"${POSTGRES_LOG_FILE}" 2>&1 &
+    POSTGRES_PID=$!
 
-# Create test user
-echo "Creating test user..."
-python create_test_user.py
+    until pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; do
+      if ! kill -0 "${POSTGRES_PID}" >/dev/null 2>&1; then
+        echo "PostgreSQL failed to start. See ${POSTGRES_LOG_FILE} for details."
+        exit 1
+      fi
+      sleep 1
+    done
+    echo "PostgreSQL started (PID ${POSTGRES_PID}). Logs: ${POSTGRES_LOG_FILE}"
+  else
+    until pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; do
+      sleep 1
+    done
+    echo "PostgreSQL is ready!"
+  fi
+fi
+
+# Ensure database schema exists.
+echo "Initializing database (ensuring tables exist)..."
+python init_db.py
+
+if [[ "${RUN_SCHEMA_CHECK:-false}" == "true" ]]; then
+  echo "Checking database schema..."
+  python check_schema.py
+fi
 
 # Start the application
 echo "Starting the application..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+UVICORN_LOG_LEVEL=${UVICORN_LOG_LEVEL:-warning}
+UVICORN_ACCESS_LOG=${UVICORN_ACCESS_LOG:-false}
+UVICORN_PORT=${UVICORN_PORT:-8000}
+
+UVICORN_ARGS=(app.main:app --host 0.0.0.0 --port "${UVICORN_PORT}" --reload --log-level "${UVICORN_LOG_LEVEL}")
+if [[ "${UVICORN_ACCESS_LOG}" != "true" ]]; then
+  UVICORN_ARGS+=(--no-access-log)
+fi
+
+exec uvicorn "${UVICORN_ARGS[@]}"

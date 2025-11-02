@@ -1,4 +1,5 @@
 import { SavingCategory, SavingsSummary } from '@/types/financial-freedom';
+import { logger } from '@/lib/logger';
 
 // Cache for API responses
 interface ApiCache {
@@ -18,6 +19,24 @@ const CACHE_DURATION = 1 * 60 * 1000;
 // In-memory cache
 const apiCache: ApiCache = {};
 
+const createEmptySummary = (): SavingsSummary => ({
+  total_savings: 0,
+  category_totals: {
+    [SavingCategory.EMERGENCY_FUND]: 0,
+    [SavingCategory.SIX_MONTH_FUND]: 0,
+    [SavingCategory.RETIREMENT]: 0,
+    [SavingCategory.COLLEGE]: 0,
+    [SavingCategory.GENERAL]: 0,
+    [SavingCategory.INVESTMENT]: 0,
+    [SavingCategory.OTHER]: 0,
+  },
+  monthly_contribution: 0,
+  recent_transactions: [],
+  emergency_fund: 0,
+  emergency_fund_target: 0,
+  emergency_fund_progress: 0,
+});
+
 // Removed clearApiCache function as it's no longer needed
 
 /**
@@ -30,7 +49,7 @@ export const getSavingsSummary = async (): Promise<SavingsSummary> => {
     apiCache.savingsSummary && 
     now - apiCache.savingsSummary.timestamp < CACHE_DURATION
   ) {
-    console.log('Using cached savings summary');
+    logger.debug('Using cached savings summary');
     return apiCache.savingsSummary.data;
   }
   
@@ -42,31 +61,29 @@ export const getSavingsSummary = async (): Promise<SavingsSummary> => {
     }
     
     const data = await response.json();
+    const normalized: SavingsSummary = {
+      total_savings: data.total_savings ?? 0,
+      category_totals: {
+        ...createEmptySummary().category_totals,
+        ...(data.category_totals ?? {}),
+      },
+      monthly_contribution: data.monthly_contribution ?? 0,
+      recent_transactions: data.recent_transactions ?? [],
+      emergency_fund: data.emergency_fund ?? 0,
+      emergency_fund_target: data.emergency_fund_target ?? 0,
+      emergency_fund_progress: data.emergency_fund_progress ?? 0,
+    };
     
     // Cache the response
     apiCache.savingsSummary = {
-      data,
-      timestamp: now
+      data: normalized,
+      timestamp: now,
     };
     
-    return data;
+    return normalized;
   } catch (error) {
-    console.error('Error fetching savings summary:', error);
-    // Return default empty summary
-    return {
-      total_savings: 0,
-      category_totals: {
-        [SavingCategory.EMERGENCY_FUND]: 0,
-        [SavingCategory.SIX_MONTH_FUND]: 0,
-        [SavingCategory.RETIREMENT]: 0,
-        [SavingCategory.COLLEGE]: 0,
-        [SavingCategory.GENERAL]: 0,
-        [SavingCategory.INVESTMENT]: 0,
-        [SavingCategory.OTHER]: 0
-      },
-      monthly_contribution: 0,
-      recent_transactions: []
-    };
+    logger.error('Error fetching savings summary:', error);
+    return createEmptySummary();
   }
 };
 
@@ -78,7 +95,7 @@ export const getEmergencyFundSavings = async (): Promise<number> => {
     const summary = await getSavingsSummary();
     return summary.category_totals[SavingCategory.EMERGENCY_FUND] || 0;
   } catch (error) {
-    console.error('Error fetching emergency fund savings:', error);
+    logger.error('Error fetching emergency fund savings:', error);
     return 0;
   }
 };
@@ -91,7 +108,7 @@ export const getGeneralSavings = async (): Promise<number> => {
     const summary = await getSavingsSummary();
     return summary.category_totals[SavingCategory.GENERAL] || 0;
   } catch (error) {
-    console.error('Error fetching general savings:', error);
+    logger.error('Error fetching general savings:', error);
     return 0;
   }
 };
@@ -106,7 +123,7 @@ export const getMonthlyRecurringExpenses = async (): Promise<number> => {
     apiCache.monthlyExpenses && 
     now - apiCache.monthlyExpenses.timestamp < CACHE_DURATION
   ) {
-    console.log('Using cached monthly expenses');
+    logger.debug('Using cached monthly expenses');
     return apiCache.monthlyExpenses.data;
   }
   
@@ -128,7 +145,7 @@ export const getMonthlyRecurringExpenses = async (): Promise<number> => {
     
     if (!response.ok) {
       // For other errors, log a warning
-      console.warn('Monthly expenses endpoint error:', response.status, response.statusText);
+      logger.warn('Monthly expenses endpoint error:', response.status, response.statusText);
       
       // Cache the default value
       const defaultValue = 3000;
@@ -151,7 +168,7 @@ export const getMonthlyRecurringExpenses = async (): Promise<number> => {
     
     return monthlyExpenses;
   } catch (error) {
-    console.error('Error fetching monthly expenses:', error);
+    logger.error('Error fetching monthly expenses:', error);
     return 3000; // Default value for demo purposes
   }
 }; 

@@ -4,6 +4,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useIntl } from "react-intl";
+import { logger } from "@/lib/logger";
 
 export default function SignIn() {
   const searchParams = useSearchParams();
@@ -15,7 +16,7 @@ export default function SignIn() {
 
   useEffect(() => {
     if (session?.user) {
-      console.log('[auth][debug] Redirecting authenticated user to:', callbackUrl);
+      logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl);
       router.replace(callbackUrl);
     }
   }, [session, router, callbackUrl]);
@@ -34,13 +35,13 @@ export default function SignIn() {
   }
 
   const handleSignIn = async () => {
-    console.log('[auth][debug] Initiating Google sign-in...');
+    logger.debug('[auth][debug] Initiating Google sign-in...');
     try {
       await signIn("google", { 
         callbackUrl,
       });
     } catch (error) {
-      console.error('[auth][error] Sign-in error:', error);
+      logger.error('[auth][error] Sign-in error:', error);
     }
   };
 

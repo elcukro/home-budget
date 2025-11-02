@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -8,16 +9,16 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  console.log('DELETE request received for income ID:', params.id);
+  logger.debug('DELETE request received for income ID:', params.id);
   
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      console.log('Unauthorized: No session or email');
+      logger.warn('Unauthorized: No session or email');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('User email from session:', session.user.email);
+    logger.debug('User email from session:', session.user.email);
 
     const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/income/${params.id}`, {
       method: 'DELETE',
@@ -34,7 +35,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Failed to delete income:', error);
+    logger.error('Failed to delete income:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete income' },
       { status: 500 }

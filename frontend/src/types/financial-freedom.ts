@@ -52,4 +52,7 @@ export interface SavingsSummary {
   category_totals: Record<SavingCategory, number>;
   monthly_contribution: number;
   recent_transactions: Saving[];
-} 
+  emergency_fund: number;
+  emergency_fund_target: number;
+  emergency_fund_progress: number;
+}

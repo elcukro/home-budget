@@ -1,4 +1,5 @@
 import { BabyStep, FinancialFreedomData } from '@/types/financial-freedom';
+import { logger } from '@/lib/logger';
 import { fetchWithAuth } from './fetchWithAuth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -13,7 +14,7 @@ export const getFinancialFreedomData = async (): Promise<FinancialFreedomData> =
     
     return await response.json();
   } catch (error) {
-    console.error('Error fetching financial freedom data:', error);
+    logger.error('Error fetching financial freedom data:', error);
     throw error;
   }
 };
@@ -34,7 +35,7 @@ export const updateFinancialFreedomData = async (data: { steps: BabyStep[], star
     
     return await response.json();
   } catch (error) {
-    console.error('Error updating financial freedom data:', error);
+    logger.error('Error updating financial freedom data:', error);
     throw error;
   }
 };

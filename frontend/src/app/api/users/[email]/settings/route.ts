@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -32,7 +33,7 @@ export async function GET(
     const settings = await response.json();
     return NextResponse.json(settings);
   } catch (error) {
-    console.error('[Settings API] Error fetching settings:', error);
+    logger.error('[Settings API] Error fetching settings:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal Server Error' },
       { status: 500 }
@@ -71,7 +72,7 @@ export async function PUT(
     const settings = await response.json();
     return NextResponse.json(settings);
   } catch (error) {
-    console.error('[Settings API] Error updating settings:', error);
+    logger.error('[Settings API] Error updating settings:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal Server Error' },
       { status: 500 }

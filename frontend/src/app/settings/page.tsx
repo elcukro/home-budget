@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -102,7 +103,7 @@ export default function SettingsPage() {
       setSettings(data);
       setBankingConnections(data.banking?.connections ?? []);
     } catch (err) {
-      console.error("[Settings] Failed to fetch settings", err);
+      logger.error("[Settings] Failed to fetch settings", err);
       setError(intl.formatMessage({ id: "settings.messages.error" }));
     } finally {
       setLoading(false);
@@ -140,7 +141,7 @@ export default function SettingsPage() {
         title: intl.formatMessage({ id: "settings.messages.success" }),
       });
     } catch (err) {
-      console.error("[Settings] Failed to update settings", err);
+      logger.error("[Settings] Failed to update settings", err);
       toast({
         title: intl.formatMessage({ id: "settings.messages.error" }),
         variant: "destructive",
@@ -180,7 +181,7 @@ export default function SettingsPage() {
         title: intl.formatMessage({ id: "settings.messages.exportSuccess" }),
       });
     } catch (err) {
-      console.error("[Settings] Export failed", err);
+      logger.error("[Settings] Export failed", err);
       toast({
         title: intl.formatMessage({ id: "settings.messages.exportError" }),
         variant: "destructive",
@@ -237,7 +238,7 @@ export default function SettingsPage() {
       setShouldClearBeforeImport(false);
       void fetchSettings();
     } catch (err) {
-      console.error("[Settings] Import failed", err);
+      logger.error("[Settings] Import failed", err);
       toast({
         title: intl.formatMessage({ id: 'settings.messages.importError' }),
         variant: 'destructive',
@@ -264,7 +265,7 @@ export default function SettingsPage() {
       });
       setBankingConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
     } catch (err) {
-      console.error("[Settings] Failed to delete banking connection", err);
+      logger.error("[Settings] Failed to delete banking connection", err);
       toast({
         title: intl.formatMessage({ id: "settings.messages.bankDeleteError" }),
         variant: "destructive",

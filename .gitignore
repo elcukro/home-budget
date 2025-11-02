@@ -23,6 +23,10 @@ var/
 .installed.cfg
 *.egg
 
+# Allow React utility modules under frontend/src/lib
+!frontend/src/lib/
+!frontend/src/lib/**
+
 # Node
 node_modules/
 npm-debug.log*

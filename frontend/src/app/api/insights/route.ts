@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
     const insights = await response.json();
     return NextResponse.json(insights);
   } catch (error) {
-    console.error("Error in GET /api/insights:", error);
+    logger.error("Error in GET /api/insights:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
     const insights = await response.json();
     return NextResponse.json(insights);
   } catch (error) {
-    console.error("Error in POST /api/insights:", error);
+    logger.error("Error in POST /api/insights:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 } 

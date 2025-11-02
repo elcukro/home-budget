@@ -13,6 +13,8 @@ import {
   PointElement,
   BarController,
   LineController,
+  type ChartData,
+  type ChartOptions,
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 import { useEffect, useState } from 'react';
@@ -39,6 +41,8 @@ interface CashFlowData {
   netFlow: number;
   year?: number;
 }
+
+type CombinedChartType = 'bar' | 'line'
 
 interface CashFlowChartProps {
   title?: string;
@@ -126,7 +130,7 @@ export default function CashFlowChart({ title, data, formatCurrency }: CashFlowC
         borderDash: [6, 3],
       },
     ],
-  };
+  } satisfies ChartData<CombinedChartType>;
 
   const axisColor = 'rgba(31, 28, 26, 0.9)';
   const gridColor = 'rgba(31, 28, 26, 0.16)';
@@ -140,7 +144,7 @@ export default function CashFlowChart({ title, data, formatCurrency }: CashFlowC
     },
     animation: {
       duration: 600,
-      easing: 'easeOutQuart',
+      easing: 'easeOutQuart' as const,
     },
     plugins: {
       legend: {
@@ -211,7 +215,7 @@ export default function CashFlowChart({ title, data, formatCurrency }: CashFlowC
         },
       },
     },
-  };
+  } satisfies ChartOptions<CombinedChartType>;
 
   const heading = title || intl.formatMessage({ id: 'dashboard.cashFlow.title' });
 

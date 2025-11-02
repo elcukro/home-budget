@@ -51,6 +51,7 @@ import {
   validateDateString,
 } from "@/lib/validation";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 type SavingsDateRangePreset =
   | "all"
@@ -400,7 +401,7 @@ export const SavingsManager = () => {
       const data: SavingsSummary = await response.json();
       setSummary(data);
     } catch (error) {
-      console.error("[Savings] Failed to fetch summary", error);
+      logger.error("[Savings] Failed to fetch summary", error);
     }
   }, []);
 
@@ -423,7 +424,7 @@ export const SavingsManager = () => {
       const data: Saving[] = await response.json();
       setSavings(data);
     } catch (error) {
-      console.error("[Savings] Failed to fetch savings", error);
+      logger.error("[Savings] Failed to fetch savings", error);
       setApiError(intl.formatMessage({ id: "savings.loadError" }));
     } finally {
       setLoading(false);
@@ -531,7 +532,7 @@ export const SavingsManager = () => {
 
       handleDialogClose(false);
     } catch (error) {
-      console.error("[Savings] Failed to submit form", error);
+      logger.error("[Savings] Failed to submit form", error);
       showErrorToast("savings.toast.genericError");
     } finally {
       setIsSubmitting(false);
@@ -563,7 +564,7 @@ export const SavingsManager = () => {
         title: intl.formatMessage({ id: "savings.toast.deleteSuccess" }),
       });
     } catch (error) {
-      console.error("[Savings] Failed to delete saving", error);
+      logger.error("[Savings] Failed to delete saving", error);
       showErrorToast("savings.toast.genericError");
     } finally {
       setIsDeleting(false);

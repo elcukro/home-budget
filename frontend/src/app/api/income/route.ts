@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -26,7 +27,7 @@ export async function GET() {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching incomes:', error);
+    logger.error('Error fetching incomes:', error);
     return NextResponse.json(
       { error: 'Failed to fetch incomes' },
       { status: 500 }
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error creating income:', error);
+    logger.error('Error creating income:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create income' },
       { status: 500 }

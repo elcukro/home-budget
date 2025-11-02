@@ -50,6 +50,7 @@ import {
 } from "@/lib/validation";
 import { logActivity } from "@/utils/activityLogger";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import Tooltip from "@/components/Tooltip";
 
@@ -224,7 +225,7 @@ export default function IncomePage() {
         const data: Income[] = await response.json();
         setIncomes(data);
       } catch (error) {
-        console.error("[Income] Failed to load incomes", error);
+        logger.error("[Income] Failed to load incomes", error);
         setApiError(intl.formatMessage({ id: "income.loadError" }));
       } finally {
         setLoading(false);
@@ -496,7 +497,7 @@ export default function IncomePage() {
 
       handleDialogClose(false);
     } catch (error) {
-      console.error("[Income] Failed to submit form", error);
+      logger.error("[Income] Failed to submit form", error);
       showErrorToast("income.toast.genericError");
     } finally {
       setIsSubmitting(false);
@@ -539,7 +540,7 @@ export default function IncomePage() {
         title: intl.formatMessage({ id: "income.toast.deleteSuccess" }),
       });
     } catch (error) {
-      console.error("[Income] Failed to delete income", error);
+      logger.error("[Income] Failed to delete income", error);
       showErrorToast("income.toast.genericError");
     } finally {
       setIsDeleting(false);

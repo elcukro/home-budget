@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -124,7 +125,7 @@ export async function GET() {
       activities: activities.slice(0, 10), // Only return last 10 activities
     });
   } catch (error) {
-    console.error('[Dashboard API] Error:', error);
+    logger.error('[Dashboard API] Error:', error);
     return NextResponse.json(
       { error: 'Internal Server Error' },
       { status: 500 }

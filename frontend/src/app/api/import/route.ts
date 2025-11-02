@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
     const result = await response.json();
     return NextResponse.json(result);
   } catch (error) {
-    console.error('[Import API] Error:', error);
+    logger.error('[Import API] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to import data' },
       { status: 500 }

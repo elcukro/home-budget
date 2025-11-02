@@ -50,6 +50,7 @@ import {
 } from "@/lib/validation";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/utils/activityLogger";
+import { logger } from "@/lib/logger";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import Tooltip from "@/components/Tooltip";
 
@@ -363,7 +364,7 @@ export default function ExpensesPage() {
         const data: Expense[] = await response.json();
         setExpenses(data);
       } catch (error) {
-        console.error("[Expenses] Failed to load expenses", error);
+        logger.error("[Expenses] Failed to load expenses", error);
         setApiError(intl.formatMessage({ id: "expenses.loadError" }));
       } finally {
         setLoading(false);
@@ -732,7 +733,7 @@ export default function ExpensesPage() {
 
       handleDialogClose(false);
     } catch (error) {
-      console.error("[Expenses] Failed to submit form", error);
+      logger.error("[Expenses] Failed to submit form", error);
       showErrorToast("expenses.toast.genericError");
     } finally {
       setIsSubmitting(false);
@@ -775,7 +776,7 @@ export default function ExpensesPage() {
         title: intl.formatMessage({ id: "expenses.toast.deleteSuccess" }),
       });
     } catch (error) {
-      console.error("[Expenses] Failed to delete expense", error);
+      logger.error("[Expenses] Failed to delete expense", error);
       showErrorToast("expenses.toast.genericError");
     } finally {
       setIsDeleting(false);

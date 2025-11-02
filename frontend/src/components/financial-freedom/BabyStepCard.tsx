@@ -5,6 +5,7 @@ import { useIntl } from 'react-intl';
 import { BabyStep } from '@/types/financial-freedom';
 import { CheckCircleIcon, PencilIcon, CheckIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { useSettings } from '@/contexts/SettingsContext';
+import { logger } from '@/lib/logger';
 
 interface BabyStepCardProps {
   step: BabyStep;
@@ -42,7 +43,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
   const handleToggleComplete = () => {
     // Only allow toggling completion for steps 4-7
     if (step.id <= 3) {
-      console.log('Steps 1-3 completion status is determined automatically by progress');
+      logger.debug('Steps 1-3 completion status is determined automatically by progress');
       return;
     }
     

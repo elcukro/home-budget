@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { initializeChartJS } from '@/utils/chartUtils';
+import { logger } from '@/lib/logger';
 
 /**
  * Component that initializes Chart.js on the client side
@@ -13,7 +14,7 @@ export default function ChartInitializer() {
     initializeChartJS();
     
     // Log that Chart.js has been initialized
-    console.log('[ChartInitializer] Chart.js initialized with all controllers');
+    logger.debug('[ChartInitializer] Chart.js initialized with all controllers');
   }, []);
 
   // This component doesn't render anything

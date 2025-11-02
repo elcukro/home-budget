@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log('[api][users/me] Fetching user with email:', session.user.email);
+    logger.debug('[api][users/me] Fetching user with email:', session.user.email);
 
     // Fetch user data from FastAPI backend
     const response = await fetch(
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const user = await response.json();
     return NextResponse.json(user);
   } catch (error) {
-    console.error("[api][users/me] Error:", error);
+    logger.error("[api][users/me] Error:", error);
     if (error instanceof Error) {
       return NextResponse.json(
         { error: error.message },

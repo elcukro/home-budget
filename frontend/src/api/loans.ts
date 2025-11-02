@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { fetchWithAuth } from './fetchWithAuth';
 import { getSession } from 'next-auth/react';
 
@@ -50,7 +51,7 @@ export const getLoans = async (): Promise<Loan[]> => {
     apiCache.loans && 
     now - apiCache.loans.timestamp < CACHE_DURATION
   ) {
-    console.log('Using cached loans data');
+    logger.debug('Using cached loans data');
     return apiCache.loans.data;
   }
   
@@ -58,24 +59,24 @@ export const getLoans = async (): Promise<Loan[]> => {
     const session = await getSession();
     
     if (!session?.user?.email) {
-      console.error('No active session found or missing user email');
+      logger.error('No active session found or missing user email');
       return [];
     }
     
     // Use the user_id as a query parameter instead of a header
     const url = `${API_URL}/loans?user_id=${encodeURIComponent(session.user.email)}`;
-    console.log('Fetching loans from:', url);
+    logger.debug('Fetching loans from:', url);
     
     const response = await fetch(url);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Failed to fetch loans: ${response.status} ${response.statusText}`, errorText);
+      logger.error(`Failed to fetch loans: ${response.status} ${response.statusText}`, errorText);
       throw new Error(`Failed to fetch loans: ${response.statusText}`);
     }
     
     const data = await response.json();
-    console.log('Loans data:', data);
+    logger.debug('Loans data:', data);
     
     // Cache the response
     apiCache.loans = {
@@ -85,7 +86,7 @@ export const getLoans = async (): Promise<Loan[]> => {
     
     return data;
   } catch (error) {
-    console.error('Error fetching loans:', error);
+    logger.error('Error fetching loans:', error);
     // Return an empty array instead of throwing to avoid breaking the Financial Freedom page
     return [];
   }
@@ -98,7 +99,7 @@ export const getNonMortgageDebt = async (): Promise<number> => {
     apiCache.nonMortgageDebt && 
     now - apiCache.nonMortgageDebt.timestamp < CACHE_DURATION
   ) {
-    console.log('Using cached non-mortgage debt data');
+    logger.debug('Using cached non-mortgage debt data');
     return apiCache.nonMortgageDebt.data;
   }
   
@@ -116,7 +117,7 @@ export const getNonMortgageDebt = async (): Promise<number> => {
     
     return nonMortgageDebt;
   } catch (error) {
-    console.error('Error fetching non-mortgage debt:', error);
+    logger.error('Error fetching non-mortgage debt:', error);
     return 0;
   }
 };
@@ -128,7 +129,7 @@ export const getNonMortgagePrincipal = async (): Promise<number> => {
     apiCache.nonMortgagePrincipal && 
     now - apiCache.nonMortgagePrincipal.timestamp < CACHE_DURATION
   ) {
-    console.log('Using cached non-mortgage principal data');
+    logger.debug('Using cached non-mortgage principal data');
     return apiCache.nonMortgagePrincipal.data;
   }
   
@@ -146,7 +147,7 @@ export const getNonMortgagePrincipal = async (): Promise<number> => {
     
     return nonMortgagePrincipal;
   } catch (error) {
-    console.error('Error fetching non-mortgage principal:', error);
+    logger.error('Error fetching non-mortgage principal:', error);
     return 0;
   }
 };
@@ -169,7 +170,7 @@ export const getMortgageData = async (): Promise<CombinedMortgageData | null> =>
     apiCache.mortgageData && 
     now - apiCache.mortgageData.timestamp < CACHE_DURATION
   ) {
-    console.log('Using cached mortgage data');
+    logger.debug('Using cached mortgage data');
     return apiCache.mortgageData.data;
   }
   
@@ -209,7 +210,7 @@ export const getMortgageData = async (): Promise<CombinedMortgageData | null> =>
     
     return combinedData;
   } catch (error) {
-    console.error('Error fetching mortgage data:', error);
+    logger.error('Error fetching mortgage data:', error);
     return null;
   }
 }; 

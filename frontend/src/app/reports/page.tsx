@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react';
 import PeriodSelector from '@/components/PeriodSelector';
 import { formatCurrency } from '@/utils/formatters';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { logger } from '@/lib/logger';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowTrendUp, faArrowTrendDown, faLandmark } from '@fortawesome/free-solid-svg-icons';
 import {
@@ -307,7 +308,7 @@ const BudgetReport = () => {
       setYearlyData(data);
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        console.error('[Reports] Failed to fetch yearly budget', err);
+        logger.error('[Reports] Failed to fetch yearly budget', err);
       }
       setError(intl.formatMessage({ id: 'reports.messages.fetchError' }));
     } finally {

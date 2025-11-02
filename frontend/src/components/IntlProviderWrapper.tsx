@@ -5,6 +5,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import { useEffect, useState } from 'react';
 import { loadMessages, SupportedLocale, DEFAULT_LOCALE } from '@/utils/i18n';
 import { initializeChartJS } from '@/utils/chartUtils';
+import { logger } from '@/lib/logger';
 
 export default function IntlProviderWrapper({ children }: { children: React.ReactNode }) {
   const { settings } = useSettings();
@@ -22,9 +23,9 @@ export default function IntlProviderWrapper({ children }: { children: React.Reac
         // Re-initialize Chart.js after language change
         // This ensures all controllers are properly registered
         initializeChartJS();
-        console.log('[IntlProviderWrapper] Re-initialized Chart.js after language change to:', locale);
+        logger.debug('[IntlProviderWrapper] Re-initialized Chart.js after language change to:', locale);
       } catch (error) {
-        console.error('[IntlProviderWrapper] Failed to load messages:', error);
+        logger.error('[IntlProviderWrapper] Failed to load messages:', error);
       } finally {
         setIsLoading(false);
       }
@@ -53,7 +54,7 @@ export default function IntlProviderWrapper({ children }: { children: React.Reac
       defaultLocale={DEFAULT_LOCALE}
       onError={(err) => {
         if (process.env.NODE_ENV !== 'production') {
-          console.error('[IntlProviderWrapper] IntlProvider error:', err);
+          logger.error('[IntlProviderWrapper] IntlProvider error:', err);
         }
       }}
     >

@@ -3,6 +3,7 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 export default function ProtectedPage({
   children,
@@ -13,7 +14,7 @@ export default function ProtectedPage({
   const router = useRouter();
 
   useEffect(() => {
-    console.log('[ProtectedPage][debug] Session status:', {
+    logger.debug('[ProtectedPage][debug] Session status:', {
       status,
       session: session ? {
         user: {
@@ -24,7 +25,7 @@ export default function ProtectedPage({
     });
 
     if (status === 'unauthenticated') {
-      console.log('[ProtectedPage][debug] Redirecting unauthenticated user to sign-in');
+      logger.debug('[ProtectedPage][debug] Redirecting unauthenticated user to sign-in');
       router.replace('/auth/signin');
     }
   }, [status, router, session]);

@@ -5,8 +5,10 @@ from sqlalchemy.pool import QueuePool
 import os
 import logging
 
+from .logging_utils import configure_logging
+
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # Get database configuration from environment variables
@@ -18,7 +20,7 @@ POSTGRES_DB = os.getenv("POSTGRES_DB", "homebudget")
 
 SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
 
-logger.info(f"Connecting to database at {POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}")
+logger.debug("Connecting to database at %s:%s/%s", POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB)
 try:
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
@@ -31,7 +33,7 @@ try:
     # Test the connection
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
-    logger.info("Successfully connected to database")
+    logger.debug("Successfully connected to database")
 except Exception as e:
     logger.error(f"Failed to connect to database: {str(e)}")
     raise

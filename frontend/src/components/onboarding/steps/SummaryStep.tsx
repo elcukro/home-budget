@@ -17,6 +17,8 @@ interface SummaryStepProps {
   formatMoney: (value: number) => string;
 }
 
+type SummaryCardTone = 'positive' | 'neutral' | 'warning';
+
 export default function SummaryStep({
   data,
   metrics,
@@ -135,28 +137,28 @@ export default function SummaryStep({
     ],
   ];
 
-  const cards = [
+  const cards: Array<{ title: string; value: string; tone: SummaryCardTone }> = [
     {
       title: intl.formatMessage({ id: 'onboarding.summary.cards.monthlyIncome' }),
       value: formatMoney(metrics.monthlyIncome),
-      tone: 'positive' as const,
+      tone: 'positive',
     },
     {
       title: intl.formatMessage({ id: 'onboarding.summary.cards.monthlyExpenses' }),
       value: formatMoney(
         metrics.regularMonthlyExpenses + metrics.irregularMonthlyExpenses
       ),
-      tone: 'neutral' as const,
+      tone: 'neutral',
     },
     {
       title: intl.formatMessage({ id: 'onboarding.summary.cards.monthlySurplus' }),
       value: formatMoney(metrics.surplus),
-      tone: (metrics.surplus >= 0 ? 'positive' : 'warning') as const,
+      tone: metrics.surplus >= 0 ? 'positive' : 'warning',
     },
     {
       title: intl.formatMessage({ id: 'onboarding.summary.cards.netWorth' }),
       value: formatMoney(metrics.netWorth),
-      tone: 'positive' as const,
+      tone: 'positive',
     },
   ];
 

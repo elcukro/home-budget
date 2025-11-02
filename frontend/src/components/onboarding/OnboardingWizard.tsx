@@ -26,6 +26,7 @@ import {
 import { useIntl, type IntlShape } from 'react-intl';
 import { useSession } from 'next-auth/react';
 import { logActivity } from '@/utils/activityLogger';
+import { logger } from '@/lib/logger';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -1454,7 +1455,7 @@ export default function OnboardingWizard() {
           }
         }
       } catch (error) {
-        console.warn(
+        logger.warn(
           'Failed to read onboarding data from localStorage',
           error
         );
@@ -1484,7 +1485,7 @@ export default function OnboardingWizard() {
           }
         }
       } catch (prefillError) {
-        console.warn('[onboarding] Failed to load previous submission', prefillError);
+        logger.warn('[onboarding] Failed to load previous submission', prefillError);
       } finally {
         if (isMounted) {
           hasHydrated.current = true;
@@ -1513,7 +1514,7 @@ export default function OnboardingWizard() {
           }).format(new Date())
         );
       } catch (error) {
-        console.warn('Failed to save onboarding draft', error);
+        logger.warn('Failed to save onboarding draft', error);
       }
     }, 400);
 
@@ -1575,7 +1576,7 @@ export default function OnboardingWizard() {
   const syncFinancialData = useCallback(async () => {
     const userEmail = session?.user?.email;
     if (!userEmail) {
-      console.warn('[Onboarding] No authenticated user – skipping financial sync');
+      logger.warn('[Onboarding] No authenticated user – skipping financial sync');
       return;
     }
 
@@ -1699,7 +1700,7 @@ export default function OnboardingWizard() {
         }
       }
     } catch (error) {
-      console.error('[Onboarding] Failed to sync income', error);
+      logger.error('[Onboarding] Failed to sync income', error);
       throw error;
     }
 
@@ -1809,7 +1810,7 @@ export default function OnboardingWizard() {
         }
       }
     } catch (error) {
-      console.error('[Onboarding] Failed to sync expenses', error);
+      logger.error('[Onboarding] Failed to sync expenses', error);
       throw error;
     }
 
@@ -1900,7 +1901,7 @@ export default function OnboardingWizard() {
         }
       }
     } catch (error) {
-      console.error('[Onboarding] Failed to sync loans', error);
+      logger.error('[Onboarding] Failed to sync loans', error);
       throw error;
     }
 
@@ -2013,7 +2014,7 @@ export default function OnboardingWizard() {
         }
       }
     } catch (error) {
-      console.error('[Onboarding] Failed to sync savings', error);
+      logger.error('[Onboarding] Failed to sync savings', error);
       throw error;
     }
   }, [data, intl, session?.user?.email]);
@@ -2040,7 +2041,7 @@ export default function OnboardingWizard() {
       setSaveStatus('saved');
       router.push('/');
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       setSaveStatus('idle');
       alert('Nie udało się zapisać danych. Spróbuj ponownie.');
     }

@@ -12,6 +12,7 @@ import LoanOverview from '@/components/dashboard/LoanOverview';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
+import { logger } from '@/lib/logger';
 import {
   TrendingUp,
   TrendingDown,
@@ -396,7 +397,7 @@ export default function Home() {
         setDashboardData(mappedData);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
-          console.error('[Dashboard] Error:', error instanceof Error ? error.message : 'Failed to load dashboard data');
+          logger.error('[Dashboard] Error:', error instanceof Error ? error.message : 'Failed to load dashboard data');
         }
         setErrorMessageId('dashboard.loadError');
       } finally {

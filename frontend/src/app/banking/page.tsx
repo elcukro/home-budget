@@ -5,6 +5,7 @@ import { fetchWithAuth } from '@/api/fetchWithAuth';
 import PageTitle from '@/components/PageTitle';
 import ProtectedPage from '@/components/ProtectedPage';
 import { useRouter } from 'next/navigation';
+import { logger } from '@/lib/logger';
 
 interface AccountInfo {
   id: string;
@@ -71,12 +72,12 @@ export default function BankingPage() {
           await getRequisition(latestConnection.requisition_id);
           setStatusMessage(`Found existing bank connection to ${latestConnection.institution_name}. Form has been auto-populated.`);
         } else {
-          console.error('Invalid requisition ID:', latestConnection.requisition_id);
+          logger.error('Invalid requisition ID:', latestConnection.requisition_id);
           setStatusMessage(`Found existing bank connection to ${latestConnection.institution_name}, but couldn't fetch accounts due to invalid requisition ID.`);
         }
       }
     } catch (error) {
-      console.error('Error fetching bank connections:', error);
+      logger.error('Error fetching bank connections:', error);
       // Don't show an error message, just silently fail
     }
   };
@@ -117,10 +118,10 @@ export default function BankingPage() {
       const refParam = urlParams.get('ref');
       
       if (refParam) {
-        console.log('Detected redirect from bank with ref:', refParam);
+        logger.debug('Detected redirect from bank with ref:', refParam);
         // Check if we have a requisitionId in state already
         if (requisitionId && typeof requisitionId === 'string') {
-          console.log('Using existing requisition ID:', requisitionId);
+          logger.debug('Using existing requisition ID:', requisitionId);
           // We already have a requisition ID, we can use it to fetch accounts
           getRequisition(requisitionId);
         } else {
@@ -223,9 +224,9 @@ export default function BankingPage() {
 
   const getRequisition = async (reqId?: string) => {
     // Add detailed logging
-    console.log('getRequisition called with param:', reqId);
-    console.log('Current requisitionId state:', requisitionId);
-    console.log('requisitionId type:', typeof requisitionId);
+    logger.debug('getRequisition called with param:', reqId);
+    logger.debug('Current requisitionId state:', requisitionId);
+    logger.debug('requisitionId type:', typeof requisitionId);
     
     // Use the provided requisition ID or the one from state
     let requisitionIdToUse = reqId || requisitionId;
@@ -235,10 +236,10 @@ export default function BankingPage() {
       try {
         // Try to convert to string
         const stringId = String(requisitionIdToUse);
-        console.log('Converted requisitionId to string:', stringId);
+        logger.debug('Converted requisitionId to string:', stringId);
         requisitionIdToUse = stringId;
       } catch (e) {
-        console.error('Failed to convert requisitionId to string:', e);
+        logger.error('Failed to convert requisitionId to string:', e);
       }
     }
     
@@ -250,7 +251,7 @@ export default function BankingPage() {
     
     // Even with conversion attempt, still validate the type for safety
     if (typeof requisitionIdToUse !== 'string') {
-      console.error('Invalid requisition ID type after conversion attempt:', typeof requisitionIdToUse, requisitionIdToUse);
+      logger.error('Invalid requisition ID type after conversion attempt:', typeof requisitionIdToUse, requisitionIdToUse);
       setError('Invalid requisition ID format. Please try entering it manually.');
       return;
     }

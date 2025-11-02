@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error fetching savings:', error);
+    logger.error('Error fetching savings:', error);
     return NextResponse.json(
       { error: 'Failed to fetch savings' },
       { status: 500 }
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    console.log('Sending to backend:', body);
+    logger.debug('Sending to backend:', body);
 
     const response = await fetch(`${API_BASE_URL}/savings`, {
       method: 'POST',
@@ -64,14 +65,14 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      console.error('Backend API error:', errorData);
+      logger.error('Backend API error:', errorData);
       return NextResponse.json(errorData, { status: response.status });
     }
 
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error creating saving:', error);
+    logger.error('Error creating saving:', error);
     return NextResponse.json(
       { error: 'Failed to create saving' },
       { status: 500 }

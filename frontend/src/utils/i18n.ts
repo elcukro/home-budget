@@ -1,4 +1,5 @@
 import { createIntl, createIntlCache } from 'react-intl';
+import { logger } from '@/lib/logger';
 
 export type SupportedLocale = 'en' | 'es' | 'fr' | 'pl';
 
@@ -30,7 +31,7 @@ export async function loadMessages(locale: SupportedLocale): Promise<Record<stri
       ...flattenMessages(localeMessages.default),
     };
   } catch (error) {
-    console.error(`Failed to load messages for locale: ${locale}`, error);
+    logger.error(`Failed to load messages for locale: ${locale}`, error);
     return fallbackMessages;
   }
 }
@@ -63,7 +64,7 @@ export function getIntl(locale: SupportedLocale, messages: Record<string, string
       },
       onError: (err) => {
         if (process.env.NODE_ENV !== 'production') {
-          console.error(err);
+          logger.error(err);
         }
       },
     },

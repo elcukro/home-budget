@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
+import { logger } from '@/lib/logger';
 
 // Define our own types based on the Prisma schema
 interface UserSettings {
@@ -67,7 +68,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       setUser(userData);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('An unknown error occurred'));
-      console.error('[user-context][error] Error fetching user:', err);
+      logger.error('[user-context][error] Error fetching user:', err);
     } finally {
       setIsLoading(false);
     }

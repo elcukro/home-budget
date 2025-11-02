@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Error fetching institutions: ${errorText}`);
+      logger.error(`Error fetching institutions: ${errorText}`);
       return NextResponse.json(
         { error: 'Failed to fetch institutions', detail: errorText },
         { status: response.status }
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error('Error in banking/institutions route:', error);
+    logger.error('Error in banking/institutions route:', error);
     return NextResponse.json(
       { error: 'Internal server error', detail: error.message },
       { status: 500 }

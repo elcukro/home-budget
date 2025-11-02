@@ -12,6 +12,7 @@ import ProtectedPage from '@/components/ProtectedPage';
 import { getFinancialFreedomData, updateFinancialFreedomData } from '@/api/financialFreedom';
 import { getNonMortgageDebt, getNonMortgagePrincipal, getMortgageData } from '@/api/loans';
 import { getEmergencyFundSavings, getGeneralSavings, getMonthlyRecurringExpenses } from '@/api/savings';
+import { logger } from '@/lib/logger';
 
 // Helper function to calculate debt progress percentage
 const calculateDebtProgress = (remainingDebt: number, totalPrincipal: number): number => {
@@ -74,7 +75,7 @@ export default function FinancialFreedomPage() {
 
     const loadAllData = async () => {
       try {
-        console.log('Financial Freedom: Loading all data');
+        logger.debug('Financial Freedom: Loading all data');
         
         // Load all data in parallel in a single batch
         const [
@@ -173,7 +174,7 @@ export default function FinancialFreedomPage() {
         setLoading(false);
         
       } catch (error) {
-        console.error('Error loading financial freedom data:', error);
+        logger.error('Error loading financial freedom data:', error);
         if (isMounted) {
           setErrorMessageId('financialFreedom.loadError');
           setLoading(false);
@@ -193,11 +194,11 @@ export default function FinancialFreedomPage() {
     
     // Only allow updates for steps 4-7 (steps 1-3 are fully automated)
     if (stepId <= 3) {
-      console.log('Steps 1-3 are auto-calculated and cannot be manually updated');
+      logger.debug('Steps 1-3 are auto-calculated and cannot be manually updated');
       return;
     }
     
-    console.log('Updating step:', stepId);
+    logger.debug('Updating step:', stepId);
     
     // Create updated steps array
     const updatedSteps = data.steps.map((step: BabyStep) => 
@@ -216,7 +217,7 @@ export default function FinancialFreedomPage() {
       steps: updatedSteps,
       startDate: data.startDate
     }).catch(error => {
-      console.error('Error updating financial freedom data:', error);
+      logger.error('Error updating financial freedom data:', error);
     });
   }, [data]);
 

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { fetchWithAuth } from './fetchWithAuth';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -24,12 +25,12 @@ export async function getExchangeRates(baseCurrency: string): Promise<Record<str
     ratesCache[baseCurrency] &&
     Date.now() - ratesCache[baseCurrency].timestamp < CACHE_TTL
   ) {
-    console.log(`[Exchange Rates] Using cached rates for ${baseCurrency}`);
+    logger.debug(`[Exchange Rates] Using cached rates for ${baseCurrency}`);
     return ratesCache[baseCurrency].rates;
   }
 
   try {
-    console.log(`[Exchange Rates] Fetching rates for ${baseCurrency}`);
+    logger.debug(`[Exchange Rates] Fetching rates for ${baseCurrency}`);
     const response = await fetchWithAuth(`${API_BASE_URL}/exchange-rates/${baseCurrency}`);
     
     if (!response.ok) {
@@ -47,7 +48,7 @@ export async function getExchangeRates(baseCurrency: string): Promise<Record<str
 
     return data.rates;
   } catch (error) {
-    console.error('[Exchange Rates] Error fetching exchange rates:', error);
+    logger.error('[Exchange Rates] Error fetching exchange rates:', error);
     throw error;
   }
 }
@@ -64,7 +65,7 @@ export async function convertCurrency(
   fromCurrency: string,
   toCurrency: string
 ): Promise<number> {
-  console.log(`[Exchange Rates] Converting ${amount} from ${fromCurrency} to ${toCurrency}`);
+  logger.debug(`[Exchange Rates] Converting ${amount} from ${fromCurrency} to ${toCurrency}`);
   
   // If same currency, no conversion needed
   if (fromCurrency === toCurrency) {
@@ -100,7 +101,7 @@ export async function convertCurrency(
       }
     }
   } catch (error) {
-    console.error('[Exchange Rates] Error converting currency:', error);
+    logger.error('[Exchange Rates] Error converting currency:', error);
     throw error;
   }
 }

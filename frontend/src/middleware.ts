@@ -1,10 +1,11 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 export default withAuth(
   function middleware(req) {
     const token = req.nextauth.token;
-    console.log('[middleware][debug] Processing request:', {
+    logger.debug('[middleware][debug] Processing request:', {
       url: req.url,
       token: token ? {
         id: token.id,
@@ -16,7 +17,7 @@ export default withAuth(
     });
 
     if (!token) {
-      console.log('[middleware][debug] No token found, redirecting to sign-in');
+      logger.debug('[middleware][debug] No token found, redirecting to sign-in');
       return NextResponse.redirect(new URL('/auth/signin', req.url));
     }
 
@@ -25,7 +26,7 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token }) => {
-        console.log('[middleware][debug] Authorization check:', {
+        logger.debug('[middleware][debug] Authorization check:', {
           hasToken: !!token,
           tokenId: token?.sub
         });

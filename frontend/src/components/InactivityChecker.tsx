@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { logger } from '@/lib/logger';
 import { FormattedMessage } from 'react-intl';
 
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
@@ -24,7 +25,7 @@ export default function InactivityChecker() {
   const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetTimers = useCallback(() => {
-    console.log('[InactivityChecker] Resetting timers');
+    logger.debug('[InactivityChecker] Resetting timers');
     // Clear existing timers
     if (warningTimerRef.current) {
       clearInterval(warningTimerRef.current);
@@ -40,20 +41,20 @@ export default function InactivityChecker() {
 
     // Set new activity timer
     activityTimerRef.current = setTimeout(() => {
-      console.log('[InactivityChecker] Inactivity timeout reached, showing warning');
+      logger.debug('[InactivityChecker] Inactivity timeout reached, showing warning');
       setShowWarning(true);
       // Start warning countdown
       warningTimerRef.current = setInterval(() => {
         setTimeLeft((prev) => {
           const newTime = prev - 1000;
-          console.log('[InactivityChecker] Warning countdown:', newTime / 1000, 'seconds remaining');
+          logger.debug('[InactivityChecker] Warning countdown:', newTime / 1000, 'seconds remaining');
           if (newTime <= 1000) {
             // Clear interval and log out
             if (warningTimerRef.current) {
               clearInterval(warningTimerRef.current);
               warningTimerRef.current = null;
             }
-            console.log('[InactivityChecker] Warning timeout reached, signing out');
+            logger.debug('[InactivityChecker] Warning timeout reached, signing out');
             signOut();
             return 0;
           }
@@ -74,14 +75,14 @@ export default function InactivityChecker() {
     }
 
     if (session) {
-      console.log('[InactivityChecker] User activity detected');
+      logger.debug('[InactivityChecker] User activity detected');
       resetTimers();
     }
   }, [session, resetTimers]);
 
   // Initialize timers when session changes
   useEffect(() => {
-    console.log('[InactivityChecker] Session changed, session exists:', !!session);
+    logger.debug('[InactivityChecker] Session changed, session exists:', !!session);
     if (session) {
       resetTimers();
     }
@@ -100,7 +101,7 @@ export default function InactivityChecker() {
 
   // Add event listeners for user activity
   useEffect(() => {
-    console.log('[InactivityChecker] Setting up event listeners, session exists:', !!session);
+    logger.debug('[InactivityChecker] Setting up event listeners, session exists:', !!session);
     if (session) {
       const options: AddEventListenerOptions = { passive: true };
 
@@ -151,7 +152,7 @@ export default function InactivityChecker() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              console.log('[InactivityChecker] Continue session clicked');
+              logger.debug('[InactivityChecker] Continue session clicked');
               resetTimers();
             }}
             className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"

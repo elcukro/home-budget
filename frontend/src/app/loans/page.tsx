@@ -55,6 +55,7 @@ import {
 } from "@/lib/validation";
 import { logActivity } from "@/utils/activityLogger";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import Tooltip from "@/components/Tooltip";
 
@@ -409,7 +410,7 @@ export default function LoansPage() {
         const data: Loan[] = await response.json();
         setLoans(data);
       } catch (error) {
-        console.error("[Loans] Failed to load loans", error);
+        logger.error("[Loans] Failed to load loans", error);
         setApiError(intl.formatMessage({ id: "loans.loadError" }));
       } finally {
         setLoading(false);
@@ -746,7 +747,7 @@ export default function LoansPage() {
 
       handleDialogClose(false);
     } catch (error) {
-      console.error("[Loans] Failed to submit form", error);
+      logger.error("[Loans] Failed to submit form", error);
       showErrorToast("loans.toast.genericError");
     } finally {
       setIsSubmitting(false);
@@ -789,7 +790,7 @@ export default function LoansPage() {
         title: intl.formatMessage({ id: "loans.toast.deleteSuccess" }),
       });
     } catch (error) {
-      console.error("[Loans] Failed to delete loan", error);
+      logger.error("[Loans] Failed to delete loan", error);
       showErrorToast("loans.toast.genericError");
     } finally {
       setIsDeleting(false);

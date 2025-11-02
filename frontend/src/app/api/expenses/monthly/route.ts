@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 const API_BASE_URL = process.env.API_URL || 'http://localhost:8000';
 
@@ -41,7 +42,7 @@ export async function GET() {
       0
     );
     
-    console.log(`Total monthly expenses for ${session.user.email}: ${totalMonthlyExpenses}`);
+    logger.debug(`Total monthly expenses for ${session.user.email}: ${totalMonthlyExpenses}`);
     
     // Return the monthly expenses
     return NextResponse.json({
@@ -51,7 +52,7 @@ export async function GET() {
       calculation_method: 'sum of recurring expenses',
     });
   } catch (error) {
-    console.error('Error calculating monthly expenses:', error);
+    logger.error('Error calculating monthly expenses:', error);
     return NextResponse.json(
       { error: 'Failed to calculate monthly expenses' },
       { status: 500 }
