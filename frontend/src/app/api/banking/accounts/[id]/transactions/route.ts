@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 
+const BACKEND_BASE_URL =
+  process.env.BACKEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -16,7 +21,7 @@ export async function GET(
     const accountId = params.id;
 
     // Forward request to backend
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/banking/accounts/${accountId}/transactions`;
+    const backendUrl = `${BACKEND_BASE_URL}/banking/accounts/${accountId}/transactions`;
     
     const response = await fetch(backendUrl, {
       method: 'GET',

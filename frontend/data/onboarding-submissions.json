@@ -2199,5 +2199,2024 @@
       ]
     },
     "submittedAt": "2025-11-01T18:49:08.699Z"
+  },
+  {
+    "data": {
+      "life": {
+        "maritalStatus": "married",
+        "includePartnerFinances": false,
+        "childrenCount": 2,
+        "childrenAgeRange": "7-12",
+        "housingType": "mortgage",
+        "hasMortgage": true,
+        "employmentStatus": "employee",
+        "taxForm": "scale",
+        "householdCost": 6500
+      },
+      "income": {
+        "salaryNet": 20000,
+        "additionalSources": {
+          "rental": {
+            "enabled": true,
+            "amount": 2200
+          },
+          "bonuses": {
+            "enabled": false,
+            "amount": 0
+          },
+          "freelance": {
+            "enabled": false,
+            "amount": 0
+          },
+          "benefits": {
+            "enabled": false,
+            "amount": 0
+          },
+          "childBenefit": {
+            "enabled": true,
+            "amount": 800
+          }
+        },
+        "irregularIncomeAnnual": 3000
+      },
+      "expenses": {
+        "home": [
+          {
+            "id": "home-rental-tax",
+            "templateId": "home-rental-tax",
+            "name": "Podatek za wynajem mieszkania",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-mortgage",
+            "templateId": "home-mortgage",
+            "name": "Spłata kredytu hipotecznego",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-rent",
+            "templateId": "home-rent",
+            "name": "Czynsz za mieszkanie",
+            "amount": 2500,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-electricity",
+            "templateId": "home-electricity",
+            "name": "Prąd",
+            "amount": 400,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-gas",
+            "templateId": "home-gas",
+            "name": "Gaz",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-water",
+            "templateId": "home-water",
+            "name": "Woda - dodatkowe zużycie ponad zaliczki w czynszu",
+            "amount": 100,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-heating",
+            "templateId": "home-heating",
+            "name": "Ogrzewanie",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-phone",
+            "templateId": "home-phone",
+            "name": "Telefon",
+            "amount": 200,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-tv",
+            "templateId": "home-tv",
+            "name": "Telewizja kablowa / satelitarna",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-internet",
+            "templateId": "home-internet",
+            "name": "Internet",
+            "amount": 100,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-maintenance",
+            "templateId": "home-maintenance",
+            "name": "Wyposażenie / drobne naprawy",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-utilities",
+            "templateId": "home-utilities",
+            "name": "Media (prąd, gaz, woda, ogrzewanie)",
+            "amount": 450,
+            "category": "utilities",
+            "isCustom": true
+          }
+        ],
+        "transport": [
+          {
+            "id": "transport-fuel",
+            "templateId": "transport-fuel",
+            "name": "Samochód - paliwo",
+            "amount": 1000,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-insurance",
+            "templateId": "transport-insurance",
+            "name": "Ubezpieczenie OC/AC",
+            "amount": 300,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "transport-service",
+            "templateId": "transport-service",
+            "name": "Serwis i przeglądy",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-leasing",
+            "templateId": "transport-leasing",
+            "name": "Leasing / rata",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-public",
+            "templateId": "transport-public",
+            "name": "Bilety (komunikacja)",
+            "amount": 100,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-parking",
+            "templateId": "transport-parking",
+            "name": "Samochód - parkingi",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          }
+        ],
+        "food": [
+          {
+            "id": "food-groceries",
+            "templateId": "food-groceries",
+            "name": "Jedzenie",
+            "amount": 2500,
+            "category": "food",
+            "isCustom": false
+          },
+          {
+            "id": "food-dining",
+            "templateId": "food-dining",
+            "name": "Obiady / jedzenie na mieście",
+            "amount": 300,
+            "category": "food",
+            "isCustom": false
+          },
+          {
+            "id": "food-coffee",
+            "templateId": "food-coffee",
+            "name": "Kawa / przekąski",
+            "amount": 0,
+            "category": "food",
+            "isCustom": false
+          }
+        ],
+        "family": [
+          {
+            "id": "family-education",
+            "templateId": "family-education",
+            "name": "Przedszkole / szkoła / zajęcia",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-clothes",
+            "templateId": "family-clothes",
+            "name": "Ubrania",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-activities",
+            "templateId": "family-activities",
+            "name": "Opieka / wyjazdy / prezenty",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-extracurricular-son",
+            "templateId": "family-extracurricular-son",
+            "name": "Zajęcia dodatkowe Syna",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-extracurricular-daughter",
+            "templateId": "family-extracurricular-daughter",
+            "name": "Zajęcia dodatkowe Córki",
+            "amount": 1000,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-toys",
+            "templateId": "family-toys",
+            "name": "Zabawki dla dzieci itp.",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-afterschool",
+            "templateId": "family-afterschool",
+            "name": "Świetlica dla dzieci",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          }
+        ],
+        "lifestyle": [
+          {
+            "id": "lifestyle-fitness",
+            "templateId": "lifestyle-fitness",
+            "name": "Siłownia / fitness / karnety",
+            "amount": 200,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-medicine",
+            "templateId": "lifestyle-medicine",
+            "name": "Opieka zdrowotna",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-care",
+            "templateId": "lifestyle-care",
+            "name": "Kosmetyki / fryzjer",
+            "amount": 100,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-hygiene",
+            "templateId": "lifestyle-hygiene",
+            "name": "Higiena",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-relax",
+            "templateId": "lifestyle-relax",
+            "name": "Relaks - basen, kręgle, teatr, kino, książki, czasopisma",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-education",
+            "templateId": "lifestyle-education",
+            "name": "Edukacja osobista",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          }
+        ],
+        "subscriptions": [
+          {
+            "id": "subscriptions-streaming",
+            "templateId": "subscriptions-streaming",
+            "name": "Netflix / Spotify / YouTube Premium",
+            "amount": 200,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "subscriptions-apps",
+            "templateId": "subscriptions-apps",
+            "name": "Aplikacje i narzędzia online",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "subscriptions-insurance",
+            "templateId": "subscriptions-insurance",
+            "name": "Ubezpieczenia dodatkowe",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          }
+        ],
+        "obligations": [
+          {
+            "id": "obligations-loans",
+            "templateId": "obligations-loans",
+            "name": "Raty kredytów",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-card-fees",
+            "templateId": "obligations-card-fees",
+            "name": "Opłaty miesięczne za kartę kredytową",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-bank-fees",
+            "templateId": "obligations-bank-fees",
+            "name": "Inne opłaty bankowe",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-private",
+            "templateId": "obligations-private",
+            "name": "Pożyczki prywatne",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-cards",
+            "templateId": "obligations-cards",
+            "name": "Karty kredytowe",
+            "amount": 0,
+            "category": "other",
+            "isCustom": true
+          }
+        ],
+        "pets": [
+          {
+            "id": "pets-animals",
+            "templateId": "pets-animals",
+            "name": "Zwierzęta domowe (karma, weterynarz)",
+            "amount": 150,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "pets-hobby",
+            "templateId": "pets-hobby",
+            "name": "Hobby i pasje (fotografia, wędkarstwo, gry)",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          }
+        ],
+        "insurance": [
+          {
+            "id": "insurance-health",
+            "templateId": "insurance-health",
+            "name": "Ubezpieczenie zdrowotne / na życie",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "insurance-home",
+            "templateId": "insurance-home",
+            "name": "Ubezpieczenie domu / sprzętu",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "insurance-personal",
+            "templateId": "insurance-personal",
+            "name": "Ubezpieczenie indywidualne",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          }
+        ],
+        "other": [
+          {
+            "id": "other-leisure",
+            "templateId": "other-leisure",
+            "name": "Kino / restauracje / wyjazdy",
+            "amount": 500,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-gifts",
+            "templateId": "other-gifts",
+            "name": "Prezenty i okazjonalne zakupy",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-misc",
+            "templateId": "other-misc",
+            "name": "Inne drobne wydatki",
+            "amount": 900,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-gambling",
+            "templateId": "other-gambling",
+            "name": "Hazard - Lotto i inne",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-donations",
+            "templateId": "other-donations",
+            "name": "Darowizny i datki",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          }
+        ]
+      },
+      "irregularExpenses": [
+        {
+          "id": "irregular-home-insurance",
+          "templateId": "irregular-home-insurance",
+          "name": "Ubezpieczenie mieszkania",
+          "amount": 750,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-trainings",
+          "templateId": "irregular-trainings",
+          "name": "Szkolenia",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-car-insurance",
+          "templateId": "irregular-car-insurance",
+          "name": "Samochód - ubezpieczenie",
+          "amount": 3200,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-car-service",
+          "templateId": "irregular-car-service",
+          "name": "Samochód - serwis (przeglądy, naprawy)",
+          "amount": 4000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-domains",
+          "templateId": "irregular-domains",
+          "name": "Domeny internetowe",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-real-estate-agency",
+          "templateId": "irregular-real-estate-agency",
+          "name": "Agencja nieruchomości - prowizja za wynajem",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-gifts",
+          "templateId": "irregular-gifts",
+          "name": "Prezenty dla różnych osób",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-clothing",
+          "templateId": "irregular-clothing",
+          "name": "Ubranie",
+          "amount": 4000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-property-tax",
+          "templateId": "irregular-property-tax",
+          "name": "Podatki gruntowe i inne opłaty - działka",
+          "amount": 700,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-software-hosting",
+          "templateId": "irregular-software-hosting",
+          "name": "Wydatki na hosting i programy komputerowe",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-vacations",
+          "templateId": "irregular-vacations",
+          "name": "Wakacje",
+          "amount": 10000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-school-textbooks",
+          "templateId": "irregular-school-textbooks",
+          "name": "Podręczniki dla dzieci do szkoły",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-school-insurance",
+          "templateId": "irregular-school-insurance",
+          "name": "Ubezpieczenie szkolne dla dzieci",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-class-fund",
+          "templateId": "irregular-class-fund",
+          "name": "Fundusz klasowy",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-unplanned",
+          "templateId": "irregular-unplanned",
+          "name": "Inne, nieplanowane wydatki",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-new-computer",
+          "templateId": "irregular-new-computer",
+          "name": "Zakup nowego komputera",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-robot-vacuum",
+          "templateId": "irregular-robot-vacuum",
+          "name": "Zakup odkurzacza iRobot",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        }
+      ],
+      "liabilities": [
+        {
+          "id": "liability-mortgage",
+          "type": "mortgage",
+          "remainingAmount": 87000,
+          "monthlyPayment": 1000,
+          "interestRate": 7.17,
+          "endDate": "2040-01-31",
+          "purpose": "",
+          "repaymentType": "equal",
+          "propertyValue": null
+        }
+      ],
+      "assets": {
+        "savings": 50000,
+        "emergencyFundMonths": 6,
+        "investments": {
+          "categories": [
+            "funds"
+          ],
+          "totalValue": 5000
+        },
+        "properties": [
+          {
+            "id": "property-home",
+            "name": "Dom",
+            "value": 2000000
+          }
+        ],
+        "vehicles": [
+          {
+            "id": "vehicle-car",
+            "name": "Samochód",
+            "value": 65000
+          }
+        ]
+      },
+      "goals": [
+        {
+          "id": "goal-1",
+          "name": "Spłata kredytu",
+          "type": "long",
+          "targetAmount": 100000,
+          "targetDate": "2027-12-31",
+          "priority": 1
+        },
+        {
+          "id": "goal-2",
+          "name": "Poduszka bezpieczeństwa",
+          "type": "short",
+          "targetAmount": 80000,
+          "targetDate": "2025-06-30",
+          "priority": 2
+        }
+      ]
+    },
+    "submittedAt": "2025-11-03T15:16:33.401Z"
+  },
+  {
+    "data": {
+      "life": {
+        "maritalStatus": "married",
+        "includePartnerFinances": false,
+        "childrenCount": 2,
+        "childrenAgeRange": "7-12",
+        "housingType": "mortgage",
+        "hasMortgage": true,
+        "employmentStatus": "employee",
+        "taxForm": "scale",
+        "householdCost": 6500
+      },
+      "income": {
+        "salaryNet": 20000,
+        "additionalSources": {
+          "rental": {
+            "enabled": true,
+            "amount": 2200
+          },
+          "bonuses": {
+            "enabled": false,
+            "amount": 0
+          },
+          "freelance": {
+            "enabled": false,
+            "amount": 0
+          },
+          "benefits": {
+            "enabled": false,
+            "amount": 0
+          },
+          "childBenefit": {
+            "enabled": true,
+            "amount": 800
+          }
+        },
+        "irregularIncomeAnnual": 3000
+      },
+      "expenses": {
+        "home": [
+          {
+            "id": "home-rental-tax",
+            "templateId": "home-rental-tax",
+            "name": "Podatek za wynajem mieszkania",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-mortgage",
+            "templateId": "home-mortgage",
+            "name": "Spłata kredytu hipotecznego",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-rent",
+            "templateId": "home-rent",
+            "name": "Czynsz za mieszkanie",
+            "amount": 2500,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-electricity",
+            "templateId": "home-electricity",
+            "name": "Prąd",
+            "amount": 400,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-gas",
+            "templateId": "home-gas",
+            "name": "Gaz",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-water",
+            "templateId": "home-water",
+            "name": "Woda - dodatkowe zużycie ponad zaliczki w czynszu",
+            "amount": 100,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-heating",
+            "templateId": "home-heating",
+            "name": "Ogrzewanie",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-phone",
+            "templateId": "home-phone",
+            "name": "Telefon",
+            "amount": 200,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-tv",
+            "templateId": "home-tv",
+            "name": "Telewizja kablowa / satelitarna",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-internet",
+            "templateId": "home-internet",
+            "name": "Internet",
+            "amount": 100,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-maintenance",
+            "templateId": "home-maintenance",
+            "name": "Wyposażenie / drobne naprawy",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-utilities",
+            "templateId": "home-utilities",
+            "name": "Media (prąd, gaz, woda, ogrzewanie)",
+            "amount": 450,
+            "category": "utilities",
+            "isCustom": true
+          }
+        ],
+        "transport": [
+          {
+            "id": "transport-fuel",
+            "templateId": "transport-fuel",
+            "name": "Samochód - paliwo",
+            "amount": 1000,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-insurance",
+            "templateId": "transport-insurance",
+            "name": "Ubezpieczenie OC/AC",
+            "amount": 300,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "transport-service",
+            "templateId": "transport-service",
+            "name": "Serwis i przeglądy",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-leasing",
+            "templateId": "transport-leasing",
+            "name": "Leasing / rata",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-public",
+            "templateId": "transport-public",
+            "name": "Bilety (komunikacja)",
+            "amount": 100,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-parking",
+            "templateId": "transport-parking",
+            "name": "Samochód - parkingi",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          }
+        ],
+        "food": [
+          {
+            "id": "food-groceries",
+            "templateId": "food-groceries",
+            "name": "Jedzenie",
+            "amount": 2500,
+            "category": "food",
+            "isCustom": false
+          },
+          {
+            "id": "food-dining",
+            "templateId": "food-dining",
+            "name": "Obiady / jedzenie na mieście",
+            "amount": 300,
+            "category": "food",
+            "isCustom": false
+          },
+          {
+            "id": "food-coffee",
+            "templateId": "food-coffee",
+            "name": "Kawa / przekąski",
+            "amount": 0,
+            "category": "food",
+            "isCustom": false
+          }
+        ],
+        "family": [
+          {
+            "id": "family-education",
+            "templateId": "family-education",
+            "name": "Przedszkole / szkoła / zajęcia",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-clothes",
+            "templateId": "family-clothes",
+            "name": "Ubrania",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-activities",
+            "templateId": "family-activities",
+            "name": "Opieka / wyjazdy / prezenty",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-extracurricular-son",
+            "templateId": "family-extracurricular-son",
+            "name": "Zajęcia dodatkowe Syna",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-extracurricular-daughter",
+            "templateId": "family-extracurricular-daughter",
+            "name": "Zajęcia dodatkowe Córki",
+            "amount": 1000,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-toys",
+            "templateId": "family-toys",
+            "name": "Zabawki dla dzieci itp.",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-afterschool",
+            "templateId": "family-afterschool",
+            "name": "Świetlica dla dzieci",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          }
+        ],
+        "lifestyle": [
+          {
+            "id": "lifestyle-fitness",
+            "templateId": "lifestyle-fitness",
+            "name": "Siłownia / fitness / karnety",
+            "amount": 200,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-medicine",
+            "templateId": "lifestyle-medicine",
+            "name": "Opieka zdrowotna",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-care",
+            "templateId": "lifestyle-care",
+            "name": "Kosmetyki / fryzjer",
+            "amount": 100,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-hygiene",
+            "templateId": "lifestyle-hygiene",
+            "name": "Higiena",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-relax",
+            "templateId": "lifestyle-relax",
+            "name": "Relaks - basen, kręgle, teatr, kino, książki, czasopisma",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-education",
+            "templateId": "lifestyle-education",
+            "name": "Edukacja osobista",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          }
+        ],
+        "subscriptions": [
+          {
+            "id": "subscriptions-streaming",
+            "templateId": "subscriptions-streaming",
+            "name": "Netflix / Spotify / YouTube Premium",
+            "amount": 200,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "subscriptions-apps",
+            "templateId": "subscriptions-apps",
+            "name": "Aplikacje i narzędzia online",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "subscriptions-insurance",
+            "templateId": "subscriptions-insurance",
+            "name": "Ubezpieczenia dodatkowe",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          }
+        ],
+        "obligations": [
+          {
+            "id": "obligations-loans",
+            "templateId": "obligations-loans",
+            "name": "Raty kredytów",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-card-fees",
+            "templateId": "obligations-card-fees",
+            "name": "Opłaty miesięczne za kartę kredytową",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-bank-fees",
+            "templateId": "obligations-bank-fees",
+            "name": "Inne opłaty bankowe",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-private",
+            "templateId": "obligations-private",
+            "name": "Pożyczki prywatne",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-cards",
+            "templateId": "obligations-cards",
+            "name": "Karty kredytowe",
+            "amount": 0,
+            "category": "other",
+            "isCustom": true
+          }
+        ],
+        "pets": [
+          {
+            "id": "pets-animals",
+            "templateId": "pets-animals",
+            "name": "Zwierzęta domowe (karma, weterynarz)",
+            "amount": 150,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "pets-hobby",
+            "templateId": "pets-hobby",
+            "name": "Hobby i pasje (fotografia, wędkarstwo, gry)",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          }
+        ],
+        "insurance": [
+          {
+            "id": "insurance-health",
+            "templateId": "insurance-health",
+            "name": "Ubezpieczenie zdrowotne / na życie",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "insurance-home",
+            "templateId": "insurance-home",
+            "name": "Ubezpieczenie domu / sprzętu",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "insurance-personal",
+            "templateId": "insurance-personal",
+            "name": "Ubezpieczenie indywidualne",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          }
+        ],
+        "other": [
+          {
+            "id": "other-leisure",
+            "templateId": "other-leisure",
+            "name": "Kino / restauracje / wyjazdy",
+            "amount": 500,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-gifts",
+            "templateId": "other-gifts",
+            "name": "Prezenty i okazjonalne zakupy",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-misc",
+            "templateId": "other-misc",
+            "name": "Inne drobne wydatki",
+            "amount": 900,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-gambling",
+            "templateId": "other-gambling",
+            "name": "Hazard - Lotto i inne",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-donations",
+            "templateId": "other-donations",
+            "name": "Darowizny i datki",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          }
+        ]
+      },
+      "irregularExpenses": [
+        {
+          "id": "irregular-home-insurance",
+          "templateId": "irregular-home-insurance",
+          "name": "Ubezpieczenie mieszkania",
+          "amount": 750,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-trainings",
+          "templateId": "irregular-trainings",
+          "name": "Szkolenia",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-car-insurance",
+          "templateId": "irregular-car-insurance",
+          "name": "Samochód - ubezpieczenie",
+          "amount": 3200,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-car-service",
+          "templateId": "irregular-car-service",
+          "name": "Samochód - serwis (przeglądy, naprawy)",
+          "amount": 4000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-domains",
+          "templateId": "irregular-domains",
+          "name": "Domeny internetowe",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-real-estate-agency",
+          "templateId": "irregular-real-estate-agency",
+          "name": "Agencja nieruchomości - prowizja za wynajem",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-gifts",
+          "templateId": "irregular-gifts",
+          "name": "Prezenty dla różnych osób",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-clothing",
+          "templateId": "irregular-clothing",
+          "name": "Ubranie",
+          "amount": 4000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-property-tax",
+          "templateId": "irregular-property-tax",
+          "name": "Podatki gruntowe i inne opłaty - działka",
+          "amount": 700,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-software-hosting",
+          "templateId": "irregular-software-hosting",
+          "name": "Wydatki na hosting i programy komputerowe",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-vacations",
+          "templateId": "irregular-vacations",
+          "name": "Wakacje",
+          "amount": 10000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-school-textbooks",
+          "templateId": "irregular-school-textbooks",
+          "name": "Podręczniki dla dzieci do szkoły",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-school-insurance",
+          "templateId": "irregular-school-insurance",
+          "name": "Ubezpieczenie szkolne dla dzieci",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-class-fund",
+          "templateId": "irregular-class-fund",
+          "name": "Fundusz klasowy",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-unplanned",
+          "templateId": "irregular-unplanned",
+          "name": "Inne, nieplanowane wydatki",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-new-computer",
+          "templateId": "irregular-new-computer",
+          "name": "Zakup nowego komputera",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-robot-vacuum",
+          "templateId": "irregular-robot-vacuum",
+          "name": "Zakup odkurzacza iRobot",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        }
+      ],
+      "liabilities": [
+        {
+          "id": "liability-mortgage",
+          "type": "mortgage",
+          "remainingAmount": 87000,
+          "monthlyPayment": 1000,
+          "interestRate": 7.17,
+          "endDate": "2040-01-31",
+          "purpose": "",
+          "repaymentType": "equal",
+          "propertyValue": null
+        }
+      ],
+      "assets": {
+        "savings": 50000,
+        "emergencyFundMonths": 6,
+        "investments": {
+          "categories": [
+            "funds"
+          ],
+          "totalValue": 5000
+        },
+        "properties": [
+          {
+            "id": "property-home",
+            "name": "Dom",
+            "value": 2000000
+          }
+        ],
+        "vehicles": [
+          {
+            "id": "vehicle-car",
+            "name": "Samochód",
+            "value": 65000
+          }
+        ]
+      },
+      "goals": [
+        {
+          "id": "goal-1",
+          "name": "Spłata kredytu",
+          "type": "long",
+          "targetAmount": 100000,
+          "targetDate": "2027-12-31",
+          "priority": 1
+        },
+        {
+          "id": "goal-2",
+          "name": "Poduszka bezpieczeństwa",
+          "type": "short",
+          "targetAmount": 80000,
+          "targetDate": "2025-06-30",
+          "priority": 2
+        }
+      ]
+    },
+    "submittedAt": "2025-11-03T15:44:04.381Z"
+  },
+  {
+    "data": {
+      "life": {
+        "maritalStatus": "married",
+        "includePartnerFinances": false,
+        "childrenCount": 2,
+        "childrenAgeRange": "7-12",
+        "housingType": "mortgage",
+        "hasMortgage": true,
+        "employmentStatus": "employee",
+        "taxForm": "scale",
+        "householdCost": 6500
+      },
+      "income": {
+        "salaryNet": 20000,
+        "additionalSources": {
+          "rental": {
+            "enabled": true,
+            "amount": 2200
+          },
+          "bonuses": {
+            "enabled": false,
+            "amount": 0
+          },
+          "freelance": {
+            "enabled": false,
+            "amount": 0
+          },
+          "benefits": {
+            "enabled": false,
+            "amount": 0
+          },
+          "childBenefit": {
+            "enabled": true,
+            "amount": 800
+          }
+        },
+        "irregularIncomeAnnual": 3000
+      },
+      "expenses": {
+        "home": [
+          {
+            "id": "home-rental-tax",
+            "templateId": "home-rental-tax",
+            "name": "Podatek za wynajem mieszkania",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-mortgage",
+            "templateId": "home-mortgage",
+            "name": "Spłata kredytu hipotecznego",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-rent",
+            "templateId": "home-rent",
+            "name": "Czynsz za mieszkanie",
+            "amount": 2500,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-electricity",
+            "templateId": "home-electricity",
+            "name": "Prąd",
+            "amount": 400,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-gas",
+            "templateId": "home-gas",
+            "name": "Gaz",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-water",
+            "templateId": "home-water",
+            "name": "Woda - dodatkowe zużycie ponad zaliczki w czynszu",
+            "amount": 100,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-heating",
+            "templateId": "home-heating",
+            "name": "Ogrzewanie",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-phone",
+            "templateId": "home-phone",
+            "name": "Telefon",
+            "amount": 200,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-tv",
+            "templateId": "home-tv",
+            "name": "Telewizja kablowa / satelitarna",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-internet",
+            "templateId": "home-internet",
+            "name": "Internet",
+            "amount": 100,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "home-maintenance",
+            "templateId": "home-maintenance",
+            "name": "Wyposażenie / drobne naprawy",
+            "amount": 0,
+            "category": "housing",
+            "isCustom": false
+          },
+          {
+            "id": "home-utilities",
+            "templateId": "home-utilities",
+            "name": "Media (prąd, gaz, woda, ogrzewanie)",
+            "amount": 450,
+            "category": "utilities",
+            "isCustom": true
+          }
+        ],
+        "transport": [
+          {
+            "id": "transport-fuel",
+            "templateId": "transport-fuel",
+            "name": "Samochód - paliwo",
+            "amount": 1000,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-insurance",
+            "templateId": "transport-insurance",
+            "name": "Ubezpieczenie OC/AC",
+            "amount": 300,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "transport-service",
+            "templateId": "transport-service",
+            "name": "Serwis i przeglądy",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-leasing",
+            "templateId": "transport-leasing",
+            "name": "Leasing / rata",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-public",
+            "templateId": "transport-public",
+            "name": "Bilety (komunikacja)",
+            "amount": 100,
+            "category": "transportation",
+            "isCustom": false
+          },
+          {
+            "id": "transport-parking",
+            "templateId": "transport-parking",
+            "name": "Samochód - parkingi",
+            "amount": 0,
+            "category": "transportation",
+            "isCustom": false
+          }
+        ],
+        "food": [
+          {
+            "id": "food-groceries",
+            "templateId": "food-groceries",
+            "name": "Jedzenie",
+            "amount": 2500,
+            "category": "food",
+            "isCustom": false
+          },
+          {
+            "id": "food-dining",
+            "templateId": "food-dining",
+            "name": "Obiady / jedzenie na mieście",
+            "amount": 300,
+            "category": "food",
+            "isCustom": false
+          },
+          {
+            "id": "food-coffee",
+            "templateId": "food-coffee",
+            "name": "Kawa / przekąski",
+            "amount": 0,
+            "category": "food",
+            "isCustom": false
+          }
+        ],
+        "family": [
+          {
+            "id": "family-education",
+            "templateId": "family-education",
+            "name": "Przedszkole / szkoła / zajęcia",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-clothes",
+            "templateId": "family-clothes",
+            "name": "Ubrania",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-activities",
+            "templateId": "family-activities",
+            "name": "Opieka / wyjazdy / prezenty",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-extracurricular-son",
+            "templateId": "family-extracurricular-son",
+            "name": "Zajęcia dodatkowe Syna",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-extracurricular-daughter",
+            "templateId": "family-extracurricular-daughter",
+            "name": "Zajęcia dodatkowe Córki",
+            "amount": 1000,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-toys",
+            "templateId": "family-toys",
+            "name": "Zabawki dla dzieci itp.",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "family-afterschool",
+            "templateId": "family-afterschool",
+            "name": "Świetlica dla dzieci",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          }
+        ],
+        "lifestyle": [
+          {
+            "id": "lifestyle-fitness",
+            "templateId": "lifestyle-fitness",
+            "name": "Siłownia / fitness / karnety",
+            "amount": 200,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-medicine",
+            "templateId": "lifestyle-medicine",
+            "name": "Opieka zdrowotna",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-care",
+            "templateId": "lifestyle-care",
+            "name": "Kosmetyki / fryzjer",
+            "amount": 100,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-hygiene",
+            "templateId": "lifestyle-hygiene",
+            "name": "Higiena",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-relax",
+            "templateId": "lifestyle-relax",
+            "name": "Relaks - basen, kręgle, teatr, kino, książki, czasopisma",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          },
+          {
+            "id": "lifestyle-education",
+            "templateId": "lifestyle-education",
+            "name": "Edukacja osobista",
+            "amount": 0,
+            "category": "healthcare",
+            "isCustom": false
+          }
+        ],
+        "subscriptions": [
+          {
+            "id": "subscriptions-streaming",
+            "templateId": "subscriptions-streaming",
+            "name": "Netflix / Spotify / YouTube Premium",
+            "amount": 200,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "subscriptions-apps",
+            "templateId": "subscriptions-apps",
+            "name": "Aplikacje i narzędzia online",
+            "amount": 0,
+            "category": "utilities",
+            "isCustom": false
+          },
+          {
+            "id": "subscriptions-insurance",
+            "templateId": "subscriptions-insurance",
+            "name": "Ubezpieczenia dodatkowe",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          }
+        ],
+        "obligations": [
+          {
+            "id": "obligations-loans",
+            "templateId": "obligations-loans",
+            "name": "Raty kredytów",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-card-fees",
+            "templateId": "obligations-card-fees",
+            "name": "Opłaty miesięczne za kartę kredytową",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-bank-fees",
+            "templateId": "obligations-bank-fees",
+            "name": "Inne opłaty bankowe",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-private",
+            "templateId": "obligations-private",
+            "name": "Pożyczki prywatne",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "obligations-cards",
+            "templateId": "obligations-cards",
+            "name": "Karty kredytowe",
+            "amount": 0,
+            "category": "other",
+            "isCustom": true
+          }
+        ],
+        "pets": [
+          {
+            "id": "pets-animals",
+            "templateId": "pets-animals",
+            "name": "Zwierzęta domowe (karma, weterynarz)",
+            "amount": 150,
+            "category": "other",
+            "isCustom": false
+          },
+          {
+            "id": "pets-hobby",
+            "templateId": "pets-hobby",
+            "name": "Hobby i pasje (fotografia, wędkarstwo, gry)",
+            "amount": 0,
+            "category": "other",
+            "isCustom": false
+          }
+        ],
+        "insurance": [
+          {
+            "id": "insurance-health",
+            "templateId": "insurance-health",
+            "name": "Ubezpieczenie zdrowotne / na życie",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "insurance-home",
+            "templateId": "insurance-home",
+            "name": "Ubezpieczenie domu / sprzętu",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          },
+          {
+            "id": "insurance-personal",
+            "templateId": "insurance-personal",
+            "name": "Ubezpieczenie indywidualne",
+            "amount": 0,
+            "category": "insurance",
+            "isCustom": false
+          }
+        ],
+        "other": [
+          {
+            "id": "other-leisure",
+            "templateId": "other-leisure",
+            "name": "Kino / restauracje / wyjazdy",
+            "amount": 500,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-gifts",
+            "templateId": "other-gifts",
+            "name": "Prezenty i okazjonalne zakupy",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-misc",
+            "templateId": "other-misc",
+            "name": "Inne drobne wydatki",
+            "amount": 900,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-gambling",
+            "templateId": "other-gambling",
+            "name": "Hazard - Lotto i inne",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          },
+          {
+            "id": "other-donations",
+            "templateId": "other-donations",
+            "name": "Darowizny i datki",
+            "amount": 0,
+            "category": "entertainment",
+            "isCustom": false
+          }
+        ]
+      },
+      "irregularExpenses": [
+        {
+          "id": "irregular-home-insurance",
+          "templateId": "irregular-home-insurance",
+          "name": "Ubezpieczenie mieszkania",
+          "amount": 750,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-trainings",
+          "templateId": "irregular-trainings",
+          "name": "Szkolenia",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-car-insurance",
+          "templateId": "irregular-car-insurance",
+          "name": "Samochód - ubezpieczenie",
+          "amount": 3200,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-car-service",
+          "templateId": "irregular-car-service",
+          "name": "Samochód - serwis (przeglądy, naprawy)",
+          "amount": 4000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-domains",
+          "templateId": "irregular-domains",
+          "name": "Domeny internetowe",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-real-estate-agency",
+          "templateId": "irregular-real-estate-agency",
+          "name": "Agencja nieruchomości - prowizja za wynajem",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-gifts",
+          "templateId": "irregular-gifts",
+          "name": "Prezenty dla różnych osób",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-clothing",
+          "templateId": "irregular-clothing",
+          "name": "Ubranie",
+          "amount": 4000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-property-tax",
+          "templateId": "irregular-property-tax",
+          "name": "Podatki gruntowe i inne opłaty - działka",
+          "amount": 700,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-software-hosting",
+          "templateId": "irregular-software-hosting",
+          "name": "Wydatki na hosting i programy komputerowe",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-vacations",
+          "templateId": "irregular-vacations",
+          "name": "Wakacje",
+          "amount": 10000,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-school-textbooks",
+          "templateId": "irregular-school-textbooks",
+          "name": "Podręczniki dla dzieci do szkoły",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-school-insurance",
+          "templateId": "irregular-school-insurance",
+          "name": "Ubezpieczenie szkolne dla dzieci",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-class-fund",
+          "templateId": "irregular-class-fund",
+          "name": "Fundusz klasowy",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-unplanned",
+          "templateId": "irregular-unplanned",
+          "name": "Inne, nieplanowane wydatki",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-new-computer",
+          "templateId": "irregular-new-computer",
+          "name": "Zakup nowego komputera",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        },
+        {
+          "id": "irregular-robot-vacuum",
+          "templateId": "irregular-robot-vacuum",
+          "name": "Zakup odkurzacza iRobot",
+          "amount": 0,
+          "category": "other",
+          "isCustom": false
+        }
+      ],
+      "liabilities": [
+        {
+          "id": "liability-mortgage",
+          "type": "mortgage",
+          "remainingAmount": 87000,
+          "monthlyPayment": 1000,
+          "interestRate": 7.17,
+          "endDate": "2040-01-31",
+          "purpose": "",
+          "repaymentType": "equal",
+          "propertyValue": null
+        }
+      ],
+      "assets": {
+        "savings": 50000,
+        "emergencyFundMonths": 6,
+        "investments": {
+          "categories": [
+            "funds"
+          ],
+          "totalValue": 5000
+        },
+        "properties": [
+          {
+            "id": "property-home",
+            "name": "Dom",
+            "value": 2000000
+          }
+        ],
+        "vehicles": [
+          {
+            "id": "vehicle-car",
+            "name": "Samochód",
+            "value": 65000
+          }
+        ]
+      },
+      "goals": [
+        {
+          "id": "goal-1",
+          "name": "Spłata kredytu",
+          "type": "long",
+          "targetAmount": 100000,
+          "targetDate": "2027-12-31",
+          "priority": 1
+        },
+        {
+          "id": "goal-2",
+          "name": "Poduszka bezpieczeństwa",
+          "type": "short",
+          "targetAmount": 80000,
+          "targetDate": "2025-06-30",
+          "priority": 2
+        }
+      ]
+    },
+    "submittedAt": "2025-11-03T15:44:57.008Z"
   }
 ]

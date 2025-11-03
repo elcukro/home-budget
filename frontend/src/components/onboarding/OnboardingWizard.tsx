@@ -76,6 +76,19 @@ export interface AdditionalSource {
   amount: number;
 }
 
+type SavingPhase =
+  | 'prepare'
+  | 'income'
+  | 'expenses'
+  | 'loans'
+  | 'savings'
+  | 'finalize';
+
+interface SavingProgressUpdate {
+  phase: SavingPhase;
+  detail?: string;
+}
+
 const EXPENSE_CATEGORY_VALUES = [
   'housing',
   'transportation',
@@ -1432,6 +1445,31 @@ export default function OnboardingWizard() {
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const hasHydrated = useRef(false);
   const [stepVisible, setStepVisible] = useState(true);
+  const [showSavingDialog, setShowSavingDialog] = useState(false);
+  const [activeSavingPhase, setActiveSavingPhase] =
+    useState<SavingPhase>('prepare');
+  const [savingDetail, setSavingDetail] = useState<string | null>(null);
+  const savingPhases = useMemo(
+    () => [
+      { id: 'prepare' as const, label: t('onboarding.savingProgress.steps.prepare') },
+      { id: 'income' as const, label: t('onboarding.savingProgress.steps.income') },
+      { id: 'expenses' as const, label: t('onboarding.savingProgress.steps.expenses') },
+      { id: 'loans' as const, label: t('onboarding.savingProgress.steps.loans') },
+      { id: 'savings' as const, label: t('onboarding.savingProgress.steps.savings') },
+      { id: 'finalize' as const, label: t('onboarding.savingProgress.steps.finalize') },
+    ],
+    [t]
+  );
+  const activeSavingPhaseIndex = Math.max(
+    0,
+    savingPhases.findIndex((phase) => phase.id === activeSavingPhase)
+  );
+  const savingProgressPercent =
+    savingPhases.length <= 1
+      ? 100
+      : Math.round(
+          (activeSavingPhaseIndex / (savingPhases.length - 1)) * 100
+        );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1573,12 +1611,17 @@ export default function OnboardingWizard() {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
   }, [intl]);
 
-  const syncFinancialData = useCallback(async () => {
+  const syncFinancialData = useCallback(
+    async (reportProgress?: (update: SavingProgressUpdate) => void) => {
     const userEmail = session?.user?.email;
     if (!userEmail) {
       logger.warn('[Onboarding] No authenticated user – skipping financial sync');
       return;
     }
+
+    const notify = (phase: SavingPhase, detail?: string) => {
+      reportProgress?.({ phase, detail });
+    };
 
     const todayISO = new Date().toISOString().split('T')[0];
     const jsonHeaders = {
@@ -1606,6 +1649,8 @@ export default function OnboardingWizard() {
         );
       }
     };
+
+    notify('prepare', t('onboarding.savingProgress.detail.clearing'));
 
     // --- Income sync ---
     try {
@@ -1682,7 +1727,21 @@ export default function OnboardingWizard() {
         });
       }
 
-      for (const payload of incomePayloads) {
+      const incomeTotal = incomePayloads.length;
+      if (incomeTotal > 0) {
+        notify(
+          'income',
+          t('onboarding.savingProgress.detail.count', {
+            current: 0,
+            total: incomeTotal,
+          })
+        );
+      } else {
+        notify('income');
+      }
+
+      for (let index = 0; index < incomePayloads.length; index += 1) {
+        const payload = incomePayloads[index];
         const response = await fetch('/api/income', {
           method: 'POST',
           headers: jsonHeaders,
@@ -1698,6 +1757,13 @@ export default function OnboardingWizard() {
             new_values: createdIncome,
           });
         }
+        notify(
+          'income',
+          t('onboarding.savingProgress.detail.count', {
+            current: index + 1,
+            total: incomeTotal || index + 1,
+          })
+        );
       }
     } catch (error) {
       logger.error('[Onboarding] Failed to sync income', error);
@@ -1731,6 +1797,29 @@ export default function OnboardingWizard() {
             `delete expense ${expenseId}`
           );
         }
+      }
+
+      const irregularItems = data.irregularExpenses ?? [];
+      const totalExpenseCreates =
+        Object.values(data.expenses).reduce(
+          (acc, items) =>
+            acc +
+            (items?.filter((item) => (item?.amount ?? 0) > 0).length ?? 0),
+          0
+        ) +
+        irregularItems.filter((item) => sanitizeAmount(item.amount) > 0)
+          .length;
+      let expenseCreatedCount = 0;
+      if (totalExpenseCreates > 0) {
+        notify(
+          'expenses',
+          t('onboarding.savingProgress.detail.count', {
+            current: 0,
+            total: totalExpenseCreates,
+          })
+        );
+      } else {
+        notify('expenses');
       }
 
       for (const group of Object.keys(data.expenses) as ExpenseGroupKey[]) {
@@ -1772,10 +1861,17 @@ export default function OnboardingWizard() {
               new_values: createdExpense,
             });
           }
+          expenseCreatedCount += 1;
+          notify(
+            'expenses',
+            t('onboarding.savingProgress.detail.count', {
+              current: expenseCreatedCount,
+              total: totalExpenseCreates || expenseCreatedCount,
+            })
+          );
         }
       }
 
-      const irregularItems = data.irregularExpenses ?? [];
       for (const item of irregularItems) {
         const amount = sanitizeAmount(item.amount);
         if (amount <= 0) continue;
@@ -1808,6 +1904,14 @@ export default function OnboardingWizard() {
             new_values: createdExpense,
           });
         }
+        expenseCreatedCount += 1;
+        notify(
+          'expenses',
+          t('onboarding.savingProgress.detail.count', {
+            current: expenseCreatedCount,
+            total: totalExpenseCreates || expenseCreatedCount,
+          })
+        );
       }
     } catch (error) {
       logger.error('[Onboarding] Failed to sync expenses', error);
@@ -1845,6 +1949,25 @@ export default function OnboardingWizard() {
             `delete loan ${loanId}`
           );
         }
+      }
+
+      const relevantLiabilities = data.liabilities.filter(
+        (liability) =>
+          (liability.remainingAmount ?? 0) > 0 ||
+          (liability.monthlyPayment ?? 0) > 0
+      );
+      let loansCreated = 0;
+      const loanTotal = relevantLiabilities.length;
+      if (loanTotal > 0) {
+        notify(
+          'loans',
+          t('onboarding.savingProgress.detail.count', {
+            current: 0,
+            total: loanTotal,
+          })
+        );
+      } else {
+        notify('loans');
       }
 
       for (const liability of data.liabilities) {
@@ -1899,6 +2022,14 @@ export default function OnboardingWizard() {
             new_values: createdLoan,
           });
         }
+        loansCreated += 1;
+        notify(
+          'loans',
+          t('onboarding.savingProgress.detail.count', {
+            current: loansCreated,
+            total: loanTotal || loansCreated,
+          })
+        );
       }
     } catch (error) {
       logger.error('[Onboarding] Failed to sync loans', error);
@@ -1996,7 +2127,21 @@ export default function OnboardingWizard() {
         }
       });
 
-      for (const payload of savingsPayloads) {
+      const savingsTotal = savingsPayloads.length;
+      if (savingsTotal > 0) {
+        notify(
+          'savings',
+          t('onboarding.savingProgress.detail.count', {
+            current: 0,
+            total: savingsTotal,
+          })
+        );
+      } else {
+        notify('savings');
+      }
+
+      for (let index = 0; index < savingsPayloads.length; index += 1) {
+        const payload = savingsPayloads[index];
         const response = await fetch('/api/savings', {
           method: 'POST',
           headers: jsonHeaders,
@@ -2012,17 +2157,35 @@ export default function OnboardingWizard() {
             new_values: createdSaving,
           });
         }
+        notify(
+          'savings',
+          t('onboarding.savingProgress.detail.count', {
+            current: index + 1,
+            total: savingsTotal || index + 1,
+          })
+        );
       }
     } catch (error) {
       logger.error('[Onboarding] Failed to sync savings', error);
       throw error;
     }
-  }, [data, intl, session?.user?.email]);
+  },
+    [data, intl, session?.user?.email, t]
+  );
 
   const handleComplete = useCallback(async () => {
+    setShowSavingDialog(true);
+    setActiveSavingPhase('prepare');
+    setSavingDetail(t('onboarding.savingProgress.detail.clearing'));
     setSaveStatus('saving');
     try {
-      await syncFinancialData();
+      await syncFinancialData((update) => {
+        setActiveSavingPhase(update.phase);
+        setSavingDetail(update.detail ?? null);
+      });
+
+      setActiveSavingPhase('finalize');
+      setSavingDetail(t('onboarding.savingProgress.detail.finalize'));
 
       const response = await fetch('/api/onboarding', {
         method: 'POST',
@@ -2039,13 +2202,18 @@ export default function OnboardingWizard() {
 
       localStorage.removeItem(LOCAL_STORAGE_KEY);
       setSaveStatus('saved');
+      setShowSavingDialog(false);
+      setSavingDetail(null);
       router.push('/');
     } catch (error) {
       logger.error(error);
       setSaveStatus('idle');
+      setShowSavingDialog(false);
+      setSavingDetail(null);
+      setActiveSavingPhase('prepare');
       alert('Nie udało się zapisać danych. Spróbuj ponownie.');
     }
-  }, [data, router, syncFinancialData]);
+  }, [data, router, syncFinancialData, t]);
 
   const setLife = (updates: Partial<OnboardingData['life']>) =>
     setData((prev) => {
@@ -2521,6 +2689,43 @@ export default function OnboardingWizard() {
           )}
         </CardContent>
       </Card>
+
+      {showSavingDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-default bg-card p-6 shadow-lg">
+            <div className="flex flex-col items-center gap-6 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-mint/30">
+                <span className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-primary">
+                  {t('onboarding.savingProgress.title')}
+                </h2>
+                <p className="mt-1 text-sm text-secondary">
+                  {t('onboarding.savingProgress.description')}
+                </p>
+              </div>
+              <div className="w-full">
+                <div className="mb-2 flex items-center justify-between text-xs font-medium text-secondary">
+                  <span>
+                    {savingPhases[activeSavingPhaseIndex]?.label ?? ''}
+                  </span>
+                  <span>{savingProgressPercent}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${savingProgressPercent}%` }}
+                  />
+                </div>
+              </div>
+              {savingDetail && (
+                <p className="text-xs text-secondary">{savingDetail}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

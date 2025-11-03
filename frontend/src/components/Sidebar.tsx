@@ -14,7 +14,6 @@ import {
   Cog6ToothIcon,
   ArrowRightOnRectangleIcon,
   StarIcon,
-  GlobeAltIcon,
   UserPlusIcon,
 } from '@heroicons/react/24/outline';
 import { useIntl } from 'react-intl';
@@ -28,7 +27,6 @@ const navigation = [
   { name: 'navigation.expenses', href: '/expenses', icon: CreditCardIcon },
   { name: 'navigation.loans', href: '/loans', icon: BuildingLibraryIcon },
   { name: 'navigation.savings', href: '/savings', icon: CurrencyDollarIcon },
-  { name: 'navigation.banking', href: '/banking', icon: GlobeAltIcon },
   { name: 'navigation.reports', href: '/reports', icon: ChartBarIcon },
   { name: 'navigation.settings', href: '/settings', icon: Cog6ToothIcon }
 ];

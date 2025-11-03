@@ -1,4 +1,4 @@
-#!/Users/imac/claude-cli/home-budget/backend/venv311/bin/python3.11
+#!/opt/home-budget/backend/venv/bin/python3
 import sys
 from mako.cmd import cmdline
 if __name__ == '__main__':

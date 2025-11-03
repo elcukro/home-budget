@@ -1090,6 +1090,23 @@
       "nextDefault": "Dalej",
       "nextWithStep": "Dalej → {step}"
     },
+    "savingProgress": {
+      "title": "Przygotowujemy dane",
+      "description": "Chwileczkę, zapisujemy Twoje przychody, wydatki, zobowiązania i oszczędności.",
+      "steps": {
+        "prepare": "Przygotowanie danych",
+        "income": "Zapisywanie przychodów",
+        "expenses": "Zapisywanie wydatków",
+        "loans": "Zapisywanie zobowiązań",
+        "savings": "Zapisywanie oszczędności i majątku",
+        "finalize": "Kończenie konfiguracji"
+      },
+      "detail": {
+        "clearing": "Usuwamy wcześniejsze dane z onboardingu",
+        "finalize": "Kończymy ostatnie sprawdzenia",
+        "count": "{current} z {total}"
+      }
+    },
     "placeholders": {
       "exampleNumber": "np. {value}",
       "exampleAmount": "np. {value}"

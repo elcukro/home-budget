@@ -89,7 +89,7 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/settings/`,
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/settings`,
         {
           headers: { Accept: "application/json" },
         },

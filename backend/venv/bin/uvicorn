@@ -1,6 +1,6 @@
-#!/Users/imac/claude-cli/home-budget/backend/venv311/bin/python3.11
+#!/opt/home-budget/backend/venv/bin/python3
 import sys
-from alembic.config import main
+from uvicorn.main import main
 if __name__ == '__main__':
     if sys.argv[0].endswith('.exe'):
         sys.argv[0] = sys.argv[0][:-4]

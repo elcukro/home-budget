@@ -1147,6 +1147,23 @@
       "nextDefault": "Next",
       "nextWithStep": "Next → {step}"
     },
+    "savingProgress": {
+      "title": "We're setting things up",
+      "description": "Hang tight while we create your income, expenses, loans, and savings.",
+      "steps": {
+        "prepare": "Preparing your workspace",
+        "income": "Saving income entries",
+        "expenses": "Saving expenses",
+        "loans": "Saving loans",
+        "savings": "Saving savings and assets",
+        "finalize": "Finishing up"
+      },
+      "detail": {
+        "clearing": "Removing previous onboarding data",
+        "finalize": "Final checks before redirecting",
+        "count": "{current} of {total}"
+      }
+    },
     "placeholders": {
       "exampleNumber": "e.g. {value}",
       "exampleAmount": "e.g. {value}"

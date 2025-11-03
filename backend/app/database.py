@@ -12,9 +12,9 @@ configure_logging()
 logger = logging.getLogger(__name__)
 
 # Get database configuration from environment variables
-POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "homebudget")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "SuperSecret123!")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
 POSTGRES_DB = os.getenv("POSTGRES_DB", "homebudget")
 

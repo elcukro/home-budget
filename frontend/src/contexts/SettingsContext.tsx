@@ -65,7 +65,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     logger.debug('[SettingsContext] Fetching settings for user:', session.user.email);
     try {
       setIsLoading(true);
-      const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings/`;
+      const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings`;
       logger.debug('[SettingsContext] Fetch URL:', url);
       
       const response = await fetch(url);
@@ -143,7 +143,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         newSettings.base_currency = newSettings.currency;
       }
 
-      const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings/`;
+      const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/settings`;
       logger.debug('[SettingsContext] Update URL:', url);
       
       const response = await fetch(url, {

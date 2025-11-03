@@ -3,6 +3,11 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 
+const BACKEND_BASE_URL =
+  process.env.BACKEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000';
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
@@ -20,7 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Forward request to backend
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/banking/institutions?country=${country}`;
+    const backendUrl = `${BACKEND_BASE_URL}/banking/institutions?country=${country}`;
     
     const response = await fetch(backendUrl, {
       method: 'GET',

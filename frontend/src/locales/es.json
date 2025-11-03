@@ -860,6 +860,23 @@
     }
   },
   "onboarding": {
+    "savingProgress": {
+      "title": "Estamos preparando todo",
+      "description": "Espera un momento mientras guardamos tus ingresos, gastos, deudas y ahorros.",
+      "steps": {
+        "prepare": "Preparando tus datos",
+        "income": "Guardando ingresos",
+        "expenses": "Guardando gastos",
+        "loans": "Guardando préstamos",
+        "savings": "Guardando ahorros y activos",
+        "finalize": "Finalizando"
+      },
+      "detail": {
+        "clearing": "Eliminando datos previos del onboarding",
+        "finalize": "Realizando comprobaciones finales",
+        "count": "{current} de {total}"
+      }
+    },
     "steps": {
       "expenses": {
         "label": "Gastos mensuales",

@@ -40,38 +40,26 @@ echo "Waiting for PostgreSQL at ${POSTGRES_HOST}:${POSTGRES_PORT}..."
 if pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; then
   echo "PostgreSQL is ready!"
 else
-  if [[ "${POSTGRES_HOST}" == "localhost" || "${POSTGRES_HOST}" == "127.0.0.1" ]]; then
-    POSTGRES_BIN=${POSTGRES_BIN:-/opt/homebrew/opt/postgresql@14/bin/postgres}
-    POSTGRES_DATA_DIR=${POSTGRES_DATA_DIR:-/opt/homebrew/var/postgresql@14}
-    POSTGRES_LOG_FILE=${POSTGRES_LOG_FILE:-/tmp/home-budget-postgres.log}
-
-    if [[ ! -x "${POSTGRES_BIN}" ]]; then
-      echo "PostgreSQL binary not found at ${POSTGRES_BIN}. Install PostgreSQL or update POSTGRES_BIN."
-      exit 1
-    fi
-    if [[ ! -d "${POSTGRES_DATA_DIR}" ]]; then
-      echo "PostgreSQL data directory ${POSTGRES_DATA_DIR} does not exist. Initialize it or update POSTGRES_DATA_DIR."
-      exit 1
+if [[ "${POSTGRES_HOST}" == "localhost" || "${POSTGRES_HOST}" == "127.0.0.1" ]]; then
+    # ---- SYSTEMD POSTGRES (Ubuntu) ----
+    if ! systemctl is-active --quiet postgresql; then
+        echo "Starting system PostgreSQL..."
+        systemctl start postgresql
     fi
 
-    echo "PostgreSQL not running; starting with ${POSTGRES_BIN} -D ${POSTGRES_DATA_DIR}"
-    "${POSTGRES_BIN}" -D "${POSTGRES_DATA_DIR}" >>"${POSTGRES_LOG_FILE}" 2>&1 &
-    POSTGRES_PID=$!
-
-    until pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; do
-      if ! kill -0 "${POSTGRES_PID}" >/dev/null 2>&1; then
-        echo "PostgreSQL failed to start. See ${POSTGRES_LOG_FILE} for details."
-        exit 1
-      fi
-      sleep 1
-    done
-    echo "PostgreSQL started (PID ${POSTGRES_PID}). Logs: ${POSTGRES_LOG_FILE}"
-  else
-    until pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; do
-      sleep 1
+    until pg_isready -h localhost -p 5432 >/dev/null 2>&1; do
+        echo "Waiting for PostgreSQL..."
+        sleep 1
     done
     echo "PostgreSQL is ready!"
-  fi
+else
+    # ---- REMOTE DB ----
+    until pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; do
+        echo "Waiting for remote PostgreSQL..."
+        sleep 1
+    done
+    echo "PostgreSQL is ready!"
+fi
 fi
 
 # Ensure database schema exists.

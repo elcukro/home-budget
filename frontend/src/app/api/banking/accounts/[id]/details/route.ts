@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from '@/lib/auth';
 
+const BACKEND_BASE_URL =
+  process.env.BACKEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  'http://localhost:8000';
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -27,8 +32,7 @@ export async function GET(
     }
     
     // Make API call to backend to get account details
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const response = await fetch(`${apiUrl}/banking/accounts/${accountId}/details`, {
+    const response = await fetch(`${BACKEND_BASE_URL}/banking/accounts/${accountId}/details`, {
       headers: {
         "Content-Type": "application/json",
         "X-User-ID": session.user.email || '',
