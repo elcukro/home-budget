@@ -140,20 +140,26 @@ class TinkService:
         """
         self._check_credentials()
 
+        logger.info(f"Exchanging code for tokens. Code length: {len(code)}, Code prefix: {code[:20] if len(code) > 20 else code}...")
+        logger.info(f"Using client_id: {self.client_id[:10]}..., redirect_uri: {self.redirect_uri}")
+
+        request_data = {
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "code": code,
+            "grant_type": "authorization_code",
+        }
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.api_url}/api/v1/oauth/token",
-                data={
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                    "code": code,
-                    "grant_type": "authorization_code",
-                    "redirect_uri": self.redirect_uri,
-                },
+                data=request_data,
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
                 }
             )
+
+            logger.info(f"Token exchange response status: {response.status_code}")
 
             if response.status_code != 200:
                 logger.error(f"Token exchange failed: {response.status_code} - {response.text}")
