@@ -13,7 +13,7 @@ export async function DELETE(
     }
 
     const connectionId = params.id;
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/banking/tink/connections/${connectionId}`;
+    const backendUrl = `${process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/banking/tink/connections/${connectionId}`;
 
     const response = await fetch(backendUrl, {
       method: 'DELETE',

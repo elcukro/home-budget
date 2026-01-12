@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     const requestData = await request.json();
 
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/banking/tink/callback`;
+    const backendUrl = `${process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/banking/tink/callback`;
 
     const response = await fetch(backendUrl, {
       method: 'POST',
