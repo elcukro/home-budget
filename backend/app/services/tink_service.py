@@ -113,7 +113,7 @@ class TinkService:
 
         state = self.generate_state_token(user_id)
 
-        # Tink Link parameters
+        # Tink Link parameters for OAuth authorization code flow
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
@@ -121,10 +121,9 @@ class TinkService:
             "market": "PL",  # Poland
             "locale": locale,
             "state": state,
-            "response_type": "code",
         }
 
-        url = f"{self.link_url}/1.0/transactions/connect-accounts?{urlencode(params)}"
+        url = f"{self.link_url}/1.0/authorize?{urlencode(params)}"
 
         logger.info(f"Generated Tink Link URL for user {user_id}")
         return url, state
