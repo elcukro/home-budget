@@ -33,6 +33,22 @@ interface BankingConnection {
   accounts: string[] | null;
 }
 
+interface TinkAccount {
+  id: string;
+  name?: string;
+  iban?: string;
+  currency?: string;
+  type?: string;
+}
+
+interface TinkConnection {
+  id: number;
+  is_active: boolean;
+  last_sync_at: string | null;
+  created_at: string;
+  accounts: TinkAccount[];
+}
+
 interface UserSettings {
   id: number;
   user_id: string;
@@ -75,6 +91,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bankingConnections, setBankingConnections] = useState<BankingConnection[]>([]);
+  const [tinkConnections, setTinkConnections] = useState<TinkConnection[]>([]);
+  const [tinkConnecting, setTinkConnecting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [shouldClearBeforeImport, setShouldClearBeforeImport] = useState<boolean>(false);
 
@@ -110,8 +128,77 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchTinkConnections = async () => {
+    try {
+      const response = await fetch("/api/banking/tink/connections");
+      if (response.ok) {
+        const data: TinkConnection[] = await response.json();
+        setTinkConnections(data);
+      }
+    } catch (err) {
+      logger.error("[Settings] Failed to fetch Tink connections", err);
+    }
+  };
+
+  const handleTinkConnect = async () => {
+    setTinkConnecting(true);
+    try {
+      const response = await fetch("/api/banking/tink/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locale: settings?.language === "pl" ? "pl_PL" : "en_US" }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to initiate bank connection");
+      }
+
+      const data = await response.json();
+
+      // Redirect to Tink Link
+      window.location.href = data.tink_link_url;
+    } catch (err: any) {
+      logger.error("[Settings] Tink connect failed", err);
+      toast({
+        title: err.message || "Failed to connect bank",
+        variant: "destructive",
+      });
+    } finally {
+      setTinkConnecting(false);
+    }
+  };
+
+  const handleTinkDisconnect = async (connectionId: number) => {
+    if (!confirm(intl.formatMessage({ id: "settings.messages.confirmBankDelete" }))) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/banking/tink/connections/${connectionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      toast({
+        title: intl.formatMessage({ id: "settings.messages.bankDeleteSuccess" }),
+      });
+      setTinkConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
+    } catch (err) {
+      logger.error("[Settings] Failed to delete Tink connection", err);
+      toast({
+        title: intl.formatMessage({ id: "settings.messages.bankDeleteError" }),
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     void fetchSettings();
+    void fetchTinkConnections();
   }, [userEmail]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -498,46 +585,137 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
         <TabsContent value="banking">
-          <Card>
-            <CardHeader>
-              <CardTitle>{intl.formatMessage({ id: "settings.banking.title" })}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {bankingConnections.length === 0 ? (
+          <div className="space-y-6">
+            {/* Tink Connections - Primary bank integration */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Tink Bank Connection</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  {intl.formatMessage({ id: "settings.banking.noConnections" })}
+                  Connect your bank account to automatically import transactions. Supports most Polish banks including ING, PKO BP, and mBank.
                 </p>
-              ) : (
-                <div className="space-y-3">
-                  {bankingConnections.map((connection) => (
-                    <div
-                      key={connection.id}
-                      className="flex flex-col gap-1 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+
+                {tinkConnections.length === 0 ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      No bank accounts connected yet.
+                    </p>
+                    <Button
+                      onClick={() => void handleTinkConnect()}
+                      disabled={tinkConnecting}
                     >
-                      <div>
-                        <p className="font-medium text-primary">
-                          {connection.institution_name}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {intl.formatMessage({ id: "settings.banking.requisition" })}: {connection.requisition_id}
-                        </p>
+                      {tinkConnecting ? "Connecting..." : "Connect Bank Account"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {tinkConnections.map((connection) => (
+                      <div
+                        key={connection.id}
+                        className="flex flex-col gap-2 rounded-lg border p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500" />
+                            <span className="font-medium">Connected</span>
+                          </div>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => void handleTinkDisconnect(connection.id)}
+                          >
+                            Disconnect
+                          </Button>
+                        </div>
+                        {connection.accounts.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">
+                              Connected accounts:
+                            </p>
+                            <ul className="text-sm space-y-1">
+                              {connection.accounts.map((account) => (
+                                <li key={account.id} className="flex items-center gap-2">
+                                  <span>{account.name || "Account"}</span>
+                                  {account.iban && (
+                                    <span className="text-muted-foreground">
+                                      (...{account.iban.slice(-4)})
+                                    </span>
+                                  )}
+                                  {account.currency && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {account.currency}
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {connection.last_sync_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Last synced: {new Date(connection.last_sync_at).toLocaleString()}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">
-                          {intl.formatMessage({ id: "settings.banking.expires" })}: {new Date(connection.expires_at).toLocaleDateString()}
+                          Connected: {new Date(connection.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => void handleDeleteConnection(connection.id)}
+                    ))}
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleTinkConnect()}
+                      disabled={tinkConnecting}
+                    >
+                      {tinkConnecting ? "Connecting..." : "Connect Another Account"}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* GoCardless Connections - Legacy */}
+            <Card>
+              <CardHeader>
+                <CardTitle>{intl.formatMessage({ id: "settings.banking.title" })} (GoCardless)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {bankingConnections.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {intl.formatMessage({ id: "settings.banking.noConnections" })}
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {bankingConnections.map((connection) => (
+                      <div
+                        key={connection.id}
+                        className="flex flex-col gap-1 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        {intl.formatMessage({ id: "settings.banking.remove" })}
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                        <div>
+                          <p className="font-medium text-primary">
+                            {connection.institution_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {intl.formatMessage({ id: "settings.banking.requisition" })}: {connection.requisition_id}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {intl.formatMessage({ id: "settings.banking.expires" })}: {new Date(connection.expires_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => void handleDeleteConnection(connection.id)}
+                        >
+                          {intl.formatMessage({ id: "settings.banking.remove" })}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

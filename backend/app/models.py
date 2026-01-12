@@ -26,6 +26,8 @@ class User(Base):
     financial_freedom = relationship("FinancialFreedom", back_populates="user", uselist=False)
     savings = relationship("Saving", back_populates="user", cascade="all, delete-orphan")
     banking_connections = relationship("BankingConnection", back_populates="user", cascade="all, delete-orphan")
+    tink_connections = relationship("TinkConnection", back_populates="user", cascade="all, delete-orphan")
+    bank_transactions = relationship("BankTransaction", back_populates="user", cascade="all, delete-orphan")
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -56,11 +58,14 @@ class Expense(Base):
     amount = Column(Float)
     is_recurring = Column(Boolean, default=False)
     date = Column(Date)
+    source = Column(String, default="manual")  # "manual" or "bank_import"
+    bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationship
     user = relationship("User", back_populates="expenses")
+    bank_transaction = relationship("BankTransaction", foreign_keys=[bank_transaction_id])
 
 class Income(Base):
     __tablename__ = "income"
@@ -72,11 +77,14 @@ class Income(Base):
     amount = Column(Float)
     is_recurring = Column(Boolean, default=False)
     date = Column(Date)
+    source = Column(String, default="manual")  # "manual" or "bank_import"
+    bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationship
     user = relationship("User", back_populates="income")
+    bank_transaction = relationship("BankTransaction", foreign_keys=[bank_transaction_id])
 
 class Settings(Base):
     __tablename__ = "settings"
@@ -233,4 +241,109 @@ class BankingConnection(Base):
     __table_args__ = (
         Index('idx_banking_connections_user_id', 'user_id'),
         Index('idx_banking_connections_requisition_id', 'requisition_id'),
+    )
+
+
+class TinkConnection(Base):
+    """Stores Tink API connections and OAuth tokens per user."""
+    __tablename__ = "tink_connections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+
+    # Tink OAuth tokens
+    tink_user_id = Column(String, unique=True, nullable=False)  # Tink's internal user ID
+    access_token = Column(String, nullable=False)
+    refresh_token = Column(String, nullable=False)
+    token_expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    # Tink authorization metadata
+    authorization_code = Column(String, nullable=True)
+    scopes = Column(String, default="accounts:read,transactions:read")
+
+    # Connected accounts
+    accounts = Column(JSON)  # List of Tink account IDs
+    account_details = Column(JSON)  # Map of account_id → {name, iban, currency}
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="tink_connections")
+
+    __table_args__ = (
+        Index('idx_tink_connections_user_id', 'user_id'),
+        Index('idx_tink_connections_tink_user_id', 'tink_user_id'),
+    )
+
+
+class BankTransaction(Base):
+    """Stores raw transactions fetched from Tink before they're accepted as Income/Expense."""
+    __tablename__ = "bank_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+
+    # Tink transaction identifiers
+    tink_transaction_id = Column(String, unique=True, nullable=False, index=True)
+    tink_account_id = Column(String, nullable=False)
+    provider_transaction_id = Column(String, nullable=True)
+
+    # Transaction details
+    amount = Column(Float, nullable=False)
+    currency = Column(String, nullable=False, default="PLN")
+    date = Column(Date, nullable=False, index=True)
+    booked_datetime = Column(DateTime(timezone=True), nullable=True)
+
+    # Descriptions
+    description_display = Column(String, nullable=False)  # "Tesco"
+    description_original = Column(String, nullable=True)  # "TESCO STORES 3297"
+    description_detailed = Column(String, nullable=True)  # Full unstructured text
+
+    # Merchant info
+    merchant_name = Column(String, nullable=True)
+    merchant_category_code = Column(String, nullable=True)
+
+    # Categorization (from Tink)
+    tink_category_id = Column(String, nullable=True)
+    tink_category_name = Column(String, nullable=True)
+
+    # Our categorization
+    suggested_type = Column(String, nullable=True)  # "income" or "expense"
+    suggested_category = Column(String, nullable=True)  # "Groceries", "Salary", etc.
+    confidence_score = Column(Float, default=0.0)  # 0.0 to 1.0
+
+    # Status workflow
+    # - "pending": Awaiting user review
+    # - "accepted": User accepted, converted to Income/Expense
+    # - "rejected": User rejected (not relevant)
+    # - "ignored": System flagged as duplicate/irrelevant
+    status = Column(String, default="pending", nullable=False)
+
+    # Linkage to Income/Expense
+    linked_income_id = Column(Integer, ForeignKey("income.id"), nullable=True)
+    linked_expense_id = Column(Integer, ForeignKey("expenses.id"), nullable=True)
+
+    # Raw data from Tink (for debugging/audit)
+    raw_data = Column(JSONB, nullable=True)
+
+    # Metadata
+    is_duplicate = Column(Boolean, default=False)
+    duplicate_of = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="bank_transactions")
+    linked_income = relationship("Income", foreign_keys=[linked_income_id])
+    linked_expense = relationship("Expense", foreign_keys=[linked_expense_id])
+
+    __table_args__ = (
+        Index('idx_bank_transactions_user_id', 'user_id'),
+        Index('idx_bank_transactions_status', 'status'),
+        Index('idx_bank_transactions_date', 'date'),
     )
