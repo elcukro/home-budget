@@ -8,6 +8,10 @@ import os
 import httpx
 import secrets
 import logging
+import hmac
+import hashlib
+import base64
+import json
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
 from typing import Optional, Dict, Any, List
@@ -27,9 +31,8 @@ class TinkService:
         self.redirect_uri = os.getenv("TINK_REDIRECT_URI", "http://localhost:3000/banking/tink/callback")
         self.api_url = "https://api.tink.com"
         self.link_url = "https://link.tink.com"
-
-        # In-memory state store (in production, use Redis or database)
-        self._state_store: Dict[str, Dict[str, Any]] = {}
+        # Use client_secret as signing key for state tokens
+        self._signing_key = os.getenv("NEXTAUTH_SECRET", self.client_secret).encode()
 
     def _check_credentials(self):
         """Check if Tink credentials are configured."""
@@ -40,30 +43,64 @@ class TinkService:
             )
 
     def generate_state_token(self, user_id: str) -> str:
-        """Generate a random state token for CSRF protection."""
-        state = secrets.token_urlsafe(32)
-        self._state_store[state] = {
+        """Generate a signed state token containing user_id and timestamp."""
+        # Create payload with user_id and expiration (1 hour)
+        payload = {
             "user_id": user_id,
-            "created_at": datetime.utcnow()
+            "exp": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
+            "nonce": secrets.token_hex(8)
         }
-        # Clean up old states (older than 1 hour)
-        self._cleanup_old_states()
+        payload_json = json.dumps(payload, separators=(',', ':'))
+        payload_b64 = base64.urlsafe_b64encode(payload_json.encode()).decode()
+
+        # Create signature
+        signature = hmac.new(
+            self._signing_key,
+            payload_b64.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        # Combine payload and signature
+        state = f"{payload_b64}.{signature}"
         return state
 
-    def _cleanup_old_states(self):
-        """Remove state tokens older than 1 hour."""
-        cutoff = datetime.utcnow() - timedelta(hours=1)
-        self._state_store = {
-            k: v for k, v in self._state_store.items()
-            if v["created_at"] > cutoff
-        }
-
     def verify_state_token(self, state: str) -> Optional[str]:
-        """Verify state token and return user_id if valid."""
-        if state not in self._state_store:
+        """Verify signed state token and return user_id if valid."""
+        try:
+            # Split payload and signature
+            parts = state.split('.')
+            if len(parts) != 2:
+                logger.warning("Invalid state token format")
+                return None
+
+            payload_b64, signature = parts
+
+            # Verify signature
+            expected_signature = hmac.new(
+                self._signing_key,
+                payload_b64.encode(),
+                hashlib.sha256
+            ).hexdigest()
+
+            if not hmac.compare_digest(signature, expected_signature):
+                logger.warning("Invalid state token signature")
+                return None
+
+            # Decode payload
+            payload_json = base64.urlsafe_b64decode(payload_b64.encode()).decode()
+            payload = json.loads(payload_json)
+
+            # Check expiration
+            exp = datetime.fromisoformat(payload["exp"])
+            if datetime.utcnow() > exp:
+                logger.warning("State token expired")
+                return None
+
+            return payload["user_id"]
+
+        except Exception as e:
+            logger.error(f"Error verifying state token: {e}")
             return None
-        data = self._state_store.pop(state)
-        return data["user_id"]
 
     def generate_connect_url(self, user_id: str, locale: str = "en_US") -> tuple[str, str]:
         """
