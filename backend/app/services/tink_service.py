@@ -148,6 +148,7 @@ class TinkService:
             "client_secret": self.client_secret,
             "code": code,
             "grant_type": "authorization_code",
+            "redirect_uri": self.redirect_uri,
         }
 
         async with httpx.AsyncClient() as client:
