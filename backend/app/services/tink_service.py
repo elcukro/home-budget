@@ -30,7 +30,7 @@ class TinkService:
         self.client_secret = os.getenv("TINK_CLIENT_SECRET", "")
         self.redirect_uri = os.getenv("TINK_REDIRECT_URI", "http://localhost:3000/banking/tink/callback")
         self.api_url = "https://api.tink.com"
-        self.link_url = "https://link.tink.com"
+        self.oauth_url = "https://oauth.tink.com"
         # Use client_secret as signing key for state tokens
         self._signing_key = os.getenv("NEXTAUTH_SECRET", self.client_secret).encode()
 
@@ -123,7 +123,7 @@ class TinkService:
             "state": state,
         }
 
-        url = f"{self.link_url}/1.0/authorize?{urlencode(params)}"
+        url = f"{self.oauth_url}/1.0/authorize?{urlencode(params)}"
 
         logger.info(f"Generated Tink Link URL for user {user_id}")
         return url, state
