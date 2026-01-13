@@ -85,7 +85,7 @@ async def initiate_connection(
     Returns a URL to redirect the user to Tink Link.
     """
     try:
-        tink_link_url, state = tink_service.generate_connect_url(
+        tink_link_url, state = await tink_service.generate_connect_url(
             user_id=current_user.id,
             locale=request.locale
         )
