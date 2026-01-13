@@ -145,17 +145,14 @@ class TinkService:
             logger.info("Successfully obtained client access token")
             return data["access_token"]
 
-    async def create_tink_user(self, client_token: str, external_user_id: str, market: str = "PL") -> str:
+    async def create_tink_user(self, client_token: str, external_user_id: str, market: str = "PL") -> None:
         """
-        Create a permanent Tink user or return existing user ID.
+        Create a permanent Tink user (if not exists).
 
         Args:
             client_token: Client access token
             external_user_id: Our app's user ID
             market: User's market (country code)
-
-        Returns:
-            Tink user ID
         """
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -173,13 +170,10 @@ class TinkService:
 
             if response.status_code == 200:
                 data = response.json()
-                logger.info(f"Created Tink user: {data.get('user_id')}")
-                return data["user_id"]
+                logger.info(f"Created Tink user: {data.get('user_id')} for external_user_id: {external_user_id}")
             elif response.status_code == 409:
                 # User already exists - this is fine
                 logger.info(f"Tink user already exists for {external_user_id}")
-                # Extract user_id from error or use external_user_id
-                return external_user_id
             else:
                 logger.error(f"Failed to create Tink user: {response.status_code} - {response.text}")
                 raise Exception(f"Failed to create Tink user: {response.text}")
@@ -187,7 +181,7 @@ class TinkService:
     async def generate_authorization_code(
         self,
         client_token: str,
-        tink_user_id: str,
+        external_user_id: str,
         scope: str = "accounts:read,transactions:read,credentials:read"
     ) -> str:
         """
@@ -195,20 +189,20 @@ class TinkService:
 
         Args:
             client_token: Client access token
-            tink_user_id: Tink user ID (external_user_id)
+            external_user_id: Our app's user ID (same as used in create_tink_user)
             scope: Scopes to grant
 
         Returns:
             Authorization code
         """
-        # For delegation, we need to specify the user
-        # Use the authorization-grant endpoint with actor_client_id
+        # For delegation, we use external_user_id to identify the user
+        # actor_client_id is Tink Link's client ID
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.api_url}/api/v1/oauth/authorization-grant/delegate",
                 data={
-                    "external_user_id": tink_user_id,
-                    "id_hint": tink_user_id,
+                    "external_user_id": external_user_id,
+                    "id_hint": external_user_id,
                     "actor_client_id": "df05e4b379934cd09963197cc855bfe9",  # Tink Link client ID
                     "scope": scope,
                 },
@@ -223,7 +217,7 @@ class TinkService:
                 raise Exception(f"Failed to generate authorization code: {response.text}")
 
             data = response.json()
-            logger.info("Successfully generated user authorization code")
+            logger.info(f"Successfully generated authorization code for {external_user_id}")
             return data["code"]
 
     async def generate_connect_url(self, user_id: str, locale: str = "en_US") -> tuple[str, str]:
@@ -244,13 +238,14 @@ class TinkService:
         # Step 1: Get client access token
         client_token = await self.get_client_access_token()
 
-        # Step 2: Create or get Tink user
-        tink_user_id = await self.create_tink_user(client_token, user_id, market="PL")
+        # Step 2: Create Tink user (if not exists)
+        await self.create_tink_user(client_token, user_id, market="PL")
 
         # Step 3: Generate authorization code for the user
+        # Use user_id as external_user_id (same as used in create_tink_user)
         auth_code = await self.generate_authorization_code(
             client_token,
-            tink_user_id,
+            user_id,  # external_user_id
             scope="accounts:read,transactions:read,credentials:read"
         )
 
@@ -261,7 +256,7 @@ class TinkService:
         self._pending_auth_codes[state] = {
             "auth_code": auth_code,
             "user_id": user_id,
-            "tink_user_id": tink_user_id,
+            "external_user_id": user_id,  # Same as user_id, used for Tink API
             "created_at": datetime.utcnow().isoformat(),
         }
 
@@ -486,7 +481,7 @@ class TinkService:
             raise Exception("Authorization data not found. Please try connecting again.")
 
         auth_code = pending_data["auth_code"]
-        tink_user_id = pending_data["tink_user_id"]
+        external_user_id = pending_data["external_user_id"]
 
         # Exchange authorization code for tokens
         token_data = await self.exchange_code_for_tokens(auth_code)
@@ -527,7 +522,7 @@ class TinkService:
             existing.accounts = account_ids
             existing.account_details = account_details
             existing.is_active = True
-            existing.tink_user_id = tink_user_id
+            existing.tink_user_id = external_user_id
             if credentials_id:
                 existing.credentials_id = credentials_id
             db.commit()
@@ -538,7 +533,7 @@ class TinkService:
         # Create new connection
         connection = TinkConnection(
             user_id=user_id,
-            tink_user_id=tink_user_id,
+            tink_user_id=external_user_id,
             access_token=access_token,
             refresh_token=refresh_token,
             token_expires_at=datetime.utcnow() + timedelta(seconds=expires_in),
