@@ -1,16 +1,17 @@
 """
 Tink API Service
 
-Handles OAuth flow and API interactions with Tink using the Tink Link flow
-with permanent users.
+Handles OAuth flow and API interactions with Tink using Connectivity v1.
 
 Flow:
 1. Get client access token (client_credentials grant)
-2. Create or get Tink user for the app user
-3. Generate user authorization code (delegate grant)
-4. Build Tink Link URL with authorization code
-5. After callback, exchange authorization code for user tokens
+2. Create Tink user (if not exists)
+3. Generate delegated authorization code (for Tink Link)
+4. Build Tink Link URL
+5. After callback, exchange OUR authorization code for user tokens
 6. Use user tokens to fetch accounts/transactions
+
+IMPORTANT: We exchange the code WE generated (step 3), NOT any code from callback!
 """
 
 import os
@@ -36,13 +37,15 @@ def sanitize_external_user_id(user_id: str) -> str:
     Create a valid external_user_id for Tink from our user ID.
     Tink requires alphanumeric IDs, so we hash the email.
     """
-    # Create a deterministic hash of the user_id
-    hash_bytes = hashlib.sha256(user_id.encode()).hexdigest()[:32]
-    return f"user_{hash_bytes}"
+    hash_bytes = hashlib.sha256(user_id.encode()).hexdigest()[:24]
+    return f"u{hash_bytes}"
 
 
 class TinkService:
     """Service class for Tink API interactions."""
+
+    # Tink Link's official client ID for delegation
+    TINK_LINK_CLIENT_ID = "df05e4b379934cd09963197cc855bfe9"
 
     def __init__(self):
         self.client_id = os.getenv("TINK_CLIENT_ID", "")
@@ -50,11 +53,10 @@ class TinkService:
         self.redirect_uri = os.getenv("TINK_REDIRECT_URI", "http://localhost:3000/banking/tink/callback")
         self.api_url = "https://api.tink.com"
         self.link_url = "https://link.tink.com"
-        # Use client_secret as signing key for state tokens
         self._signing_key = os.getenv("NEXTAUTH_SECRET", self.client_secret).encode()
-        # Store pending authorization codes mapped to state tokens
-        # In production, this should be stored in Redis or database
-        self._pending_auth_codes: Dict[str, Dict[str, Any]] = {}
+        # Store pending authorization codes - maps state -> auth data
+        # TODO: In production, use Redis or database instead of memory
+        self._pending_auth: Dict[str, Dict[str, Any]] = {}
 
     def _check_credentials(self):
         """Check if Tink credentials are configured."""
@@ -66,7 +68,6 @@ class TinkService:
 
     def generate_state_token(self, user_id: str) -> str:
         """Generate a signed state token containing user_id and timestamp."""
-        # Create payload with user_id and expiration (1 hour)
         payload = {
             "user_id": user_id,
             "exp": (datetime.utcnow() + timedelta(hours=1)).isoformat(),
@@ -75,21 +76,17 @@ class TinkService:
         payload_json = json.dumps(payload, separators=(',', ':'))
         payload_b64 = base64.urlsafe_b64encode(payload_json.encode()).decode()
 
-        # Create signature
         signature = hmac.new(
             self._signing_key,
             payload_b64.encode(),
             hashlib.sha256
         ).hexdigest()
 
-        # Combine payload and signature
-        state = f"{payload_b64}.{signature}"
-        return state
+        return f"{payload_b64}.{signature}"
 
     def verify_state_token(self, state: str) -> Optional[str]:
         """Verify signed state token and return user_id if valid."""
         try:
-            # Split payload and signature
             parts = state.split('.')
             if len(parts) != 2:
                 logger.warning("Invalid state token format")
@@ -97,7 +94,6 @@ class TinkService:
 
             payload_b64, signature = parts
 
-            # Verify signature
             expected_signature = hmac.new(
                 self._signing_key,
                 payload_b64.encode(),
@@ -108,11 +104,9 @@ class TinkService:
                 logger.warning("Invalid state token signature")
                 return None
 
-            # Decode payload
             payload_json = base64.urlsafe_b64decode(payload_b64.encode()).decode()
             payload = json.loads(payload_json)
 
-            # Check expiration
             exp = datetime.fromisoformat(payload["exp"])
             if datetime.utcnow() > exp:
                 logger.warning("State token expired")
@@ -124,13 +118,11 @@ class TinkService:
             logger.error(f"Error verifying state token: {e}")
             return None
 
-    async def get_client_access_token(self) -> str:
-        """
-        Get a client access token using client_credentials grant.
-
-        Returns:
-            Client access token string
-        """
+    # =========================================================================
+    # Step 1: Get Client Access Token
+    # =========================================================================
+    async def get_client_access_token(self, scope: str = "user:create,authorization:grant") -> str:
+        """Get a client access token using client_credentials grant."""
         self._check_credentials()
 
         async with httpx.AsyncClient() as client:
@@ -140,11 +132,9 @@ class TinkService:
                     "client_id": self.client_id,
                     "client_secret": self.client_secret,
                     "grant_type": "client_credentials",
-                    "scope": "user:create,authorization:grant",
+                    "scope": scope,
                 },
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                }
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
 
             if response.status_code != 200:
@@ -155,14 +145,20 @@ class TinkService:
             logger.info("Successfully obtained client access token")
             return data["access_token"]
 
-    async def create_tink_user(self, client_token: str, external_user_id: str, market: str = "PL") -> None:
+    # =========================================================================
+    # Step 2: Create Tink User
+    # =========================================================================
+    async def create_tink_user(
+        self,
+        client_token: str,
+        external_user_id: str,
+        market: str = "PL"
+    ) -> Dict[str, str]:
         """
-        Create a permanent Tink user (if not exists).
+        Create a permanent Tink user.
 
-        Args:
-            client_token: Client access token
-            external_user_id: Our app's user ID
-            market: User's market (country code)
+        Returns dict with user_id and external_user_id.
+        If user already exists (409), that's OK.
         """
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -180,40 +176,36 @@ class TinkService:
 
             if response.status_code == 200:
                 data = response.json()
-                logger.info(f"Created Tink user: {data.get('user_id')} for external_user_id: {external_user_id}")
+                logger.info(f"Created Tink user: {data}")
+                return data
             elif response.status_code == 409:
                 # User already exists - this is fine
-                logger.info(f"Tink user already exists for {external_user_id}")
+                logger.info(f"Tink user already exists for external_user_id: {external_user_id}")
+                return {"external_user_id": external_user_id, "user_id": None}
             else:
                 logger.error(f"Failed to create Tink user: {response.status_code} - {response.text}")
                 raise Exception(f"Failed to create Tink user: {response.text}")
 
-    async def generate_authorization_code(
+    # =========================================================================
+    # Step 3: Generate Delegated Authorization Code
+    # =========================================================================
+    async def generate_delegated_auth_code(
         self,
         client_token: str,
         external_user_id: str,
-        scope: str = "accounts:read,transactions:read,credentials:read"
+        scope: str = "accounts:read,transactions:read,credentials:write,credentials:read"
     ) -> str:
         """
-        Generate an authorization code for a Tink user using delegate grant.
+        Generate a delegated authorization code for Tink Link to use.
 
-        Args:
-            client_token: Client access token
-            external_user_id: Our app's user ID (same as used in create_tink_user)
-            scope: Scopes to grant
-
-        Returns:
-            Authorization code
+        The actor_client_id is Tink Link's client ID.
         """
-        # For delegation, we use external_user_id to identify the user
-        # actor_client_id is Tink Link's client ID
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.api_url}/api/v1/oauth/authorization-grant/delegate",
                 data={
                     "external_user_id": external_user_id,
-                    "id_hint": external_user_id,
-                    "actor_client_id": "df05e4b379934cd09963197cc855bfe9",  # Tink Link client ID
+                    "actor_client_id": self.TINK_LINK_CLIENT_ID,
                     "scope": scope,
                 },
                 headers={
@@ -223,53 +215,58 @@ class TinkService:
             )
 
             if response.status_code != 200:
-                logger.error(f"Failed to generate auth code: {response.status_code} - {response.text}")
+                logger.error(f"Failed to generate delegated auth code: {response.status_code} - {response.text}")
                 raise Exception(f"Failed to generate authorization code: {response.text}")
 
             data = response.json()
-            logger.info(f"Successfully generated authorization code for {external_user_id}")
+            logger.info(f"Generated delegated auth code for {external_user_id}")
             return data["code"]
 
+    # =========================================================================
+    # Main Entry Point: Generate Connect URL
+    # =========================================================================
     async def generate_connect_url(self, user_id: str, locale: str = "en_US") -> tuple[str, str]:
         """
         Generate Tink Link URL for user to connect their bank.
 
-        This uses the Tink Link flow with permanent users:
+        Flow:
         1. Get client access token
-        2. Create/get Tink user
-        3. Generate authorization code for user
+        2. Create Tink user (if not exists)
+        3. Generate delegated authorization code
         4. Build Tink Link URL
+        5. Store auth code for later exchange
 
         Returns:
             tuple: (tink_link_url, state_token)
         """
         self._check_credentials()
 
+        # Create sanitized external_user_id
+        external_user_id = sanitize_external_user_id(user_id)
+        logger.info(f"Starting Tink Link flow for user {user_id} (external: {external_user_id})")
+
         # Step 1: Get client access token
         client_token = await self.get_client_access_token()
 
-        # Create sanitized external_user_id for Tink (alphanumeric only)
-        external_user_id = sanitize_external_user_id(user_id)
-        logger.info(f"Using external_user_id: {external_user_id} for user: {user_id}")
-
         # Step 2: Create Tink user (if not exists)
-        await self.create_tink_user(client_token, external_user_id, market="PL")
+        user_data = await self.create_tink_user(client_token, external_user_id, market="PL")
 
-        # Step 3: Generate authorization code for the user
-        auth_code = await self.generate_authorization_code(
+        # Step 3: Generate delegated authorization code
+        auth_code = await self.generate_delegated_auth_code(
             client_token,
             external_user_id,
-            scope="accounts:read,transactions:read,credentials:read"
+            scope="accounts:read,transactions:read,credentials:write,credentials:read"
         )
 
         # Generate state token for CSRF protection
         state = self.generate_state_token(user_id)
 
-        # Store the auth code mapped to state for later exchange
-        self._pending_auth_codes[state] = {
+        # Store auth data for later exchange (IMPORTANT!)
+        self._pending_auth[state] = {
             "auth_code": auth_code,
             "user_id": user_id,
             "external_user_id": external_user_id,
+            "tink_user_id": user_data.get("user_id"),
             "created_at": datetime.utcnow().isoformat(),
         }
 
@@ -277,7 +274,7 @@ class TinkService:
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
-            "authorization_code": auth_code,  # Use the generated auth code
+            "authorization_code": auth_code,
             "market": "PL",
             "locale": locale,
             "state": state,
@@ -288,43 +285,30 @@ class TinkService:
         logger.info(f"Generated Tink Link URL for user {user_id}")
         return url, state
 
-    def get_pending_auth_code(self, state: str) -> Optional[Dict[str, Any]]:
-        """Get pending authorization code data by state token."""
-        return self._pending_auth_codes.get(state)
-
-    def clear_pending_auth_code(self, state: str):
-        """Clear pending authorization code after use."""
-        if state in self._pending_auth_codes:
-            del self._pending_auth_codes[state]
-
+    # =========================================================================
+    # Step 5-6: Exchange Auth Code for User Token (after callback)
+    # =========================================================================
     async def exchange_code_for_tokens(self, code: str) -> Dict[str, Any]:
         """
-        Exchange authorization code for access and refresh tokens.
+        Exchange authorization code for user access and refresh tokens.
 
-        Args:
-            code: Authorization code (from delegation, not from callback)
-
-        Returns:
-            Dict with access_token, refresh_token, expires_in, etc.
+        IMPORTANT: Use the code WE generated (from generate_delegated_auth_code),
+        NOT any code from the callback!
         """
         self._check_credentials()
 
-        logger.info(f"Exchanging authorization code for tokens...")
-
-        request_data = {
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "code": code,
-            "grant_type": "authorization_code",
-        }
+        logger.info("Exchanging authorization code for user tokens...")
 
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.api_url}/api/v1/oauth/token",
-                data=request_data,
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                }
+                data={
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "code": code,
+                    "grant_type": "authorization_code",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
             )
 
             logger.info(f"Token exchange response status: {response.status_code}")
@@ -335,82 +319,15 @@ class TinkService:
 
             return response.json()
 
-    async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
-        """
-        Refresh an expired access token.
-
-        Args:
-            refresh_token: The refresh token
-
-        Returns:
-            Dict with new access_token, refresh_token, expires_in, etc.
-        """
-        self._check_credentials()
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.api_url}/api/v1/oauth/token",
-                data={
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                    "refresh_token": refresh_token,
-                    "grant_type": "refresh_token",
-                },
-                headers={
-                    "Content-Type": "application/x-www-form-urlencoded",
-                }
-            )
-
-            if response.status_code != 200:
-                logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to refresh token: {response.text}")
-
-            return response.json()
-
-    async def get_valid_access_token(self, connection: TinkConnection, db: Session) -> str:
-        """
-        Get a valid access token, refreshing if necessary.
-
-        Args:
-            connection: TinkConnection object
-            db: Database session
-
-        Returns:
-            Valid access token string
-        """
-        # Check if token is still valid (with 5 minute buffer)
-        if connection.token_expires_at > datetime.utcnow() + timedelta(minutes=5):
-            return connection.access_token
-
-        # Token expired, refresh it
-        logger.info(f"Refreshing expired token for connection {connection.id}")
-        token_data = await self.refresh_access_token(connection.refresh_token)
-
-        # Update connection with new tokens
-        connection.access_token = token_data["access_token"]
-        connection.refresh_token = token_data.get("refresh_token", connection.refresh_token)
-        connection.token_expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
-
-        db.commit()
-
-        return connection.access_token
-
+    # =========================================================================
+    # Step 7: Fetch Data with User Token
+    # =========================================================================
     async def fetch_accounts(self, access_token: str) -> List[Dict[str, Any]]:
-        """
-        Fetch user's connected accounts from Tink.
-
-        Args:
-            access_token: Valid access token
-
-        Returns:
-            List of account dictionaries
-        """
+        """Fetch user's connected accounts from Tink."""
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.api_url}/data/v2/accounts",
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                }
+                headers={"Authorization": f"Bearer {access_token}"}
             )
 
             if response.status_code != 200:
@@ -428,22 +345,8 @@ class TinkService:
         to_date: Optional[datetime] = None,
         page_token: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """
-        Fetch transactions from Tink.
-
-        Args:
-            access_token: Valid access token
-            account_id: Optional account ID to filter by
-            from_date: Start date for transactions
-            to_date: End date for transactions
-            page_token: Token for pagination
-
-        Returns:
-            Dict with transactions list and nextPageToken
-        """
-        params = {
-            "pageSize": 100,
-        }
+        """Fetch transactions from Tink."""
+        params = {"pageSize": 100}
 
         if account_id:
             params["accountIdIn"] = account_id
@@ -458,9 +361,7 @@ class TinkService:
             response = await client.get(
                 f"{self.api_url}/data/v2/transactions",
                 params=params,
-                headers={
-                    "Authorization": f"Bearer {access_token}",
-                }
+                headers={"Authorization": f"Bearer {access_token}"}
             )
 
             if response.status_code != 200:
@@ -469,7 +370,10 @@ class TinkService:
 
             return response.json()
 
-    async def create_connection(
+    # =========================================================================
+    # Connection Management
+    # =========================================================================
+    async def create_connection_from_callback(
         self,
         db: Session,
         user_id: str,
@@ -477,36 +381,32 @@ class TinkService:
         credentials_id: Optional[str] = None,
     ) -> TinkConnection:
         """
-        Create a new Tink connection after successful bank connection via Tink Link.
+        Create a new Tink connection after successful Tink Link callback.
 
-        Args:
-            db: Database session
-            user_id: User ID
-            state: State token from callback (used to retrieve stored auth code)
-            credentials_id: Credentials ID from Tink callback
-
-        Returns:
-            Created TinkConnection object
+        Uses the stored authorization code (NOT from callback) to get user tokens.
         """
-        # Get stored authorization code
-        pending_data = self.get_pending_auth_code(state)
-        if not pending_data:
+        # Get stored auth data
+        pending = self._pending_auth.get(state)
+        if not pending:
             raise Exception("Authorization data not found. Please try connecting again.")
 
-        auth_code = pending_data["auth_code"]
-        external_user_id = pending_data["external_user_id"]
+        auth_code = pending["auth_code"]
+        external_user_id = pending["external_user_id"]
 
-        # Exchange authorization code for tokens
+        logger.info(f"Creating connection for user {user_id}, external: {external_user_id}")
+
+        # Exchange OUR auth code for user tokens
         token_data = await self.exchange_code_for_tokens(auth_code)
 
         access_token = token_data["access_token"]
+        # Note: Tink may not return refresh_token for all grant types
         refresh_token = token_data.get("refresh_token", "")
-        expires_in = token_data.get("expires_in", 3600)
+        expires_in = token_data.get("expires_in", 7200)
 
-        # Clear the pending auth code
-        self.clear_pending_auth_code(state)
+        # Clear the pending auth
+        del self._pending_auth[state]
 
-        # Fetch accounts
+        # Fetch accounts using user token
         accounts = await self.fetch_accounts(access_token)
 
         # Extract account details
@@ -528,7 +428,6 @@ class TinkService:
         ).first()
 
         if existing:
-            # Update existing connection
             existing.access_token = access_token
             existing.refresh_token = refresh_token
             existing.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
@@ -540,7 +439,7 @@ class TinkService:
                 existing.credentials_id = credentials_id
             db.commit()
             db.refresh(existing)
-            logger.info(f"Updated existing Tink connection {existing.id} for user {user_id}")
+            logger.info(f"Updated existing Tink connection {existing.id}")
             return existing
 
         # Create new connection
@@ -561,8 +460,49 @@ class TinkService:
         db.commit()
         db.refresh(connection)
 
-        logger.info(f"Created new Tink connection {connection.id} for user {user_id}")
+        logger.info(f"Created new Tink connection {connection.id}")
         return connection
+
+    async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
+        """Refresh an expired access token."""
+        self._check_credentials()
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.api_url}/api/v1/oauth/token",
+                data={
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "refresh_token": refresh_token,
+                    "grant_type": "refresh_token",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to refresh token: {response.text}")
+
+            return response.json()
+
+    async def get_valid_access_token(self, connection: TinkConnection, db: Session) -> str:
+        """Get a valid access token, refreshing if necessary."""
+        if connection.token_expires_at > datetime.utcnow() + timedelta(minutes=5):
+            return connection.access_token
+
+        if not connection.refresh_token:
+            raise Exception("Token expired and no refresh token available")
+
+        logger.info(f"Refreshing expired token for connection {connection.id}")
+        token_data = await self.refresh_access_token(connection.refresh_token)
+
+        connection.access_token = token_data["access_token"]
+        connection.refresh_token = token_data.get("refresh_token", connection.refresh_token)
+        connection.token_expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
+
+        db.commit()
+
+        return connection.access_token
 
 
 # Singleton instance
