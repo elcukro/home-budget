@@ -117,6 +117,7 @@ class TinkService:
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
+            "response_type": "code",  # Required for OAuth code flow
             "scope": "accounts:read,transactions:read,credentials:read",
             "market": "PL",  # Poland
             "locale": locale,
