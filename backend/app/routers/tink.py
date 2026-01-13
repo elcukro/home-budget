@@ -6,7 +6,7 @@ Handles Tink OAuth flow and bank connection management.
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
 import logging
@@ -36,9 +36,9 @@ class ConnectResponse(BaseModel):
 
 
 class CallbackRequest(BaseModel):
-    code: str  # Authorization code from OAuth callback
-    state: str
-    credentials_id: Optional[str] = None  # Optional from Tink callback
+    state: str  # State token for CSRF protection
+    code: Optional[str] = None  # Authorization code from Tink Link (for one-time flow)
+    credentials_id: Optional[str] = None  # Credentials ID from Tink Link callback
 
 
 class AccountDetail(BaseModel):
@@ -86,7 +86,8 @@ async def initiate_connection(
     Returns a URL to redirect the user to Tink Link.
     """
     try:
-        tink_link_url, state = await tink_service.generate_connect_url(
+        # Use simple one-time flow (recommended for testing)
+        tink_link_url, state = await tink_service.generate_simple_connect_url(
             user_id=current_user.id,
             locale=request.locale
         )
@@ -124,11 +125,12 @@ async def handle_callback(
         if stored_user_id != current_user.id:
             raise HTTPException(status_code=403, detail="State token does not match current user")
 
-        # Create connection using stored auth code (NOT the callback code)
+        # Create connection - for one-time flow, use code from callback
         connection = await tink_service.create_connection_from_callback(
             db=db,
             user_id=current_user.id,
             state=request.state,
+            code=request.code,
             credentials_id=request.credentials_id,
         )
 
@@ -267,3 +269,157 @@ async def test_tink_api(
         "redirect_uri": tink_service.redirect_uri,
         "timestamp": datetime.now().isoformat()
     }
+
+
+@router.post("/refresh-data")
+async def refresh_tink_data(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Refresh data from Tink - re-fetches accounts and updates stored data.
+    """
+    try:
+        connection = db.query(TinkConnection).filter(
+            TinkConnection.user_id == current_user.id,
+            TinkConnection.is_active == True
+        ).first()
+
+        if not connection:
+            return {"error": "No active Tink connection found", "success": False}
+
+        # Get valid access token
+        access_token = await tink_service.get_valid_access_token(connection, db)
+
+        # Refresh accounts data
+        accounts = await tink_service.fetch_accounts(access_token)
+
+        # Update stored account data
+        account_ids = [acc["id"] for acc in accounts]
+        account_details = {
+            acc["id"]: {
+                "name": acc.get("name", "Unknown Account"),
+                "iban": acc.get("identifiers", {}).get("iban", {}).get("iban"),
+                "currency": acc.get("balances", {}).get("booked", {}).get("amount", {}).get("currencyCode", "PLN"),
+                "type": acc.get("type"),
+            }
+            for acc in accounts
+        }
+
+        connection.accounts = account_ids
+        connection.account_details = account_details
+        connection.last_sync_at = datetime.now()
+        db.commit()
+
+        return {
+            "success": True,
+            "message": "Data refreshed successfully",
+            "accounts_count": len(accounts),
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error refreshing Tink data: {str(e)}")
+        return {"error": str(e), "success": False}
+
+
+@router.get("/debug-data")
+async def get_debug_data(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Fetch all available data from Tink for debugging/testing.
+    Returns accounts, transactions, balances, and raw API responses.
+    """
+    try:
+        # Get user's active Tink connection
+        connection = db.query(TinkConnection).filter(
+            TinkConnection.user_id == current_user.id,
+            TinkConnection.is_active == True
+        ).first()
+
+        if not connection:
+            return {
+                "error": "No active Tink connection found",
+                "has_connection": False
+            }
+
+        # Get valid access token (refresh if needed)
+        access_token = await tink_service.get_valid_access_token(connection, db)
+
+        # Fetch accounts
+        accounts_raw = await tink_service.fetch_accounts(access_token)
+
+        # Fetch transactions (last 90 days)
+        from_date = datetime.now() - timedelta(days=90)
+        transactions_response = await tink_service.fetch_transactions(
+            access_token,
+            from_date=from_date
+        )
+
+        # Fetch balances for each account (included in accounts data)
+        # Parse and organize data
+        accounts_processed = []
+        for acc in accounts_raw:
+            account_data = {
+                "id": acc.get("id"),
+                "name": acc.get("name"),
+                "type": acc.get("type"),
+                "identifiers": acc.get("identifiers", {}),
+                "balances": acc.get("balances", {}),
+                "dates": acc.get("dates", {}),
+                "financialInstitutionId": acc.get("financialInstitutionId"),
+                "customerSegment": acc.get("customerSegment"),
+            }
+            accounts_processed.append(account_data)
+
+        transactions_processed = []
+        for tx in transactions_response.get("transactions", []):
+            tx_data = {
+                "id": tx.get("id"),
+                "accountId": tx.get("accountId"),
+                "amount": tx.get("amount", {}),
+                "descriptions": tx.get("descriptions", {}),
+                "dates": tx.get("dates", {}),
+                "identifiers": tx.get("identifiers", {}),
+                "types": tx.get("types", {}),
+                "status": tx.get("status"),
+                "providerMutability": tx.get("providerMutability"),
+                "merchantInformation": tx.get("merchantInformation", {}),
+                "categories": tx.get("categories", {}),
+            }
+            transactions_processed.append(tx_data)
+
+        return {
+            "has_connection": True,
+            "connection_info": {
+                "id": connection.id,
+                "created_at": connection.created_at.isoformat() if connection.created_at else None,
+                "last_sync_at": connection.last_sync_at.isoformat() if connection.last_sync_at else None,
+                "token_expires_at": connection.token_expires_at.isoformat() if connection.token_expires_at else None,
+                "scopes": connection.scopes,
+                "stored_accounts": connection.accounts,
+                "stored_account_details": connection.account_details,
+            },
+            "accounts": {
+                "count": len(accounts_processed),
+                "data": accounts_processed,
+                "raw": accounts_raw,
+            },
+            "transactions": {
+                "count": len(transactions_processed),
+                "period": f"Last 90 days (from {from_date.strftime('%Y-%m-%d')})",
+                "next_page_token": transactions_response.get("nextPageToken"),
+                "data": transactions_processed,
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching Tink debug data: {str(e)}")
+        return {
+            "error": str(e),
+            "has_connection": True,
+            "timestamp": datetime.now().isoformat()
+        }

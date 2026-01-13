@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useIntl } from "react-intl";
 import { useSession } from "next-auth/react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { useSettings } from "@/contexts/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
@@ -81,11 +82,22 @@ const currencies = [
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const intl = useIntl();
   const { toast } = useToast();
   const { updateSettings: updateContextSettings } = useSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState('import-export');
+
+  // Sync tab state with URL parameter (handles both initial load and navigation)
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl === 'banking') {
+      setActiveTab('banking');
+    }
+  }, [searchParams]);
 
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -200,6 +212,13 @@ export default function SettingsPage() {
     void fetchSettings();
     void fetchTinkConnections();
   }, [userEmail]);
+
+  // Refetch Tink connections when banking tab becomes active (e.g., after returning from callback)
+  useEffect(() => {
+    if (activeTab === 'banking') {
+      void fetchTinkConnections();
+    }
+  }, [activeTab]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -509,7 +528,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="import-export">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="w-full justify-start">
           <TabsTrigger value="import-export">
             {intl.formatMessage({ id: "settings.tabs.importExport" })}
@@ -662,13 +681,21 @@ export default function SettingsPage() {
                         </p>
                       </div>
                     ))}
-                    <Button
-                      variant="outline"
-                      onClick={() => void handleTinkConnect()}
-                      disabled={tinkConnecting}
-                    >
-                      {tinkConnecting ? "Connecting..." : "Connect Another Account"}
-                    </Button>
+                    <div className="flex gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        onClick={() => void handleTinkConnect()}
+                        disabled={tinkConnecting}
+                      >
+                        {tinkConnecting ? "Connecting..." : "Connect Another Account"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => router.push('/banking/tink/test')}
+                      >
+                        View API Data
+                      </Button>
+                    </div>
                   </div>
                 )}
               </CardContent>

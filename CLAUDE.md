@@ -14,11 +14,29 @@
 - `cd backend && python -m pytest tests/test_file.py` - Run a single test file
 - `cd backend && python test_gocardless.py` - Test GoCardless bank data API connectivity
 
-### Docker
-- `docker-compose up` - Start all services
-- `docker-compose up -d` - Start in detached mode
-- `docker-compose exec backend bash` - Access backend container shell
-- `docker-compose exec backend python migrations/add_banking_connections.py` - Run banking migrations
+### Production Services (firedup.app)
+
+Services are managed via **systemctl**:
+
+```bash
+# Restart frontend (includes npm run build automatically)
+sudo systemctl restart home-budget-frontend
+
+# Restart backend
+sudo systemctl restart home-budget-backend
+
+# Check status
+systemctl status home-budget-frontend
+systemctl status home-budget-backend
+
+# View logs
+journalctl -u home-budget-frontend -f
+journalctl -u home-budget-backend -f
+```
+
+**Frontend** (port 3000): Needs restart after code changes (runs `npm run build` automatically on restart)
+
+**Backend** (port 8000): Has `--reload` flag, auto-reloads on Python changes. Manual restart rarely needed.
 
 ## Style Guidelines
 
@@ -40,7 +58,15 @@
 
 ## Features
 
-### Banking Integration
+### Banking Integration (Tink)
+- Primary integration: Tink API for Polish banks (ING, PKO BP, mBank, etc.)
+- Requires TINK_CLIENT_ID, TINK_CLIENT_SECRET, TINK_REDIRECT_URI in backend .env
+- Uses one-time access flow (simpler than permanent users)
+- Test page: `/banking/tink/test` - shows all API data (accounts, transactions, balances)
+- Documentation: `docs/tink-api/` folder
+- Flow: generate Tink Link URL → user authenticates → callback with code → exchange for tokens → fetch data
+
+### Banking Integration (GoCardless) - Legacy
 - Uses GoCardless API for secure bank account connection
 - Requires GOCARDLESS_SECRET_ID and GOCARDLESS_SECRET_KEY in .env file
 - Requisition IDs are stored and persist for 90 days (varies by bank)

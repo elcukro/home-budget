@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { fetchWithAuth } from '@/api/fetchWithAuth';
 import ProtectedPage from '@/components/ProtectedPage';
@@ -24,6 +24,7 @@ interface CallbackResponse {
 export default function TinkCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const hasProcessed = useRef(false);  // Prevent double-call from React StrictMode
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState<string>('Processing bank connection...');
@@ -33,6 +34,29 @@ export default function TinkCallbackPage() {
   useEffect(() => {
     const handleCallback = async () => {
       const state = searchParams.get('state');
+
+      // Prevent double-call - check if this state was already processed
+      const processedKey = state ? `tink_callback_${state}` : null;
+      const storedStatus = processedKey ? localStorage.getItem(processedKey) : null;
+
+      if (hasProcessed.current) {
+        logger.debug('Callback already processed by ref, skipping');
+        return;
+      }
+
+      // If already processed, redirect to settings
+      if (storedStatus === 'success' || storedStatus === 'processing') {
+        logger.debug('Callback already processed, redirecting to settings');
+        router.push('/settings?tab=banking');
+        return;
+      }
+
+      hasProcessed.current = true;
+      if (processedKey) {
+        localStorage.setItem(processedKey, 'processing');
+      }
+      // Tink Link returns code for one-time flow
+      const code = searchParams.get('code');
       // Tink Link returns credentialsId (camelCase) or credentials_id
       const credentialsId = searchParams.get('credentialsId') || searchParams.get('credentials_id');
       const errorParam = searchParams.get('error');
@@ -55,14 +79,14 @@ export default function TinkCallbackPage() {
       }
 
       try {
-        logger.debug('Processing Tink callback with state and credentials_id');
+        logger.debug('Processing Tink callback with state, code, and credentials_id');
 
         const response = await fetchWithAuth('/api/banking/tink/callback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ state, credentials_id: credentialsId }),
+          body: JSON.stringify({ state, code, credentials_id: credentialsId }),
         });
 
         if (!response.ok) {
@@ -76,7 +100,17 @@ export default function TinkCallbackPage() {
         setMessage(data.message || 'Bank account connected successfully!');
         setAccounts(data.accounts || []);
 
+        // Mark as successfully processed to prevent re-processing
+        if (state) {
+          localStorage.setItem(`tink_callback_${state}`, 'success');
+        }
+
         logger.debug('Tink connection successful:', data);
+
+        // Auto-redirect to settings after 2 seconds
+        setTimeout(() => {
+          router.push('/settings?tab=banking');
+        }, 2000);
 
       } catch (err: any) {
         logger.error('Tink callback error:', err);
@@ -90,11 +124,11 @@ export default function TinkCallbackPage() {
   }, [searchParams]);
 
   const handleGoToSettings = () => {
-    router.push('/settings');
+    router.push('/settings?tab=banking');
   };
 
   const handleTryAgain = () => {
-    router.push('/settings');
+    router.push('/settings?tab=banking');
   };
 
   return (

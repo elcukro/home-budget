@@ -36,9 +36,12 @@ def sanitize_external_user_id(user_id: str) -> str:
     """
     Create a valid external_user_id for Tink from our user ID.
     Tink requires alphanumeric IDs, so we hash the email.
+
+    Version 2: Using full 32-char hash with 'hb2_' prefix to ensure uniqueness
+    and avoid conflicts with previously created users.
     """
-    hash_bytes = hashlib.sha256(user_id.encode()).hexdigest()[:24]
-    return f"u{hash_bytes}"
+    hash_bytes = hashlib.sha256(user_id.encode()).hexdigest()[:32]
+    return f"hb2_{hash_bytes}"
 
 
 class TinkService:
@@ -192,22 +195,45 @@ class TinkService:
     async def generate_delegated_auth_code(
         self,
         client_token: str,
-        external_user_id: str,
-        scope: str = "accounts:read,transactions:read,credentials:write,credentials:read"
+        tink_user_id: Optional[str] = None,
+        external_user_id: Optional[str] = None,
+        id_hint: str = "User",
+        scope: str = "authorization:read,authorization:grant,credentials:refresh,credentials:read,credentials:write,providers:read,user:read"
     ) -> str:
         """
         Generate a delegated authorization code for Tink Link to use.
 
+        Uses Tink's internal user_id if available, otherwise falls back to external_user_id.
         The actor_client_id is Tink Link's client ID.
+
+        Required scopes for Tink Link:
+        - credentials:write - to create bank credentials
+        - credentials:read - to read credentials status
+        - credentials:refresh - to refresh credentials
+        - providers:read - to list available banks
+        - user:read - to read user info
+        - authorization:read - to read authorization status
         """
+        # Prepare user identification - prefer tink_user_id
+        data = {
+            "actor_client_id": self.TINK_LINK_CLIENT_ID,
+            "scope": scope,
+            "id_hint": id_hint,  # Required for Tink Link
+        }
+
+        if tink_user_id:
+            data["user_id"] = tink_user_id
+            user_identifier = f"tink_user_id: {tink_user_id}"
+        elif external_user_id:
+            data["external_user_id"] = external_user_id
+            user_identifier = f"external_user_id: {external_user_id}"
+        else:
+            raise ValueError("Either tink_user_id or external_user_id must be provided")
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.api_url}/api/v1/oauth/authorization-grant/delegate",
-                data={
-                    "external_user_id": external_user_id,
-                    "actor_client_id": self.TINK_LINK_CLIENT_ID,
-                    "scope": scope,
-                },
+                data=data,
                 headers={
                     "Authorization": f"Bearer {client_token}",
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -218,12 +244,85 @@ class TinkService:
                 logger.error(f"Failed to generate delegated auth code: {response.status_code} - {response.text}")
                 raise Exception(f"Failed to generate authorization code: {response.text}")
 
-            data = response.json()
-            logger.info(f"Generated delegated auth code for {external_user_id}")
-            return data["code"]
+            result = response.json()
+            logger.info(f"Generated delegated auth code for {user_identifier}")
+            return result["code"]
+
+    async def generate_user_auth_code(
+        self,
+        client_token: str,
+        external_user_id: str,
+        scope: str = "accounts:read,balances:read,transactions:read,provider-consents:read"
+    ) -> str:
+        """
+        Generate an authorization code for US to exchange for user tokens.
+
+        This is different from delegated auth code - this code is for OUR use,
+        not for Tink Link. Use this AFTER Tink Link flow completes.
+
+        Endpoint: /api/v1/oauth/authorization-grant (NOT /delegate)
+        """
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.api_url}/api/v1/oauth/authorization-grant",
+                data={
+                    "external_user_id": external_user_id,
+                    "scope": scope,
+                },
+                headers={
+                    "Authorization": f"Bearer {client_token}",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                }
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Failed to generate user auth code: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to generate user authorization code: {response.text}")
+
+            result = response.json()
+            logger.info(f"Generated user auth code for {external_user_id}")
+            return result["code"]
 
     # =========================================================================
-    # Main Entry Point: Generate Connect URL
+    # Simple One-Time Access Flow (recommended for testing)
+    # =========================================================================
+    async def generate_simple_connect_url(self, user_id: str, locale: str = "pl_PL") -> tuple[str, str]:
+        """
+        Generate a simple Tink Link URL for one-time access.
+
+        This is the simpler flow that doesn't require permanent users or delegated auth.
+        Tink Link will return a code in the callback that we can exchange for tokens.
+        """
+        self._check_credentials()
+
+        # Generate state token for CSRF protection
+        state = self.generate_state_token(user_id)
+
+        # Store user info for callback
+        external_user_id = sanitize_external_user_id(user_id)
+        self._pending_auth[state] = {
+            "user_id": user_id,
+            "external_user_id": external_user_id,
+            "flow_type": "one_time",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+
+        # Build simple Tink Link URL - no authorization_code needed!
+        params = {
+            "client_id": self.client_id,
+            "redirect_uri": self.redirect_uri,
+            "market": "PL",
+            "locale": locale,
+            "state": state,
+        }
+
+        url = f"{self.link_url}/1.0/transactions/connect-accounts?{urlencode(params)}"
+
+        logger.info(f"Generated simple Tink Link URL for user {user_id}")
+        return url, state
+
+    # =========================================================================
+    # Permanent Users Flow (complex, requires proper Tink Console setup)
     # =========================================================================
     async def generate_connect_url(self, user_id: str, locale: str = "en_US") -> tuple[str, str]:
         """
@@ -250,12 +349,17 @@ class TinkService:
 
         # Step 2: Create Tink user (if not exists)
         user_data = await self.create_tink_user(client_token, external_user_id, market="PL")
+        tink_user_id = user_data.get("user_id")  # May be None if user already exists (409)
 
         # Step 3: Generate delegated authorization code
+        # Use tink_user_id if available (new user), otherwise external_user_id (existing user)
+        # id_hint is shown to user for verification - use sanitized email
+        id_hint = user_id.split("@")[0] if "@" in user_id else user_id[:20]
         auth_code = await self.generate_delegated_auth_code(
             client_token,
-            external_user_id,
-            scope="accounts:read,transactions:read,credentials:write,credentials:read"
+            tink_user_id=tink_user_id,
+            external_user_id=external_user_id,
+            id_hint=id_hint,
         )
 
         # Generate state token for CSRF protection
@@ -378,24 +482,41 @@ class TinkService:
         db: Session,
         user_id: str,
         state: str,
+        code: Optional[str] = None,
         credentials_id: Optional[str] = None,
     ) -> TinkConnection:
         """
         Create a new Tink connection after successful Tink Link callback.
 
-        Uses the stored authorization code (NOT from callback) to get user tokens.
+        Supports two flows:
+        1. One-time flow: code comes from callback, exchange directly
+        2. Permanent users flow: generate new code using authorization-grant
         """
         # Get stored auth data
         pending = self._pending_auth.get(state)
         if not pending:
             raise Exception("Authorization data not found. Please try connecting again.")
 
-        auth_code = pending["auth_code"]
         external_user_id = pending["external_user_id"]
+        flow_type = pending.get("flow_type", "permanent")
 
-        logger.info(f"Creating connection for user {user_id}, external: {external_user_id}")
+        logger.info(f"Creating connection for user {user_id}, external: {external_user_id}, flow: {flow_type}")
 
-        # Exchange OUR auth code for user tokens
+        if flow_type == "one_time" and code:
+            # One-time flow: use code from callback directly
+            logger.info("Using one-time flow with code from callback")
+            auth_code = code
+        else:
+            # Permanent users flow: generate new code
+            logger.info("Using permanent users flow, generating new auth code")
+            client_token = await self.get_client_access_token()
+            auth_code = await self.generate_user_auth_code(
+                client_token,
+                external_user_id,
+                scope="accounts:read,balances:read,transactions:read"
+            )
+
+        # Exchange auth code for user tokens
         token_data = await self.exchange_code_for_tokens(auth_code)
 
         access_token = token_data["access_token"]
@@ -421,13 +542,15 @@ class TinkService:
             for acc in accounts
         }
 
-        # Check for existing connection
+        # Check for existing connection (active OR inactive) by tink_user_id or user_id
+        # This handles reconnection after disconnect
         existing = db.query(TinkConnection).filter(
-            TinkConnection.user_id == user_id,
-            TinkConnection.is_active == True
+            (TinkConnection.tink_user_id == external_user_id) |
+            (TinkConnection.user_id == user_id)
         ).first()
 
         if existing:
+            # Update existing connection (reactivate if disconnected)
             existing.access_token = access_token
             existing.refresh_token = refresh_token
             existing.token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
@@ -435,6 +558,7 @@ class TinkService:
             existing.account_details = account_details
             existing.is_active = True
             existing.tink_user_id = external_user_id
+            existing.scopes = token_data.get("scope", "")
             if credentials_id:
                 existing.credentials_id = credentials_id
             db.commit()
@@ -442,7 +566,7 @@ class TinkService:
             logger.info(f"Updated existing Tink connection {existing.id}")
             return existing
 
-        # Create new connection
+        # Create new connection (first time only)
         connection = TinkConnection(
             user_id=user_id,
             tink_user_id=external_user_id,
@@ -451,6 +575,7 @@ class TinkService:
             token_expires_at=datetime.utcnow() + timedelta(seconds=expires_in),
             accounts=account_ids,
             account_details=account_details,
+            scopes=token_data.get("scope", ""),
             is_active=True,
         )
         if credentials_id:
@@ -487,7 +612,12 @@ class TinkService:
 
     async def get_valid_access_token(self, connection: TinkConnection, db: Session) -> str:
         """Get a valid access token, refreshing if necessary."""
-        if connection.token_expires_at > datetime.utcnow() + timedelta(minutes=5):
+        # Handle both timezone-aware and naive datetimes
+        now = datetime.utcnow()
+        token_expires = connection.token_expires_at
+        if token_expires.tzinfo is not None:
+            token_expires = token_expires.replace(tzinfo=None)
+        if token_expires > now + timedelta(minutes=5):
             return connection.access_token
 
         if not connection.refresh_token:

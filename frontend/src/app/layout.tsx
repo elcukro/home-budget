@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Sidebar from "@/components/Sidebar";
+import Footer from "@/components/Footer";
 import { Toaster as SonnerToaster } from "@/components/ui/toaster";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import PageTitle from "@/components/PageTitle";
@@ -31,11 +32,14 @@ export default function RootLayout({
           <SettingsProvider>
             <IntlProviderWrapper>
               <ChartInitializer />
-              <div className="flex min-h-screen bg-background">
-                {!isAuthPage && <Sidebar />}
-                <main className={`flex-1 ${!isAuthPage ? 'p-8' : ''}`}>
-                  {children}
-                </main>
+              <div className="flex flex-col min-h-screen bg-background">
+                <div className="flex flex-1">
+                  {!isAuthPage && <Sidebar />}
+                  <main className={`flex-1 ${!isAuthPage ? 'p-8' : ''}`}>
+                    {children}
+                  </main>
+                </div>
+                {!isAuthPage && <Footer />}
               </div>
               {!isAuthPage && <SonnerToaster />}
               <InactivityChecker />
