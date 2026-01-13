@@ -31,6 +31,16 @@ from ..models import TinkConnection, BankTransaction
 logger = logging.getLogger(__name__)
 
 
+def sanitize_external_user_id(user_id: str) -> str:
+    """
+    Create a valid external_user_id for Tink from our user ID.
+    Tink requires alphanumeric IDs, so we hash the email.
+    """
+    # Create a deterministic hash of the user_id
+    hash_bytes = hashlib.sha256(user_id.encode()).hexdigest()[:32]
+    return f"user_{hash_bytes}"
+
+
 class TinkService:
     """Service class for Tink API interactions."""
 
@@ -238,14 +248,17 @@ class TinkService:
         # Step 1: Get client access token
         client_token = await self.get_client_access_token()
 
+        # Create sanitized external_user_id for Tink (alphanumeric only)
+        external_user_id = sanitize_external_user_id(user_id)
+        logger.info(f"Using external_user_id: {external_user_id} for user: {user_id}")
+
         # Step 2: Create Tink user (if not exists)
-        await self.create_tink_user(client_token, user_id, market="PL")
+        await self.create_tink_user(client_token, external_user_id, market="PL")
 
         # Step 3: Generate authorization code for the user
-        # Use user_id as external_user_id (same as used in create_tink_user)
         auth_code = await self.generate_authorization_code(
             client_token,
-            user_id,  # external_user_id
+            external_user_id,
             scope="accounts:read,transactions:read,credentials:read"
         )
 
@@ -256,7 +269,7 @@ class TinkService:
         self._pending_auth_codes[state] = {
             "auth_code": auth_code,
             "user_id": user_id,
-            "external_user_id": user_id,  # Same as user_id, used for Tink API
+            "external_user_id": external_user_id,
             "created_at": datetime.utcnow().isoformat(),
         }
 
