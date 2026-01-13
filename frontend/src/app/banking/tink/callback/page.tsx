@@ -32,8 +32,9 @@ export default function TinkCallbackPage() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const code = searchParams.get('code');
       const state = searchParams.get('state');
+      // Tink Link returns credentialsId (camelCase) or credentials_id
+      const credentialsId = searchParams.get('credentialsId') || searchParams.get('credentials_id');
       const errorParam = searchParams.get('error');
       const errorDescription = searchParams.get('error_description');
 
@@ -45,23 +46,23 @@ export default function TinkCallbackPage() {
         return;
       }
 
-      // Check for required parameters
-      if (!code || !state) {
+      // Check for required parameters - state is mandatory
+      if (!state) {
         setStatus('error');
-        setError('Missing authorization code or state parameter');
+        setError('Missing state parameter');
         setMessage('Invalid callback parameters');
         return;
       }
 
       try {
-        logger.debug('Processing Tink callback with code and state');
+        logger.debug('Processing Tink callback with state and credentials_id');
 
         const response = await fetchWithAuth('/api/banking/tink/callback', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ code, state }),
+          body: JSON.stringify({ state, credentials_id: credentialsId }),
         });
 
         if (!response.ok) {

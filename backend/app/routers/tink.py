@@ -36,8 +36,8 @@ class ConnectResponse(BaseModel):
 
 
 class CallbackRequest(BaseModel):
-    code: str
     state: str
+    credentials_id: Optional[str] = None  # From Tink Link callback
 
 
 class AccountDetail(BaseModel):
@@ -110,9 +110,10 @@ async def handle_callback(
     db: Session = Depends(get_db)
 ):
     """
-    Handle OAuth callback from Tink after user authorization.
+    Handle callback from Tink Link after user connects their bank.
 
-    Exchanges the authorization code for tokens and creates/updates the connection.
+    Uses the stored authorization code (from when we generated the Tink Link URL)
+    to exchange for tokens and create the connection.
     """
     try:
         # Verify state token
@@ -123,11 +124,12 @@ async def handle_callback(
         if stored_user_id != current_user.id:
             raise HTTPException(status_code=403, detail="State token does not match current user")
 
-        # Create connection (exchanges code, fetches accounts)
+        # Create connection (uses stored auth code, fetches accounts)
         connection = await tink_service.create_connection(
             db=db,
             user_id=current_user.id,
-            code=request.code
+            state=request.state,
+            credentials_id=request.credentials_id,
         )
 
         # Format account details for response

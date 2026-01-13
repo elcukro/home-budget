@@ -259,6 +259,7 @@ class TinkConnection(Base):
 
     # Tink authorization metadata
     authorization_code = Column(String, nullable=True)
+    credentials_id = Column(String, nullable=True)  # Credentials ID from Tink Link callback
     scopes = Column(String, default="accounts:read,transactions:read")
 
     # Connected accounts

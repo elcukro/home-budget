@@ -1,7 +1,16 @@
 """
 Tink API Service
 
-Handles OAuth flow and API interactions with Tink.
+Handles OAuth flow and API interactions with Tink using the Tink Link flow
+with permanent users.
+
+Flow:
+1. Get client access token (client_credentials grant)
+2. Create or get Tink user for the app user
+3. Generate user authorization code (delegate grant)
+4. Build Tink Link URL with authorization code
+5. After callback, exchange authorization code for user tokens
+6. Use user tokens to fetch accounts/transactions
 """
 
 import os
@@ -30,9 +39,12 @@ class TinkService:
         self.client_secret = os.getenv("TINK_CLIENT_SECRET", "")
         self.redirect_uri = os.getenv("TINK_REDIRECT_URI", "http://localhost:3000/banking/tink/callback")
         self.api_url = "https://api.tink.com"
-        self.oauth_url = "https://oauth.tink.com"
+        self.link_url = "https://link.tink.com"
         # Use client_secret as signing key for state tokens
         self._signing_key = os.getenv("NEXTAUTH_SECRET", self.client_secret).encode()
+        # Store pending authorization codes mapped to state tokens
+        # In production, this should be stored in Redis or database
+        self._pending_auth_codes: Dict[str, Dict[str, Any]] = {}
 
     def _check_credentials(self):
         """Check if Tink credentials are configured."""
@@ -102,54 +114,200 @@ class TinkService:
             logger.error(f"Error verifying state token: {e}")
             return None
 
-    def generate_connect_url(self, user_id: str, locale: str = "en_US") -> tuple[str, str]:
+    async def get_client_access_token(self) -> str:
+        """
+        Get a client access token using client_credentials grant.
+
+        Returns:
+            Client access token string
+        """
+        self._check_credentials()
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.api_url}/api/v1/oauth/token",
+                data={
+                    "client_id": self.client_id,
+                    "client_secret": self.client_secret,
+                    "grant_type": "client_credentials",
+                    "scope": "user:create,authorization:grant",
+                },
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded",
+                }
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Failed to get client token: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to get client access token: {response.text}")
+
+            data = response.json()
+            logger.info("Successfully obtained client access token")
+            return data["access_token"]
+
+    async def create_tink_user(self, client_token: str, external_user_id: str, market: str = "PL") -> str:
+        """
+        Create a permanent Tink user or return existing user ID.
+
+        Args:
+            client_token: Client access token
+            external_user_id: Our app's user ID
+            market: User's market (country code)
+
+        Returns:
+            Tink user ID
+        """
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.api_url}/api/v1/user/create",
+                json={
+                    "external_user_id": external_user_id,
+                    "market": market,
+                    "locale": "en_US",
+                },
+                headers={
+                    "Authorization": f"Bearer {client_token}",
+                    "Content-Type": "application/json",
+                }
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                logger.info(f"Created Tink user: {data.get('user_id')}")
+                return data["user_id"]
+            elif response.status_code == 409:
+                # User already exists - this is fine
+                logger.info(f"Tink user already exists for {external_user_id}")
+                # Extract user_id from error or use external_user_id
+                return external_user_id
+            else:
+                logger.error(f"Failed to create Tink user: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to create Tink user: {response.text}")
+
+    async def generate_authorization_code(
+        self,
+        client_token: str,
+        tink_user_id: str,
+        scope: str = "accounts:read,transactions:read,credentials:read"
+    ) -> str:
+        """
+        Generate an authorization code for a Tink user using delegate grant.
+
+        Args:
+            client_token: Client access token
+            tink_user_id: Tink user ID (external_user_id)
+            scope: Scopes to grant
+
+        Returns:
+            Authorization code
+        """
+        # For delegation, we need to specify the user
+        # Use the authorization-grant endpoint with actor_client_id
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.api_url}/api/v1/oauth/authorization-grant/delegate",
+                data={
+                    "external_user_id": tink_user_id,
+                    "id_hint": tink_user_id,
+                    "actor_client_id": "df05e4b379934cd09963197cc855bfe9",  # Tink Link client ID
+                    "scope": scope,
+                },
+                headers={
+                    "Authorization": f"Bearer {client_token}",
+                    "Content-Type": "application/x-www-form-urlencoded",
+                }
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Failed to generate auth code: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to generate authorization code: {response.text}")
+
+            data = response.json()
+            logger.info("Successfully generated user authorization code")
+            return data["code"]
+
+    async def generate_connect_url(self, user_id: str, locale: str = "en_US") -> tuple[str, str]:
         """
         Generate Tink Link URL for user to connect their bank.
+
+        This uses the Tink Link flow with permanent users:
+        1. Get client access token
+        2. Create/get Tink user
+        3. Generate authorization code for user
+        4. Build Tink Link URL
 
         Returns:
             tuple: (tink_link_url, state_token)
         """
         self._check_credentials()
 
+        # Step 1: Get client access token
+        client_token = await self.get_client_access_token()
+
+        # Step 2: Create or get Tink user
+        tink_user_id = await self.create_tink_user(client_token, user_id, market="PL")
+
+        # Step 3: Generate authorization code for the user
+        auth_code = await self.generate_authorization_code(
+            client_token,
+            tink_user_id,
+            scope="accounts:read,transactions:read,credentials:read"
+        )
+
+        # Generate state token for CSRF protection
         state = self.generate_state_token(user_id)
 
-        # Tink Link parameters for OAuth authorization code flow
+        # Store the auth code mapped to state for later exchange
+        self._pending_auth_codes[state] = {
+            "auth_code": auth_code,
+            "user_id": user_id,
+            "tink_user_id": tink_user_id,
+            "created_at": datetime.utcnow().isoformat(),
+        }
+
+        # Step 4: Build Tink Link URL
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
-            "response_type": "code",  # Required for OAuth code flow
-            "scope": "accounts:read,transactions:read,credentials:read",
-            "market": "PL",  # Poland
+            "authorization_code": auth_code,  # Use the generated auth code
+            "market": "PL",
             "locale": locale,
             "state": state,
         }
 
-        url = f"{self.oauth_url}/1.0/authorize?{urlencode(params)}"
+        url = f"{self.link_url}/1.0/transactions/connect-accounts?{urlencode(params)}"
 
         logger.info(f"Generated Tink Link URL for user {user_id}")
         return url, state
+
+    def get_pending_auth_code(self, state: str) -> Optional[Dict[str, Any]]:
+        """Get pending authorization code data by state token."""
+        return self._pending_auth_codes.get(state)
+
+    def clear_pending_auth_code(self, state: str):
+        """Clear pending authorization code after use."""
+        if state in self._pending_auth_codes:
+            del self._pending_auth_codes[state]
 
     async def exchange_code_for_tokens(self, code: str) -> Dict[str, Any]:
         """
         Exchange authorization code for access and refresh tokens.
 
         Args:
-            code: Authorization code from Tink callback
+            code: Authorization code (from delegation, not from callback)
 
         Returns:
             Dict with access_token, refresh_token, expires_in, etc.
         """
         self._check_credentials()
 
-        logger.info(f"Exchanging code for tokens. Code length: {len(code)}, Code prefix: {code[:20] if len(code) > 20 else code}...")
-        logger.info(f"Using client_id: {self.client_id[:10]}..., redirect_uri: {self.redirect_uri}")
+        logger.info(f"Exchanging authorization code for tokens...")
 
         request_data = {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": self.redirect_uri,
         }
 
         async with httpx.AsyncClient() as client:
@@ -307,25 +465,38 @@ class TinkService:
         self,
         db: Session,
         user_id: str,
-        code: str,
+        state: str,
+        credentials_id: Optional[str] = None,
     ) -> TinkConnection:
         """
-        Create a new Tink connection after successful OAuth.
+        Create a new Tink connection after successful bank connection via Tink Link.
 
         Args:
             db: Database session
             user_id: User ID
-            code: Authorization code from callback
+            state: State token from callback (used to retrieve stored auth code)
+            credentials_id: Credentials ID from Tink callback
 
         Returns:
             Created TinkConnection object
         """
-        # Exchange code for tokens
-        token_data = await self.exchange_code_for_tokens(code)
+        # Get stored authorization code
+        pending_data = self.get_pending_auth_code(state)
+        if not pending_data:
+            raise Exception("Authorization data not found. Please try connecting again.")
+
+        auth_code = pending_data["auth_code"]
+        tink_user_id = pending_data["tink_user_id"]
+
+        # Exchange authorization code for tokens
+        token_data = await self.exchange_code_for_tokens(auth_code)
 
         access_token = token_data["access_token"]
-        refresh_token = token_data["refresh_token"]
+        refresh_token = token_data.get("refresh_token", "")
         expires_in = token_data.get("expires_in", 3600)
+
+        # Clear the pending auth code
+        self.clear_pending_auth_code(state)
 
         # Fetch accounts
         accounts = await self.fetch_accounts(access_token)
@@ -342,10 +513,6 @@ class TinkService:
             for acc in accounts
         }
 
-        # Generate a unique Tink user ID (from the token or accounts)
-        # In a real implementation, you'd get this from the token introspection
-        tink_user_id = f"tink_{user_id}_{secrets.token_hex(8)}"
-
         # Check for existing connection
         existing = db.query(TinkConnection).filter(
             TinkConnection.user_id == user_id,
@@ -360,6 +527,9 @@ class TinkService:
             existing.accounts = account_ids
             existing.account_details = account_details
             existing.is_active = True
+            existing.tink_user_id = tink_user_id
+            if credentials_id:
+                existing.credentials_id = credentials_id
             db.commit()
             db.refresh(existing)
             logger.info(f"Updated existing Tink connection {existing.id} for user {user_id}")
@@ -376,6 +546,8 @@ class TinkService:
             account_details=account_details,
             is_active=True,
         )
+        if credentials_id:
+            connection.credentials_id = credentials_id
 
         db.add(connection)
         db.commit()

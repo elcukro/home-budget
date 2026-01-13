@@ -67,6 +67,14 @@ def run_migration():
         else:
             print("Table tink_connections already exists.")
 
+        # 1b. Add credentials_id column if missing
+        tink_columns = [col['name'] for col in inspector.get_columns('tink_connections')] if 'tink_connections' in existing_tables else []
+        if 'tink_connections' in existing_tables and 'credentials_id' not in tink_columns:
+            print("Adding credentials_id column to tink_connections table...")
+            conn.execute(text("ALTER TABLE tink_connections ADD COLUMN credentials_id VARCHAR;"))
+            conn.commit()
+            print("credentials_id column added!")
+
         # 2. Create bank_transactions table
         if 'bank_transactions' not in existing_tables:
             print("Creating bank_transactions table...")
