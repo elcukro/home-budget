@@ -10,6 +10,7 @@ class SavingCategory(str, Enum):
     COLLEGE = "college"
     GENERAL = "general"
     INVESTMENT = "investment"
+    REAL_ESTATE = "real_estate"
     OTHER = "other"
 
 class SavingType(str, Enum):

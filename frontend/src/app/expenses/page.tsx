@@ -143,7 +143,7 @@ const CATEGORY_META: Record<
   housing: {
     Icon: Home,
     badgeClass: "bg-emerald-100 text-emerald-700",
-    iconClass: "text-emerald-600",
+    iconClass: "text-rose-600",
     descriptionId: "expenses.hints.housing",
   },
   transportation: {
@@ -854,7 +854,7 @@ export default function ExpensesPage() {
               </span>
             )}
           </div>
-          <p className="text-3xl font-semibold text-emerald-600">
+          <p className="text-3xl font-semibold text-rose-600">
             {formatCurrency(totalSpend)}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -887,7 +887,7 @@ export default function ExpensesPage() {
                         <FormattedMessage id={`expenses.categories.${category}`} />
                       </span>
                       <Tooltip content={intl.formatMessage({ id: "expenses.summary.unitTooltip" })}>
-                        <span className="text-emerald-600">
+                        <span className="text-rose-600">
                           {formatCurrency(total)}{" "}
                           <span className="text-xs text-muted-foreground">
                             / {unitLabel}
@@ -1141,7 +1141,7 @@ export default function ExpensesPage() {
                         <p className="text-xs uppercase tracking-wide text-muted-foreground">
                           <FormattedMessage id="expenses.categoryTotal" />
                         </p>
-                        <p className="text-sm font-semibold text-emerald-600">
+                        <p className="text-sm font-semibold text-rose-600">
                           {formatCurrency(group.total)}
                         </p>
                       </div>
@@ -1212,7 +1212,7 @@ export default function ExpensesPage() {
                               <TableCell
                                 className={cn(
                                   columnClasses.amount,
-                                  "align-middle py-4 text-right text-sm font-semibold text-emerald-600",
+                                  "align-middle py-4 text-right text-sm font-semibold text-rose-600",
                                 )}
                               >
                                 {formatCurrency(expense.amount)}
@@ -1290,7 +1290,7 @@ export default function ExpensesPage() {
                             <TableCell className="py-4 text-sm font-medium text-secondary">
                               <FormattedMessage id="expenses.categorySubtotal" defaultMessage="Subtotal" />
                             </TableCell>
-                            <TableCell className="py-4 text-right text-sm font-semibold text-emerald-600">
+                            <TableCell className="py-4 text-right text-sm font-semibold text-rose-600">
                               {formatCurrency(group.total)}
                             </TableCell>
                             <TableCell colSpan={3} />

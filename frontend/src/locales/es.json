@@ -14,7 +14,7 @@
     "recurring": "Recurrente",
     "oneOff": "Único",
     "select": "Seleccionar...",
-    "appName": "Presupuesto del hogar",
+    "appName": "FiredUp",
     "months": {
       "1": "Enero",
       "2": "Febrero",
@@ -567,6 +567,7 @@
       "college": "Fondo educativo",
       "general": "Ahorros generales",
       "investment": "Inversiones",
+      "real_estate": "Bienes raíces",
       "other": "Otros"
     },
     "types": {
@@ -606,7 +607,14 @@
       "category": "Todas las categorías",
       "startDate": "Fecha de inicio",
       "endDate": "Fecha de fin",
-      "dateRange": "Rango de fechas",
+      "dateRange": {
+        "currentMonth": "Mes actual",
+        "lastMonth": "Último mes",
+        "lastQuarter": "Último trimestre",
+        "lastHalf": "Último semestre",
+        "lastYear": "Último año",
+        "all": "Todo"
+      },
       "dateRangeOptions": {
         "currentMonth": "Mes actual",
         "lastMonth": "Último mes",

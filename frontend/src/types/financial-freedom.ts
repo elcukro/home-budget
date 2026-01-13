@@ -25,6 +25,7 @@ export enum SavingCategory {
   COLLEGE = "college",
   GENERAL = "general",
   INVESTMENT = "investment",
+  REAL_ESTATE = "real_estate",
   OTHER = "other"
 }
 

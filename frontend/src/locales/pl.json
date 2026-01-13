@@ -14,7 +14,7 @@
     "actions": "Akcje",
     "select": "Wybierz...",
     "notAvailable": "Brak danych",
-    "appName": "Budżet domowy",
+    "appName": "FiredUp",
     "createdAt": "Data utworzenia",
     "mustBeLoggedIn": "Musisz być zalogowany, aby wykonać tę akcję",
     "refresh": "Odśwież",
@@ -540,6 +540,10 @@
       "recurring": "Cykliczny?",
       "actions": "Akcje"
     },
+    "recurring": {
+      "yes": "Cykliczny",
+      "no": "Jednorazowy"
+    },
     "dialog": {
       "createTitle": "Dodaj wydatek",
       "editTitle": "Edytuj wydatek",
@@ -969,6 +973,7 @@
       "college": "Fundusz edukacyjny",
       "general": "Ogólne oszczędności",
       "investment": "Inwestycje",
+      "real_estate": "Nieruchomości",
       "other": "Inne"
     },
     "types": {
@@ -1008,7 +1013,14 @@
       "category": "Wszystkie kategorie",
       "startDate": "Data początkowa",
       "endDate": "Data końcowa",
-      "dateRange": "Zakres dat",
+      "dateRange": {
+        "currentMonth": "Bieżący miesiąc",
+        "lastMonth": "Ostatni miesiąc",
+        "lastQuarter": "Ostatni kwartał",
+        "lastHalf": "Ostatnie półrocze",
+        "lastYear": "Ostatni rok",
+        "all": "Wszystko"
+      },
       "dateRangeOptions": {
         "currentMonth": "Bieżący miesiąc",
         "lastMonth": "Ostatni miesiąc",

@@ -11,7 +11,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 import ProtectedPage from '@/components/ProtectedPage';
 import { getFinancialFreedomData, updateFinancialFreedomData } from '@/api/financialFreedom';
 import { getNonMortgageDebt, getNonMortgagePrincipal, getMortgageData } from '@/api/loans';
-import { getEmergencyFundSavings, getGeneralSavings, getMonthlyRecurringExpenses } from '@/api/savings';
+import { getEmergencyFundSavings, getLiquidSavingsForEmergencyFund, getMonthlyRecurringExpenses } from '@/api/savings';
 import { logger } from '@/lib/logger';
 
 // Helper function to calculate debt progress percentage
@@ -83,7 +83,7 @@ export default function FinancialFreedomPage() {
           nonMortgageDebt,
           nonMortgagePrincipal,
           emergencyFundSavings,
-          generalSavings, 
+          liquidSavings,
           monthlyExpenses,
           mortgageData
         ] = await Promise.all([
@@ -91,7 +91,7 @@ export default function FinancialFreedomPage() {
           getNonMortgageDebt(),
           getNonMortgagePrincipal(),
           getEmergencyFundSavings(),
-          getGeneralSavings(),
+          getLiquidSavingsForEmergencyFund(),
           getMonthlyRecurringExpenses(),
           getMortgageData()
         ]);
@@ -110,7 +110,7 @@ export default function FinancialFreedomPage() {
         
         // Calculate progress percentages
         const debtProgressPercentage = calculateDebtProgress(nonMortgageDebt, nonMortgagePrincipal);
-        const emergencyFundProgressPercentage = calculateEmergencyFundProgress(generalSavings, monthlyExpenses, emergencyFundMonths);
+        const emergencyFundProgressPercentage = calculateEmergencyFundProgress(liquidSavings, monthlyExpenses, emergencyFundMonths);
         const mortgageProgressPercentage = mortgageData && mortgageData.hasMortgage && mortgageData.principal_amount > 0
           ? calculateMortgageProgress(mortgageData.remaining_balance, mortgageData.principal_amount)
           : 0;
@@ -140,7 +140,7 @@ export default function FinancialFreedomPage() {
               ...step,
               progress: emergencyFundProgressPercentage,
               targetAmount: targetAmount,
-              currentAmount: generalSavings,
+              currentAmount: liquidSavings,
               isCompleted: emergencyFundProgressPercentage === 100,
               isAutoCalculated: true
             };

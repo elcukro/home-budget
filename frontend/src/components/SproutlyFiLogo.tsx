@@ -28,7 +28,7 @@ const SproutlyFiLogo = () => {
         </g>
       </svg>
       <span className="text-[1.65rem] font-semibold leading-none tracking-tight text-[#0E4C28]">
-        Sproutly<span className="text-[#12401F]">Fi</span>
+        Fired<span className="text-[#12401F]">Up</span>
       </span>
     </Link>
   );

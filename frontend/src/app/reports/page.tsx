@@ -6,7 +6,6 @@ import { useSettings } from '@/contexts/SettingsContext';
 import ProtectedPage from '@/components/ProtectedPage';
 import { useSession } from 'next-auth/react';
 import PeriodSelector from '@/components/PeriodSelector';
-import { formatCurrency } from '@/utils/formatters';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { logger } from '@/lib/logger';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -79,7 +78,7 @@ interface PeriodSelection {
 }
 
 const MonthCard = ({ monthName, data }: { monthName: string; data: MonthlyData }) => {
-  const { settings, isLoading: isSettingsLoading } = useSettings();
+  const { settings, isLoading: isSettingsLoading, formatCurrency } = useSettings();
   const intl = useIntl();
 
   if (isSettingsLoading) {
@@ -94,14 +93,12 @@ const MonthCard = ({ monthName, data }: { monthName: string; data: MonthlyData }
   const localizedMonth = intl.formatMessage({ id: `reports.months.${monthNumber}` });
   const displayName = `${localizedMonth} ${year}`;
 
-  const currency = settings?.currency || 'USD';
-
   return (
     <div className="bg-card border border-default rounded-lg shadow-sm p-3 h-full backdrop-blur-sm bg-opacity-95">
       <div className="border-b border-default pb-2 mb-2">
         <h3 className="text-xs font-semibold text-primary">{displayName}</h3>
         <div className={`text-xs font-semibold ${data.totals.balance >= 0 ? 'text-success' : 'text-destructive'}`}>
-          {formatCurrency(data.totals.balance, currency)}
+          {formatCurrency(data.totals.balance)}
         </div>
       </div>
 
@@ -109,20 +106,20 @@ const MonthCard = ({ monthName, data }: { monthName: string; data: MonthlyData }
         {/* Income */}
         <div className="flex justify-between items-center text-success">
           <FontAwesomeIcon icon={faArrowTrendUp} className="w-3 h-3" title={intl.formatMessage({ id: 'reports.income' })} />
-          <span className="text-[11px]">{formatCurrency(data.totals.income, currency)}</span>
+          <span className="text-[11px]">{formatCurrency(data.totals.income)}</span>
         </div>
 
         {/* Expenses */}
         <div className="flex justify-between items-center text-destructive">
           <FontAwesomeIcon icon={faArrowTrendDown} className="w-3 h-3" title={intl.formatMessage({ id: 'reports.expenses' })} />
-          <span className="text-[11px]">{formatCurrency(data.totals.expenses, currency)}</span>
+          <span className="text-[11px]">{formatCurrency(data.totals.expenses)}</span>
         </div>
 
         {/* Loan Payments */}
         {data.totals.loanPayments > 0 && (
           <div className="flex justify-between items-center text-primary">
             <FontAwesomeIcon icon={faLandmark} className="w-3 h-3" title={intl.formatMessage({ id: 'reports.loanPayments' })} />
-            <span className="text-[11px]">{formatCurrency(data.totals.loanPayments, currency)}</span>
+            <span className="text-[11px]">{formatCurrency(data.totals.loanPayments)}</span>
           </div>
         )}
       </div>
@@ -130,9 +127,9 @@ const MonthCard = ({ monthName, data }: { monthName: string; data: MonthlyData }
   );
 };
 
-const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: string }) => {
+const FinancialChart = ({ data }: { data: YearlyBudget }) => {
   const intl = useIntl();
-  const { settings } = useSettings();
+  const { formatCurrency } = useSettings();
   const axisColor = 'rgba(31, 28, 26, 0.9)';
   const gridColor = 'rgba(31, 28, 26, 0.15)';
   
@@ -222,7 +219,7 @@ const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: stri
               label += ': ';
             }
             if (context.parsed.y !== null) {
-              label += formatCurrency(context.parsed.y, currency);
+              label += formatCurrency(context.parsed.y);
             }
             return label;
           }
@@ -238,7 +235,7 @@ const FinancialChart = ({ data, currency }: { data: YearlyBudget; currency: stri
             weight: 500,
           },
           callback: function(value: any) {
-            return formatCurrency(value, currency);
+            return formatCurrency(value);
           }
         },
         grid: {
@@ -407,9 +404,8 @@ const BudgetReport = () => {
 
       {filteredYearlyData && (
         <>
-          <FinancialChart 
+          <FinancialChart
             data={filteredYearlyData} 
-            currency={settings?.currency || 'USD'} 
           />
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-12 gap-4">
             {Object.entries(filteredYearlyData).map(([monthName, monthData]) => (

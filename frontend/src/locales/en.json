@@ -14,7 +14,7 @@
     "actions": "Actions",
     "select": "Select...",
     "notAvailable": "Not available",
-    "appName": "Home Budget",
+    "appName": "FiredUp",
     "mustBeLoggedIn": "You must be logged in to perform this action",
     "createdAt": "Created At",
     "refresh": "Refresh",
@@ -983,6 +983,7 @@
       "college": "College Fund",
       "general": "General Savings",
       "investment": "Investments",
+      "real_estate": "Real Estate",
       "other": "Other"
     },
     "types": {
@@ -1022,7 +1023,14 @@
       "category": "All categories",
       "startDate": "Start date",
       "endDate": "End date",
-      "dateRange": "Date range",
+      "dateRange": {
+        "currentMonth": "Current month",
+        "lastMonth": "Last month",
+        "lastQuarter": "Last quarter",
+        "lastHalf": "Last half-year",
+        "lastYear": "Last year",
+        "all": "All time"
+      },
       "dateRangeOptions": {
         "currentMonth": "Current month",
         "lastMonth": "Last month",

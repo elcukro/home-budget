@@ -28,6 +28,7 @@ const createEmptySummary = (): SavingsSummary => ({
     [SavingCategory.COLLEGE]: 0,
     [SavingCategory.GENERAL]: 0,
     [SavingCategory.INVESTMENT]: 0,
+    [SavingCategory.REAL_ESTATE]: 0,
     [SavingCategory.OTHER]: 0,
   },
   monthly_contribution: 0,
@@ -109,6 +110,29 @@ export const getGeneralSavings = async (): Promise<number> => {
     return summary.category_totals[SavingCategory.GENERAL] || 0;
   } catch (error) {
     logger.error('Error fetching general savings:', error);
+    return 0;
+  }
+};
+
+/**
+ * Gets liquid savings for full emergency fund (Step 3)
+ * Includes: emergency_fund, six_month_fund, general
+ * Excludes: retirement, college, investment, real_estate, other (non-liquid assets)
+ */
+export const getLiquidSavingsForEmergencyFund = async (): Promise<number> => {
+  try {
+    const summary = await getSavingsSummary();
+    const liquidCategories = [
+      SavingCategory.EMERGENCY_FUND,
+      SavingCategory.SIX_MONTH_FUND,
+      SavingCategory.GENERAL,
+    ];
+
+    return liquidCategories.reduce((total, category) => {
+      return total + (summary.category_totals[category] || 0);
+    }, 0);
+  } catch (error) {
+    logger.error('Error fetching liquid savings for emergency fund:', error);
     return 0;
   }
 };

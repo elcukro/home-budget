@@ -100,7 +100,7 @@ const LOAN_TYPE_META: Record<
 > = {
   mortgage: {
     Icon: Home,
-    toneClass: "bg-emerald-100 text-emerald-700",
+    toneClass: "bg-emerald-100 text-amber-700",
     accentClass: "text-emerald-600",
   },
   car: {
@@ -833,7 +833,7 @@ export default function LoansPage() {
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             <FormattedMessage id="loans.summaryPanel.totalMonthlyLabel" />
           </p>
-          <p className="text-2xl font-semibold text-emerald-700">
+          <p className="text-2xl font-semibold text-amber-700">
             {formatCurrency(totalMonthlyPayments)}
           </p>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -844,7 +844,7 @@ export default function LoansPage() {
           <p className="text-xs uppercase tracking-wide text-muted-foreground">
             <FormattedMessage id="loans.summaryPanel.totalBalanceLabel" />
           </p>
-          <p className="text-2xl font-semibold text-emerald-700">
+          <p className="text-2xl font-semibold text-amber-700">
             {formatCurrency(totalRemainingBalance)}
           </p>
           <p className="text-xs text-muted-foreground leading-relaxed">
@@ -1096,7 +1096,7 @@ export default function LoansPage() {
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       <FormattedMessage id="loans.summary.remaining" />
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-emerald-700">
+                    <p className="mt-2 text-2xl font-semibold text-amber-700">
                       {formatCurrency(metrics.remainingBalance)}
                     </p>
                   </div>
@@ -1104,7 +1104,7 @@ export default function LoansPage() {
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       <FormattedMessage id="loans.summary.monthlyPayment" />
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-emerald-700">
+                    <p className="mt-2 text-2xl font-semibold text-amber-700">
                       {formatCurrency(metrics.monthlyPayment)}
                     </p>
                   </div>
@@ -1150,7 +1150,7 @@ export default function LoansPage() {
                         id="loans.summary.progressDescription"
                         values={{
                           paid: (
-                            <span className="font-medium text-emerald-700">
+                            <span className="font-medium text-amber-700">
                               {formatCurrency(metrics.amountPaid)}
                             </span>
                           ),
@@ -1270,10 +1270,10 @@ export default function LoansPage() {
                       <TableCell className="py-4 text-sm text-slate-600">
                         {loan.description}
                       </TableCell>
-                      <TableCell className="py-4 text-right text-base font-semibold text-emerald-700">
+                      <TableCell className="py-4 text-right text-base font-semibold text-amber-700">
                         {formatCurrency(principal)}
                       </TableCell>
-                      <TableCell className="py-4 text-right text-base font-semibold text-emerald-700">
+                      <TableCell className="py-4 text-right text-base font-semibold text-amber-700">
                         {formatCurrency(remaining)}
                       </TableCell>
                       <TableCell className="py-4 text-right text-base text-slate-600">
@@ -1418,7 +1418,7 @@ export default function LoansPage() {
                   <span className="font-medium text-slate-800">
                     {intl.formatDate(entry.date, { dateStyle: "medium" })}
                   </span>
-                  <span className="text-sm font-semibold text-emerald-700">
+                  <span className="text-sm font-semibold text-amber-700">
                     {formatCurrency(entry.amount)}
                   </span>
                   <span className="text-xs text-muted-foreground">
