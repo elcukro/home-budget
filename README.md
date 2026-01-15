@@ -13,7 +13,9 @@ A modern, full-stack personal finance management application built with Next.js,
 - 🔄 **Recurring Transactions**: Set up and manage recurring income, expenses, and savings
 - 🤖 **AI Financial Insights**: Personalized financial analysis and recommendations powered by OpenAI GPT, with multilingual support and efficient caching for quick access
 - 🛣️ **Financial Freedom Journey**: Track your progress through Dave Ramsey's 7 Baby Steps with customizable goals and detailed progress tracking
-- 🏦 **Banking Integration**: Securely connect to bank accounts and access transaction data using GoCardless Bank Account Data API
+- 🏦 **Banking Integration**: Securely connect to bank accounts and access transaction data using Tink API (supports Polish banks: ING, PKO BP, mBank, etc.)
+- 🏠 **Landing Page**: Beautiful public landing page with storytelling about financial freedom journey
+- 💳 **Subscription Management**: Stripe-powered subscription system with free and premium tiers
 
 ### User Experience
 - 🌓 **Dark Mode Support**: Comfortable viewing experience with automatic theme switching
@@ -60,6 +62,33 @@ A modern, full-stack personal finance management application built with Next.js,
 - GoCardless API integration for secure bank account access
 
 ## 📝 Changelog
+
+### 2026-01-15
+- 🏠 **Landing Page**:
+  - Added public landing page for unauthenticated users with compelling storytelling
+  - Created 11 landing components: HeroSection, StatisticsSection, ProblemsSection, SolutionSection, BabyStepsExplainer, FeaturesSection, ModulesShowcase, TestimonialsSection, PricingSection, FinalCTASection, LandingFooter
+  - Implemented route groups: `(landing)` for public routes, `(dashboard)` for protected routes
+  - Automatic redirect for authenticated users from landing to dashboard
+- 💵 **Savings Module Improvements**:
+  - Added `end_date` field for recurring savings (auto-stopping recurring items)
+  - Added change rate functionality with full history tracking
+  - Added goal projection feature to estimate when savings target will be reached
+  - Added collapsible history grouping in the table view
+  - Added tax disclaimer component for Polish users
+- 📊 **Loans Module Fixes**:
+  - Fixed months remaining calculation using proper amortization formula with compound interest
+  - Fixed `addMonths()` date function for month-end edge cases (e.g., Jan 31 + 1 month = Feb 28/29)
+  - Added payment schedule with interest/principal breakdown columns
+  - Fixed hardcoded Polish text in DebtPayoffStrategy component (full i18n)
+  - Added warning when monthly payment doesn't cover monthly interest
+  - Added backend Pydantic validation for all loan fields
+- 💳 **Subscription & Billing**:
+  - Added Stripe billing integration with subscription management
+  - Added subscription context and premium gate hook
+  - Added pricing page for subscription plans
+- 🌍 **Internationalization**:
+  - Added i18n translations for all new features in PL, EN, ES
+  - Added tax limits configuration for Polish tax year 2026
 
 ### 2025-03-25
 - ✨ **New Feature**:
