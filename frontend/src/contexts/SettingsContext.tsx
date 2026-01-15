@@ -33,7 +33,7 @@ const DEFAULT_SETTINGS: Settings = {
   ai: {
     apiKey: undefined
   },
-  emergency_fund_target: 1000,
+  emergency_fund_target: 3000, // Baby Step 1: 3000-5000 PLN recommended
   emergency_fund_months: 3,
   base_currency: 'USD'
 };

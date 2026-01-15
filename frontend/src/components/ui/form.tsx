@@ -11,6 +11,7 @@ import {
   type FieldPath,
   type FieldValues,
 } from "react-hook-form"
+import { useIntl } from "react-intl"
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
@@ -147,7 +148,23 @@ const FormMessage = React.forwardRef<
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, children, ...props }, ref) => {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : children
+  const intl = useIntl()
+
+  // Translate error message if it looks like a translation key
+  const getTranslatedMessage = () => {
+    if (!error?.message) return null
+    const message = String(error.message)
+    // Check if it looks like a translation key (contains dots and no spaces)
+    if (message.includes('.') && !message.includes(' ')) {
+      return intl.formatMessage({
+        id: message,
+        defaultMessage: message
+      })
+    }
+    return message
+  }
+
+  const body = error ? getTranslatedMessage() : children
 
   if (!body) {
     return null

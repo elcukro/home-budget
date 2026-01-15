@@ -1,12 +1,14 @@
 ﻿"use client";
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { FormattedDate, FormattedMessage, useIntl } from "react-intl";
 import { z } from "zod";
 import type { LucideIcon } from "lucide-react";
 import {
   Car,
+  ChevronDown,
+  ChevronRight,
   CircleEllipsis,
   CircleDot,
   HeartPulse,
@@ -14,15 +16,14 @@ import {
   Pencil,
   Plus,
   CalendarDays,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
   Trash2,
   UtensilsCrossed,
   Zap,
-  ChevronLeft,
-  ChevronRight,
-  LineChart,
 } from "lucide-react";
+import ExpenseChart from "@/components/charts/ExpenseChart";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -59,7 +60,8 @@ interface Expense {
   category: string;
   description: string;
   amount: number;
-  date: string;
+  date: string;  // Start date for recurring, occurrence date for one-off
+  end_date: string | null;  // Optional end date for recurring items
   is_recurring: boolean;
   created_at: string;
 }
@@ -79,18 +81,28 @@ const expenseSchema = z.object({
     .min(1, "validation.description.required")
     .max(100, { message: "validation.description.tooLong" }),
   amount: z
-    .string()
-    .trim()
-    .min(1, "validation.required")
+    .union([z.string(), z.number()])
     .transform((value, ctx) => {
-      const error = validateAmountPositive(value);
+      const raw =
+        typeof value === "number" ? value.toString() : value.trim();
+
+      if (!raw) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "validation.required",
+        });
+        return 0;
+      }
+
+      const error = validateAmountPositive(raw);
       if (error) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: error.messageId,
         });
       }
-      return parseNumber(value) ?? 0;
+
+      return parseNumber(raw) ?? 0;
     }),
   date: z
     .string()
@@ -105,6 +117,11 @@ const expenseSchema = z.object({
         });
       }
     }),
+  end_date: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value || null),
   is_recurring: z.boolean().default(false),
 });
 
@@ -117,18 +134,19 @@ const expenseDefaultValues: ExpenseFormValues = {
   description: "",
   amount: 0,
   date: todayISO,
+  end_date: null,
   is_recurring: false,
 };
 
 const expenseCategoryOptions = [
-  { value: "housing", labelId: "expenses.categories.housing" },
-  { value: "transportation", labelId: "expenses.categories.transportation" },
-  { value: "food", labelId: "expenses.categories.food" },
-  { value: "utilities", labelId: "expenses.categories.utilities" },
-  { value: "insurance", labelId: "expenses.categories.insurance" },
-  { value: "healthcare", labelId: "expenses.categories.healthcare" },
-  { value: "entertainment", labelId: "expenses.categories.entertainment" },
-  { value: "other", labelId: "expenses.categories.other" },
+  { value: "housing", labelId: "expenses.categories.housing", icon: <Home className="h-5 w-5" /> },
+  { value: "transportation", labelId: "expenses.categories.transportation", icon: <Car className="h-5 w-5" /> },
+  { value: "food", labelId: "expenses.categories.food", icon: <UtensilsCrossed className="h-5 w-5" /> },
+  { value: "utilities", labelId: "expenses.categories.utilities", icon: <Zap className="h-5 w-5" /> },
+  { value: "insurance", labelId: "expenses.categories.insurance", icon: <ShieldCheck className="h-5 w-5" /> },
+  { value: "healthcare", labelId: "expenses.categories.healthcare", icon: <HeartPulse className="h-5 w-5" /> },
+  { value: "entertainment", labelId: "expenses.categories.entertainment", icon: <Sparkles className="h-5 w-5" /> },
+  { value: "other", labelId: "expenses.categories.other", icon: <CircleDot className="h-5 w-5" /> },
 ];
 
 const CATEGORY_META: Record<
@@ -206,8 +224,7 @@ const expenseFieldConfig: FormFieldConfig<ExpenseFormValues>[] = [
   {
     name: "category",
     labelId: "expenses.form.category",
-    component: "select",
-    placeholderId: "expenses.form.category.select",
+    component: "icon-select",
     options: expenseCategoryOptions,
   },
   {
@@ -218,19 +235,72 @@ const expenseFieldConfig: FormFieldConfig<ExpenseFormValues>[] = [
   {
     name: "amount",
     labelId: "expenses.form.amount",
-    component: "number",
-    step: "0.01",
-    min: 0,
+    component: "currency",
   },
   {
     name: "date",
-    labelId: "expenses.form.date",
+    labelId: "expenses.form.startDate",
     component: "date",
   },
   {
     name: "is_recurring",
     labelId: "expenses.form.recurring",
     component: "switch",
+  },
+  {
+    name: "end_date",
+    labelId: "expenses.form.endDate",
+    component: "date",
+    showWhen: (values) => values.is_recurring === true,
+  },
+];
+
+// Change rate schema and config
+const changeRateSchema = z.object({
+  newAmount: z
+    .union([z.string(), z.number()])
+    .transform((value, ctx) => {
+      const raw = typeof value === "number" ? value.toString() : value.trim();
+      if (!raw) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "validation.required" });
+        return 0;
+      }
+      const error = validateAmountPositive(raw);
+      if (error) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: error.messageId });
+      }
+      return parseNumber(raw) ?? 0;
+    }),
+  effectiveDate: z
+    .string()
+    .trim()
+    .min(1, "validation.required")
+    .superRefine((value, ctx) => {
+      const error = validateDateString(value);
+      if (error) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: error.messageId });
+      }
+    }),
+});
+
+type ChangeRateFormValues = z.infer<typeof changeRateSchema>;
+
+const changeRateDefaultValues: ChangeRateFormValues = {
+  newAmount: 0,
+  effectiveDate: todayISO,
+};
+
+const changeRateFieldConfig: FormFieldConfig<ChangeRateFormValues>[] = [
+  {
+    name: "newAmount",
+    labelId: "changeRate.form.newAmount",
+    component: "currency",
+    autoFocus: true,
+  },
+  {
+    name: "effectiveDate",
+    labelId: "changeRate.form.effectiveDate",
+    component: "date",
   },
 ];
 
@@ -239,6 +309,7 @@ const mapExpenseToFormValues = (expense: Expense): ExpenseFormValues => ({
   description: expense.description,
   amount: expense.amount,
   date: expense.date.slice(0, 10),
+  end_date: expense.end_date ? expense.end_date.slice(0, 10) : null,
   is_recurring: expense.is_recurring,
 });
 
@@ -273,6 +344,14 @@ export default function ExpensesPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Expense | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Change rate dialog state
+  const [changeRateOpen, setChangeRateOpen] = useState(false);
+  const [changeRateItem, setChangeRateItem] = useState<Expense | null>(null);
+  const [isChangingRate, setIsChangingRate] = useState(false);
+
+  // Expanded groups state (for showing history within category)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const userEmail = session?.user?.email ?? null;
 
@@ -374,6 +453,9 @@ export default function ExpensesPage() {
     void loadExpenses();
   }, [userEmail, intl]);
 
+  // Filter expenses based on selected month
+  // - Recurring items: show if start_date <= selected_month <= end_date (or forever if no end_date)
+  // - One-off items: show only if date matches selected month
   const filteredExpenses = useMemo(() => {
     const filtered = expenses.filter((expense) => {
       if (selectedMonth !== "all") {
@@ -381,8 +463,32 @@ export default function ExpensesPage() {
         if (Number.isNaN(expenseDate.getTime())) {
           return false;
         }
-        if (getMonthKey(expenseDate) !== selectedMonth) {
-          return false;
+
+        const [filterYear, filterMonth] = selectedMonth.split("-").map(Number);
+        const filterDate = new Date(filterYear, filterMonth - 1, 1);
+
+        if (expense.is_recurring) {
+          // Recurring: check if filter month is between start_date and end_date
+          const startDate = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), 1);
+
+          // Filter month must be >= start month
+          if (filterDate < startDate) {
+            return false;
+          }
+
+          // If there's an end_date, filter month must be <= end month
+          if (expense.end_date) {
+            const endDate = new Date(expense.end_date);
+            const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+            if (filterDate > endMonth) {
+              return false;
+            }
+          }
+        } else {
+          // One-off: check if date matches the selected month
+          if (getMonthKey(expenseDate) !== selectedMonth) {
+            return false;
+          }
         }
       }
 
@@ -408,14 +514,52 @@ export default function ExpensesPage() {
     return sorted;
   }, [expenses, recurringFilter, sortDirection, sortKey, intl.locale, selectedMonth]);
 
+  // Helper to check if expense is active in selected month
+  const isExpenseActiveInMonth = (expense: Expense, monthKey: string): boolean => {
+    if (monthKey === "all") return true;
+
+    const expenseDate = new Date(expense.date);
+    if (Number.isNaN(expenseDate.getTime())) return false;
+
+    const [filterYear, filterMonth] = monthKey.split("-").map(Number);
+    const filterDate = new Date(filterYear, filterMonth - 1, 1);
+
+    if (expense.is_recurring) {
+      const startDate = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), 1);
+      if (filterDate < startDate) return false;
+
+      if (expense.end_date) {
+        const endDate = new Date(expense.end_date);
+        const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+        if (filterDate > endMonth) return false;
+      }
+      return true;
+    } else {
+      return getMonthKey(expenseDate) === monthKey;
+    }
+  };
+
+  // Filter expenses only by recurring filter (not by month - we want to show all items for grouping)
+  const expensesForDisplay = useMemo(() => {
+    return expenses.filter((expense) => {
+      if (recurringFilter === "recurring") return expense.is_recurring;
+      if (recurringFilter === "oneoff") return !expense.is_recurring;
+      return true;
+    });
+  }, [expenses, recurringFilter]);
+
   const expensesByCategory = useMemo(() => {
-    const grouped = filteredExpenses.reduce<Record<string, { items: Expense[]; total: number }>>(
+    const grouped = expensesForDisplay.reduce<Record<string, { items: Expense[]; total: number; activeTotal: number }>>(
       (acc, expense) => {
         if (!acc[expense.category]) {
-          acc[expense.category] = { items: [], total: 0 };
+          acc[expense.category] = { items: [], total: 0, activeTotal: 0 };
         }
         acc[expense.category].items.push(expense);
         acc[expense.category].total += expense.amount;
+        // Only add to activeTotal if expense is active in selected month
+        if (isExpenseActiveInMonth(expense, selectedMonth)) {
+          acc[expense.category].activeTotal += expense.amount;
+        }
         return acc;
       },
       {},
@@ -428,7 +572,7 @@ export default function ExpensesPage() {
     });
 
     return grouped;
-  }, [filteredExpenses]);
+  }, [expensesForDisplay, selectedMonth]);
 
   const groupedCategories = useMemo(() => {
     const entries = Object.entries(expensesByCategory);
@@ -437,14 +581,77 @@ export default function ExpensesPage() {
     });
   }, [expensesByCategory]);
 
+  // Group expenses within each category by description
+  interface ExpenseDescriptionGroup {
+    key: string;
+    description: string;
+    current: Expense | null;
+    historical: Expense[];
+  }
+
+  const getGroupedByDescription = (items: Expense[]): ExpenseDescriptionGroup[] => {
+    const groups = new Map<string, ExpenseDescriptionGroup>();
+
+    items.forEach((expense) => {
+      const key = expense.description;
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          description: expense.description,
+          current: null,
+          historical: [],
+        });
+      }
+
+      const group = groups.get(key)!;
+
+      if (expense.end_date) {
+        // Has end_date = historical
+        group.historical.push(expense);
+      } else {
+        // No end_date = current (or latest if multiple)
+        if (!group.current || new Date(expense.date) > new Date(group.current.date)) {
+          if (group.current) {
+            group.historical.push(group.current);
+          }
+          group.current = expense;
+        } else {
+          group.historical.push(expense);
+        }
+      }
+    });
+
+    // Sort historical by date descending (newest first)
+    groups.forEach((group) => {
+      group.historical.sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    });
+
+    return Array.from(groups.values());
+  };
+
+  const toggleGroupExpanded = (key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
   const totalSpend = useMemo(
-    () => filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0),
-    [filteredExpenses],
+    () => Object.values(expensesByCategory).reduce((sum, group) => sum + group.activeTotal, 0),
+    [expensesByCategory],
   );
 
   const topCategories = useMemo(() => {
     const sorted = Object.entries(expensesByCategory)
-      .map(([category, group]) => ({ category, total: group.total }))
+      .map(([category, group]) => ({ category, total: group.activeTotal }))
       .sort((a, b) => b.total - a.total);
     return sorted.slice(0, 3);
   }, [expensesByCategory]);
@@ -785,6 +992,108 @@ export default function ExpensesPage() {
     }
   };
 
+  const handleOpenChangeRate = (expense: Expense) => {
+    setChangeRateItem(expense);
+    setChangeRateOpen(true);
+  };
+
+  const handleChangeRateClose = (open: boolean) => {
+    setChangeRateOpen(open);
+    if (!open) {
+      setChangeRateItem(null);
+    }
+  };
+
+  const handleChangeRate = async (values: ChangeRateFormValues) => {
+    if (!userEmail || !changeRateItem) {
+      showErrorToast("common.mustBeLoggedIn");
+      return;
+    }
+
+    setIsChangingRate(true);
+    try {
+      // Calculate the end date for the old item (month before effective date)
+      const effectiveDate = new Date(values.effectiveDate);
+      const endDate = new Date(effectiveDate.getFullYear(), effectiveDate.getMonth() - 1, 1);
+      const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-01`;
+
+      // Step 1: Update the existing item with end_date
+      const updateResponse = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses/${changeRateItem.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            ...mapExpenseToFormValues(changeRateItem),
+            end_date: endDateStr,
+          }),
+        },
+      );
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        throw new Error(errorText || "Failed to update expense");
+      }
+
+      const updatedOld: Expense = await updateResponse.json();
+
+      // Step 2: Create a new item with the new amount
+      const effectiveDateStr = `${effectiveDate.getFullYear()}-${String(effectiveDate.getMonth() + 1).padStart(2, "0")}-01`;
+      const createResponse = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            category: changeRateItem.category,
+            description: changeRateItem.description,
+            amount: values.newAmount,
+            date: effectiveDateStr,
+            end_date: null,
+            is_recurring: true,
+          }),
+        },
+      );
+
+      if (!createResponse.ok) {
+        const errorText = await createResponse.text();
+        throw new Error(errorText || "Failed to create new expense");
+      }
+
+      const createdNew: Expense = await createResponse.json();
+
+      // Update local state
+      setExpenses((prev) =>
+        prev.map((expense) => (expense.id === updatedOld.id ? updatedOld : expense)).concat(createdNew),
+      );
+
+      await logActivity({
+        entity_type: "Expense",
+        operation_type: "update",
+        entity_id: Number(changeRateItem.id),
+        previous_values: expenseToActivityValues(changeRateItem),
+        new_values: { ...expenseToActivityValues(updatedOld), rateChangeTo: createdNew.id },
+      });
+
+      toast({
+        title: intl.formatMessage({ id: "changeRate.toast.success" }),
+      });
+
+      handleChangeRateClose(false);
+    } catch (error) {
+      logger.error("[Expenses] Failed to change rate", error);
+      showErrorToast("changeRate.toast.error");
+    } finally {
+      setIsChangingRate(false);
+    }
+  };
+
   if (loading) {
     return <TablePageSkeleton />;
   }
@@ -800,231 +1109,26 @@ export default function ExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-rose-50 via-white to-white px-6 py-5 shadow-sm">
         <div>
-          <h1 className="text-2xl font-semibold text-emerald-900">
+          <h1 className="text-3xl font-semibold text-rose-900">
             <FormattedMessage id="expenses.title" />
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-rose-700/80">
             <FormattedMessage id="expenses.subtitle" />
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {monthlyTotals.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <label
-                htmlFor="expenses-period"
-                className="text-xs uppercase tracking-wide"
-              >
-                <FormattedMessage id="expenses.filters.periodLabel" />
-              </label>
-              <select
-                id="expenses-period"
-                value={selectedMonth}
-                onChange={(event) => setSelectedMonth(event.target.value)}
-                className="rounded-md border border-muted bg-card px-2 py-1 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
-              >
-                {monthOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <Button onClick={handleOpenCreate}>
-            <Plus className="mr-2 h-4 w-4" />
-            <FormattedMessage id="expenses.actions.add" />
-          </Button>
-        </div>
+        <Button onClick={handleOpenCreate}>
+          <Plus className="mr-2 h-4 w-4" />
+          <FormattedMessage id="expenses.actions.add" />
+        </Button>
       </div>
 
-      <div className="grid gap-6 rounded-xl border border-muted/60 bg-card/80 p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-3">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              <FormattedMessage
-                id="expenses.summary.totalLabel"
-                values={{ period: currentPeriodLabel }}
-              />
-            </span>
-            {selectedMonth === "all" && (
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                <FormattedMessage id="expenses.summary.periodChipAll" />
-              </span>
-            )}
-          </div>
-          <p className="text-3xl font-semibold text-rose-600">
-            {formatCurrency(totalSpend)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            <FormattedMessage
-              id={comparisonDescriptor.id}
-              values={comparisonDescriptor.values ?? {}}
-            />
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 sm:col-span-1 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              <FormattedMessage id="expenses.summary.topCategories" />
-            </span>
-            <Tooltip content={intl.formatMessage({ id: "expenses.summary.unitTooltip" })} icon />
-          </div>
-          <div className="space-y-3">
-            {topCategories.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                <FormattedMessage id="expenses.summary.noData" />
-              </p>
-            ) : (
-              topCategories.map(({ category, total }) => {
-                const percent =
-                  totalSpend > 0 ? Math.round((total / totalSpend) * 100) : 0;
-                return (
-                  <div key={category} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-medium text-emerald-900">
-                      <span>
-                        <FormattedMessage id={`expenses.categories.${category}`} />
-                      </span>
-                      <Tooltip content={intl.formatMessage({ id: "expenses.summary.unitTooltip" })}>
-                        <span className="text-rose-600">
-                          {formatCurrency(total)}{" "}
-                          <span className="text-xs text-muted-foreground">
-                            / {unitLabel}
-                          </span>
-                        </span>
-                      </Tooltip>
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>
-                        <FormattedMessage
-                          id="expenses.summary.categoryShare"
-                          values={{ percent }}
-                        />
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-emerald-100">
-                      <div
-                        className="h-2 rounded-full bg-emerald-500"
-                        style={{ width: `${percent}%` }}
-                        aria-hidden="true"
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-        <div className="flex flex-col justify-between gap-3 rounded-xl border border-muted/60 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-muted-foreground">
-              <FormattedMessage id="expenses.summary.trendTitle" />
-            </span>
-            <LineChart className="h-4 w-4 text-emerald-500" aria-hidden="true" />
-          </div>
-          {trendSparkline ? (
-            <>
-              <svg
-                viewBox={`0 0 ${trendSparkline.width} ${trendSparkline.height}`}
-                className="h-20 w-full text-emerald-500"
-                aria-hidden="true"
-              >
-                <path
-                  d={trendSparkline.areaPath}
-                  fill="currentColor"
-                  opacity={0.15}
-                />
-                <path
-                  d={trendSparkline.strokePath}
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div className="flex justify-between text-[11px] text-muted-foreground">
-                <span>{trendSparkline.startLabel}</span>
-                <span>{trendSparkline.endLabel}</span>
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              <FormattedMessage id="expenses.summary.trendNoData" />
-            </p>
-          )}
-        </div>
-      </div>
-      {monthlyTotals.length > 0 && (
-        <div className="space-y-3 rounded-xl border border-muted/60 bg-muted/20 px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                <FormattedMessage id="expenses.timeline.label" />
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handlePrevMonth}
-                  disabled={!prevMonthKey}
-                  aria-label={intl.formatMessage({ id: "expenses.timeline.previous" })}
-                >
-                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleNextMonth}
-                  disabled={!nextMonthKey || selectedMonth === "all"}
-                  aria-label={intl.formatMessage({ id: "expenses.timeline.next" })}
-                >
-                  <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </div>
-            </div>
-            <span className="text-xs text-muted-foreground">
-              <FormattedMessage id="expenses.timeline.hint" />
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2 overflow-x-auto">
-            <Button
-              variant={selectedMonth === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedMonth("all")}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs",
-                selectedMonth === "all"
-                  ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                  : "border-muted/60 text-muted-foreground hover:bg-muted/40",
-              )}
-            >
-              <FormattedMessage id="expenses.timeline.all" />
-            </Button>
-            {monthlyTotals.map((entry) => {
-              const isActive = selectedMonth === entry.key;
-              return (
-                <Button
-                  key={entry.key}
-                  variant={isActive ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedMonth(entry.key)}
-                  className={cn(
-                    "rounded-full px-3 py-1 text-xs capitalize",
-                    isActive
-                      ? "bg-emerald-600 text-white hover:bg-emerald-500"
-                      : "border-muted/60 text-muted-foreground hover:bg-muted/40",
-                  )}
-                >
-                  {intl.formatDate(entry.date, { month: "short", year: "2-digit" })}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Chart */}
+      <ExpenseChart expenses={expenses} />
 
+      {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-muted/60 bg-muted/20 px-5 py-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <label htmlFor="expenses-sort-by" className="text-xs uppercase tracking-wide">
@@ -1142,7 +1246,7 @@ export default function ExpensesPage() {
                           <FormattedMessage id="expenses.categoryTotal" />
                         </p>
                         <p className="text-sm font-semibold text-rose-600">
-                          {formatCurrency(group.total)}
+                          {formatCurrency(group.activeTotal)}
                         </p>
                       </div>
                     </div>
@@ -1195,103 +1299,189 @@ export default function ExpensesPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                          {group.items.map((expense) => (
-                            <TableRow
-                              key={expense.id}
-                              className="border-b border-muted/20 transition-colors duration-200 hover:bg-emerald-50/70"
-                              onDoubleClick={() => handleOpenEdit(expense)}
-                            >
-                              <TableCell
-                                className={cn(
-                                  columnClasses.description,
-                                  "align-middle py-4 text-sm text-slate-800",
-                                )}
-                              >
-                                {expense.description}
-                              </TableCell>
-                              <TableCell
-                                className={cn(
-                                  columnClasses.amount,
-                                  "align-middle py-4 text-right text-sm font-semibold text-rose-600",
-                                )}
-                              >
-                                {formatCurrency(expense.amount)}
-                              </TableCell>
-                              <TableCell
-                                className={cn(
-                                  columnClasses.date,
-                                  "align-middle py-4 text-sm text-muted-foreground",
-                                )}
-                              >
-                                <div className="inline-flex items-center gap-2 rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                                  <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-                                  <span>
-                                    <FormattedDate value={new Date(expense.date)} />
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell
-                                className={cn(
-                                  columnClasses.recurring,
-                                  "align-middle py-4 text-sm",
-                                )}
-                              >
-                                {expense.is_recurring ? (
-                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                                    <span className="text-emerald-500">●</span>
-                                    <FormattedMessage id="expenses.recurring.yes" defaultMessage="Recurring" />
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                                    <span className="text-slate-400">○</span>
-                                    <FormattedMessage id="expenses.recurring.no" defaultMessage="One-off" />
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell
-                                className={cn(
-                                  columnClasses.actions,
-                                  "align-middle py-4",
-                                )}
-                              >
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => handleOpenEdit(expense)}
-                                    className="h-9 w-9 border-primary/10 hover:bg-primary/10 hover:text-primary"
-                                    aria-label={intl.formatMessage({ id: "expenses.actions.edit" })}
+                          {getGroupedByDescription(group.items).map((descGroup) => {
+                            const mainExpense = descGroup.current || descGroup.historical[0];
+                            if (!mainExpense) return null;
+
+                            const groupKey = `${category}::${descGroup.key}`;
+                            const hasHistory = descGroup.historical.length > 0;
+                            const isExpanded = expandedGroups.has(groupKey);
+
+                            const renderExpenseRow = (expense: Expense, isMain: boolean) => {
+                              const isHistorical = !!expense.end_date;
+                              return (
+                                <TableRow
+                                  key={expense.id}
+                                  className={cn(
+                                    "border-b border-muted/20 transition-colors duration-200 hover:bg-emerald-50/70",
+                                    isHistorical && "bg-slate-50/50 opacity-70",
+                                    !isMain && "bg-amber-50/30"
+                                  )}
+                                  onDoubleClick={() => handleOpenEdit(expense)}
+                                >
+                                  <TableCell
+                                    className={cn(
+                                      columnClasses.description,
+                                      "align-middle py-4 text-sm text-slate-800",
+                                    )}
                                   >
-                                    <Pencil className="h-4 w-4" />
-                                    <span className="sr-only">
-                                      {intl.formatMessage({ id: "expenses.actions.edit" })}
-                                    </span>
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    onClick={() => {
-                                      setPendingDelete(expense);
-                                      setConfirmOpen(true);
-                                    }}
-                                    className="h-9 w-9 border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
-                                    aria-label={intl.formatMessage({ id: "expenses.actions.delete" })}
+                                    <div className="flex items-center gap-2">
+                                      {isMain && hasHistory ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleGroupExpanded(groupKey)}
+                                          className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+                                          aria-label={isExpanded ? "Zwiń historię" : "Rozwiń historię"}
+                                        >
+                                          {isExpanded ? (
+                                            <ChevronDown className="h-4 w-4" />
+                                          ) : (
+                                            <ChevronRight className="h-4 w-4" />
+                                          )}
+                                        </button>
+                                      ) : !isMain ? (
+                                        <span className="flex h-7 w-7 items-center justify-center text-slate-400 text-xs">
+                                          └─
+                                        </span>
+                                      ) : null}
+                                      <div className="flex flex-col">
+                                        <span className={cn(!isMain && "text-slate-500 text-xs")}>
+                                          {isMain ? expense.description : intl.formatMessage({ id: "common.historical" })}
+                                        </span>
+                                        {isMain && hasHistory && (
+                                          <button
+                                            type="button"
+                                            onClick={() => toggleGroupExpanded(groupKey)}
+                                            className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"
+                                          >
+                                            📜 {descGroup.historical.length} {intl.formatMessage({
+                                              id: descGroup.historical.length === 1 ? "common.historyCount.one" : "common.historyCount.many",
+                                              defaultMessage: descGroup.historical.length === 1 ? "change" : "changes"
+                                            })}
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell
+                                    className={cn(
+                                      columnClasses.amount,
+                                      "align-middle py-4 text-right text-sm font-semibold",
+                                      isHistorical ? "text-slate-500" : "text-rose-600",
+                                    )}
                                   >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">
-                                      {intl.formatMessage({ id: "expenses.actions.delete" })}
-                                    </span>
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                    {formatCurrency(expense.amount)}
+                                  </TableCell>
+                                  <TableCell
+                                    className={cn(
+                                      columnClasses.date,
+                                      "align-middle py-4 text-sm text-muted-foreground",
+                                    )}
+                                  >
+                                    <div className="inline-flex items-center gap-2 rounded-full bg-muted/50 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                                      <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                                      <span>
+                                        <FormattedDate value={new Date(expense.date)} year="numeric" month="2-digit" />
+                                        {" → "}
+                                        {expense.end_date ? (
+                                          <FormattedDate value={new Date(expense.end_date)} year="numeric" month="2-digit" />
+                                        ) : (
+                                          <span className="text-emerald-600 font-medium">
+                                            {intl.formatMessage({ id: "common.now", defaultMessage: "teraz" })}
+                                          </span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell
+                                    className={cn(
+                                      columnClasses.recurring,
+                                      "align-middle py-4 text-sm",
+                                    )}
+                                  >
+                                    {isHistorical ? (
+                                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+                                        📁
+                                        <FormattedMessage id="common.historical" defaultMessage="Historyczny" />
+                                      </span>
+                                    ) : expense.is_recurring ? (
+                                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                                        <span className="text-emerald-500">●</span>
+                                        <FormattedMessage id="expenses.recurring.yes" defaultMessage="Recurring" />
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                                        <span className="text-slate-400">○</span>
+                                        <FormattedMessage id="expenses.recurring.no" defaultMessage="One-off" />
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell
+                                    className={cn(
+                                      columnClasses.actions,
+                                      "align-middle py-4",
+                                    )}
+                                  >
+                                    <div className="flex justify-end gap-2">
+                                      {expense.is_recurring && !isHistorical && (
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          onClick={() => handleOpenChangeRate(expense)}
+                                          className="h-9 w-9 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                                          aria-label={intl.formatMessage({ id: "changeRate.button.tooltip" })}
+                                        >
+                                          <RefreshCw className="h-4 w-4" />
+                                        </Button>
+                                      )}
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => handleOpenEdit(expense)}
+                                        className="h-9 w-9 border-primary/10 hover:bg-primary/10 hover:text-primary"
+                                        aria-label={intl.formatMessage({ id: "expenses.actions.edit" })}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                        <span className="sr-only">
+                                          {intl.formatMessage({ id: "expenses.actions.edit" })}
+                                        </span>
+                                      </Button>
+                                      <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => {
+                                          setPendingDelete(expense);
+                                          setConfirmOpen(true);
+                                        }}
+                                        className="h-9 w-9 border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
+                                        aria-label={intl.formatMessage({ id: "expenses.actions.delete" })}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                        <span className="sr-only">
+                                          {intl.formatMessage({ id: "expenses.actions.delete" })}
+                                        </span>
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            };
+
+                            return (
+                              <React.Fragment key={descGroup.key}>
+                                {renderExpenseRow(mainExpense, true)}
+                                {isExpanded && descGroup.historical.map((histExpense) => (
+                                  histExpense.id !== mainExpense.id && renderExpenseRow(histExpense, false)
+                                ))}
+                              </React.Fragment>
+                            );
+                          })}
                           <TableRow className="bg-muted/30">
                             <TableCell className="py-4 text-sm font-medium text-secondary">
                               <FormattedMessage id="expenses.categorySubtotal" defaultMessage="Subtotal" />
                             </TableCell>
                             <TableCell className="py-4 text-right text-sm font-semibold text-rose-600">
-                              {formatCurrency(group.total)}
+                              {formatCurrency(group.activeTotal)}
                             </TableCell>
                             <TableCell colSpan={3} />
                           </TableRow>
@@ -1366,6 +1556,25 @@ export default function ExpensesPage() {
         confirmLabelId="expenses.deleteDialog.confirm"
         onConfirm={handleDelete}
         isLoading={isDeleting}
+      />
+
+      <CrudDialog
+        open={changeRateOpen}
+        mode="create"
+        onOpenChange={handleChangeRateClose}
+        titleId="changeRate.dialog.title"
+        descriptionId="changeRate.dialog.description"
+        submitLabelId="changeRate.dialog.submit"
+        schema={changeRateSchema}
+        defaultValues={changeRateDefaultValues}
+        initialValues={
+          changeRateItem
+            ? { newAmount: changeRateItem.amount, effectiveDate: todayISO }
+            : undefined
+        }
+        fields={changeRateFieldConfig}
+        onSubmit={handleChangeRate}
+        isSubmitting={isChangingRate}
       />
     </div>
   );

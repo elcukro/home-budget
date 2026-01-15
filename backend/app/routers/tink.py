@@ -15,6 +15,7 @@ from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User, TinkConnection, BankTransaction
 from ..services.tink_service import tink_service
+from ..services.subscription_service import SubscriptionService
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,11 @@ async def initiate_connection(
 
     Returns a URL to redirect the user to Tink Link.
     """
+    # Check subscription - bank integration requires premium
+    can_use, message = SubscriptionService.can_use_bank_integration(current_user.id, db)
+    if not can_use:
+        raise HTTPException(status_code=403, detail=message)
+
     try:
         # Use simple one-time flow (recommended for testing)
         tink_link_url, state = await tink_service.generate_simple_connect_url(

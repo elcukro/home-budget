@@ -31,6 +31,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useIntl } from "react-intl";
+import { useSettings } from "@/contexts/SettingsContext";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   useForm,
@@ -49,11 +50,14 @@ type FieldComponent =
   | "select"
   | "textarea"
   | "switch"
-  | "checkbox";
+  | "checkbox"
+  | "icon-select"
+  | "currency";
 
 interface FieldOption {
   value: string;
   labelId: string;
+  icon?: React.ReactNode;
 }
 
 export interface FormFieldConfig<TFormValues extends FieldValues> {
@@ -69,6 +73,7 @@ export interface FormFieldConfig<TFormValues extends FieldValues> {
   max?: number;
   autoFocus?: boolean;
   onValueChange?: (value: unknown, form: UseFormReturn<TFormValues>) => void;
+  showWhen?: (values: TFormValues) => boolean;
 }
 
 export interface CrudDialogProps<TFormValues extends FieldValues> {
@@ -103,6 +108,26 @@ export function CrudDialog<TFormValues extends FieldValues>({
   isSubmitting = false,
 }: CrudDialogProps<TFormValues>) {
   const intl = useIntl();
+  const { settings } = useSettings();
+
+  // Get currency symbol for display
+  const getCurrencySymbol = () => {
+    if (!settings?.currency) return '';
+    try {
+      const formatted = new Intl.NumberFormat(settings.language || 'en', {
+        style: 'currency',
+        currency: settings.currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0);
+      // Extract just the symbol by removing the number
+      return formatted.replace(/[\d\s.,]/g, '').trim();
+    } catch {
+      return settings.currency;
+    }
+  };
+
+  const currencySymbol = getCurrencySymbol();
 
   const form = useForm<TFormValues>({
     resolver: zodResolver(schema as any) as Resolver<TFormValues>,
@@ -122,6 +147,9 @@ export function CrudDialog<TFormValues extends FieldValues>({
     await onSubmit(values);
   };
 
+  // Watch all form values to enable conditional field rendering
+  const watchedValues = form.watch();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -140,7 +168,11 @@ export function CrudDialog<TFormValues extends FieldValues>({
             className="space-y-4"
             noValidate
           >
-            {fields.map((fieldConfig) => (
+            {fields
+              .filter((fieldConfig) =>
+                !fieldConfig.showWhen || fieldConfig.showWhen(watchedValues as TFormValues)
+              )
+              .map((fieldConfig) => (
               <FormField
                 key={fieldConfig.name}
                 control={form.control}
@@ -151,7 +183,37 @@ export function CrudDialog<TFormValues extends FieldValues>({
                       {intl.formatMessage({ id: fieldConfig.labelId })}
                     </FormLabel>
                     <FormControl>
-                      {fieldConfig.component === "select" ? (
+                      {fieldConfig.component === "icon-select" ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {fieldConfig.options?.map((option) => {
+                            const isSelected = field.value === option.value;
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => {
+                                  field.onChange(option.value);
+                                  fieldConfig.onValueChange?.(option.value, form);
+                                }}
+                                className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
+                                  isSelected
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-muted hover:border-primary/50 hover:bg-muted/50"
+                                }`}
+                              >
+                                <span className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                                  isSelected ? "bg-primary/20" : "bg-muted"
+                                }`}>
+                                  {option.icon}
+                                </span>
+                                <span className="text-xs font-medium">
+                                  {intl.formatMessage({ id: option.labelId })}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : fieldConfig.component === "select" ? (
                         <Select
                           disabled={fieldConfig.disabled}
                           onValueChange={(value) => {
@@ -227,6 +289,46 @@ export function CrudDialog<TFormValues extends FieldValues>({
                               : undefined
                           }
                         />
+                      ) : fieldConfig.component === "currency" ? (
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                            {currencySymbol}
+                          </span>
+                          <Input
+                            {...field}
+                            onChange={(event) => {
+                              // Allow comma as decimal separator
+                              const rawValue = event.target.value.replace(',', '.');
+                              field.onChange(rawValue);
+                              fieldConfig.onValueChange?.(rawValue, form);
+                            }}
+                            type="text"
+                            inputMode="decimal"
+                            value={
+                              field.value === undefined ||
+                              field.value === null ||
+                              (mode === "create" &&
+                                (field.value === 0 ||
+                                  field.value === "0" ||
+                                  field.value === "0.0"))
+                                ? ""
+                                : String(field.value).replace('.', settings?.language === 'pl' ? ',' : '.')
+                            }
+                            className="pl-10"
+                            step={fieldConfig.step || "0.01"}
+                            min={fieldConfig.min}
+                            max={fieldConfig.max}
+                            disabled={fieldConfig.disabled}
+                            autoFocus={fieldConfig.autoFocus}
+                            placeholder={
+                              fieldConfig.placeholderId
+                                ? intl.formatMessage({
+                                    id: fieldConfig.placeholderId,
+                                  })
+                                : "0,00"
+                            }
+                          />
+                        </div>
                       ) : (
                         <Input
                           {...field}
@@ -281,14 +383,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
                         {intl.formatMessage({ id: fieldConfig.descriptionId })}
                       </p>
                     )}
-                    <FormMessage>
-                      {fieldState.error?.message
-                        ? intl.formatMessage({
-                            id: fieldState.error.message,
-                            defaultMessage: fieldState.error.message,
-                          })
-                        : null}
-                    </FormMessage>
+                    <FormMessage />
                   </FormItem>
                 )}
               />

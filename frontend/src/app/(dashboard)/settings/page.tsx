@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useSettings } from "@/contexts/SettingsContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { logger } from "@/lib/logger";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCrown, faInfinity } from "@fortawesome/free-solid-svg-icons";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -96,6 +99,8 @@ export default function SettingsPage() {
     const tabFromUrl = searchParams.get('tab');
     if (tabFromUrl === 'banking') {
       setActiveTab('banking');
+    } else if (tabFromUrl === 'billing') {
+      setActiveTab('billing');
     }
   }, [searchParams]);
 
@@ -536,6 +541,10 @@ export default function SettingsPage() {
           <TabsTrigger value="banking">
             {intl.formatMessage({ id: "settings.tabs.banking" })}
           </TabsTrigger>
+          <TabsTrigger value="billing">
+            <FontAwesomeIcon icon={faCrown} className="w-4 h-4 mr-2" />
+            {intl.formatMessage({ id: "billing.title" })}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="import-export">
           <Card>
@@ -744,7 +753,220 @@ export default function SettingsPage() {
             </Card>
           </div>
         </TabsContent>
+        <BillingTabContent />
       </Tabs>
     </div>
+  );
+}
+
+function BillingTabContent() {
+  const intl = useIntl();
+  const router = useRouter();
+  const { subscription, usage, isPremium, isTrial, trialDaysLeft, openPortal, isLoading } = useSubscription();
+  const { toast } = useToast();
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  const handleManageSubscription = async () => {
+    try {
+      setPortalLoading(true);
+      const portalUrl = await openPortal();
+      window.location.href = portalUrl;
+    } catch (error) {
+      toast({
+        title: intl.formatMessage({ id: "billing.error" }),
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const getPlanDisplayName = (planType: string | undefined) => {
+    if (!planType) return intl.formatMessage({ id: "billing.free_plan" });
+    const key = `billing.${planType}_plan`;
+    return intl.formatMessage({ id: key });
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  if (isLoading) {
+    return (
+      <TabsContent value="billing">
+        <Card>
+          <CardContent className="py-8">
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </TabsContent>
+    );
+  }
+
+  return (
+    <TabsContent value="billing">
+      <div className="space-y-6">
+        {/* Subscription Status Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FontAwesomeIcon icon={faCrown} className="w-5 h-5 text-primary" />
+              {intl.formatMessage({ id: "billing.status" })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Trial Banner */}
+            {isTrial && trialDaysLeft !== null && trialDaysLeft > 0 && (
+              <div className="bg-primary/10 border border-primary rounded-lg p-4">
+                <p className="text-primary font-medium">
+                  {intl.formatMessage({ id: "pricing.trial_banner" }, { days: trialDaysLeft })}
+                </p>
+              </div>
+            )}
+
+            {/* Current Plan */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">{intl.formatMessage({ id: "billing.current_plan" })}</p>
+                <p className="text-lg font-semibold flex items-center gap-2">
+                  {isPremium && <FontAwesomeIcon icon={faCrown} className="w-4 h-4 text-primary" />}
+                  {getPlanDisplayName(subscription?.plan_type)}
+                </p>
+              </div>
+              {subscription?.is_lifetime ? (
+                <div>
+                  <p className="text-sm text-muted-foreground">{intl.formatMessage({ id: "billing.status" })}</p>
+                  <p className="text-lg font-semibold text-success">Lifetime</p>
+                </div>
+              ) : isTrial && subscription?.trial_ends_at ? (
+                <div>
+                  <p className="text-sm text-muted-foreground">{intl.formatMessage({ id: "billing.trial_ends" })}</p>
+                  <p className="text-lg font-semibold">{formatDate(subscription.trial_ends_at)}</p>
+                </div>
+              ) : subscription?.current_period_end ? (
+                <div>
+                  <p className="text-sm text-muted-foreground">{intl.formatMessage({ id: "billing.period_ends" })}</p>
+                  <p className="text-lg font-semibold">{formatDate(subscription.current_period_end)}</p>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-4">
+              {isPremium && !subscription?.is_lifetime && (
+                <Button
+                  variant="outline"
+                  onClick={() => void handleManageSubscription()}
+                  disabled={portalLoading}
+                >
+                  {portalLoading ? intl.formatMessage({ id: "pricing.loading" }) : intl.formatMessage({ id: "billing.manage_subscription" })}
+                </Button>
+              )}
+              {!isPremium && (
+                <Button onClick={() => router.push("/pricing")}>
+                  {intl.formatMessage({ id: "billing.upgrade" })}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Usage Stats Card (only for free users) */}
+        {!isPremium && usage && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{intl.formatMessage({ id: "billing.usage.title" })}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Expenses */}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">{intl.formatMessage({ id: "billing.usage.expenses" })}</span>
+                  <span className="text-sm font-medium">
+                    {usage.expenses.unlimited ? (
+                      <FontAwesomeIcon icon={faInfinity} className="w-4 h-4 text-success" />
+                    ) : (
+                      `${usage.expenses.used} / ${usage.expenses.limit}`
+                    )}
+                  </span>
+                </div>
+                {!usage.expenses.unlimited && usage.expenses.limit && (
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (usage.expenses.used / usage.expenses.limit) * 100)}%` }}
+                    />
+                  </div>
+                )}
+
+                {/* Incomes */}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">{intl.formatMessage({ id: "billing.usage.incomes" })}</span>
+                  <span className="text-sm font-medium">
+                    {usage.incomes.unlimited ? (
+                      <FontAwesomeIcon icon={faInfinity} className="w-4 h-4 text-success" />
+                    ) : (
+                      `${usage.incomes.used} / ${usage.incomes.limit}`
+                    )}
+                  </span>
+                </div>
+                {!usage.incomes.unlimited && usage.incomes.limit && (
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (usage.incomes.used / usage.incomes.limit) * 100)}%` }}
+                    />
+                  </div>
+                )}
+
+                {/* Loans */}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">{intl.formatMessage({ id: "billing.usage.loans" })}</span>
+                  <span className="text-sm font-medium">
+                    {usage.loans.unlimited ? (
+                      <FontAwesomeIcon icon={faInfinity} className="w-4 h-4 text-success" />
+                    ) : (
+                      `${usage.loans.used} / ${usage.loans.limit}`
+                    )}
+                  </span>
+                </div>
+                {!usage.loans.unlimited && usage.loans.limit && (
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (usage.loans.used / usage.loans.limit) * 100)}%` }}
+                    />
+                  </div>
+                )}
+
+                {/* Savings Goals */}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">{intl.formatMessage({ id: "billing.usage.savings" })}</span>
+                  <span className="text-sm font-medium">
+                    {usage.savings_goals.unlimited ? (
+                      <FontAwesomeIcon icon={faInfinity} className="w-4 h-4 text-success" />
+                    ) : (
+                      `${usage.savings_goals.used} / ${usage.savings_goals.limit}`
+                    )}
+                  </span>
+                </div>
+                {!usage.savings_goals.unlimited && usage.savings_goals.limit && (
+                  <div className="w-full bg-muted rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all"
+                      style={{ width: `${Math.min(100, (usage.savings_goals.used / usage.savings_goals.limit) * 100)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </TabsContent>
   );
 }

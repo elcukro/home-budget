@@ -15,6 +15,9 @@
     "oneOff": "Único",
     "select": "Seleccionar...",
     "appName": "FiredUp",
+    "currency": {
+      "pln": "PLN"
+    },
     "months": {
       "1": "Enero",
       "2": "Febrero",
@@ -544,13 +547,59 @@
     "schedule": {
       "view": "Ver cronograma",
       "dialogTitle": "Cronograma de pagos: {loan}",
-      "dialogDescription": "Vista estimada de las próximas {count} cuotas basada en el pago mensual actual.",
+      "dialogDescription": "Vista estimada de las próximas {count} cuotas con amortización e intereses.",
       "empty": "Aún no hay información de cronograma para este préstamo.",
       "remaining": "Saldo después del pago: {amount}",
-      "note": "Nota: el cronograma es orientativo y puede no reflejar ajustes de intereses u otros cargos."
+      "note": "Nota: el cronograma es orientativo y puede no reflejar ajustes de intereses u otros cargos.",
+      "date": "Fecha",
+      "payment": "Pago",
+      "principal": "Capital",
+      "interest": "Intereses",
+      "balance": "Saldo"
     },
     "table": {
       "interestTooltip": "Tasa nominal anual (APR)."
+    },
+    "deleteDialog": {
+      "title": "Eliminar préstamo",
+      "description": "¿Estás seguro de que deseas eliminar este préstamo? Esta acción no se puede deshacer.",
+      "confirm": "Eliminar"
+    },
+    "warning": {
+      "paymentTooLow": {
+        "title": "¡El pago no cubre los intereses!",
+        "description": "Los intereses mensuales son {monthlyInterest}, pero tu pago es solo {payment}. A este ritmo, la deuda crecerá en lugar de disminuir."
+      }
+    },
+    "strategy": {
+      "title": "Estrategia de Pago de Deudas",
+      "subtitle": "Elige un método y descubre cuánto puedes ahorrar",
+      "snowball": {
+        "title": "Bola de Nieve",
+        "desc": "Deuda más pequeña primero"
+      },
+      "avalanche": {
+        "title": "Avalancha",
+        "desc": "Mayor interés primero"
+      },
+      "totalInterest": "Intereses totales:",
+      "payoffTime": "Tiempo de pago:",
+      "extraPayment": "Pago extra mensual:",
+      "order": "Orden de pago:",
+      "paidOffIn": "Pagado en {time}",
+      "selected": "Estrategia seleccionada",
+      "avalancheSavings": "¡El método Avalancha te ahorrará {amount} en intereses!",
+      "snowballSavings": "¡El método Bola de Nieve te ahorrará {amount} en intereses!",
+      "comparisonNote": "Avalancha es matemáticamente óptimo, pero Bola de Nieve ofrece \"pequeñas victorias\" más rápidas - elige lo que te motive más.",
+      "speedsUpBy": "Acelera el pago en {time}",
+      "annualRate": "{rate}% anual",
+      "babyStepsLink": "Esta estrategia es parte de {step} - paga todas las deudas (excepto la hipoteca)",
+      "babyStep2": "Paso 2 de Baby Steps",
+      "time": {
+        "months": "{count} mes.",
+        "years": "{count, plural, one {# año} other {# años}}",
+        "yearsAndMonths": "{years, plural, one {# año} other {# años}} {months} mes."
+      }
     }
   },
   "savings": {
@@ -638,9 +687,18 @@
       "description": "Descripción",
       "amount": "Monto",
       "date": "Fecha",
+      "endDate": "Fecha de fin",
       "savingType": "Tipo",
       "isRecurring": "Ahorro recurrente",
       "targetAmount": "Monto objetivo"
+    },
+    "goalProjection": {
+      "title": "Proyección de metas",
+      "monthlyRate": "A tu ritmo actual de {amount}/mes",
+      "emergencyFund": "Fondo de emergencia",
+      "complete": "¡Completo!",
+      "nextMilestone": "Alcanzar {amount}",
+      "inMonths": "En {months} meses"
     },
     "table": {
       "category": "Categoría",
@@ -941,6 +999,105 @@
         "dti": "Relación deuda-ingreso",
         "dtiValue": "{value}%"
       }
+    }
+  },
+  "pricing": {
+    "title": "Elige tu Plan",
+    "subtitle": "Desbloquea todo el potencial de FiredUp y toma el control de tus finanzas",
+    "popular": "Más Popular",
+    "loading": "Cargando...",
+    "subscribe": "Suscribirse",
+    "current_plan": "Plan Actual",
+    "lifetime_active": "Acceso Lifetime Activo",
+    "trial_banner": "Te quedan {days} días de prueba gratuita Premium",
+    "premium_active": "Tienes un plan {plan} activo",
+    "questions": "¿Tienes preguntas? Contáctanos:",
+    "plans": {
+      "monthly": {
+        "name": "Mensual",
+        "period": "/ mes",
+        "description": "Plan flexible sin compromiso"
+      },
+      "annual": {
+        "name": "Anual",
+        "period": "/ año",
+        "description": "Mejor valor - ahorra 2 meses",
+        "savings": "Ahorra ~17%"
+      },
+      "lifetime": {
+        "name": "Lifetime",
+        "period": "una vez",
+        "description": "Paga una vez, úsalo para siempre"
+      }
+    },
+    "features": {
+      "unlimited_entries": "Entradas ilimitadas",
+      "bank_integration": "Integración bancaria",
+      "ai_insights": "AI Insights",
+      "all_exports": "Exportar: JSON, CSV, XLSX",
+      "all_reports": "Todos los informes",
+      "lifetime_updates": "Actualizaciones de por vida"
+    },
+    "comparison": {
+      "title": "Free vs Premium",
+      "feature": "Característica",
+      "free": "Free",
+      "premium": "Premium",
+      "expenses": "Gastos",
+      "incomes": "Ingresos",
+      "loans": "Préstamos",
+      "savings": "Metas de ahorro",
+      "bank": "Integración bancaria",
+      "ai": "AI Insights",
+      "export": "Exportar",
+      "reports": "Informes",
+      "all": "Todos"
+    },
+    "success": {
+      "title": "¡Éxito!",
+      "description": "Tu suscripción ha sido activada. ¡Disfruta Premium!"
+    },
+    "canceled": {
+      "title": "Cancelado",
+      "description": "El pago fue cancelado. Puedes intentarlo de nuevo."
+    },
+    "error": {
+      "title": "Error",
+      "description": "Ocurrió un error al procesar el pago."
+    }
+  },
+  "premium": {
+    "required": {
+      "title": "{feature} requiere Premium",
+      "description": "Actualiza a Premium para desbloquear esta función."
+    },
+    "limit": {
+      "expenses": "Límite Free: {used}/{limit} gastos este mes. Actualiza a Premium.",
+      "incomes": "Límite Free: {used}/{limit} ingresos este mes. Actualiza a Premium.",
+      "loans": "Límite Free: {used}/{limit} préstamos. Actualiza a Premium.",
+      "savings_goals": "Límite Free: {used}/{limit} metas de ahorro. Actualiza a Premium."
+    }
+  },
+  "billing": {
+    "title": "Facturación",
+    "status": "Estado de Suscripción",
+    "current_plan": "Plan Actual",
+    "trial_ends": "El trial termina",
+    "period_ends": "El período termina",
+    "manage_subscription": "Gestionar Suscripción",
+    "upgrade": "Actualizar a Premium",
+    "free_plan": "Free",
+    "trial_plan": "Trial",
+    "monthly_plan": "Mensual",
+    "annual_plan": "Anual",
+    "lifetime_plan": "Lifetime",
+    "usage": {
+      "title": "Uso",
+      "expenses": "Gastos",
+      "incomes": "Ingresos",
+      "loans": "Préstamos",
+      "savings": "Metas de ahorro",
+      "unlimited": "Ilimitado"
     }
   }
 }

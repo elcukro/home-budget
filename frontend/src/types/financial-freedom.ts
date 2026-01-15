@@ -41,6 +41,7 @@ export interface Saving {
   description?: string;
   amount: number;
   date: string;
+  end_date?: string | null;  // Optional end date for recurring items (null = forever)
   is_recurring: boolean;
   target_amount?: number;
   saving_type: SavingType;

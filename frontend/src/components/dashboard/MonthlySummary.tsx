@@ -10,7 +10,8 @@ import Link from 'next/link';
 import InsightsStatusBanner from './InsightsStatusBanner';
 import { EnhancedInsightsResponse } from '@/types/cache';
 import { useSession } from 'next-auth/react';
-import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Minus, AlertTriangle } from 'lucide-react';
+import { TAX_LIMITS_2026 } from '@/lib/tax-limits-2026';
 
 interface MonthlySummaryProps {
   data: {
@@ -377,13 +378,18 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, deltas, reference
       delta: safeDeltas.debtToIncome,
       formatter: (value: number) => percentFormatter.format(value),
       trend: 'negative' as const,
-      color: 'text-warning',
-      bgColor: 'bg-warning/20 hover:bg-warning/30 transition-colors',
-      subLabel: intl.formatMessage({ id: 'dashboard.summary.targets.debtToIncome' }),
+      color: (data?.debtToIncome ?? 0) > TAX_LIMITS_2026.RECOMMENDED_DTI_WARNING ? 'text-destructive' : 'text-warning',
+      bgColor: (data?.debtToIncome ?? 0) > TAX_LIMITS_2026.RECOMMENDED_DTI_WARNING
+        ? 'bg-destructive/15 hover:bg-destructive/20 transition-colors'
+        : 'bg-warning/20 hover:bg-warning/30 transition-colors',
+      subLabel: (data?.debtToIncome ?? 0) > TAX_LIMITS_2026.RECOMMENDED_DTI_WARNING
+        ? intl.formatMessage({ id: 'dashboard.summary.dtiWarning' })
+        : intl.formatMessage({ id: 'dashboard.summary.targets.debtToIncome' }),
       tooltip: [
         intl.formatMessage({ id: 'dashboard.summary.tooltips.debtToIncome' }),
         insightFor('debtToIncome', safeDeltas.debtToIncome, (value: number) => percentFormatter.format(value)),
       ].join(' • '),
+      warning: (data?.debtToIncome ?? 0) > TAX_LIMITS_2026.RECOMMENDED_DTI_WARNING,
     },
   ];
 
@@ -405,18 +411,21 @@ const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, deltas, reference
         {metrics.map((metric) => (
           <div
             key={metric.key}
-            className={`rounded-xl border border-default bg-card shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 p-4 ${metric.bgColor}`}
+            className={`rounded-xl border border-default bg-card shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 p-4 ${metric.bgColor} ${'warning' in metric && metric.warning ? 'border-destructive/50' : ''}`}
             title={metric.tooltip}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-secondary">
+                <p className="text-xs uppercase tracking-wide text-secondary flex items-center gap-1">
                   {metric.label}
+                  {'warning' in metric && metric.warning && (
+                    <AlertTriangle className="w-3 h-3 text-destructive" />
+                  )}
                 </p>
                 <p className={`text-xl font-semibold tabular-nums ${metric.color}`}>
                   {metric.value}
                 </p>
-                <p className="text-xs text-secondary">
+                <p className={`text-xs ${'warning' in metric && metric.warning ? 'text-destructive font-medium' : 'text-secondary'}`}>
                   {metric.subLabel}
                 </p>
               </div>

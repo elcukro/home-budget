@@ -1,4 +1,38 @@
 {
+  "changeRate": {
+    "button": {
+      "tooltip": "Change rate"
+    },
+    "dialog": {
+      "title": "Change rate",
+      "description": "Enter the new amount and the date it should take effect. The old entry will be closed and a new one created with the new rate.",
+      "submit": "Change rate"
+    },
+    "form": {
+      "newAmount": "New amount",
+      "effectiveDate": "Effective from"
+    },
+    "toast": {
+      "success": "Rate has been changed",
+      "error": "Failed to change rate"
+    }
+  },
+  "charts": {
+    "horizon": {
+      "year": "Year",
+      "2years": "2 years",
+      "5years": "5 years",
+      "10years": "10 years",
+      "last2years": "Last 2 years",
+      "last5years": "Last 5 years",
+      "last10years": "Last 10 years"
+    },
+    "period": {
+      "last2years": "2 years",
+      "last5years": "5 years",
+      "last10years": "10 years"
+    }
+  },
   "common": {
     "add": "Add",
     "edit": "Edit",
@@ -20,6 +54,15 @@
     "refresh": "Refresh",
     "recurring": "Recurring",
     "oneOff": "One-off",
+    "historical": "Historical",
+    "now": "now",
+    "currency": {
+      "pln": "PLN"
+    },
+    "historyCount": {
+      "one": "change",
+      "many": "changes"
+    },
     "months": {
       "1": "January",
       "2": "February",
@@ -412,11 +455,15 @@
     "actions": {
       "add": "Add income"
     },
-    "filters": {
-      "monthLabel": "Month",
-      "month": {
-        "all": "All months"
-      }
+    "chart": {
+      "title": "Income over time",
+      "subtitle": "Average {avg}/mo.",
+      "subtitleWithPeriod": "Average {avg}/mo. ({period})",
+      "total": "Total",
+      "totalWithPeriod": "Total ({period})",
+      "average": "Average/mo.",
+      "activeMonths": "Active months",
+      "monthsInPeriod": "Months"
     },
     "summary": {
       "totalLabel": "Total income ({month})",
@@ -453,6 +500,8 @@
       "description": "Description",
       "amount": "Amount",
       "date": "Date",
+      "startDate": "Start date",
+      "endDate": "End date (optional)",
       "recurring": "Recurring monthly income"
     },
     "table": {
@@ -491,6 +540,16 @@
       "add": "Add expense",
       "edit": "Edit expense",
       "delete": "Delete expense"
+    },
+    "chart": {
+      "title": "Expenses over time",
+      "subtitle": "Average {avg}/mo.",
+      "subtitleWithPeriod": "Average {avg}/mo. ({period})",
+      "total": "Total",
+      "totalWithPeriod": "Total ({period})",
+      "average": "Average/mo.",
+      "activeMonths": "Active months",
+      "monthsInPeriod": "Months"
     },
     "categories": {
       "housing": "Housing",
@@ -556,6 +615,8 @@
       "description": "Description",
       "amount": "Amount",
       "date": "Date",
+      "startDate": "Start date",
+      "endDate": "End date (optional)",
       "recurring": "Recurring monthly expense"
     },
     "table": {
@@ -694,15 +755,56 @@
     "schedule": {
       "view": "View schedule",
       "dialogTitle": "Repayment schedule: {loan}",
-      "dialogDescription": "Estimated view of the next {count} instalments based on the current monthly payment.",
+      "dialogDescription": "Estimated view of the next {count} instalments with amortization and interest.",
       "empty": "No schedule data is available for this loan yet.",
       "remaining": "Balance after payment: {amount}",
-      "note": "Note: this schedule is indicative and may not reflect interest adjustments or additional fees."
+      "note": "Note: this schedule is indicative and may not reflect interest adjustments or additional fees.",
+      "date": "Date",
+      "payment": "Payment",
+      "principal": "Principal",
+      "interest": "Interest",
+      "balance": "Balance"
     },
     "deleteDialog": {
       "title": "Remove loan entry",
       "description": "Are you sure you want to delete this loan? This action cannot be undone.",
       "confirm": "Delete"
+    },
+    "warning": {
+      "paymentTooLow": {
+        "title": "Payment doesn't cover interest!",
+        "description": "Monthly interest is {monthlyInterest}, but your payment is only {payment}. At this rate, the debt will grow instead of shrinking."
+      }
+    },
+    "strategy": {
+      "title": "Debt Payoff Strategy",
+      "subtitle": "Choose a method and see how much you can save",
+      "snowball": {
+        "title": "Snowball",
+        "desc": "Smallest debt first"
+      },
+      "avalanche": {
+        "title": "Avalanche",
+        "desc": "Highest interest first"
+      },
+      "totalInterest": "Total interest:",
+      "payoffTime": "Payoff time:",
+      "extraPayment": "Extra monthly payment:",
+      "order": "Payoff order:",
+      "paidOffIn": "Paid off in {time}",
+      "selected": "Selected strategy",
+      "avalancheSavings": "Avalanche method will save you {amount} in interest!",
+      "snowballSavings": "Snowball method will save you {amount} in interest!",
+      "comparisonNote": "Avalanche is mathematically optimal, but Snowball provides quicker \"small wins\" - choose what motivates you more.",
+      "speedsUpBy": "Speeds up payoff by {time}",
+      "annualRate": "{rate}% annually",
+      "babyStepsLink": "This strategy is part of {step} - pay off all debts (except mortgage)",
+      "babyStep2": "Baby Step 2",
+      "time": {
+        "months": "{count} mo.",
+        "years": "{count, plural, one {# year} other {# years}}",
+        "yearsAndMonths": "{years, plural, one {# year} other {# years}} {months} mo."
+      }
     }
   },
   "reports": {
@@ -1054,9 +1156,18 @@
       "description": "Description",
       "amount": "Amount",
       "date": "Date",
+      "endDate": "End date",
       "savingType": "Type",
       "isRecurring": "Recurring saving",
       "targetAmount": "Target amount"
+    },
+    "goalProjection": {
+      "title": "Goal Projection",
+      "monthlyRate": "At your current rate of {amount}/month",
+      "emergencyFund": "Emergency Fund",
+      "complete": "Complete!",
+      "nextMilestone": "Reach {amount}",
+      "inMonths": "In {months} months"
     },
     "table": {
       "category": "Category",
@@ -1746,6 +1857,323 @@
         "addItem": "Add item",
         "removeItem": "Remove item"
       }
+    }
+  },
+  "pricing": {
+    "title": "Choose Your Plan",
+    "subtitle": "Unlock the full potential of FiredUp and take control of your finances",
+    "popular": "Most Popular",
+    "loading": "Loading...",
+    "subscribe": "Subscribe",
+    "current_plan": "Current Plan",
+    "lifetime_active": "Lifetime Access Active",
+    "trial_banner": "{days} days left in your free Premium trial",
+    "premium_active": "You have an active {plan} plan",
+    "questions": "Have questions? Contact us:",
+    "plans": {
+      "monthly": {
+        "name": "Monthly",
+        "period": "/ month",
+        "description": "Flexible plan with no commitment"
+      },
+      "annual": {
+        "name": "Annual",
+        "period": "/ year",
+        "description": "Best value - save 2 months",
+        "savings": "Save ~17%"
+      },
+      "lifetime": {
+        "name": "Lifetime",
+        "period": "one-time",
+        "description": "Pay once, use forever"
+      }
+    },
+    "features": {
+      "unlimited_entries": "Unlimited entries",
+      "bank_integration": "Bank integration",
+      "ai_insights": "AI Insights",
+      "all_exports": "Export: JSON, CSV, XLSX",
+      "all_reports": "All reports",
+      "lifetime_updates": "Lifetime updates"
+    },
+    "comparison": {
+      "title": "Free vs Premium",
+      "feature": "Feature",
+      "free": "Free",
+      "premium": "Premium",
+      "expenses": "Expenses",
+      "incomes": "Income",
+      "loans": "Loans",
+      "savings": "Savings goals",
+      "bank": "Bank integration",
+      "ai": "AI Insights",
+      "export": "Export",
+      "reports": "Reports",
+      "all": "All"
+    },
+    "success": {
+      "title": "Success!",
+      "description": "Your subscription has been activated. Enjoy Premium!"
+    },
+    "canceled": {
+      "title": "Canceled",
+      "description": "Payment was canceled. You can try again."
+    },
+    "error": {
+      "title": "Error",
+      "description": "An error occurred while processing the payment."
+    }
+  },
+  "premium": {
+    "required": {
+      "title": "{feature} requires Premium",
+      "description": "Upgrade to Premium to unlock this feature."
+    },
+    "limit": {
+      "expenses": "Free limit: {used}/{limit} expenses this month. Upgrade to Premium.",
+      "incomes": "Free limit: {used}/{limit} income entries this month. Upgrade to Premium.",
+      "loans": "Free limit: {used}/{limit} loans. Upgrade to Premium.",
+      "savings_goals": "Free limit: {used}/{limit} savings goals. Upgrade to Premium."
+    }
+  },
+  "billing": {
+    "title": "Billing",
+    "status": "Subscription Status",
+    "current_plan": "Current Plan",
+    "trial_ends": "Trial ends",
+    "period_ends": "Period ends",
+    "manage_subscription": "Manage Subscription",
+    "upgrade": "Upgrade to Premium",
+    "free_plan": "Free",
+    "trial_plan": "Trial",
+    "monthly_plan": "Monthly",
+    "annual_plan": "Annual",
+    "lifetime_plan": "Lifetime",
+    "usage": {
+      "title": "Usage",
+      "expenses": "Expenses",
+      "incomes": "Income",
+      "loans": "Loans",
+      "savings": "Savings goals",
+      "unlimited": "Unlimited"
+    }
+  },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "login": "Log in",
+      "signup": "Start for free"
+    },
+    "hero": {
+      "badge": "Path to Financial Freedom",
+      "headline": "Imagine a life without debt",
+      "subheadline": "Where every dollar counts and the future is yours",
+      "description": "Most people live paycheck to paycheck. Loans, bills, constant stress. But it doesn't have to be this way. Financial freedom isn't a dream for the rich — it's a skill you can learn.",
+      "cta": "Start your journey",
+      "ctaSubtext": "7 days free, no credit card required",
+      "learnMore": "Learn more"
+    },
+    "stats": {
+      "title": "The Financial Reality",
+      "subtitle": "You're not alone. Millions of people face the same challenges.",
+      "noSavings": {
+        "value": "68%",
+        "label": "of people have less than 3 months of savings",
+        "source": "Fed Reserve 2024"
+      },
+      "hasCredit": {
+        "value": "42%",
+        "label": "of households have active debt",
+        "source": "Credit Bureau 2024"
+      },
+      "avgPayment": {
+        "value": "$1,200",
+        "label": "average monthly debt payment",
+        "source": "Statistics 2024"
+      },
+      "stressed": {
+        "value": "73%",
+        "label": "report financial stress",
+        "source": "Survey 2024"
+      }
+    },
+    "problems": {
+      "title": "Does this sound familiar?",
+      "subtitle": "These problems affect millions. You don't have to fight them alone.",
+      "item1": {
+        "title": "You don't know where your money goes",
+        "desc": "End of month, empty account. Again."
+      },
+      "item2": {
+        "title": "Debt is overwhelming you",
+        "desc": "Payment after payment, with no end in sight."
+      },
+      "item3": {
+        "title": "Saving? What saving?",
+        "desc": "Something always comes up. Nothing is ever left."
+      },
+      "item4": {
+        "title": "Stress affects your whole life",
+        "desc": "Arguments about money, sleepless nights, uncertainty."
+      },
+      "item5": {
+        "title": "No plan, no control",
+        "desc": "You don't know where to start or what to do next."
+      },
+      "item6": {
+        "title": "Living paycheck to paycheck",
+        "desc": "A spiral with no way out in sight."
+      }
+    },
+    "solution": {
+      "title": "There's another way",
+      "intro": "The FIRE movement (Financial Independence, Retire Early) has shown millions worldwide that financial freedom is possible — not by earning millions, but by consciously managing what you already have.",
+      "principle1": {
+        "title": "Awareness",
+        "desc": "Start with knowledge. Where does your money go? What really matters?"
+      },
+      "principle2": {
+        "title": "Plan",
+        "desc": "7 steps to financial freedom. A proven system, step by step."
+      },
+      "principle3": {
+        "title": "Patience",
+        "desc": "It's a marathon, not a sprint. Small steps lead to big changes."
+      },
+      "quote": "Financial success is not about luck — it's about habits.",
+      "quoteAuthor": "Dave Ramsey"
+    },
+    "features": {
+      "title": "FiredUp — Your Tool for Financial Freedom",
+      "subtitle": "Not just another budgeting app.",
+      "description": "A tool for financial transformation. Built on proven methodology with features that actually work.",
+      "feature1": {
+        "title": "Path to Financial Freedom",
+        "desc": "Dave Ramsey's 7 Baby Steps integrated into the app. Guides you step by step."
+      },
+      "feature2": {
+        "title": "Smart Dashboard",
+        "desc": "Cashflow, savings rate, DTI. Everything on one screen."
+      },
+      "feature3": {
+        "title": "Bank Connection",
+        "desc": "Tink integration. Connect your bank accounts seamlessly."
+      },
+      "feature4": {
+        "title": "Savings Goals",
+        "desc": "Visualize progress and celebrate small victories on your way to goals."
+      },
+      "feature5": {
+        "title": "Loans Under Control",
+        "desc": "Track payments, plan early payoff. Debt snowball method."
+      },
+      "feature6": {
+        "title": "Reports and AI",
+        "desc": "Professional analysis and intelligent insights about your finances."
+      }
+    },
+    "modules": {
+      "title": "Explore FiredUp Modules",
+      "subtitle": "Each module is designed to help you achieve financial freedom.",
+      "dashboard": {
+        "title": "Dashboard",
+        "desc": "All the important information about your finances in one place.",
+        "feature1": "Monthly summary",
+        "feature2": "Distribution charts",
+        "feature3": "12-month cashflow",
+        "feature4": "Recent activity"
+      },
+      "babySteps": {
+        "title": "Baby Steps",
+        "desc": "Dave Ramsey's proven path to financial freedom.",
+        "feature1": "7 steps to freedom",
+        "feature2": "Progress tracking",
+        "feature3": "Goals for each step",
+        "feature4": "Estimated completion time"
+      },
+      "expenses": {
+        "title": "Expenses",
+        "desc": "Track every dollar and see where your money really goes.",
+        "feature1": "8 expense categories",
+        "feature2": "Monthly trends",
+        "feature3": "Recurring expenses",
+        "feature4": "Category analysis"
+      },
+      "savings": {
+        "title": "Savings",
+        "desc": "Set goals, save regularly, and celebrate achievements.",
+        "feature1": "Savings goals",
+        "feature2": "Progress bar",
+        "feature3": "Deposit history",
+        "feature4": "Success celebration"
+      }
+    },
+    "testimonials": {
+      "title": "Stories from Our Users",
+      "subtitle": "Real people, real results. See how FiredUp changed their financial lives.",
+      "person1": {
+        "name": "Sarah, 34",
+        "location": "New York",
+        "text": "After 2 years with FiredUp, I paid off $12,000 in debt. For the first time in my life, I have an emergency fund."
+      },
+      "person2": {
+        "name": "Mike, 41",
+        "location": "Chicago",
+        "text": "I thought saving wasn't for me. FiredUp showed me I was losing $200 monthly on forgotten subscriptions."
+      },
+      "person3": {
+        "name": "Anna & Tom, 29",
+        "location": "Seattle",
+        "text": "Money arguments almost destroyed our relationship. Now we have shared goals and see progress together."
+      }
+    },
+    "pricing": {
+      "title": "Start for free",
+      "subtitle": "Choose the plan that fits your needs.",
+      "trialBanner": "7 days of all Premium features. No credit card required.",
+      "popular": "Most Popular",
+      "monthly": {
+        "name": "Monthly"
+      },
+      "annual": {
+        "name": "Annual"
+      },
+      "lifetime": {
+        "name": "Lifetime"
+      },
+      "month": "month",
+      "year": "year",
+      "once": "one-time",
+      "save": "Save",
+      "choosePlan": "Choose plan",
+      "features": {
+        "unlimitedExpenses": "Unlimited expenses",
+        "unlimitedIncome": "Unlimited income entries",
+        "unlimitedLoans": "Unlimited loans",
+        "unlimitedSavings": "Unlimited savings goals",
+        "bankIntegration": "Bank integration (Tink)",
+        "aiInsights": "AI analysis",
+        "allExports": "Export to JSON, CSV, XLSX",
+        "allReports": "All reports"
+      },
+      "freeInfo": "You can also use the free plan with basic features.",
+      "startFree": "Start for free →"
+    },
+    "cta": {
+      "headline": "Your path to financial freedom starts now",
+      "subheadline": "Join thousands who have taken control of their money.",
+      "button": "Create free account",
+      "subtext": "7 days Premium free • No credit card • Cancel anytime",
+      "trust1": "Bank-level security",
+      "trust2": "GDPR compliant",
+      "trust3": "Data in EU"
+    },
+    "footer": {
+      "pricing": "Pricing",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "rights": "All rights reserved."
     }
   }
 }

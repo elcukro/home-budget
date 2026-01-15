@@ -28,6 +28,8 @@ class User(Base):
     banking_connections = relationship("BankingConnection", back_populates="user", cascade="all, delete-orphan")
     tink_connections = relationship("TinkConnection", back_populates="user", cascade="all, delete-orphan")
     bank_transactions = relationship("BankTransaction", back_populates="user", cascade="all, delete-orphan")
+    subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    payment_history = relationship("PaymentHistory", back_populates="user", cascade="all, delete-orphan")
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -57,7 +59,8 @@ class Expense(Base):
     description = Column(String)
     amount = Column(Float)
     is_recurring = Column(Boolean, default=False)
-    date = Column(Date)
+    date = Column(Date)  # Start date (for recurring) or occurrence date (for one-off)
+    end_date = Column(Date, nullable=True)  # Optional end date for recurring items (null = forever)
     source = Column(String, default="manual")  # "manual" or "bank_import"
     bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -76,7 +79,8 @@ class Income(Base):
     description = Column(String)
     amount = Column(Float)
     is_recurring = Column(Boolean, default=False)
-    date = Column(Date)
+    date = Column(Date)  # Start date (for recurring) or occurrence date (for one-off)
+    end_date = Column(Date, nullable=True)  # Optional end date for recurring items (null = forever)
     source = Column(String, default="manual")  # "manual" or "bank_import"
     bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -206,7 +210,8 @@ class Saving(Base):
     category = Column(String, nullable=False)
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
-    date = Column(Date, nullable=False)
+    date = Column(Date, nullable=False)  # Start date (for recurring) or occurrence date (for one-off)
+    end_date = Column(Date, nullable=True)  # Optional end date for recurring items (null = forever)
     is_recurring = Column(Boolean, default=False)
     target_amount = Column(Float, nullable=True)
     saving_type = Column(String, nullable=False)  # 'deposit' or 'withdrawal'
@@ -347,4 +352,88 @@ class BankTransaction(Base):
         Index('idx_bank_transactions_user_id', 'user_id'),
         Index('idx_bank_transactions_status', 'status'),
         Index('idx_bank_transactions_date', 'date'),
+    )
+
+
+class Subscription(Base):
+    """Tracks user subscription status and Stripe integration."""
+    __tablename__ = "subscriptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+
+    # Stripe identifiers
+    stripe_customer_id = Column(String, unique=True, nullable=True, index=True)
+    stripe_subscription_id = Column(String, unique=True, nullable=True)
+    stripe_price_id = Column(String, nullable=True)
+
+    # Subscription status: "trialing", "active", "past_due", "canceled", "incomplete", "free"
+    status = Column(String, default="trialing", nullable=False)
+
+    # Plan type: "free", "trial", "monthly", "annual", "lifetime"
+    plan_type = Column(String, default="trial", nullable=False)
+
+    # Trial tracking
+    trial_start = Column(DateTime(timezone=True), nullable=True)
+    trial_end = Column(DateTime(timezone=True), nullable=True)
+
+    # Billing period
+    current_period_start = Column(DateTime(timezone=True), nullable=True)
+    current_period_end = Column(DateTime(timezone=True), nullable=True)
+
+    # Lifetime flag (for one-time purchases)
+    is_lifetime = Column(Boolean, default=False)
+    lifetime_purchased_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Cancellation
+    cancel_at_period_end = Column(Boolean, default=False)
+    canceled_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Metadata
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="subscription")
+
+    __table_args__ = (
+        Index('idx_subscriptions_user_id', 'user_id'),
+        Index('idx_subscriptions_stripe_customer_id', 'stripe_customer_id'),
+        Index('idx_subscriptions_status', 'status'),
+    )
+
+
+class PaymentHistory(Base):
+    """Tracks all payment events for audit and customer support."""
+    __tablename__ = "payment_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+
+    # Stripe identifiers
+    stripe_payment_intent_id = Column(String, nullable=True)
+    stripe_invoice_id = Column(String, nullable=True)
+    stripe_checkout_session_id = Column(String, nullable=True)
+
+    # Payment details
+    amount = Column(Integer, nullable=False)  # In minor units (grosze for PLN)
+    currency = Column(String, default="pln")
+    status = Column(String, nullable=False)  # "succeeded", "failed", "pending", "refunded"
+
+    # Plan info
+    plan_type = Column(String, nullable=True)  # "monthly", "annual", "lifetime"
+
+    # Metadata
+    description = Column(String, nullable=True)
+    failure_reason = Column(String, nullable=True)
+    receipt_url = Column(String, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="payment_history")
+
+    __table_args__ = (
+        Index('idx_payment_history_user_id', 'user_id'),
+        Index('idx_payment_history_created_at', 'created_at'),
     )

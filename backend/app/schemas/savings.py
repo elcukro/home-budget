@@ -22,6 +22,7 @@ class SavingBase(BaseModel):
     description: str
     amount: float = Field(gt=0)  # Amount must be positive
     date: date
+    end_date: Optional[date] = None  # Optional end date for recurring items
     is_recurring: bool = False
     target_amount: Optional[float] = None
     saving_type: SavingType
@@ -30,6 +31,12 @@ class SavingBase(BaseModel):
     def target_amount_must_be_positive(cls, v):
         if v is not None and v <= 0:
             raise ValueError('Target amount must be positive')
+        return v
+
+    @validator('end_date')
+    def end_date_must_be_after_start_date(cls, v, values):
+        if v is not None and 'date' in values and v < values['date']:
+            raise ValueError('End date must be after start date')
         return v
 
 class SavingCreate(SavingBase):

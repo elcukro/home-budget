@@ -105,7 +105,7 @@ export default function FinancialFreedomPage() {
         const emergencyFundMonths = settings?.emergency_fund_months || 3;
         const targetAmount = monthlyExpenses * emergencyFundMonths;
         
-        const starterEmergencyFundTarget = settings?.emergency_fund_target || 1000;
+        const starterEmergencyFundTarget = settings?.emergency_fund_target || 3000; // Baby Step 1: 3000-5000 PLN recommended
         const starterEmergencyFundProgress = Math.min(100, Math.round((emergencyFundSavings / starterEmergencyFundTarget) * 100));
         
         // Calculate progress percentages

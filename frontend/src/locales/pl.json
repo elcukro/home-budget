@@ -1,4 +1,38 @@
 {
+  "changeRate": {
+    "button": {
+      "tooltip": "Zmień stawkę"
+    },
+    "dialog": {
+      "title": "Zmień stawkę",
+      "description": "Wprowadź nową kwotę i datę od której ma obowiązywać. Stara pozycja zostanie zakończona, a nowa utworzona z nową stawką.",
+      "submit": "Zmień stawkę"
+    },
+    "form": {
+      "newAmount": "Nowa kwota",
+      "effectiveDate": "Data obowiązywania od"
+    },
+    "toast": {
+      "success": "Stawka została zmieniona",
+      "error": "Nie udało się zmienić stawki"
+    }
+  },
+  "charts": {
+    "horizon": {
+      "year": "Rok",
+      "2years": "2 lata",
+      "5years": "5 lat",
+      "10years": "10 lat",
+      "last2years": "Ostatnie 2 lata",
+      "last5years": "Ostatnie 5 lat",
+      "last10years": "Ostatnie 10 lat"
+    },
+    "period": {
+      "last2years": "2 lata",
+      "last5years": "5 lat",
+      "last10years": "10 lat"
+    }
+  },
   "common": {
     "add": "Dodaj",
     "edit": "Edytuj",
@@ -20,6 +54,15 @@
     "refresh": "Odśwież",
     "recurring": "Cykliczny",
     "oneOff": "Jednorazowy",
+    "historical": "Historyczny",
+    "now": "teraz",
+    "currency": {
+      "pln": "zł"
+    },
+    "historyCount": {
+      "one": "zmiana",
+      "many": "zmiany"
+    },
     "months": {
       "1": "Styczeń",
       "2": "Luty",
@@ -189,6 +232,7 @@
         "savingsRate": "Cel: 30% wskaźnika oszczędności",
         "debtToIncome": "Cel: zadłużenie poniżej 35% dochodu"
       },
+      "dtiWarning": "Uwaga! DTI powyżej 40% — banki mogą odmówić kredytu",
       "tooltips": {
         "income": "Łączne wpływy netto w tym miesiącu.",
         "expenses": "Wszystkie wydatki, w tym koszty stałe i abonamenty.",
@@ -382,11 +426,15 @@
     "actions": {
       "add": "Dodaj przychód"
     },
-    "filters": {
-      "monthLabel": "Miesiąc",
-      "month": {
-        "all": "Wszystkie miesiące"
-      }
+    "chart": {
+      "title": "Przychody w czasie",
+      "subtitle": "Średnio {avg}/mies.",
+      "subtitleWithPeriod": "Średnio {avg}/mies. ({period})",
+      "total": "Suma",
+      "totalWithPeriod": "Suma ({period})",
+      "average": "Średnia/mies.",
+      "activeMonths": "Aktywne mies.",
+      "monthsInPeriod": "Miesięcy"
     },
     "summary": {
       "totalLabel": "Łączne przychody ({month})",
@@ -405,7 +453,7 @@
     "categoryHints": {
       "salary": "Stała pensja netto z umowy o pracę.",
       "freelance": "Przychody z umów zleceń, dzieła lub działalności na boku.",
-      "investments": "Dywidendy, odsetki lub inne zyski z inwestycji.",
+      "investments": "Dywidendy, odsetki lub zyski z inwestycji. UWAGA: Zyski kapitałowe poza IKE/IKZE/OIPE są opodatkowane 19% (podatek Belki).",
       "rental": "Dochód z wynajmu mieszkania lub nieruchomości.",
       "other": "Pozostałe źródła – np. darowizny, stypendia czy świadczenia.",
       "learnMore": "Szczegóły"
@@ -423,6 +471,8 @@
       "description": "Opis",
       "amount": "Kwota",
       "date": "Data",
+      "startDate": "Data rozpoczęcia",
+      "endDate": "Data zakończenia (opcjonalnie)",
       "recurring": "Przychód cykliczny miesięczny"
     },
     "table": {
@@ -465,6 +515,16 @@
       "add": "Dodaj wydatek",
       "edit": "Edytuj wydatek",
       "delete": "Usuń wydatek"
+    },
+    "chart": {
+      "title": "Wydatki w czasie",
+      "subtitle": "Średnio {avg}/mies.",
+      "subtitleWithPeriod": "Średnio {avg}/mies. ({period})",
+      "total": "Suma",
+      "totalWithPeriod": "Suma ({period})",
+      "average": "Średnia/mies.",
+      "activeMonths": "Aktywne mies.",
+      "monthsInPeriod": "Miesięcy"
     },
     "categories": {
       "housing": "Mieszkanie",
@@ -530,6 +590,8 @@
       "description": "Opis",
       "amount": "Kwota",
       "date": "Data",
+      "startDate": "Data rozpoczęcia",
+      "endDate": "Data zakończenia (opcjonalnie)",
       "recurring": "Wydatek cykliczny miesięczny"
     },
     "table": {
@@ -668,15 +730,56 @@
     "schedule": {
       "view": "Zobacz harmonogram",
       "dialogTitle": "Harmonogram spłat: {loan}",
-      "dialogDescription": "Szacowany plan najbliższych {count} rat. Kwoty wyliczone orientacyjnie na podstawie raty miesięcznej.",
+      "dialogDescription": "Szacowany plan najbliższych {count} rat. Kwoty wyliczone na podstawie amortyzacji z oprocentowaniem.",
       "empty": "Brak danych do wyświetlenia harmonogramu dla tego kredytu.",
       "remaining": "Saldo po płatności: {amount}",
-      "note": "Uwaga: harmonogram ma charakter poglądowy i może nie uwzględniać zmian oprocentowania ani dodatkowych opłat."
+      "note": "Uwaga: harmonogram ma charakter poglądowy i może nie uwzględniać zmian oprocentowania ani dodatkowych opłat.",
+      "date": "Data",
+      "payment": "Rata",
+      "principal": "Kapitał",
+      "interest": "Odsetki",
+      "balance": "Saldo"
     },
     "deleteDialog": {
       "title": "Usuń kredyt",
       "description": "Czy na pewno chcesz usunąć ten kredyt? Tego działania nie można cofnąć.",
       "confirm": "Usuń"
+    },
+    "warning": {
+      "paymentTooLow": {
+        "title": "Rata nie pokrywa odsetek!",
+        "description": "Miesięczne odsetki wynoszą {monthlyInterest}, ale rata to tylko {payment}. Przy tej racie dług będzie rosnąć zamiast maleć."
+      }
+    },
+    "strategy": {
+      "title": "Strategia spłaty długów",
+      "subtitle": "Wybierz metodę i zobacz, ile możesz zaoszczędzić",
+      "snowball": {
+        "title": "Kula Śnieżna",
+        "desc": "Najmniejszy dług najpierw"
+      },
+      "avalanche": {
+        "title": "Lawina",
+        "desc": "Najwyższe oprocentowanie najpierw"
+      },
+      "totalInterest": "Całkowite odsetki:",
+      "payoffTime": "Czas spłaty:",
+      "extraPayment": "Dodatkowa miesięczna nadpłata:",
+      "order": "Kolejność spłaty:",
+      "paidOffIn": "Spłacony w {time}",
+      "selected": "Wybrana strategia",
+      "avalancheSavings": "Metoda Lawiny oszczędzi Ci {amount} na odsetkach!",
+      "snowballSavings": "Metoda Kuli Śnieżnej oszczędzi Ci {amount} na odsetkach!",
+      "comparisonNote": "Lawina jest matematycznie optymalna, ale Kula Śnieżna daje szybsze \"małe zwycięstwa\" - wybierz to, co zmotywuje Cię bardziej.",
+      "speedsUpBy": "Przyspiesza spłatę o {time}",
+      "annualRate": "{rate}% rocznie",
+      "babyStepsLink": "Ta strategia jest częścią {step} - spłać wszystkie długi (oprócz hipoteki)",
+      "babyStep2": "Kroku 2 Baby Steps",
+      "time": {
+        "months": "{count} mies.",
+        "years": "{count, plural, one {# rok} few {# lata} other {# lat}}",
+        "yearsAndMonths": "{years, plural, one {# rok} few {# lata} other {# lat}} {months} mies."
+      }
     }
   },
   "reports": {
@@ -904,30 +1007,30 @@
         "tip": "Oblicz swoje miesięczne wydatki i pomnóż przez {months}, aby określić swój cel."
       },
       "step4": {
-        "title": "Krok 4: 15% na Emeryturę",
-        "shortTitle": "Emerytura",
-        "description": "Inwestuj 15% dochodu gospodarstwa domowego na konta emerytalne.",
+        "title": "Krok 4: 15% na Przyszłość",
+        "shortTitle": "IKE/IKZE/PPK",
+        "description": "Inwestuj 15% dochodu w długoterminowe oszczędności: PPK (dopłata pracodawcy), IKE (limit 2026: 28 260 PLN, brak podatku Belki), IKZE (limit: 11 304 PLN lub 16 956 PLN dla JDG, odliczenie od podatku).",
         "target": "Cel: 15% dochodu",
         "current": "Aktualnie: {percent}% dochodu",
-        "tip": "Najpierw wykorzystaj wszelkie dopasowania pracodawcy w planach emerytalnych."
+        "tip": "Kolejność: najpierw maksymalizuj PPK (darmowe pieniądze od pracodawcy!), potem IKE, na końcu IKZE."
       },
       "step5": {
-        "title": "Krok 5: Fundusz Edukacyjny",
-        "shortTitle": "Fundusz Edukacyjny",
-        "description": "Oszczędzaj na edukację dzieci za pomocą kont oszczędnościowych na edukację.",
+        "title": "Krok 5: Start Dziecka w Dorosłość",
+        "shortTitle": "Przyszłość Dziecka",
+        "description": "W Polsce studia są darmowe, ale młody człowiek potrzebuje: wkładu własnego na mieszkanie (30-50 tys. PLN), prawa jazdy, pierwszego samochodu, zabezpieczenia na start.",
         "inProgress": "W trakcie",
         "completed": "Ukończony",
         "notApplicable": "Nie dotyczy",
-        "tip": "Rozważ plany 529 lub Edukacyjne Konta Oszczędnościowe (ESA)."
+        "tip": "Oszczędzaj na koncie lub w ETF przez 10-15 lat. Cel: 50-100 tys. PLN na dziecko. Jeśli studia za granicą: 150-200 tys. PLN."
       },
       "step6": {
-        "title": "Krok 6: Wcześniejsza Spłata Domu",
-        "shortTitle": "Spłata Domu",
-        "description": "Spłać wcześniej kredyt hipoteczny na dom.",
+        "title": "Krok 6: Wcześniejsza Spłata Hipoteki",
+        "shortTitle": "Spłata Hipoteki",
+        "description": "Spłać wcześniej kredyt hipoteczny. Każda nadpłata skraca okres kredytowania i zmniejsza całkowity koszt odsetek.",
         "remainingMortgage": "Pozostały Kredyt Hipoteczny: {amount}",
         "originalAmount": "Pierwotny Kredyt Hipoteczny: {amount}",
         "mortgageFree": "Twój dom jest spłacony!",
-        "tip": "Dokonuj dodatkowych płatności na poczet kapitału, aby szybciej spłacić kredyt hipoteczny."
+        "tip": "Nadpłata 500 PLN/mies. przy kredycie 400 tys. PLN skraca spłatę o 7 lat i oszczędza ~87 tys. PLN odsetek. Sprawdź czy bank nie pobiera prowizji (od 2022 r. nie może przez pierwsze 3 lata)."
       },
       "step7": {
         "title": "Krok 7: Buduj Majątek i Dawaj",
@@ -1044,9 +1147,18 @@
       "description": "Opis",
       "amount": "Kwota",
       "date": "Data",
+      "endDate": "Data zakończenia",
       "savingType": "Typ",
       "isRecurring": "Oszczędność cykliczna",
       "targetAmount": "Kwota docelowa"
+    },
+    "goalProjection": {
+      "title": "Prognoza celów",
+      "monthlyRate": "Przy obecnej wpłacie {amount}/miesiąc",
+      "emergencyFund": "Fundusz awaryjny",
+      "complete": "Ukończony!",
+      "nextMilestone": "Osiągniesz {amount}",
+      "inMonths": "Za {months} miesięcy"
     },
     "table": {
       "category": "Kategoria",
@@ -1693,6 +1805,323 @@
         "addItem": "Dodaj pozycję",
         "removeItem": "Usuń pozycję"
       }
+    }
+  },
+  "pricing": {
+    "title": "Wybierz plan",
+    "subtitle": "Odblokuj pełny potencjał FiredUp i przejmij kontrolę nad swoimi finansami",
+    "popular": "Najpopularniejszy",
+    "loading": "Ładowanie...",
+    "subscribe": "Wybierz plan",
+    "current_plan": "Aktualny plan",
+    "lifetime_active": "Masz dostęp Lifetime",
+    "trial_banner": "Pozostało {days} dni darmowego okresu próbnego Premium",
+    "premium_active": "Masz aktywny plan {plan}",
+    "questions": "Masz pytania? Napisz do nas:",
+    "plans": {
+      "monthly": {
+        "name": "Miesięczny",
+        "period": "/ miesiąc",
+        "description": "Elastyczny plan bez zobowiązań"
+      },
+      "annual": {
+        "name": "Roczny",
+        "period": "/ rok",
+        "description": "Najlepsza wartość - oszczędź 2 miesiące",
+        "savings": "Oszczędzasz ~17%"
+      },
+      "lifetime": {
+        "name": "Lifetime",
+        "period": "jednorazowo",
+        "description": "Płacisz raz, korzystasz na zawsze"
+      }
+    },
+    "features": {
+      "unlimited_entries": "Nieograniczone wpisy",
+      "bank_integration": "Integracja z bankiem",
+      "ai_insights": "AI Insights",
+      "all_exports": "Eksport: JSON, CSV, XLSX",
+      "all_reports": "Wszystkie raporty",
+      "lifetime_updates": "Dożywotnie aktualizacje"
+    },
+    "comparison": {
+      "title": "Free vs Premium",
+      "feature": "Funkcja",
+      "free": "Free",
+      "premium": "Premium",
+      "expenses": "Wydatki",
+      "incomes": "Przychody",
+      "loans": "Pożyczki",
+      "savings": "Cele oszczędnościowe",
+      "bank": "Integracja z bankiem",
+      "ai": "AI Insights",
+      "export": "Eksport",
+      "reports": "Raporty",
+      "all": "Wszystkie"
+    },
+    "success": {
+      "title": "Sukces!",
+      "description": "Twoja subskrypcja została aktywowana. Ciesz się Premium!"
+    },
+    "canceled": {
+      "title": "Anulowano",
+      "description": "Płatność została anulowana. Możesz spróbować ponownie."
+    },
+    "error": {
+      "title": "Błąd",
+      "description": "Wystąpił błąd podczas przetwarzania płatności."
+    }
+  },
+  "premium": {
+    "required": {
+      "title": "{feature} wymaga Premium",
+      "description": "Uaktualnij do Premium, aby odblokować tę funkcję."
+    },
+    "limit": {
+      "expenses": "Limit Free: {used}/{limit} wydatków w tym miesiącu. Uaktualnij do Premium.",
+      "incomes": "Limit Free: {used}/{limit} przychodów w tym miesiącu. Uaktualnij do Premium.",
+      "loans": "Limit Free: {used}/{limit} pożyczek. Uaktualnij do Premium.",
+      "savings_goals": "Limit Free: {used}/{limit} celów oszczędnościowych. Uaktualnij do Premium."
+    }
+  },
+  "billing": {
+    "title": "Rozliczenia",
+    "status": "Status subskrypcji",
+    "current_plan": "Aktualny plan",
+    "trial_ends": "Trial kończy się",
+    "period_ends": "Okres kończy się",
+    "manage_subscription": "Zarządzaj subskrypcją",
+    "upgrade": "Uaktualnij do Premium",
+    "free_plan": "Free",
+    "trial_plan": "Trial",
+    "monthly_plan": "Miesięczny",
+    "annual_plan": "Roczny",
+    "lifetime_plan": "Lifetime",
+    "usage": {
+      "title": "Wykorzystanie",
+      "expenses": "Wydatki",
+      "incomes": "Przychody",
+      "loans": "Pożyczki",
+      "savings": "Cele oszczędnościowe",
+      "unlimited": "Bez limitu"
+    }
+  },
+  "landing": {
+    "nav": {
+      "features": "Funkcje",
+      "pricing": "Cennik",
+      "login": "Zaloguj się",
+      "signup": "Rozpocznij za darmo"
+    },
+    "hero": {
+      "badge": "Droga do wolności finansowej",
+      "headline": "Wyobraź sobie życie bez długu",
+      "subheadline": "Gdzie każda złotówka ma sens, a przyszłość jest Twoja",
+      "description": "Większość Polaków żyje od wypłaty do wypłaty. Kredyty, rachunki, ciągły stres. Ale nie musi tak być. Wolność finansowa to nie marzenie bogatych — to umiejętność, której możesz się nauczyć.",
+      "cta": "Zacznij swoją drogę",
+      "ctaSubtext": "7 dni za darmo, bez karty kredytowej",
+      "learnMore": "Dowiedz się więcej"
+    },
+    "stats": {
+      "title": "Polska rzeczywistość finansowa",
+      "subtitle": "Nie jesteś sam. Miliony Polaków borykają się z tymi samymi wyzwaniami.",
+      "noSavings": {
+        "value": "68%",
+        "label": "Polaków nie ma oszczędności na 3 miesiące",
+        "source": "NBP 2024"
+      },
+      "hasCredit": {
+        "value": "42%",
+        "label": "gospodarstw domowych ma aktywny kredyt",
+        "source": "BIK 2024"
+      },
+      "avgPayment": {
+        "value": "2 847 PLN",
+        "label": "średni miesięczny wydatek na spłaty kredytów",
+        "source": "GUS 2024"
+      },
+      "stressed": {
+        "value": "73%",
+        "label": "Polaków deklaruje stres finansowy",
+        "source": "ING 2024"
+      }
+    },
+    "problems": {
+      "title": "Czy to brzmi znajomo?",
+      "subtitle": "Te problemy dotykają milionów ludzi. Nie musisz z nimi walczyć sam.",
+      "item1": {
+        "title": "Nie wiesz, dokąd idą pieniądze",
+        "desc": "Koniec miesiąca, a konto puste. Znowu."
+      },
+      "item2": {
+        "title": "Kredyty cię przytłaczają",
+        "desc": "Rata za ratą, bez końca w zasięgu wzroku."
+      },
+      "item3": {
+        "title": "Oszczędzanie? Jakie oszczędzanie?",
+        "desc": "Zawsze coś wyskakuje. Nigdy nic nie zostaje."
+      },
+      "item4": {
+        "title": "Stres wpływa na całe życie",
+        "desc": "Kłótnie o pieniądze, nieprzespane noce, niepewność."
+      },
+      "item5": {
+        "title": "Brak planu, brak kontroli",
+        "desc": "Nie wiesz, od czego zacząć ani co robić dalej."
+      },
+      "item6": {
+        "title": "Życie od wypłaty do wypłaty",
+        "desc": "Spirala, z której nie widać wyjścia."
+      }
+    },
+    "solution": {
+      "title": "Jest inne wyjście",
+      "intro": "Ruch FIRE (Financial Independence, Retire Early) pokazał milionom ludzi na świecie, że wolność finansowa jest możliwa — nie przez zarabianie milionów, ale przez świadome zarządzanie tym, co już masz.",
+      "principle1": {
+        "title": "Świadomość",
+        "desc": "Zacznij od wiedzy. Gdzie idą Twoje pieniądze? Co naprawdę jest ważne?"
+      },
+      "principle2": {
+        "title": "Plan",
+        "desc": "7 kroków do wolności finansowej. Sprawdzony system, krok po kroku."
+      },
+      "principle3": {
+        "title": "Cierpliwość",
+        "desc": "To maraton, nie sprint. Małe kroki prowadzą do wielkich zmian."
+      },
+      "quote": "Sukces finansowy to nie kwestia szczęścia — to kwestia nawyków.",
+      "quoteAuthor": "Dave Ramsey"
+    },
+    "features": {
+      "title": "FiredUp — Twoje narzędzie do wolności finansowej",
+      "subtitle": "Nie kolejna apka do budżetu.",
+      "description": "Narzędzie do transformacji finansowej. Zbudowane na sprawdzonej metodologii, z funkcjami, które naprawdę działają.",
+      "feature1": {
+        "title": "Droga do Wolności Finansowej",
+        "desc": "7 Baby Steps Dave'a Ramseya zintegrowane w aplikacji. Prowadzi Cię krok po kroku."
+      },
+      "feature2": {
+        "title": "Inteligentny Panel",
+        "desc": "Cashflow, wskaźnik oszczędności, DTI. Wszystko na jednym ekranie."
+      },
+      "feature3": {
+        "title": "Połączenie z Bankiem",
+        "desc": "Integracja z Tink. ING, PKO, mBank i wiele innych banków."
+      },
+      "feature4": {
+        "title": "Cele Oszczędnościowe",
+        "desc": "Wizualizuj postęp i świętuj małe zwycięstwa na drodze do celu."
+      },
+      "feature5": {
+        "title": "Kredyty Pod Kontrolą",
+        "desc": "Śledź spłaty, planuj wcześniejszą spłatę. Metoda śnieżnej kuli."
+      },
+      "feature6": {
+        "title": "Raporty i AI",
+        "desc": "Profesjonalne analizy i inteligentne spostrzeżenia o Twoich finansach."
+      }
+    },
+    "modules": {
+      "title": "Poznaj moduły FiredUp",
+      "subtitle": "Każdy moduł został zaprojektowany, aby pomóc Ci osiągnąć wolność finansową.",
+      "dashboard": {
+        "title": "Panel główny",
+        "desc": "Wszystkie najważniejsze informacje o Twoich finansach w jednym miejscu.",
+        "feature1": "Miesięczne podsumowanie",
+        "feature2": "Wykresy dystrybucji",
+        "feature3": "Cashflow 12 miesięcy",
+        "feature4": "Ostatnia aktywność"
+      },
+      "babySteps": {
+        "title": "Baby Steps",
+        "desc": "Sprawdzona ścieżka do wolności finansowej Dave'a Ramseya.",
+        "feature1": "7 kroków do wolności",
+        "feature2": "Śledzenie postępu",
+        "feature3": "Cele dla każdego kroku",
+        "feature4": "Szacowany czas ukończenia"
+      },
+      "expenses": {
+        "title": "Wydatki",
+        "desc": "Śledź każdą złotówkę i zobacz, dokąd naprawdę idą Twoje pieniądze.",
+        "feature1": "8 kategorii wydatków",
+        "feature2": "Trendy miesięczne",
+        "feature3": "Wydatki cykliczne",
+        "feature4": "Analiza kategorii"
+      },
+      "savings": {
+        "title": "Oszczędności",
+        "desc": "Ustal cele, odkładaj regularnie i świętuj osiągnięcia.",
+        "feature1": "Cele oszczędnościowe",
+        "feature2": "Pasek postępu",
+        "feature3": "Historia wpłat",
+        "feature4": "Celebracja sukcesu"
+      }
+    },
+    "testimonials": {
+      "title": "Historie naszych użytkowników",
+      "subtitle": "Prawdziwi ludzie, prawdziwe rezultaty. Zobacz, jak FiredUp zmienił ich życie finansowe.",
+      "person1": {
+        "name": "Marta, 34 lata",
+        "location": "Warszawa",
+        "text": "Po 2 latach korzystania z FiredUp spłaciłam 45 000 PLN długu. Pierwszy raz w życiu mam fundusz awaryjny."
+      },
+      "person2": {
+        "name": "Piotr, 41 lat",
+        "location": "Kraków",
+        "text": "Myślałem, że oszczędzanie to nie dla mnie. FiredUp pokazał mi, że tracę 800 PLN miesięcznie na subskrypcje, o których zapomniałem."
+      },
+      "person3": {
+        "name": "Anna i Tomek, 29 lat",
+        "location": "Gdańsk",
+        "text": "Kłótnie o pieniądze prawie zniszczyły nasz związek. Teraz mamy wspólny cel i widzimy postęp razem."
+      }
+    },
+    "pricing": {
+      "title": "Zacznij za darmo",
+      "subtitle": "Wybierz plan, który pasuje do Twoich potrzeb.",
+      "trialBanner": "7 dni wszystkich funkcji Premium. Bez karty kredytowej.",
+      "popular": "Najpopularniejszy",
+      "monthly": {
+        "name": "Miesięczny"
+      },
+      "annual": {
+        "name": "Roczny"
+      },
+      "lifetime": {
+        "name": "Lifetime"
+      },
+      "month": "miesiąc",
+      "year": "rok",
+      "once": "jednorazowo",
+      "save": "Oszczędzasz",
+      "choosePlan": "Wybierz plan",
+      "features": {
+        "unlimitedExpenses": "Nieograniczona liczba wydatków",
+        "unlimitedIncome": "Nieograniczona liczba przychodów",
+        "unlimitedLoans": "Nieograniczona liczba pożyczek",
+        "unlimitedSavings": "Nieograniczona liczba celów oszczędnościowych",
+        "bankIntegration": "Integracja z bankiem (Tink)",
+        "aiInsights": "Analiza AI",
+        "allExports": "Eksport do JSON, CSV, XLSX",
+        "allReports": "Wszystkie raporty"
+      },
+      "freeInfo": "Możesz też korzystać z darmowego planu z podstawowymi funkcjami.",
+      "startFree": "Zacznij za darmo →"
+    },
+    "cta": {
+      "headline": "Twoja droga do wolności finansowej zaczyna się teraz",
+      "subheadline": "Dołącz do tysięcy Polaków, którzy odzyskali kontrolę nad swoimi pieniędzmi.",
+      "button": "Stwórz darmowe konto",
+      "subtext": "7 dni Premium gratis • Bez karty kredytowej • Anuluj kiedy chcesz",
+      "trust1": "Bezpieczeństwo bankowe",
+      "trust2": "Zgodność z RODO",
+      "trust3": "Dane w UE"
+    },
+    "footer": {
+      "pricing": "Cennik",
+      "privacy": "Polityka prywatności",
+      "terms": "Regulamin",
+      "rights": "Wszelkie prawa zastrzeżone."
     }
   }
 }

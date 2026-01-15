@@ -6,6 +6,7 @@ import { FormattedDate, FormattedMessage, useIntl } from "react-intl";
 import { z } from "zod";
 import type { LucideIcon } from "lucide-react";
 import {
+  AlertTriangle,
   CalendarDays,
   Car,
   CreditCard,
@@ -58,6 +59,7 @@ import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import Tooltip from "@/components/Tooltip";
+import DebtPayoffStrategy from "@/components/loans/DebtPayoffStrategy";
 
 interface Loan {
   id: number | string;
@@ -131,11 +133,112 @@ const DEFAULT_LOAN_META = {
   accentClass: "text-slate-600",
 };
 
+/**
+ * Safely add months to a date, handling edge cases like month-end dates
+ * e.g., Jan 31 + 1 month = Feb 28/29, not Mar 2/3
+ */
 const addMonths = (source: Date, months: number): Date => {
   const date = new Date(source.getTime());
-  const desiredMonth = date.getMonth() + months;
-  date.setMonth(desiredMonth);
+  const originalDay = date.getDate();
+
+  // Set to first of month to avoid overflow issues
+  date.setDate(1);
+  date.setMonth(date.getMonth() + months);
+
+  // Get the last day of the target month
+  const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+
+  // Set the day to the original day or last day of month if original was higher
+  date.setDate(Math.min(originalDay, lastDayOfMonth));
+
   return date;
+};
+
+/**
+ * Calculate months to pay off a loan including compound interest
+ * Returns the number of months needed to fully pay off the loan
+ * @param balance - Current remaining balance
+ * @param monthlyPayment - Monthly payment amount
+ * @param annualInterestRate - Annual interest rate as percentage (e.g., 10 for 10%)
+ * @param maxMonths - Maximum months to calculate (prevents infinite loops)
+ */
+const calculateMonthsToPayoff = (
+  balance: number,
+  monthlyPayment: number,
+  annualInterestRate: number,
+  maxMonths: number = 360
+): number => {
+  if (balance <= 0) return 0;
+  if (monthlyPayment <= 0) return maxMonths;
+
+  const monthlyRate = annualInterestRate / 100 / 12;
+
+  // If payment doesn't cover monthly interest, loan will never be paid off
+  const monthlyInterest = balance * monthlyRate;
+  if (monthlyPayment <= monthlyInterest) {
+    return maxMonths;
+  }
+
+  // Use amortization formula: n = -log(1 - (r * P) / M) / log(1 + r)
+  // where P = principal, M = monthly payment, r = monthly rate, n = months
+  if (monthlyRate > 0) {
+    const months = -Math.log(1 - (monthlyRate * balance) / monthlyPayment) / Math.log(1 + monthlyRate);
+    return Math.min(Math.ceil(months), maxMonths);
+  }
+
+  // If no interest, simple division
+  return Math.ceil(balance / monthlyPayment);
+};
+
+/**
+ * Generate amortization schedule with interest calculations
+ */
+const generateAmortizationSchedule = (
+  balance: number,
+  monthlyPayment: number,
+  annualInterestRate: number,
+  startDate: Date,
+  maxEntries: number = 12
+): Array<{
+  date: Date;
+  payment: number;
+  principal: number;
+  interest: number;
+  balanceAfter: number;
+}> => {
+  const schedule: Array<{
+    date: Date;
+    payment: number;
+    principal: number;
+    interest: number;
+    balanceAfter: number;
+  }> = [];
+
+  if (balance <= 0 || monthlyPayment <= 0) {
+    return schedule;
+  }
+
+  const monthlyRate = annualInterestRate / 100 / 12;
+  let currentBalance = balance;
+
+  for (let i = 0; i < maxEntries && currentBalance > 0; i++) {
+    const paymentDate = addMonths(startDate, i);
+    const interestCharge = currentBalance * monthlyRate;
+    const principalPaid = Math.min(monthlyPayment - interestCharge, currentBalance);
+    const actualPayment = Math.min(monthlyPayment, currentBalance + interestCharge);
+
+    currentBalance = Math.max(currentBalance - principalPaid, 0);
+
+    schedule.push({
+      date: paymentDate,
+      payment: actualPayment,
+      principal: principalPaid,
+      interest: interestCharge,
+      balanceAfter: currentBalance,
+    });
+  }
+
+  return schedule;
 };
 
 const loanSchema = z
@@ -426,24 +529,35 @@ export default function LoansPage() {
       remainingBalance: number;
       amountPaid: number;
       monthlyPayment: number;
+      interestRate: number;
       termMonths: number;
       monthsRemaining: number;
       progress: number;
       nextPaymentDate: Date | null;
+      paymentCoversInterest: boolean;
     }>>((acc, loan) => {
       const principalAmount = Math.max(loan.principal_amount ?? 0, 0);
       const remainingBalance = Math.max(loan.remaining_balance ?? 0, 0);
       const monthlyPayment = Math.max(loan.monthly_payment ?? 0, 0);
+      const interestRate = Math.max(loan.interest_rate ?? 0, 0);
       const amountPaid = Math.max(principalAmount - remainingBalance, 0);
       const progress =
         principalAmount > 0
           ? Math.min(Math.max(amountPaid / principalAmount, 0), 1)
           : 0;
       const termMonths = Math.max(loan.term_months ?? 0, 0);
-      const monthsRemaining =
-        monthlyPayment > 0
-          ? Math.max(Math.ceil(remainingBalance / monthlyPayment), 0)
-          : termMonths;
+
+      // Calculate months remaining using proper amortization formula with interest
+      const monthsRemaining = calculateMonthsToPayoff(
+        remainingBalance,
+        monthlyPayment,
+        interestRate,
+        termMonths > 0 ? termMonths * 2 : 360 // Allow some buffer beyond original term
+      );
+
+      // Check if payment covers at least the monthly interest
+      const monthlyInterest = remainingBalance * (interestRate / 100 / 12);
+      const paymentCoversInterest = monthlyPayment > monthlyInterest || interestRate === 0;
 
       let nextPaymentDate: Date | null = null;
       if (monthlyPayment > 0 && monthsRemaining > 0) {
@@ -472,10 +586,12 @@ export default function LoansPage() {
         remainingBalance,
         amountPaid,
         monthlyPayment,
+        interestRate,
         termMonths,
         monthsRemaining,
         progress,
         nextPaymentDate,
+        paymentCoversInterest,
       };
       return acc;
     }, {});
@@ -588,7 +704,6 @@ export default function LoansPage() {
       return [];
     }
 
-    const previewCount = Math.min(metrics.monthsRemaining, 12);
     const startCandidate =
       metrics.nextPaymentDate ??
       addMonths(new Date(scheduleLoan.start_date), 1);
@@ -596,24 +711,15 @@ export default function LoansPage() {
       return [];
     }
 
-    const schedule: Array<{
-      date: Date;
-      amount: number;
-      balanceAfter: number;
-    }> = [];
-    let runningBalance = metrics.remainingBalance;
-
-    for (let index = 0; index < previewCount; index += 1) {
-      const paymentDate = addMonths(startCandidate, index);
-      runningBalance = Math.max(runningBalance - metrics.monthlyPayment, 0);
-      schedule.push({
-        date: paymentDate,
-        amount: metrics.monthlyPayment,
-        balanceAfter: runningBalance,
-      });
-    }
-
-    return schedule;
+    // Use proper amortization schedule with interest calculations
+    const previewCount = Math.min(metrics.monthsRemaining, 12);
+    return generateAmortizationSchedule(
+      metrics.remainingBalance,
+      metrics.monthlyPayment,
+      metrics.interestRate,
+      startCandidate,
+      previewCount
+    );
   }, [loanMetrics, scheduleLoan]);
 
 
@@ -870,6 +976,9 @@ export default function LoansPage() {
           </p>
         </div>
       </div>
+
+      {/* Debt Payoff Strategy */}
+      {loans.length > 0 && <DebtPayoffStrategy loans={loans} />}
 
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-muted/60 bg-muted/30 px-5 py-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1170,6 +1279,27 @@ export default function LoansPage() {
                     />
                   </div>
                 </div>
+
+                {/* Warning: payment doesn't cover interest */}
+                {!metrics.paymentCoversInterest && metrics.interestRate > 0 && (
+                  <div className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4">
+                    <AlertTriangle className="h-5 w-5 flex-shrink-0 text-destructive" />
+                    <div className="text-sm">
+                      <p className="font-medium text-destructive">
+                        <FormattedMessage id="loans.warning.paymentTooLow.title" />
+                      </p>
+                      <p className="mt-1 text-muted-foreground">
+                        <FormattedMessage
+                          id="loans.warning.paymentTooLow.description"
+                          values={{
+                            monthlyInterest: formatCurrency(metrics.remainingBalance * (metrics.interestRate / 100 / 12)),
+                            payment: formatCurrency(metrics.monthlyPayment),
+                          }}
+                        />
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1410,22 +1540,33 @@ export default function LoansPage() {
           </DialogHeader>
           {scheduleEntries.length > 0 ? (
             <div className="space-y-2">
+              {/* Header row */}
+              <div className="grid grid-cols-5 gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <span><FormattedMessage id="loans.schedule.date" defaultMessage="Date" /></span>
+                <span className="text-right"><FormattedMessage id="loans.schedule.payment" defaultMessage="Payment" /></span>
+                <span className="text-right"><FormattedMessage id="loans.schedule.principal" defaultMessage="Principal" /></span>
+                <span className="text-right"><FormattedMessage id="loans.schedule.interest" defaultMessage="Interest" /></span>
+                <span className="text-right"><FormattedMessage id="loans.schedule.balance" defaultMessage="Balance" /></span>
+              </div>
               {scheduleEntries.map((entry) => (
                 <div
                   key={entry.date.toISOString()}
-                  className="flex items-center justify-between rounded-xl border border-muted/50 bg-muted/20 px-4 py-3 text-sm text-slate-700"
+                  className="grid grid-cols-5 gap-2 items-center rounded-xl border border-muted/50 bg-muted/20 px-4 py-3 text-sm text-slate-700"
                 >
                   <span className="font-medium text-slate-800">
                     {intl.formatDate(entry.date, { dateStyle: "medium" })}
                   </span>
-                  <span className="text-sm font-semibold text-amber-700">
-                    {formatCurrency(entry.amount)}
+                  <span className="text-right text-sm font-semibold text-amber-700">
+                    {formatCurrency(entry.payment)}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    <FormattedMessage
-                      id="loans.schedule.remaining"
-                      values={{ amount: formatCurrency(entry.balanceAfter) }}
-                    />
+                  <span className="text-right text-sm text-emerald-600">
+                    {formatCurrency(entry.principal)}
+                  </span>
+                  <span className="text-right text-sm text-rose-500">
+                    {formatCurrency(entry.interest)}
+                  </span>
+                  <span className="text-right text-xs text-muted-foreground">
+                    {formatCurrency(entry.balanceAfter)}
                   </span>
                 </div>
               ))}

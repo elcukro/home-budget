@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useId } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useSession } from "next-auth/react";
 import { z } from "zod";
@@ -10,10 +10,12 @@ import {
   CalendarClock,
   CalendarDays,
   ChevronDown,
+  ChevronRight,
   Filter,
   Pencil,
   PiggyBank,
   Plus,
+  RefreshCw,
   ShieldCheck,
   Target,
   Trash2,
@@ -121,6 +123,11 @@ const savingSchema = z
       .string()
       .trim()
       .min(1, "validation.required"),
+    end_date: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => value || null),
     saving_type: z.string().min(1, "validation.categoryRequired"),
     is_recurring: z.boolean().default(false),
     target_amount: z
@@ -158,9 +165,60 @@ const savingSchema = z
         message: dateIssue.messageId,
       });
     }
+    // Validate end_date if provided
+    if (data.end_date) {
+      const endDateIssue = validateDateString(data.end_date);
+      if (endDateIssue) {
+        ctx.addIssue({
+          path: ["end_date"],
+          code: z.ZodIssueCode.custom,
+          message: endDateIssue.messageId,
+        });
+      }
+      // Check that end_date is after date
+      if (data.date && data.end_date < data.date) {
+        ctx.addIssue({
+          path: ["end_date"],
+          code: z.ZodIssueCode.custom,
+          message: "validation.endDateAfterStartDate",
+        });
+      }
+    }
   });
 
+// Schema for changing rate of recurring savings
+const changeRateSchema = z.object({
+  newAmount: z
+    .preprocess((value) => {
+      if (typeof value === "number") return value.toString();
+      if (typeof value === "string") return value.trim();
+      return value;
+    }, z.string().min(1, "validation.required"))
+    .transform((value, ctx) => {
+      const error = validateAmountPositive(value);
+      if (error) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: error.messageId,
+        });
+      }
+      return parseNumber(value) ?? 0;
+    }),
+  effectiveDate: z.string().trim().min(1, "validation.required"),
+});
+
+type ChangeRateFormValues = z.infer<typeof changeRateSchema>;
+
 type SavingFormValues = z.infer<typeof savingSchema>;
+
+interface SavingGroup {
+  key: string;
+  category: SavingCategory;
+  description?: string;
+  saving_type: SavingType;
+  current: Saving | null;
+  historical: Saving[];
+}
 
 const todayISO = new Date().toISOString().split("T")[0];
 
@@ -169,10 +227,30 @@ const savingDefaultValues: SavingFormValues = {
   description: "",
   amount: 0,
   date: todayISO,
+  end_date: null,
   saving_type: SavingType.DEPOSIT,
   is_recurring: false,
   target_amount: undefined,
 };
+
+const changeRateDefaultValues: ChangeRateFormValues = {
+  newAmount: 0,
+  effectiveDate: todayISO,
+};
+
+const changeRateFieldConfig: FormFieldConfig<ChangeRateFormValues>[] = [
+  {
+    name: "newAmount",
+    labelId: "changeRate.form.newAmount",
+    component: "currency",
+    autoFocus: true,
+  },
+  {
+    name: "effectiveDate",
+    labelId: "changeRate.form.effectiveDate",
+    component: "date",
+  },
+];
 
 const formatDateForApi = (date: Date): string => {
   const year = date.getFullYear();
@@ -252,6 +330,7 @@ const mapSavingToFormValues = (saving: Saving): SavingFormValues => ({
   description: saving.description ?? "",
   amount: saving.amount,
   date: saving.date.slice(0, 10),
+  end_date: saving.end_date?.slice(0, 10) ?? null,
   saving_type: saving.saving_type,
   is_recurring: saving.is_recurring,
   target_amount: saving.target_amount ?? undefined,
@@ -284,10 +363,31 @@ export const SavingsManager = () => {
   const [pendingDelete, setPendingDelete] = useState<Saving | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [recentExpanded, setRecentExpanded] = useState(false);
+
+  // Change rate dialog state
+  const [changeRateOpen, setChangeRateOpen] = useState(false);
+  const [changeRateItem, setChangeRateItem] = useState<Saving | null>(null);
+  const [isChangingRate, setIsChangingRate] = useState(false);
+
+  // Expanded groups state (for showing history)
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<"date" | "amount" | "category" | "type">("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const userEmail = session.data?.user?.email ?? null;
+
+  // Toggle group expanded state
+  const toggleGroupExpanded = useCallback((key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }, []);
   const tableRef = useRef<HTMLDivElement | null>(null);
   const sparklineGradientId = useId();
 
@@ -381,6 +481,12 @@ export const SavingsManager = () => {
         name: "is_recurring",
         labelId: "savings.form.isRecurring",
         component: "switch",
+      },
+      {
+        name: "end_date",
+        labelId: "savings.form.endDate",
+        component: "date",
+        showWhen: (values) => values.is_recurring === true,
       },
       {
         name: "target_amount",
@@ -573,6 +679,95 @@ export const SavingsManager = () => {
     }
   };
 
+  // Change rate handlers
+  const handleOpenChangeRate = (saving: Saving) => {
+    setChangeRateItem(saving);
+    setChangeRateOpen(true);
+  };
+
+  const handleChangeRateClose = (open: boolean) => {
+    setChangeRateOpen(open);
+    if (!open) {
+      setChangeRateItem(null);
+    }
+  };
+
+  const handleChangeRate = async (values: ChangeRateFormValues) => {
+    if (!userEmail || !changeRateItem) {
+      showErrorToast("common.mustBeLoggedIn");
+      return;
+    }
+
+    setIsChangingRate(true);
+    try {
+      // Calculate the end date for the old item (month before effective date)
+      const effectiveDate = new Date(values.effectiveDate);
+      const endDate = new Date(effectiveDate.getFullYear(), effectiveDate.getMonth() - 1, 1);
+      const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-01`;
+
+      // Step 1: Update the existing item with end_date
+      const updatePayload = {
+        ...mapSavingToFormValues(changeRateItem),
+        end_date: endDateStr,
+      };
+
+      const updateResponse = await fetch(`/api/savings/${changeRateItem.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error(await updateResponse.text());
+      }
+
+      const updatedOld: Saving = await updateResponse.json();
+
+      // Step 2: Create a new item with the new amount
+      const effectiveDateStr = `${effectiveDate.getFullYear()}-${String(effectiveDate.getMonth() + 1).padStart(2, "0")}-01`;
+      const createPayload = {
+        category: changeRateItem.category,
+        description: changeRateItem.description ?? "",
+        amount: values.newAmount,
+        date: effectiveDateStr,
+        end_date: null,
+        saving_type: changeRateItem.saving_type,
+        is_recurring: true,
+        target_amount: changeRateItem.target_amount ?? null,
+      };
+
+      const createResponse = await fetch("/api/savings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createPayload),
+      });
+
+      if (!createResponse.ok) {
+        throw new Error(await createResponse.text());
+      }
+
+      const createdNew: Saving = await createResponse.json();
+
+      // Update local state
+      setSavings((prev) =>
+        prev.map((saving) => (saving.id === updatedOld.id ? updatedOld : saving)).concat(createdNew),
+      );
+
+      void fetchSummary();
+
+      toast({
+        title: intl.formatMessage({ id: "changeRate.toast.success" }),
+      });
+
+      handleChangeRateClose(false);
+    } catch (error) {
+      logger.error("[Savings] Failed to change rate", error);
+      showErrorToast("changeRate.toast.error");
+    } finally {
+      setIsChangingRate(false);
+    }
+  };
+
   const filteredSavings = useMemo(() => {
     if (!filters.savingType) {
       return savings;
@@ -636,6 +831,109 @@ export const SavingsManager = () => {
       return direction * (a.id - b.id);
     });
   }, [filteredSavings, sortDirection, sortKey, intl.locale]);
+
+  // Group recurring savings by category + description + type for history tracking
+  const groupedRecurringSavings = useMemo(() => {
+    const groups = new Map<string, SavingGroup>();
+
+    // Only group recurring deposits (withdrawals are one-off events)
+    const recurringSavings = savings.filter((s) => s.is_recurring && s.saving_type === SavingType.DEPOSIT);
+
+    recurringSavings.forEach((saving) => {
+      const key = `${saving.category}::${saving.description ?? ""}::${saving.saving_type}`;
+
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          category: saving.category,
+          description: saving.description,
+          saving_type: saving.saving_type,
+          current: null,
+          historical: [],
+        });
+      }
+
+      const group = groups.get(key)!;
+
+      if (saving.end_date) {
+        // Has end_date = historical
+        group.historical.push(saving);
+      } else {
+        // No end_date = current (or latest if multiple)
+        if (!group.current || new Date(saving.date) > new Date(group.current.date)) {
+          if (group.current) {
+            group.historical.push(group.current);
+          }
+          group.current = saving;
+        } else {
+          group.historical.push(saving);
+        }
+      }
+    });
+
+    // Sort historical by date descending (newest first)
+    groups.forEach((group) => {
+      group.historical.sort((a, b) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    });
+
+    return Array.from(groups.values());
+  }, [savings]);
+
+  // Get grouped item IDs for filtering in table
+  const groupedItemIds = useMemo(() => {
+    const ids = new Set<number>();
+    groupedRecurringSavings.forEach((group) => {
+      if (group.current) ids.add(group.current.id);
+      group.historical.forEach((h) => ids.add(h.id));
+    });
+    return ids;
+  }, [groupedRecurringSavings]);
+
+  // Savings that are not part of any group (one-off or non-grouped)
+  const ungroupedSavings = useMemo(() => {
+    return sortedSavings.filter((s) => !groupedItemIds.has(s.id));
+  }, [sortedSavings, groupedItemIds]);
+
+  // Goal projection calculation
+  const goalProjection = useMemo(() => {
+    if (!summary || summary.monthly_contribution <= 0) {
+      return null;
+    }
+
+    const currentTotal = summary.total_savings;
+    const monthlyRate = summary.monthly_contribution;
+    const emergencyTarget = summary.emergency_fund_target;
+    const emergencyCurrent = summary.emergency_fund;
+
+    // Calculate months to reach emergency fund target
+    const remainingForEmergency = Math.max(0, emergencyTarget - emergencyCurrent);
+    const monthsToEmergency = monthlyRate > 0 ? Math.ceil(remainingForEmergency / monthlyRate) : null;
+    const emergencyTargetDate = monthsToEmergency !== null && monthsToEmergency > 0
+      ? new Date(Date.now() + monthsToEmergency * 30 * 24 * 60 * 60 * 1000)
+      : null;
+
+    // Calculate when they'll reach various milestones
+    const milestones = [5000, 10000, 25000, 50000, 100000];
+    const nextMilestone = milestones.find((m) => m > currentTotal);
+    const monthsToNextMilestone = nextMilestone && monthlyRate > 0
+      ? Math.ceil((nextMilestone - currentTotal) / monthlyRate)
+      : null;
+    const nextMilestoneDate = monthsToNextMilestone !== null && monthsToNextMilestone > 0
+      ? new Date(Date.now() + monthsToNextMilestone * 30 * 24 * 60 * 60 * 1000)
+      : null;
+
+    return {
+      monthlyRate,
+      monthsToEmergency,
+      emergencyTargetDate,
+      nextMilestone,
+      monthsToNextMilestone,
+      nextMilestoneDate,
+      emergencyComplete: emergencyCurrent >= emergencyTarget,
+    };
+  }, [summary]);
 
   const latestMonth = monthlyTotals.length > 0 ? monthlyTotals[monthlyTotals.length - 1] : undefined;
   const previousMonth = monthlyTotals.length > 1 ? monthlyTotals[monthlyTotals.length - 2] : null;
@@ -1110,6 +1408,89 @@ export const SavingsManager = () => {
         </div>
       )}
 
+      {/* Goal Projection Card */}
+      {goalProjection && (
+        <Card className="rounded-3xl border border-sky-100 bg-gradient-to-r from-sky-50 via-white to-white p-6 shadow-sm">
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-sky-600">
+              <Target className="h-6 w-6" aria-hidden="true" />
+            </span>
+            <div className="flex-1 space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold text-sky-900">
+                  <FormattedMessage id="savings.goalProjection.title" defaultMessage="Goal Projection" />
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  <FormattedMessage
+                    id="savings.goalProjection.monthlyRate"
+                    defaultMessage="At your current rate of {amount}/month"
+                    values={{ amount: formatCurrency(goalProjection.monthlyRate) }}
+                  />
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {/* Emergency Fund Projection */}
+                {!goalProjection.emergencyComplete && goalProjection.emergencyTargetDate && (
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-emerald-700">
+                      <FormattedMessage id="savings.goalProjection.emergencyFund" defaultMessage="Emergency Fund Complete" />
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-emerald-800">
+                      {intl.formatDate(goalProjection.emergencyTargetDate, {
+                        year: "numeric",
+                        month: "long",
+                      })}
+                    </p>
+                    <p className="text-xs text-emerald-600">
+                      <FormattedMessage
+                        id="savings.goalProjection.inMonths"
+                        defaultMessage="In {months} months"
+                        values={{ months: goalProjection.monthsToEmergency }}
+                      />
+                    </p>
+                  </div>
+                )}
+                {goalProjection.emergencyComplete && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-100/50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-emerald-700">
+                      <FormattedMessage id="savings.goalProjection.emergencyFund" defaultMessage="Emergency Fund" />
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-emerald-800">
+                      ✓ <FormattedMessage id="savings.goalProjection.complete" defaultMessage="Complete!" />
+                    </p>
+                  </div>
+                )}
+                {/* Next Milestone Projection */}
+                {goalProjection.nextMilestone && goalProjection.nextMilestoneDate && (
+                  <div className="rounded-2xl border border-sky-100 bg-sky-50/50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-sky-700">
+                      <FormattedMessage
+                        id="savings.goalProjection.nextMilestone"
+                        defaultMessage="Reach {amount}"
+                        values={{ amount: formatCurrency(goalProjection.nextMilestone) }}
+                      />
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-sky-800">
+                      {intl.formatDate(goalProjection.nextMilestoneDate, {
+                        year: "numeric",
+                        month: "long",
+                      })}
+                    </p>
+                    <p className="text-xs text-sky-600">
+                      <FormattedMessage
+                        id="savings.goalProjection.inMonths"
+                        defaultMessage="In {months} months"
+                        values={{ months: goalProjection.monthsToNextMilestone }}
+                      />
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <Card ref={tableRef} className="rounded-3xl border border-muted/60 bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-medium">
@@ -1245,7 +1626,191 @@ export const SavingsManager = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sortedSavings.map((saving) => {
+              {/* Grouped recurring savings */}
+              {groupedRecurringSavings.map((group) => {
+                const mainSaving = group.current || group.historical[0];
+                if (!mainSaving) return null;
+
+                const hasHistory = group.historical.length > 0;
+                const isExpanded = expandedGroups.has(group.key);
+
+                const renderSavingRow = (saving: Saving, isMain: boolean) => {
+                  const isDeposit = saving.saving_type === SavingType.DEPOSIT;
+                  const isHistorical = !!saving.end_date;
+                  const amountClass = isHistorical
+                    ? "text-slate-500"
+                    : isDeposit ? "text-emerald-600" : "text-rose-600";
+                  const amountIcon = isDeposit ? (
+                    <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <ArrowDownRight className="h-4 w-4" aria-hidden="true" />
+                  );
+                  const balanceAfter = balanceById.get(saving.id) ?? saving.amount;
+
+                  return (
+                    <TableRow
+                      key={saving.id}
+                      className={cn(
+                        "border-b border-muted/30 text-sm leading-relaxed transition-colors hover:bg-emerald-50",
+                        isHistorical && "bg-slate-50/70 opacity-70",
+                        !isMain && "bg-amber-50/30"
+                      )}
+                    >
+                      <TableCell className="text-sm font-medium text-slate-700">
+                        <div className="flex items-center gap-3">
+                          {isMain && hasHistory ? (
+                            <button
+                              type="button"
+                              onClick={() => toggleGroupExpanded(group.key)}
+                              className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors"
+                              aria-label={isExpanded ? "Collapse history" : "Expand history"}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </button>
+                          ) : isMain ? (
+                            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                              <PiggyBank className="h-4 w-4" aria-hidden="true" />
+                            </span>
+                          ) : (
+                            <span className="flex h-9 w-9 items-center justify-center text-slate-400">
+                              └─
+                            </span>
+                          )}
+                          <div className="flex flex-col">
+                            {isMain ? (
+                              <>
+                                <span>
+                                  <FormattedMessage id={`savings.categories.${saving.category}`} />
+                                </span>
+                                {hasHistory && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleGroupExpanded(group.key)}
+                                    className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"
+                                  >
+                                    📜 {group.historical.length} {intl.formatMessage({
+                                      id: group.historical.length === 1 ? "common.historyCount.one" : "common.historyCount.many",
+                                      defaultMessage: group.historical.length === 1 ? "change" : "changes"
+                                    })}
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-slate-500 text-xs">
+                                <FormattedMessage id="common.historical" defaultMessage="Historical" />
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className={cn("text-sm", isHistorical ? "text-slate-500" : "text-slate-600")}>
+                        {saving.description}
+                      </TableCell>
+                      <TableCell className={cn("text-right text-base font-semibold", amountClass)}>
+                        <span className="inline-flex items-center justify-end gap-2">
+                          {amountIcon}
+                          {formatSavingAmount(saving, formatCurrency)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                          <span>
+                            {intl.formatDate(new Date(saving.date), { year: "numeric", month: "2-digit" })}
+                            {" → "}
+                            {saving.end_date ? (
+                              intl.formatDate(new Date(saving.end_date), { year: "numeric", month: "2-digit" })
+                            ) : (
+                              <span className="text-emerald-600 font-medium">
+                                {intl.formatMessage({ id: "common.now", defaultMessage: "now" })}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-600">
+                        <FormattedMessage id={`savings.types.${saving.saving_type}`} />
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {isHistorical ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
+                            📁
+                            <FormattedMessage id="common.historical" defaultMessage="Historical" />
+                          </span>
+                        ) : saving.is_recurring ? (
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                            🟢
+                            <FormattedMessage id="common.recurring" defaultMessage="Recurring" />
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground">
+                            <FormattedMessage id="common.oneOff" defaultMessage="One-off" />
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-slate-600">
+                        {saving.target_amount ? formatCurrency(saving.target_amount) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-semibold text-slate-700">
+                        {formatCurrency(balanceAfter)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex justify-end gap-2">
+                          {saving.is_recurring && !isHistorical && (
+                            <Tooltip content={intl.formatMessage({ id: "changeRate.button.tooltip" })}>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleOpenChangeRate(saving)}
+                                className="h-9 w-9 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            </Tooltip>
+                          )}
+                          <Tooltip content={intl.formatMessage({ id: "common.edit" })}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleOpenEdit(saving)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                          <Tooltip content={intl.formatMessage({ id: "common.delete" })}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setPendingDelete(saving);
+                                setConfirmOpen(true);
+                              }}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                };
+
+                return (
+                  <React.Fragment key={group.key}>
+                    {renderSavingRow(mainSaving, true)}
+                    {isExpanded && group.historical.map((histSaving) => (
+                      histSaving.id !== mainSaving.id && renderSavingRow(histSaving, false)
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+              {/* Ungrouped savings (one-off or non-recurring) */}
+              {ungroupedSavings.map((saving) => {
                 const isDeposit = saving.saving_type === SavingType.DEPOSIT;
                 const amountClass = isDeposit ? "text-emerald-600" : "text-rose-600";
                 const amountIcon = isDeposit ? (
@@ -1261,7 +1826,19 @@ export const SavingsManager = () => {
                     className="border-b border-muted/30 text-sm leading-relaxed odd:bg-[#faf9f7] even:bg-white transition-colors hover:bg-emerald-50 focus-within:bg-emerald-50"
                   >
                     <TableCell className="text-sm font-medium text-slate-700">
-                      <FormattedMessage id={`savings.categories.${saving.category}`} />
+                      <div className="flex items-center gap-3">
+                        <span className={cn(
+                          "flex h-9 w-9 items-center justify-center rounded-full",
+                          isDeposit ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
+                        )}>
+                          {isDeposit ? (
+                            <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+                          ) : (
+                            <ArrowDownRight className="h-4 w-4" aria-hidden="true" />
+                          )}
+                        </span>
+                        <FormattedMessage id={`savings.categories.${saving.category}`} />
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm text-slate-600">{saving.description}</TableCell>
                     <TableCell className={cn("text-right text-base font-semibold", amountClass)}>
@@ -1300,35 +1877,43 @@ export const SavingsManager = () => {
                     <TableCell className="text-right text-sm font-semibold text-slate-700">
                       {formatCurrency(balanceAfter)}
                     </TableCell>
-                    <TableCell className="flex justify-end gap-2">
-                      <Tooltip content={intl.formatMessage({ id: "common.edit" })}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleOpenEdit(saving)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">
-                            {intl.formatMessage({ id: "common.edit" })}
-                          </span>
-                        </Button>
-                      </Tooltip>
-                      <Tooltip content={intl.formatMessage({ id: "common.delete" })}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setPendingDelete(saving);
-                            setConfirmOpen(true);
-                          }}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">
-                            {intl.formatMessage({ id: "common.delete" })}
-                          </span>
-                        </Button>
-                      </Tooltip>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        {saving.is_recurring && (
+                          <Tooltip content={intl.formatMessage({ id: "changeRate.button.tooltip" })}>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleOpenChangeRate(saving)}
+                              className="h-9 w-9 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                            >
+                              <RefreshCw className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
+                        )}
+                        <Tooltip content={intl.formatMessage({ id: "common.edit" })}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleOpenEdit(saving)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content={intl.formatMessage({ id: "common.delete" })}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setPendingDelete(saving);
+                              setConfirmOpen(true);
+                            }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </Tooltip>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -1466,6 +2051,25 @@ export const SavingsManager = () => {
         confirmLabelId="savings.deleteDialog.confirm"
         onConfirm={handleDelete}
         isLoading={isDeleting}
+      />
+
+      <CrudDialog
+        open={changeRateOpen}
+        mode="create"
+        onOpenChange={handleChangeRateClose}
+        titleId="changeRate.dialog.title"
+        descriptionId="changeRate.dialog.description"
+        submitLabelId="changeRate.dialog.submit"
+        schema={changeRateSchema}
+        defaultValues={changeRateDefaultValues}
+        initialValues={
+          changeRateItem
+            ? { newAmount: changeRateItem.amount, effectiveDate: todayISO }
+            : undefined
+        }
+        fields={changeRateFieldConfig}
+        onSubmit={handleChangeRate}
+        isSubmitting={isChangingRate}
       />
     </div>
   );

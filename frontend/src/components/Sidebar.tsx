@@ -21,7 +21,7 @@ import SproutlyFiLogo from './SproutlyFiLogo';
 
 const navigation = [
   { name: 'navigation.onboarding', href: '/onboarding', icon: UserPlusIcon },
-  { name: 'navigation.dashboard', href: '/', icon: HomeIcon },
+  { name: 'navigation.dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'navigation.financialFreedom', href: '/financial-freedom', icon: StarIcon },
   { name: 'navigation.income', href: '/income', icon: BanknotesIcon },
   { name: 'navigation.expenses', href: '/expenses', icon: CreditCardIcon },

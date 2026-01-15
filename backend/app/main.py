@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from . import models, database
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from datetime import date, datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
@@ -14,13 +14,14 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing
 from .database import engine, Base
 from .routers.users import User, UserBase, Settings, SettingsBase  # Import User, UserBase, Settings, and SettingsBase models from users router
 import json
 import re
 import httpx
 from .logging_utils import make_conditional_print
+from .services.subscription_service import SubscriptionService
 
 logger = logging.getLogger(__name__)
 print = make_conditional_print(__name__)
@@ -47,17 +48,36 @@ app.include_router(savings.router)
 app.include_router(exchange_rates.router)
 app.include_router(banking.router)
 app.include_router(tink.router)
+app.include_router(stripe_billing.router)
 
 # Loan models
+VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "other"]
+
 class LoanBase(BaseModel):
-    loan_type: str
-    description: str
-    principal_amount: float
-    remaining_balance: float
-    interest_rate: float
-    monthly_payment: float
-    start_date: date
-    term_months: int
+    loan_type: str = Field(..., description="Type of loan")
+    description: str = Field(..., min_length=1, max_length=100, description="Loan description")
+    principal_amount: float = Field(..., gt=0, description="Original loan amount")
+    remaining_balance: float = Field(..., ge=0, description="Current remaining balance")
+    interest_rate: float = Field(..., ge=0, le=100, description="Annual interest rate as percentage")
+    monthly_payment: float = Field(..., ge=0, description="Monthly payment amount")
+    start_date: date = Field(..., description="Loan start date")
+    term_months: int = Field(..., gt=0, description="Loan term in months")
+
+    @model_validator(mode='after')
+    def validate_loan(self):
+        # Validate loan type
+        if self.loan_type not in VALID_LOAN_TYPES:
+            raise ValueError(f"Invalid loan type. Must be one of: {', '.join(VALID_LOAN_TYPES)}")
+
+        # Validate remaining balance doesn't exceed principal
+        if self.remaining_balance > self.principal_amount:
+            raise ValueError("Remaining balance cannot exceed principal amount")
+
+        # Validate monthly payment isn't greater than principal
+        if self.monthly_payment > self.principal_amount:
+            raise ValueError("Monthly payment cannot exceed principal amount")
+
+        return self
 
 class LoanCreate(LoanBase):
     pass
@@ -80,7 +100,8 @@ class ExpenseBase(BaseModel):
     description: str
     amount: float
     is_recurring: bool = False
-    date: date
+    date: date  # Start date (for recurring) or occurrence date (for one-off)
+    end_date: date | None = None  # Optional end date for recurring items (null = forever)
 
 class ExpenseCreate(ExpenseBase):
     pass
@@ -103,7 +124,8 @@ class IncomeBase(BaseModel):
     description: str
     amount: float
     is_recurring: bool = False
-    date: date
+    date: date  # Start date (for recurring) or occurrence date (for one-off)
+    end_date: date | None = None  # Optional end date for recurring items (null = forever)
 
 class IncomeCreate(IncomeBase):
     pass
@@ -364,6 +386,11 @@ def get_loans(user_id: str = Query(..., description="The ID of the user"), db: S
 
 @app.post("/loans", response_model=Loan)
 def create_loan(loan: LoanCreate, user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
+    # Check subscription limits
+    can_add, message = SubscriptionService.can_add_loan(user_id, db)
+    if not can_add:
+        raise HTTPException(status_code=403, detail=message)
+
     # Check if user exists
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
@@ -432,12 +459,17 @@ def get_user_expenses(user_id: str, db: Session = Depends(database.get_db)):
 def create_expense(user_id: str, expense: ExpenseCreate, db: Session = Depends(database.get_db)):
     try:
         print(f"[FastAPI] Creating expense for user: {user_id}")
+        # Check subscription limits
+        can_add, message = SubscriptionService.can_add_expense(user_id, db)
+        if not can_add:
+            raise HTTPException(status_code=403, detail=message)
+
         # Check if user exists
         user = db.query(models.User).filter(models.User.id == user_id).first()
         if not user:
             print(f"[FastAPI] User not found with ID: {user_id}")
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         db_expense = models.Expense(**expense.model_dump(), user_id=user_id)
         db.add(db_expense)
         db.commit()
@@ -509,12 +541,17 @@ def get_user_income(user_id: str, db: Session = Depends(database.get_db)):
 def create_income(user_id: str, income: IncomeCreate, db: Session = Depends(database.get_db)):
     try:
         print(f"[FastAPI] Creating income for user: {user_id}")
+        # Check subscription limits
+        can_add, message = SubscriptionService.can_add_income(user_id, db)
+        if not can_add:
+            raise HTTPException(status_code=403, detail=message)
+
         # Check if user exists
         user = db.query(models.User).filter(models.User.id == user_id).first()
         if not user:
             print(f"[FastAPI] User not found with ID: {user_id}")
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         db_income = models.Income(**income.model_dump(), user_id=user_id)
         db.add(db_income)
         db.commit()
@@ -1148,6 +1185,11 @@ async def export_user_data(
     db: Session = Depends(database.get_db)
 ):
     try:
+        # Check subscription for export format
+        can_export, message = SubscriptionService.can_export_format(user_id, format, db)
+        if not can_export:
+            raise HTTPException(status_code=403, detail=message)
+
         # Fetch all user data
         user = db.query(models.User).filter(models.User.id == user_id).first()
         if not user:
