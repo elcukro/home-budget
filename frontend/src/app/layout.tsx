@@ -6,6 +6,7 @@ import AuthProvider from "@/components/AuthProvider";
 import IntlProviderWrapper from "@/components/IntlProviderWrapper";
 import InactivityChecker from "@/components/InactivityChecker";
 import ChartInitializer from "@/components/ChartInitializer";
+import ChunkErrorHandler from "@/components/ChunkErrorHandler";
 
 export const metadata: Metadata = {
   title: "FiredUp - Twoja droga do wolności finansowej",
@@ -20,6 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
+        <ChunkErrorHandler />
         <AuthProvider>
           <SettingsProvider>
             <SubscriptionProvider>
