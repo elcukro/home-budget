@@ -16,13 +16,24 @@
 
 ### Production Services (firedup.app)
 
-Services are managed via **systemctl**:
+**Server access:** `ssh root@firedup.app`
+**Project path:** `/opt/home-budget`
+
+#### Deploy from local machine:
 
 ```bash
-# Restart frontend (includes npm run build automatically)
-sudo systemctl restart home-budget-frontend
+# Frontend: pull and restart (build runs automatically)
+ssh root@firedup.app "cd /opt/home-budget/frontend && git pull && sudo systemctl restart home-budget-frontend"
 
-# Restart backend
+# Backend: pull and restart
+ssh root@firedup.app "cd /opt/home-budget/backend && git pull && sudo systemctl restart home-budget-backend"
+```
+
+#### On server - manage services via systemctl:
+
+```bash
+# Restart services
+sudo systemctl restart home-budget-frontend
 sudo systemctl restart home-budget-backend
 
 # Check status
