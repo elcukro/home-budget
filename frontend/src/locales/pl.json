@@ -1212,6 +1212,10 @@
   "auth": {
     "welcome": "Witaj w Budżecie Domowym",
     "signInPrompt": "Zaloguj się, aby zarządzać swoimi finansami",
+    "signIn": {
+      "title": "Rozpal swoje finanse!",
+      "subtitle": "Zaloguj się i przejmij kontrolę nad swoim budżetem domowym."
+    },
     "loading": "Ładowanie...",
     "continueWithGoogle": "Kontynuuj z Google",
     "signInWithGoogle": "Zaloguj się przez Google",

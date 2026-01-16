@@ -185,6 +185,10 @@
   "auth": {
     "welcome": "Welcome to Home Budget",
     "signInPrompt": "Sign in to manage your finances",
+    "signIn": {
+      "title": "Fire up your finances!",
+      "subtitle": "Sign in and take control of your home budget."
+    },
     "loading": "Loading...",
     "continueWithGoogle": "Continue with Google",
     "signInWithGoogle": "Sign in with Google",
