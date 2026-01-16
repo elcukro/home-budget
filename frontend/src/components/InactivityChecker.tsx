@@ -55,7 +55,7 @@ export default function InactivityChecker() {
               warningTimerRef.current = null;
             }
             logger.debug('[InactivityChecker] Warning timeout reached, signing out');
-            signOut();
+            signOut({ callbackUrl: '/' });
             return 0;
           }
           return newTime;

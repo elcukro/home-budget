@@ -108,6 +108,24 @@
         "loan": "{operation} {type} con descripción: {description}, monto: {amount}"
       }
     },
+    "sections": {
+      "savings": {
+        "title": "Metas de Ahorro",
+        "description": "Sigue tu progreso hacia tus metas financieras."
+      },
+      "loans": {
+        "title": "Resumen de Préstamos",
+        "description": "Progreso de pagos y saldos restantes."
+      }
+    },
+    "savings": {
+      "totalBalance": "Ahorros Totales",
+      "monthlySavings": "Este Mes",
+      "goalsTitle": "Tus Metas",
+      "goalTarget": "Meta: {amount}",
+      "noGoals": "Aún no hay metas de ahorro",
+      "addGoal": "Agrega tu primera meta de ahorro"
+    },
     "summary": {
       "title": "Resumen mensual",
       "totalIncome": "Ingresos totales",
@@ -183,11 +201,11 @@
         "debtChange": "La deuda cambió en {change}%",
         "generatedAt": "Generado el {date}",
         "categories": {
-          "health": "Salud",
-          "spending": "Gastos",
-          "savings": "Ahorros",
-          "debt": "Deuda",
-          "budget": "Presupuesto"
+          "baby_steps": "Ruta Baby Steps",
+          "debt": "Pago de deudas",
+          "savings": "Ahorros y fondo de emergencia",
+          "fire": "Camino a FIRE",
+          "tax_optimization": "Optimización fiscal"
         }
       }
     }
@@ -739,8 +757,18 @@
   },
   "reports": {
     "title": "Informes Financieros",
+    "subtitle": "Monitorea tu progreso financiero a lo largo del tiempo",
     "monthlyBalance": "Balance Mensual",
     "savingsRate": "Tasa de Ahorro",
+    "totalIncome": "Ingresos Totales",
+    "totalExpenses": "Gastos Totales",
+    "totalLoans": "Pagos de Préstamos",
+    "totalSavings": "Ahorros Netos",
+    "savings": "Ahorros",
+    "ofIncome": "de ingresos",
+    "netBalance": "Balance Neto",
+    "monthlyBreakdown": "Desglose Mensual",
+    "incomeDistribution": "Distribución de Ingresos",
     "totalLoanBalance": "Saldo Total de Préstamos",
     "monthlyFlow": "Flujo de Caja Mensual",
     "expenseDistribution": "Distribución de Gastos",
@@ -750,6 +778,7 @@
       "expenseRatio": "Ratio de Gastos"
     },
     "chart": {
+      "title": "Tendencias Financieras",
       "income": "Ingresos",
       "expenses": "Gastos",
       "loanPayments": "Pagos de Préstamos",
@@ -759,7 +788,33 @@
     "expenses": "Gastos",
     "loanPayments": "Pagos de préstamos",
     "availableCash": "Efectivo disponible",
-    "submit": "Enviar"
+    "submit": "Enviar",
+    "period": {
+      "from": "Desde",
+      "to": "Hasta",
+      "currentYear": "Año Actual",
+      "previousYear": "Año Anterior",
+      "last2Years": "Últimos 2 Años",
+      "last5Years": "Últimos 5 Años",
+      "custom": "Fechas Personalizadas"
+    },
+    "months": {
+      "1": "Enero",
+      "2": "Febrero",
+      "3": "Marzo",
+      "4": "Abril",
+      "5": "Mayo",
+      "6": "Junio",
+      "7": "Julio",
+      "8": "Agosto",
+      "9": "Septiembre",
+      "10": "Octubre",
+      "11": "Noviembre",
+      "12": "Diciembre"
+    },
+    "messages": {
+      "fetchError": "No se pudieron obtener los datos del informe. Por favor, inténtalo de nuevo más tarde."
+    }
   },
   "settings": {
     "title": "Configuración",
@@ -893,6 +948,8 @@
         "remainingMortgage": "Hipoteca Restante: {amount}",
         "originalAmount": "Hipoteca Original: {amount}",
         "mortgageFree": "¡Tu casa está pagada!",
+        "noMortgage": "No tienes hipoteca",
+        "noMortgageTip": "¡Este paso ya está completo! Puedes pasar al siguiente paso.",
         "tip": "Haz pagos adicionales al capital para pagar tu hipoteca más rápido."
       },
       "step7": {

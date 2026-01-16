@@ -1,4 +1,13 @@
-import { SavingCategory, SavingsSummary } from '@/types/financial-freedom';
+import {
+  SavingCategory,
+  SavingsSummary,
+  AccountType,
+  SavingsGoal,
+  SavingsGoalCreate,
+  SavingsGoalUpdate,
+  SavingsGoalWithSavings,
+  GoalStatus
+} from '@/types/financial-freedom';
 import { logger } from '@/lib/logger';
 
 // Cache for API responses
@@ -195,4 +204,190 @@ export const getMonthlyRecurringExpenses = async (): Promise<number> => {
     logger.error('Error fetching monthly expenses:', error);
     return 3000; // Default value for demo purposes
   }
-}; 
+};
+
+/**
+ * Individual retirement account limit tracking
+ */
+export interface RetirementAccountLimit {
+  account_type: AccountType;
+  year: number;
+  annual_limit: number;
+  current_contributions: number;
+  remaining_limit: number;
+  percentage_used: number;
+  is_over_limit: boolean;
+}
+
+/**
+ * Response from retirement limits endpoint
+ */
+export interface RetirementLimitsResponse {
+  year: number;
+  accounts: RetirementAccountLimit[];
+  total_retirement_contributions: number;
+  ike_limit: number;
+  ikze_limit_standard: number;
+  ikze_limit_jdg: number;
+}
+
+/**
+ * Fetches retirement account limits and current contributions.
+ * Tracks Polish III Pillar accounts (IKE, IKZE, PPK, OIPE) against annual limits.
+ *
+ * @param year - Year to check (defaults to current year)
+ * @param isSelfEmployed - If true, uses higher IKZE limit for self-employed (JDG)
+ */
+export const getRetirementLimits = async (
+  year?: number,
+  isSelfEmployed: boolean = false
+): Promise<RetirementLimitsResponse | null> => {
+  try {
+    const params = new URLSearchParams();
+    if (year) params.append('year', year.toString());
+    if (isSelfEmployed) params.append('is_self_employed', 'true');
+
+    const url = `/api/savings/retirement-limits${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      logger.error('Failed to fetch retirement limits:', response.statusText);
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Error fetching retirement limits:', error);
+    return null;
+  }
+};
+
+
+// ============== Savings Goals API ==============
+
+/**
+ * Fetches all savings goals for the current user
+ */
+export const getSavingsGoals = async (
+  status?: GoalStatus,
+  category?: SavingCategory
+): Promise<SavingsGoal[]> => {
+  try {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (category) params.append('category', category);
+
+    const url = `/api/savings/goals${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch savings goals');
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Error fetching savings goals:', error);
+    return [];
+  }
+};
+
+/**
+ * Fetches a single savings goal with its linked savings entries
+ */
+export const getSavingsGoal = async (goalId: number): Promise<SavingsGoalWithSavings | null> => {
+  try {
+    const response = await fetch(`/api/savings/goals/${goalId}`);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch savings goal');
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Error fetching savings goal:', error);
+    return null;
+  }
+};
+
+/**
+ * Creates a new savings goal
+ */
+export const createSavingsGoal = async (goal: SavingsGoalCreate): Promise<SavingsGoal | null> => {
+  try {
+    const response = await fetch('/api/savings/goals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(goal),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create savings goal');
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Error creating savings goal:', error);
+    return null;
+  }
+};
+
+/**
+ * Updates an existing savings goal
+ */
+export const updateSavingsGoal = async (
+  goalId: number,
+  updates: SavingsGoalUpdate
+): Promise<SavingsGoal | null> => {
+  try {
+    const response = await fetch(`/api/savings/goals/${goalId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update savings goal');
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Error updating savings goal:', error);
+    return null;
+  }
+};
+
+/**
+ * Deletes a savings goal
+ */
+export const deleteSavingsGoal = async (goalId: number): Promise<boolean> => {
+  try {
+    const response = await fetch(`/api/savings/goals/${goalId}`, {
+      method: 'DELETE',
+    });
+
+    return response.ok;
+  } catch (error) {
+    logger.error('Error deleting savings goal:', error);
+    return false;
+  }
+};
+
+/**
+ * Marks a savings goal as complete
+ */
+export const completeGoal = async (goalId: number): Promise<SavingsGoal | null> => {
+  try {
+    const response = await fetch(`/api/savings/goals/${goalId}/complete`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to complete goal');
+    }
+
+    return await response.json();
+  } catch (error) {
+    logger.error('Error completing goal:', error);
+    return null;
+  }
+};

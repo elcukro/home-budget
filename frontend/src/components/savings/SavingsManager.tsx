@@ -24,7 +24,9 @@ import {
 
 import { useSettings } from "@/contexts/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
-import { Saving, SavingCategory, SavingType, SavingsSummary } from "@/types/financial-freedom";
+import { Saving, SavingCategory, SavingType, SavingsSummary, AccountType } from "@/types/financial-freedom";
+import RetirementLimitsCard, { QuickAddSavingParams } from "./RetirementLimitsCard";
+import { SavingsGoalsSection } from "./SavingsGoalsSection";
 import { CrudDialog, type FormFieldConfig } from "@/components/crud/CrudDialog";
 import { ConfirmDialog } from "@/components/crud/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -74,6 +76,20 @@ const savingTypeOptions = [
   { value: SavingType.WITHDRAWAL, labelId: "savings.types.withdrawal" },
 ];
 
+// Visual saving type options with icons for better UX
+const savingTypeIconOptions = [
+  {
+    value: SavingType.DEPOSIT,
+    labelId: "savings.types.deposit",
+    icon: <ArrowUpRight className="h-5 w-5 text-emerald-600" />
+  },
+  {
+    value: SavingType.WITHDRAWAL,
+    labelId: "savings.types.withdrawal",
+    icon: <ArrowDownRight className="h-5 w-5 text-rose-600" />
+  },
+];
+
 const dateRangeOptions: { value: SavingsDateRangePreset; labelId: string }[] = [
   { value: "current_month", labelId: "savings.filters.dateRange.currentMonth" },
   { value: "last_month", labelId: "savings.filters.dateRange.lastMonth" },
@@ -87,6 +103,38 @@ const categoryOptions = Object.values(SavingCategory).map((category) => ({
   value: category,
   labelId: `savings.categories.${category}`,
 }));
+
+// Category icons for visual selection
+const categoryIcons: Record<SavingCategory, React.ReactNode> = {
+  [SavingCategory.EMERGENCY_FUND]: <ShieldCheck className="h-5 w-5" />,
+  [SavingCategory.SIX_MONTH_FUND]: <CalendarClock className="h-5 w-5" />,
+  [SavingCategory.RETIREMENT]: <TrendingUp className="h-5 w-5" />,
+  [SavingCategory.COLLEGE]: <Target className="h-5 w-5" />,
+  [SavingCategory.GENERAL]: <PiggyBank className="h-5 w-5" />,
+  [SavingCategory.INVESTMENT]: <TrendingUp className="h-5 w-5" />,
+  [SavingCategory.REAL_ESTATE]: <Target className="h-5 w-5" />,
+  [SavingCategory.OTHER]: <RefreshCw className="h-5 w-5" />,
+};
+
+const categoryIconOptions = Object.values(SavingCategory).map((category) => ({
+  value: category,
+  labelId: `savings.categories.${category}`,
+  icon: categoryIcons[category],
+}));
+
+const accountTypeOptions = Object.values(AccountType).map((type) => ({
+  value: type,
+  labelId: `savings.accountTypes.${type}`,
+}));
+
+// Badge styling for III Pillar account types (IKE, IKZE, OIPE, PPK)
+const accountTypeBadgeStyles: Record<AccountType, { bg: string; text: string; icon: string }> = {
+  [AccountType.STANDARD]: { bg: 'bg-gray-100', text: 'text-gray-700', icon: '💰' },
+  [AccountType.IKE]: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: '🏦' },
+  [AccountType.IKZE]: { bg: 'bg-blue-100', text: 'text-blue-700', icon: '📊' },
+  [AccountType.PPK]: { bg: 'bg-purple-100', text: 'text-purple-700', icon: '🏢' },
+  [AccountType.OIPE]: { bg: 'bg-amber-100', text: 'text-amber-700', icon: '🇪🇺' },
+};
 
 const savingSchema = z
   .object({
@@ -124,8 +172,10 @@ const savingSchema = z
       .trim()
       .min(1, "validation.required"),
     end_date: z
-      .string()
-      .trim()
+      .preprocess(
+        (value) => (value === null || value === undefined ? "" : value),
+        z.string().trim()
+      )
       .optional()
       .transform((value) => value || null),
     saving_type: z.string().min(1, "validation.categoryRequired"),
@@ -154,6 +204,31 @@ const savingSchema = z
           });
         }
         return parseNumber(value) ?? undefined;
+      }),
+    account_type: z.string().default(AccountType.STANDARD),
+    annual_return_rate: z
+      .preprocess((value) => {
+        if (value === null || value === undefined) {
+          return undefined;
+        }
+        if (typeof value === "number") {
+          return value.toString();
+        }
+        if (typeof value === "string") {
+          const trimmed = value.trim();
+          return trimmed.length === 0 ? undefined : trimmed;
+        }
+        return value;
+      }, z.string().optional())
+      .transform((value) => {
+        if (!value) return undefined;
+        const num = parseNumber(value);
+        if (num === undefined || num === null) return undefined;
+        // Convert percentage to decimal if needed (e.g., 5 -> 0.05)
+        if (num > 1) {
+          return num / 100;
+        }
+        return num;
       }),
   })
   .superRefine((data, ctx) => {
@@ -231,6 +306,8 @@ const savingDefaultValues: SavingFormValues = {
   saving_type: SavingType.DEPOSIT,
   is_recurring: false,
   target_amount: undefined,
+  account_type: AccountType.STANDARD,
+  annual_return_rate: undefined,
 };
 
 const changeRateDefaultValues: ChangeRateFormValues = {
@@ -334,6 +411,8 @@ const mapSavingToFormValues = (saving: Saving): SavingFormValues => ({
   saving_type: saving.saving_type,
   is_recurring: saving.is_recurring,
   target_amount: saving.target_amount ?? undefined,
+  account_type: saving.account_type ?? AccountType.STANDARD,
+  annual_return_rate: saving.annual_return_rate ?? undefined,
 });
 
 const formatSavingAmount = (saving: Saving, formatCurrency: (value: number) => string) => {
@@ -373,6 +452,9 @@ export const SavingsManager = () => {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [sortKey, setSortKey] = useState<"date" | "amount" | "category" | "type">("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Key to trigger retirement limits card refresh
+  const [retirementLimitsRefreshKey, setRetirementLimitsRefreshKey] = useState(0);
 
   const userEmail = session.data?.user?.email ?? null;
 
@@ -425,20 +507,40 @@ export const SavingsManager = () => {
 
   const savingFieldConfig = useMemo<FormFieldConfig<SavingFormValues>[]>(() => {
     return [
+      // 1. Type selection - compact horizontal buttons (deposit/withdrawal)
+      {
+        name: "saving_type",
+        labelId: "savings.form.savingType",
+        component: "icon-select",
+        options: savingTypeIconOptions,
+        columns: 2,
+        compact: true,
+      },
+      // 2. Amount - most important field
       {
         name: "amount",
         labelId: "savings.form.amount",
-        component: "number",
-        step: "0.01",
-        min: 0,
+        component: "currency",
         autoFocus: true,
+        rowGroup: "amountRow",
+        rowWidth: "1/2",
       },
+      // 3. Date - same row as amount
+      {
+        name: "date",
+        labelId: "savings.form.date",
+        component: "date",
+        rowGroup: "amountRow",
+        rowWidth: "1/2",
+      },
+      // 4. Category - compact visual selection
       {
         name: "category",
         labelId: "savings.form.category",
-        component: "select",
-        placeholderId: "savings.form.category.select",
-        options: categoryOptions,
+        component: "icon-select",
+        options: categoryIconOptions,
+        columns: 3,
+        compact: true,
         onValueChange: (value, formInstance) => {
           if (dialogMode !== "create") {
             return;
@@ -447,6 +549,15 @@ export const SavingsManager = () => {
           const categoryValue = value as SavingCategory | undefined;
           if (!categoryValue) {
             return;
+          }
+
+          // Auto-set account type for retirement category
+          if (categoryValue === SavingCategory.RETIREMENT) {
+            formInstance.setValue("account_type", AccountType.IKE, {
+              shouldDirty: false,
+              shouldTouch: false,
+              shouldValidate: false,
+            });
           }
 
           const defaultTarget = categoryTargetDefaults.get(categoryValue);
@@ -461,39 +572,60 @@ export const SavingsManager = () => {
           });
         },
       },
-      {
-        name: "description",
-        labelId: "savings.form.description",
-        component: "text",
-      },
-      {
-        name: "date",
-        labelId: "savings.form.date",
-        component: "date",
-      },
-      {
-        name: "saving_type",
-        labelId: "savings.form.savingType",
-        component: "select",
-        options: savingTypeOptions,
-      },
+      // 5. Recurring toggle + Description in same row
       {
         name: "is_recurring",
         labelId: "savings.form.isRecurring",
         component: "switch",
+        rowGroup: "recurringRow",
+        rowWidth: "auto",
       },
+      {
+        name: "description",
+        labelId: "savings.form.description",
+        component: "text",
+        rowGroup: "recurringRow",
+        rowWidth: "2/3",
+      },
+      // 6. End date - only for recurring
       {
         name: "end_date",
         labelId: "savings.form.endDate",
         component: "date",
         showWhen: (values) => values.is_recurring === true,
       },
+      // 7. Target amount + Account type side by side
       {
         name: "target_amount",
         labelId: "savings.form.targetAmount",
+        component: "currency",
+        showWhen: (values) => values.saving_type === SavingType.DEPOSIT,
+        rowGroup: "targetRow",
+        rowWidth: "1/2",
+      },
+      {
+        name: "account_type",
+        labelId: "savings.form.accountType",
+        component: "select",
+        options: accountTypeOptions,
+        showWhen: (values) =>
+          values.category === SavingCategory.RETIREMENT ||
+          values.category === SavingCategory.INVESTMENT,
+        rowGroup: "targetRow",
+        rowWidth: "1/2",
+      },
+      // 8. Annual return rate - only when non-standard account type
+      {
+        name: "annual_return_rate",
+        labelId: "savings.form.annualReturnRate",
         component: "number",
-        step: "0.01",
+        step: "0.1",
         min: 0,
+        max: 100,
+        placeholderId: "savings.form.annualReturnRate.placeholder",
+        showWhen: (values) =>
+          values.account_type !== AccountType.STANDARD &&
+          values.account_type !== undefined,
       },
     ];
   }, [categoryTargetDefaults, dialogMode]);
@@ -561,6 +693,17 @@ export const SavingsManager = () => {
     setDialogOpen(true);
   };
 
+  const handleQuickAddRetirement = (params: QuickAddSavingParams) => {
+    setActiveSaving(null);
+    setDialogMode("create");
+    setDialogInitialValues({
+      saving_type: SavingType.DEPOSIT,
+      category: params.category,
+      account_type: params.accountType,
+    });
+    setDialogOpen(true);
+  };
+
   const handleOpenEdit = (saving: Saving) => {
     setActiveSaving(saving);
     setDialogMode("edit");
@@ -610,6 +753,10 @@ export const SavingsManager = () => {
         const created: Saving = await response.json();
         setSavings((prev) => [...prev, created]);
         void fetchSummary();
+        // Refresh retirement limits if relevant account type
+        if (created.account_type && created.account_type !== AccountType.STANDARD) {
+          setRetirementLimitsRefreshKey((k) => k + 1);
+        }
 
         toast({
           title: intl.formatMessage({ id: "savings.toast.createSuccess" }),
@@ -630,6 +777,10 @@ export const SavingsManager = () => {
           prev.map((saving) => (saving.id === updated.id ? updated : saving)),
         );
         void fetchSummary();
+        // Refresh retirement limits if relevant account type
+        if (updated.account_type && updated.account_type !== AccountType.STANDARD) {
+          setRetirementLimitsRefreshKey((k) => k + 1);
+        }
 
         toast({
           title: intl.formatMessage({ id: "savings.toast.updateSuccess" }),
@@ -661,10 +812,18 @@ export const SavingsManager = () => {
         throw new Error(await response.text());
       }
 
+      // Check if it was a retirement account type before removing from state
+      const wasRetirementAccount = pendingDelete.account_type && pendingDelete.account_type !== AccountType.STANDARD;
+
       setSavings((prev) =>
         prev.filter((saving) => saving.id !== pendingDelete.id),
       );
       void fetchSummary();
+
+      // Refresh retirement limits if relevant account type was deleted
+      if (wasRetirementAccount) {
+        setRetirementLimitsRefreshKey((k) => k + 1);
+      }
 
       toast({
         title: intl.formatMessage({ id: "savings.toast.deleteSuccess" }),
@@ -896,44 +1055,109 @@ export const SavingsManager = () => {
     return sortedSavings.filter((s) => !groupedItemIds.has(s.id));
   }, [sortedSavings, groupedItemIds]);
 
-  // Goal projection calculation
+  // Calculate average annual return rate from savings with return rates
+  const averageReturnRate = useMemo(() => {
+    const savingsWithRate = savings.filter((s) => s.annual_return_rate !== undefined && s.annual_return_rate !== null);
+    if (savingsWithRate.length === 0) {
+      return 0.05; // Default 5% if no rates specified
+    }
+    const totalRate = savingsWithRate.reduce((sum, s) => sum + (s.annual_return_rate ?? 0), 0);
+    return totalRate / savingsWithRate.length;
+  }, [savings]);
+
+  // Goal projection calculation using COMPOUND INTEREST
+  // Formula: n = log((FV * r + PMT) / (PV * r + PMT)) / log(1 + r)
+  // Where: FV = target, PV = current, r = monthly rate, PMT = monthly contribution
   const goalProjection = useMemo(() => {
     if (!summary || summary.monthly_contribution <= 0) {
       return null;
     }
 
     const currentTotal = summary.total_savings;
-    const monthlyRate = summary.monthly_contribution;
+    const monthlyContribution = summary.monthly_contribution;
     const emergencyTarget = summary.emergency_fund_target;
     const emergencyCurrent = summary.emergency_fund;
 
+    // Monthly return rate from annual rate
+    const monthlyReturnRate = averageReturnRate / 12;
+
+    // Helper function: calculate months to reach target with compound interest
+    const calculateMonthsWithCompoundInterest = (
+      presentValue: number,
+      futureValue: number,
+      monthlyPMT: number,
+      monthlyRate: number
+    ): number | null => {
+      if (presentValue >= futureValue) return 0;
+      if (monthlyPMT <= 0) return null;
+
+      // If no return rate, use simple linear calculation
+      if (monthlyRate <= 0 || monthlyRate < 0.0001) {
+        return Math.ceil((futureValue - presentValue) / monthlyPMT);
+      }
+
+      // Compound interest formula solving for n
+      // FV = PV * (1 + r)^n + PMT * [((1 + r)^n - 1) / r]
+      // Solving: n = log((FV * r + PMT) / (PV * r + PMT)) / log(1 + r)
+      const numerator = futureValue * monthlyRate + monthlyPMT;
+      const denominator = presentValue * monthlyRate + monthlyPMT;
+
+      if (denominator <= 0 || numerator <= 0) {
+        return Math.ceil((futureValue - presentValue) / monthlyPMT);
+      }
+
+      const n = Math.log(numerator / denominator) / Math.log(1 + monthlyRate);
+      return Math.ceil(Math.max(0, n));
+    };
+
     // Calculate months to reach emergency fund target
-    const remainingForEmergency = Math.max(0, emergencyTarget - emergencyCurrent);
-    const monthsToEmergency = monthlyRate > 0 ? Math.ceil(remainingForEmergency / monthlyRate) : null;
+    const monthsToEmergency = calculateMonthsWithCompoundInterest(
+      emergencyCurrent,
+      emergencyTarget,
+      monthlyContribution,
+      monthlyReturnRate
+    );
     const emergencyTargetDate = monthsToEmergency !== null && monthsToEmergency > 0
       ? new Date(Date.now() + monthsToEmergency * 30 * 24 * 60 * 60 * 1000)
       : null;
 
     // Calculate when they'll reach various milestones
-    const milestones = [5000, 10000, 25000, 50000, 100000];
+    const milestones = [5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
     const nextMilestone = milestones.find((m) => m > currentTotal);
-    const monthsToNextMilestone = nextMilestone && monthlyRate > 0
-      ? Math.ceil((nextMilestone - currentTotal) / monthlyRate)
+    const monthsToNextMilestone = nextMilestone
+      ? calculateMonthsWithCompoundInterest(currentTotal, nextMilestone, monthlyContribution, monthlyReturnRate)
       : null;
     const nextMilestoneDate = monthsToNextMilestone !== null && monthsToNextMilestone > 0
       ? new Date(Date.now() + monthsToNextMilestone * 30 * 24 * 60 * 60 * 1000)
       : null;
 
+    // Calculate projected value in 10 years with compound interest
+    // FV = PV * (1 + r)^n + PMT * [((1 + r)^n - 1) / r]
+    const yearsProjection = 10;
+    const monthsProjection = yearsProjection * 12;
+    let projectedValue10Years: number;
+
+    if (monthlyReturnRate > 0.0001) {
+      const compoundFactor = Math.pow(1 + monthlyReturnRate, monthsProjection);
+      projectedValue10Years = currentTotal * compoundFactor +
+        monthlyContribution * ((compoundFactor - 1) / monthlyReturnRate);
+    } else {
+      projectedValue10Years = currentTotal + monthlyContribution * monthsProjection;
+    }
+
     return {
-      monthlyRate,
+      monthlyRate: monthlyContribution,
+      annualReturnRate: averageReturnRate,
       monthsToEmergency,
       emergencyTargetDate,
       nextMilestone,
       monthsToNextMilestone,
       nextMilestoneDate,
       emergencyComplete: emergencyCurrent >= emergencyTarget,
+      projectedValue10Years: Math.round(projectedValue10Years),
+      useCompoundInterest: averageReturnRate > 0,
     };
-  }, [summary]);
+  }, [summary, averageReturnRate]);
 
   const latestMonth = monthlyTotals.length > 0 ? monthlyTotals[monthlyTotals.length - 1] : undefined;
   const previousMonth = monthlyTotals.length > 1 ? monthlyTotals[monthlyTotals.length - 2] : null;
@@ -1169,7 +1393,7 @@ export const SavingsManager = () => {
       </div>
 
       {summary && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-100 via-white to-white p-6 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg md:col-span-2">
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl" aria-hidden="true" />
             <div className="relative flex flex-wrap items-start justify-between gap-6">
@@ -1250,165 +1474,10 @@ export const SavingsManager = () => {
               <FormattedMessage id="savings.summary.monthlyContributionDescription" />
             </p>
           </Card>
-
-          <Card className="flex flex-col rounded-3xl border border-muted/60 bg-card p-6 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-                <CalendarClock className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  <FormattedMessage id="savings.summary.recentTransactions" />
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  <FormattedMessage id="savings.summary.recentHint" />
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-              {displayedRecentTransactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between rounded-xl border border-muted/40 bg-muted/40 px-3 py-2"
-                >
-                  <span className="font-medium text-slate-700">
-                    <FormattedMessage id={`savings.categories.${transaction.category}`} />
-                  </span>
-                  <span
-                    className={cn(
-                      "font-semibold",
-                      transaction.saving_type === SavingType.DEPOSIT
-                        ? "text-emerald-700"
-                        : "text-rose-600",
-                    )}
-                  >
-                    {formatSavingAmount(transaction, formatCurrency)}
-                  </span>
-                </div>
-              ))}
-              {summary.recent_transactions.length === 0 && (
-                <span className="block rounded-xl border border-dashed border-muted/40 bg-muted/20 px-3 py-2 text-center text-muted-foreground">
-                  <FormattedMessage id="savings.summary.noRecent" />
-                </span>
-              )}
-            </div>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {canExpandRecent && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="inline-flex items-center gap-1 text-sm text-primary hover:text-primary"
-                  onClick={() => setRecentExpanded((prev) => !prev)}
-                  aria-expanded={recentExpanded}
-                >
-                  <FormattedMessage
-                    id={
-                      recentExpanded
-                        ? "savings.summary.recentToggle.collapse"
-                        : "savings.summary.recentToggle.expand"
-                    }
-                  />
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 transition-transform",
-                      recentExpanded ? "rotate-180" : "rotate-0",
-                    )}
-                    aria-hidden="true"
-                  />
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-full border-muted/60"
-                onClick={handleScrollToTable}
-              >
-                <FormattedMessage id="savings.summary.viewAll" />
-              </Button>
-            </div>
-            {sparkline && (
-              <div className="mt-4">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  <FormattedMessage id="savings.summary.trendLabel" />
-                </p>
-                <svg
-                  viewBox={`0 0 ${sparkline.width} ${sparkline.height}`}
-                  className="mt-2 h-16 w-full text-emerald-500"
-                  aria-hidden="true"
-                >
-                  <defs>
-                    <linearGradient
-                      id={sparklineGradientId}
-                      x1="0"
-                      y1="0"
-                      x2="0"
-                      y2="1"
-                    >
-                      <stop offset="0%" stopColor="rgba(16, 185, 129, 0.45)" />
-                      <stop offset="100%" stopColor="rgba(16, 185, 129, 0)" />
-                    </linearGradient>
-                  </defs>
-                  <path
-                    d={sparkline.areaPath}
-                    fill={`url(#${sparklineGradientId})`}
-                  />
-                  <path
-                    d={sparkline.strokePath}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                  <span>{sparkline.startLabel}</span>
-                  <span>{sparkline.endLabel}</span>
-                </div>
-              </div>
-            )}
-          </Card>
-
-          <Card className="flex flex-col justify-between rounded-3xl border border-emerald-100 bg-white p-6 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <ShieldCheck className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  <FormattedMessage id="savings.summary.emergencyFund" />
-                </p>
-                <p className="text-lg font-semibold text-emerald-800">
-                  {formatCurrency(summary.emergency_fund)}
-                  <span className="ml-1 text-sm font-normal text-muted-foreground">
-                    / {formatCurrency(summary.emergency_fund_target)}
-                  </span>
-                </p>
-              </div>
-            </div>
-            <div className="mt-4">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>
-                  <FormattedMessage id="savings.summary.emergencyProgress" />
-                </span>
-                <span className="font-medium text-emerald-700">
-                  {Math.round(summary.emergency_fund_progress)}%
-                </span>
-              </div>
-              <div className="mt-2 h-3 w-full rounded-full bg-emerald-100" aria-hidden="true">
-                <div
-                  className="h-3 rounded-full bg-emerald-500 transition-all"
-                  style={{ width: `${Math.min(summary.emergency_fund_progress, 100)}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                <FormattedMessage id="savings.summary.emergencyHint" />
-              </p>
-            </div>
-          </Card>
         </div>
       )}
 
-      {/* Goal Projection Card */}
+      {/* Goal Projection Card (Compound Interest) */}
       {goalProjection && (
         <Card className="rounded-3xl border border-sky-100 bg-gradient-to-r from-sky-50 via-white to-white p-6 shadow-sm">
           <div className="flex items-start gap-4">
@@ -1418,17 +1487,33 @@ export const SavingsManager = () => {
             <div className="flex-1 space-y-4">
               <div>
                 <h3 className="text-lg font-semibold text-sky-900">
-                  <FormattedMessage id="savings.goalProjection.title" defaultMessage="Goal Projection" />
+                  <FormattedMessage id="savings.goalProjection.title" defaultMessage="Goal Projection (Compound Interest)" />
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  <FormattedMessage
-                    id="savings.goalProjection.monthlyRate"
-                    defaultMessage="At your current rate of {amount}/month"
-                    values={{ amount: formatCurrency(goalProjection.monthlyRate) }}
-                  />
+                  {goalProjection.useCompoundInterest ? (
+                    <FormattedMessage
+                      id="savings.goalProjection.monthlyRate"
+                      defaultMessage="At {amount}/month and {rate}% annual return"
+                      values={{
+                        amount: formatCurrency(goalProjection.monthlyRate),
+                        rate: (goalProjection.annualReturnRate * 100).toFixed(1),
+                      }}
+                    />
+                  ) : (
+                    <FormattedMessage
+                      id="savings.goalProjection.monthlyRateSimple"
+                      defaultMessage="At your current rate of {amount}/month"
+                      values={{ amount: formatCurrency(goalProjection.monthlyRate) }}
+                    />
+                  )}
                 </p>
+                {goalProjection.useCompoundInterest && (
+                  <p className="mt-1 text-xs text-sky-600">
+                    📈 <FormattedMessage id="savings.goalProjection.compoundInterestNote" defaultMessage="Calculation includes compound interest" />
+                  </p>
+                )}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {/* Emergency Fund Projection */}
                 {!goalProjection.emergencyComplete && goalProjection.emergencyTargetDate && (
                   <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
@@ -1485,11 +1570,36 @@ export const SavingsManager = () => {
                     </p>
                   </div>
                 )}
+                {/* 10-Year Projection */}
+                {goalProjection.projectedValue10Years > 0 && (
+                  <div className="rounded-2xl border border-purple-100 bg-purple-50/50 px-4 py-3">
+                    <p className="text-xs uppercase tracking-wide text-purple-700">
+                      <FormattedMessage id="savings.goalProjection.projectedIn10Years" defaultMessage="In 10 years" />
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-purple-800">
+                      {formatCurrency(goalProjection.projectedValue10Years)}
+                    </p>
+                    <p className="text-xs text-purple-600">
+                      {goalProjection.useCompoundInterest ? "📊 " : ""}
+                      {(goalProjection.annualReturnRate * 100).toFixed(1)}% p.a.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </Card>
       )}
+
+      {/* Savings Goals */}
+      <SavingsGoalsSection />
+
+      {/* Retirement Account Limits (IKE/IKZE/OIPE) */}
+      <RetirementLimitsCard
+        className="rounded-3xl"
+        onQuickAddSaving={handleQuickAddRetirement}
+        refreshKey={retirementLimitsRefreshKey}
+      />
 
       <Card ref={tableRef} className="rounded-3xl border border-muted/60 bg-card shadow-sm">
         <CardHeader>
@@ -1683,9 +1793,22 @@ export const SavingsManager = () => {
                           <div className="flex flex-col">
                             {isMain ? (
                               <>
-                                <span>
-                                  <FormattedMessage id={`savings.categories.${saving.category}`} />
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span>
+                                    <FormattedMessage id={`savings.categories.${saving.category}`} />
+                                  </span>
+                                  {/* Show account type badge for III Pillar accounts */}
+                                  {saving.account_type && saving.account_type !== AccountType.STANDARD && (
+                                    <span className={cn(
+                                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                                      accountTypeBadgeStyles[saving.account_type as AccountType]?.bg,
+                                      accountTypeBadgeStyles[saving.account_type as AccountType]?.text
+                                    )}>
+                                      {accountTypeBadgeStyles[saving.account_type as AccountType]?.icon}
+                                      {saving.account_type.toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
                                 {hasHistory && (
                                   <button
                                     type="button"
@@ -1837,7 +1960,20 @@ export const SavingsManager = () => {
                             <ArrowDownRight className="h-4 w-4" aria-hidden="true" />
                           )}
                         </span>
-                        <FormattedMessage id={`savings.categories.${saving.category}`} />
+                        <div className="flex items-center gap-2">
+                          <FormattedMessage id={`savings.categories.${saving.category}`} />
+                          {/* Show account type badge for III Pillar accounts */}
+                          {saving.account_type && saving.account_type !== AccountType.STANDARD && (
+                            <span className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                              accountTypeBadgeStyles[saving.account_type as AccountType]?.bg,
+                              accountTypeBadgeStyles[saving.account_type as AccountType]?.text
+                            )}>
+                              {accountTypeBadgeStyles[saving.account_type as AccountType]?.icon}
+                              {saving.account_type.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-slate-600">{saving.description}</TableCell>
@@ -1964,28 +2100,6 @@ export const SavingsManager = () => {
           </div>
         </CardContent>
       </Card>
-
-      <div className="flex flex-wrap items-center justify-between gap-6 rounded-3xl border border-emerald-200 bg-emerald-50/60 px-6 py-6 shadow-sm">
-        <div className="flex items-start gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-200 text-emerald-700">
-            <Target className="h-6 w-6" aria-hidden="true" />
-          </span>
-          <div className="space-y-1">
-            <p className="text-lg font-semibold text-emerald-900">
-              <FormattedMessage id="savings.cta.title" />
-            </p>
-            <p className="text-sm text-muted-foreground">
-              <FormattedMessage id="savings.cta.description" />
-            </p>
-          </div>
-        </div>
-        <Button
-          onClick={handleOpenCreate}
-          className="rounded-full bg-emerald-600 text-white hover:bg-emerald-500"
-        >
-          <FormattedMessage id="savings.cta.button" />
-        </Button>
-      </div>
 
       <div className="sm:hidden">
         <Button

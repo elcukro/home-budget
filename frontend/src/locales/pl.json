@@ -56,6 +56,8 @@
     "oneOff": "Jednorazowy",
     "historical": "Historyczny",
     "now": "teraz",
+    "years": "lat",
+    "month": "mies.",
     "currency": {
       "pln": "zł"
     },
@@ -131,7 +133,10 @@
       "06": "Cze",
       "07": "Lip",
       "08": "Sie",
-      "09": "Wrz"
+      "09": "Wrz",
+      "010": "Paź",
+      "011": "Lis",
+      "012": "Gru"
     }
   },
   "validation": {
@@ -147,7 +152,8 @@
     },
     "date": {
       "future": "Data nie może być w przyszłości.",
-      "tooEarly": "Data nie może być wcześniejsza niż 2000 rok."
+      "tooEarly": "Data nie może być wcześniejsza niż 2000 rok.",
+      "tooFarFuture": "Data nie może być dalej niż 5 lat w przyszłości."
     },
     "interestRate": {
       "negative": "Oprocentowanie nie może być ujemne.",
@@ -174,9 +180,26 @@
     "loans": "Kredyty",
     "reports": "Raporty",
     "financialFreedom": "Wolność Finansowa",
+    "aiAnalysis": "Analiza AI",
     "settings": "Ustawienia",
     "savings": "Oszczędności",
     "banking": "Bankowość"
+  },
+  "aiAnalysis": {
+    "title": "Analiza AI",
+    "subtitle": "Spersonalizowane porady zgodne z metodą FIRE i Baby Steps",
+    "noApiKey": {
+      "title": "Wymagany klucz API"
+    },
+    "status": {
+      "cached": "Używanie zapisanej analizy",
+      "fresh": "Świeża analiza"
+    },
+    "metrics": {
+      "currentStep": "Aktualny krok",
+      "fireNumber": "Liczba FIRE",
+      "savingsRate": "Stopa oszczędności"
+    }
   },
   "dashboard": {
     "title": "Panel Finansowy",
@@ -203,7 +226,19 @@
       "loans": {
         "title": "Przegląd zobowiązań",
         "description": "Postęp spłat i pozostałe salda pożyczek."
+      },
+      "savings": {
+        "title": "Cele oszczędnościowe",
+        "description": "Śledź postępy w realizacji celów finansowych."
       }
+    },
+    "savings": {
+      "totalBalance": "Łączne oszczędności",
+      "monthlySavings": "Ten miesiąc",
+      "goalsTitle": "Twoje cele",
+      "goalTarget": "Cel: {amount}",
+      "noGoals": "Brak celów oszczędnościowych",
+      "addGoal": "Dodaj swój pierwszy cel"
     },
     "quickActions": {
       "addIncome": "Dodaj nowe źródło przychodu",
@@ -283,11 +318,11 @@
         "refreshing": "Odświeżanie...",
         "close": "Zamknij",
         "categories": {
-          "health": "Ogólna kondycja finansowa",
-          "spending": "Wzorce wydatków",
-          "savings": "Strategia oszczędzania",
-          "debt": "Zarządzanie długiem",
-          "budget": "Optymalizacja budżetu"
+          "baby_steps": "Droga Baby Steps",
+          "debt": "Spłata długów",
+          "savings": "Oszczędności i fundusz awaryjny",
+          "fire": "Droga do FIRE",
+          "tax_optimization": "Optymalizacja podatkowa"
         },
         "status": {
           "good": "Dobry",
@@ -306,8 +341,8 @@
         "generatedAt": "Wygenerowano {date}",
         "usingCached": "Używanie zapisanej analizy",
         "apiErrors": {
-          "overloaded": "OpenAI jest obecnie przeciążone. Spróbuj ponownie później.",
-          "invalidKey": "Nieprawidłowy klucz API. Sprawdź swój klucz API OpenAI w ustawieniach.",
+          "overloaded": "Serwis AI jest obecnie przeciążony. Spróbuj ponownie później.",
+          "invalidKey": "Nieprawidłowy klucz API. Sprawdź swój klucz API Anthropic w ustawieniach.",
           "forbidden": "Twój klucz API nie ma uprawnień do korzystania z tego modelu.",
           "rateLimit": "Przekroczono limit zapytań. Spróbuj ponownie później.",
           "generic": "Wystąpił błąd podczas generowania analizy. Spróbuj ponownie później."
@@ -470,10 +505,22 @@
       "category.select": "Wybierz kategorię...",
       "description": "Opis",
       "amount": "Kwota",
+      "amountHint": "Podaj kwotę netto (na rękę) lub brutto, zależnie od przełącznika poniżej.",
       "date": "Data",
       "startDate": "Data rozpoczęcia",
       "endDate": "Data zakończenia (opcjonalnie)",
-      "recurring": "Przychód cykliczny miesięczny"
+      "recurring": "Przychód cykliczny miesięczny",
+      "isGross": "Kwota brutto",
+      "isGrossHint": "Włącz, jeśli podajesz kwotę przed opodatkowaniem (brutto). Wyłącz dla kwoty netto (na rękę).",
+      "employmentType": "Forma zatrudnienia",
+      "employmentTypeHint": "Wybierz typ umowy, aby uzyskać dokładniejsze obliczenia podatkowe."
+    },
+    "employmentTypes": {
+      "uop": "Umowa o pracę (UoP)",
+      "b2b": "B2B (działalność gospodarcza)",
+      "zlecenie": "Umowa zlecenie",
+      "dzielo": "Umowa o dzieło",
+      "other": "Inne"
     },
     "table": {
       "category": "Kategoria",
@@ -667,10 +714,15 @@
       "nextPayment": "Najbliższa rata: {date}"
     },
     "types": {
-      "mortgage": "Hipoteka",
+      "mortgage": "Kredyt hipoteczny",
       "car": "Kredyt samochodowy",
       "personal": "Pożyczka osobista",
       "student": "Kredyt studencki",
+      "credit_card": "Karta kredytowa",
+      "cash_loan": "Kredyt gotówkowy",
+      "installment": "Zakupy na raty",
+      "leasing": "Leasing",
+      "overdraft": "Debet na koncie",
       "other": "Inne"
     },
     "form": {
@@ -780,12 +832,77 @@
         "years": "{count, plural, one {# rok} few {# lata} other {# lat}}",
         "yearsAndMonths": "{years, plural, one {# rok} few {# lata} other {# lat}} {months} mies."
       }
+    },
+    "view": {
+      "expanded": "Widok rozszerzony",
+      "compact": "Widok kompaktowy"
+    },
+    "creditCard": {
+      "utilization": "Wykorzystanie limitu",
+      "limit": "Limit: {limit}",
+      "currentDebt": "Aktualne zadłużenie",
+      "plannedPayment": "Planowana spłata",
+      "minPaymentHint": "Min. spłata: ok. 5% salda",
+      "highUtilization": "Wysokie wykorzystanie limitu wpływa negatywnie na scoring kredytowy"
+    },
+    "calculator": {
+      "button": "Kalkulator",
+      "title": "Kalkulator kredytowy",
+      "description": "Oblicz ratę, okres spłaty lub maksymalną kwotę kredytu na podstawie pozostałych parametrów.",
+      "calculateLabel": "Co obliczyć?",
+      "target": {
+        "monthlyPayment": "Ratę miesięczną",
+        "termMonths": "Okres spłaty",
+        "principal": "Kwotę kredytu"
+      },
+      "result": {
+        "monthlyPayment": "Rata miesięczna:",
+        "termMonths": "Okres spłaty:",
+        "principal": "Kwota kredytu:"
+      },
+      "totalCost": "Całkowity koszt:",
+      "totalInterest": "Suma odsetek:",
+      "apply": "Zastosuj"
+    },
+    "quickAdd": {
+      "title": "Szybkie dodawanie - wybierz typ kredytu:",
+      "mortgage": {
+        "description": "Kredyt na nieruchomość"
+      },
+      "car": {
+        "description": "Finansowanie pojazdu"
+      },
+      "credit_card": {
+        "description": "Zadłużenie na karcie"
+      },
+      "cash_loan": {
+        "description": "Pożyczka gotówkowa"
+      },
+      "installment": {
+        "description": "Zakupy ratalne"
+      },
+      "leasing": {
+        "description": "Leasing operacyjny lub finansowy"
+      },
+      "overdraft": {
+        "description": "Limit debetowy na koncie"
+      }
     }
   },
   "reports": {
     "title": "Raporty Finansowe",
+    "subtitle": "Monitoruj swoje postępy finansowe w czasie",
     "monthlyBalance": "Bilans Miesięczny",
-    "savingsRate": "Wskaźnik Oszczędności",
+    "savingsRate": "Stopa Oszczędności",
+    "totalIncome": "Łączne Przychody",
+    "totalExpenses": "Łączne Wydatki",
+    "totalLoans": "Spłaty Kredytów",
+    "totalSavings": "Oszczędności Netto",
+    "savings": "Oszczędności",
+    "ofIncome": "z przychodu",
+    "netBalance": "Bilans Netto",
+    "monthlyBreakdown": "Podsumowanie Miesięczne",
+    "incomeDistribution": "Rozkład Przychodów",
     "totalLoanBalance": "Całkowite Saldo Kredytów",
     "monthlyFlow": "Przepływ Pieniężny",
     "expenseDistribution": "Rozkład Wydatków",
@@ -800,6 +917,11 @@
     "period": {
       "from": "Od",
       "to": "Do",
+      "currentYear": "Bieżący rok",
+      "previousYear": "Poprzedni rok",
+      "last2Years": "Ostatnie 2 lata",
+      "last5Years": "Ostatnie 5 lat",
+      "custom": "Wybrane daty",
       "presets": {
         "last3Months": "Ostatnie 3 miesiące",
         "last6Months": "Ostatnie 6 miesięcy",
@@ -826,6 +948,7 @@
       "expenseRatio": "Wskaźnik Wydatków"
     },
     "chart": {
+      "title": "Trendy Finansowe",
       "income": "Przychód",
       "expenses": "Wydatki",
       "loanPayments": "Spłaty Pożyczek",
@@ -854,8 +977,8 @@
     },
     "ai": {
       "title": "Konfiguracja AI Insights",
-      "apiKey": "Klucz API OpenAI",
-      "apiKeyDescription": "Wprowadź klucz API OpenAI, aby włączyć spersonalizowane analizy",
+      "apiKey": "Klucz API Anthropic",
+      "apiKeyDescription": "Wprowadź klucz API Anthropic, aby włączyć spersonalizowane analizy",
       "frequency": {
         "label": "Częstotliwość odświeżania analiz",
         "daily": "Codziennie",
@@ -866,7 +989,7 @@
       "lastGenerated": "Ostatnio wygenerowano: {date}",
       "saveSuccess": "Ustawienia AI zostały zapisane pomyślnie",
       "testConnection": "Testuj połączenie",
-      "connectionSuccess": "Pomyślnie połączono z OpenAI",
+      "connectionSuccess": "Pomyślnie połączono z Anthropic",
       "connectionError": "Błąd połączenia: {error}"
     },
     "tabs": {
@@ -902,7 +1025,7 @@
     "tooltips": {
       "language": "Wybierz preferowany język aplikacji",
       "currency": "Wybierz preferowaną walutę dla obliczeń finansowych",
-      "claudeApiKey": "Wprowadź swój klucz API OpenAI, aby włączyć analizy AI",
+      "claudeApiKey": "Wprowadź swój klucz API Anthropic, aby włączyć analizy AI",
       "export": "Eksportuj swoje dane w formacie JSON, CSV lub Excel do kopii zapasowej lub analizy",
       "import": "Importuj wcześniej wyeksportowane dane, aby przywrócić lub połączyć je z bieżącymi rekordami",
       "emergencyFundTarget": "Ustaw kwotę docelową dla Kroku 1 (Początkowy Fundusz Awaryjny)",
@@ -912,8 +1035,8 @@
       "language": "Język",
       "currency": "Waluta",
       "submit": "Zapisz ustawienia",
-      "claudeApiKey": "Klucz API OpenAI",
-      "claudeApiKeyPlaceholder": "Wprowadź swój klucz API OpenAI"
+      "claudeApiKey": "Klucz API Anthropic",
+      "claudeApiKeyPlaceholder": "Wprowadź swój klucz API Anthropic"
     },
     "messages": {
       "success": "Ustawienia zostały zaktualizowane",
@@ -922,7 +1045,7 @@
       "notLoggedIn": "Musisz być zalogowany, aby uzyskać dostęp do ustawień",
       "exportSuccess": "Dane zostały wyeksportowane",
       "exportError": "Nie udało się wyeksportować danych",
-      "claudeApiKeyRequired": "Klucz API OpenAI jest wymagany do analiz AI",
+      "claudeApiKeyRequired": "Klucz API Anthropic jest wymagany do analiz AI",
       "importSuccess": "Dane zostały zaimportowane pomyślnie",
       "importError": "Nie udało się zaimportować danych. Sprawdź format pliku i spróbuj ponownie.",
       "currencyConverted": "Twój docelowy fundusz awaryjny został przeliczony z {oldCurrency} na {newCurrency}: {amount}",
@@ -936,6 +1059,41 @@
       "emergencyFundTargetRange": "Zakres: 1 000 zł - 5 000 zł",
       "emergencyFundMonths": "Krok 3: Liczba miesięcy Funduszu Awaryjnego",
       "months": "miesięcy"
+    },
+    "taxProfile": {
+      "title": "Profil podatkowy",
+      "description": "Te dane pomagają AI lepiej dopasować porady podatkowe i inwestycyjne do Twojej sytuacji.",
+      "birthYear": "Rok urodzenia",
+      "birthYearHint": "Potrzebne do sprawdzenia ulgi dla młodych (do 26 lat)",
+      "childrenCount": "Liczba dzieci",
+      "employmentStatus": "Status zatrudnienia",
+      "selectEmployment": "Wybierz status",
+      "taxForm": "Forma opodatkowania",
+      "selectTaxForm": "Wybierz formę",
+      "ppkSection": "Pracownicze Plany Kapitałowe (PPK)",
+      "ppkEnrolled": "Czy uczestniczysz w PPK?",
+      "ppkEnrolledHint": "PPK to dodatkowe pieniądze od pracodawcy na emeryturę",
+      "ppkUnknown": "Nie wiem",
+      "ppkYes": "Tak",
+      "ppkNo": "Nie",
+      "ppkEmployeeRate": "Twoja składka (%)",
+      "ppkEmployerRate": "Składka pracodawcy (%)",
+      "authorsCosts": "Koszty autorskie (50% KUP)",
+      "authorsCostsHint": "Dla twórców - 50% przychodu jako koszty uzyskania",
+      "employmentStatuses": {
+        "employee": "Umowa o pracę",
+        "b2b": "B2B / Działalność gospodarcza",
+        "contract": "Umowa zlecenie",
+        "freelancer": "Freelancer",
+        "business": "Własna firma",
+        "unemployed": "Bezrobotny / Student"
+      },
+      "taxForms": {
+        "scale": "Skala podatkowa (12%/32%)",
+        "linear": "Podatek liniowy (19%)",
+        "lumpsum": "Ryczałt",
+        "card": "Karta podatkowa"
+      }
     }
   },
   "auth": {
@@ -964,8 +1122,8 @@
   },
   "financialFreedom": {
     "title": "Droga do Wolności Finansowej",
-    "subtitle": "Śledź swój postęp w 7 Krokach Dave'a Ramseya",
-    "overview": "7 Kroków to sprawdzony plan, który pomoże Ci wyjść z długów, oszczędzać pieniądze i budować majątek.",
+    "subtitle": "7 Kroków do Niezależności Finansowej w Polsce",
+    "overview": "Plan FIRE (Financial Independence, Retire Early) dostosowany do polskich realiów: III filar, IKE, IKZE, PPK, ulgi podatkowe. Uwolnij się od długów i zbuduj majątek pozwalający żyć z odsetek.",
     "yourProgress": "Twój Postęp",
     "startDate": "Rozpoczęto: {date}",
     "updateProgress": "Aktualizuj Postęp",
@@ -1030,15 +1188,19 @@
         "remainingMortgage": "Pozostały Kredyt Hipoteczny: {amount}",
         "originalAmount": "Pierwotny Kredyt Hipoteczny: {amount}",
         "mortgageFree": "Twój dom jest spłacony!",
+        "noMortgage": "Nie masz kredytu hipotecznego",
+        "noMortgageTip": "Ten krok jest już ukończony! Możesz przejść do następnego kroku.",
         "tip": "Nadpłata 500 PLN/mies. przy kredycie 400 tys. PLN skraca spłatę o 7 lat i oszczędza ~87 tys. PLN odsetek. Sprawdź czy bank nie pobiera prowizji (od 2022 r. nie może przez pierwsze 3 lata)."
       },
       "step7": {
-        "title": "Krok 7: Buduj Majątek i Dawaj",
-        "shortTitle": "Budowanie Majątku",
-        "description": "Buduj majątek i hojnie dawaj innym.",
-        "wealthBuilding": "Budowanie Majątku: W trakcie",
+        "title": "Krok 7: Osiągnij FIRE Number",
+        "shortTitle": "FIRE Number",
+        "description": "Zbuduj majątek pozwalający na niezależność finansową. FIRE Number = roczne wydatki × 25 (zasada 4%). Gdy osiągniesz tę kwotę, możesz żyć z odsetek. Hojnie dawaj innym.",
+        "wealthBuilding": "Postęp do FIRE Number",
         "giving": "Darowizny Charytatywne: {amount}/rocznie",
-        "tip": "Kontynuuj inwestowanie i znajdź cele, które Cię pasjonują, aby je wspierać."
+        "fireNumber": "Twój FIRE Number: {amount}",
+        "fireProgress": "Postęp: {percent}%",
+        "tip": "FIRE Number = roczne wydatki × 25. Przy wydatkach 8 000 PLN/mies. (96 000 PLN/rok) = 2 400 000 PLN. Z 4% zwrotu = 96 000 PLN/rok pasywnego dochodu."
       }
     },
     "status": {
@@ -1062,6 +1224,30 @@
       "suggestion": "Sugestia: {text}"
     }
   },
+  "fireCalculator": {
+    "title": "Kalkulator FIRE",
+    "subtitle": "Oblicz swoją liczbę FIRE (Financial Independence, Retire Early)",
+    "monthlyExpenses": "Miesięczne wydatki",
+    "currentSavings": "Aktualne oszczędności",
+    "monthlyInvestment": "Miesięczna inwestycja",
+    "annualReturn": "Oczekiwana roczna stopa zwrotu (%)",
+    "fireNumber": "Twój FIRE Number",
+    "fireFormula": "= Roczne wydatki × 25",
+    "yearsToFire": "Lat do FIRE",
+    "fireReached": "Już osiągnięte!",
+    "notCalculable": "N/D",
+    "withCompoundInterest": "Z procentem składanym",
+    "progress": "Postęp",
+    "monthlyPassiveIncome": "Miesięczny dochód pasywny",
+    "whenFireReached": "Po osiągnięciu FIRE (zasada 4%)",
+    "projections": "Prognozowana wartość portfela",
+    "in5Years": "Za 5 lat",
+    "in10Years": "Za 10 lat",
+    "in20Years": "Za 20 lat",
+    "in30Years": "Za 30 lat",
+    "coastFireTitle": "Coast FIRE Number",
+    "coastFireDescription": "Jeśli masz dziś tę kwotę, możesz przestać dokładać i nadal osiągnąć FIRE za 20 lat przy {rate}% rocznym zwrocie."
+  },
   "savings": {
     "title": "Zarządzanie oszczędnościami",
     "subtitle": "Śledź wpłaty, wypłaty i cele oszczędnościowe w jednym miejscu.",
@@ -1083,9 +1269,40 @@
       "deposit": "Wpłata",
       "withdrawal": "Wypłata"
     },
+    "accountTypes": {
+      "standard": "Konto standardowe",
+      "ike": "IKE (limit 28 260 PLN/rok)",
+      "ikze": "IKZE (limit 11 304/16 956 PLN/rok)",
+      "ppk": "PPK",
+      "oipe": "OIPE"
+    },
+    "retirementLimits": {
+      "title": "Limity III Filaru",
+      "subtitle": "Wpłaty na konta emerytalne w {year} roku",
+      "tooltip": "Roczne limity wpłat na IKE i IKZE są ustalane przez Ministerstwo Finansów. Przekroczenie limitu może skutkować sankcjami podatkowymi.",
+      "contributed": "Wpłacono",
+      "ofLimit": "limitu",
+      "limit": "Limit",
+      "remaining": "Do wykorzystania: {amount}",
+      "overLimit": "Przekroczono limit o {amount}!",
+      "totalContributions": "Łączne wpłaty emerytalne",
+      "noContributions": "Brak wpłat na konta III Filaru w tym roku",
+      "addAccountHint": "Dodaj wpłatę z typem konta IKE, IKZE lub OIPE, aby śledzić limity",
+      "limitsInfo": "Limity wpłat {year}",
+      "noCapitalGainsTax": "(bez podatku od zysków)",
+      "taxDeductible": "(odliczenie od dochodu)",
+      "jdgLimit": "limit JDG",
+      "accounts": {
+        "ike": "IKE",
+        "ikze": "IKZE",
+        "ppk": "PPK",
+        "oipe": "OIPE",
+        "standard": "Standard"
+      }
+    },
     "summary": {
       "totalSavings": "Łączne oszczędności",
-      "monthlyContribution": "Miesięczna składka",
+      "monthlyContribution": "Wpłaty w tym miesiącu",
       "recentTransactions": "Ostatnie transakcje",
       "noRecent": "Brak ostatnich transakcji",
       "changePositive": "↑ {amount} vs {previousMonth}",
@@ -1094,8 +1311,8 @@
       "changeFirst": "Pierwszy miesiąc oszczędzania (+{amount}) – świetny start!",
       "changeNoData": "Brak danych historycznych.",
       "topCategory": "Największy udział: {category}",
-      "monthlyContributionHint": "W tym miesiącu planujesz odłożyć ok. {amount}.",
-      "monthlyContributionDescription": "To średnia suma wpłat z bieżącego miesiąca. Dobry moment, aby urealnić cele oszczędnościowe.",
+      "monthlyContributionHint": "Tyle wpłaciłeś na oszczędności w bieżącym miesiącu.",
+      "monthlyContributionDescription": "Suma wszystkich wpłat na oszczędności w bieżącym miesiącu.",
       "recentHint": "Najnowsze wpłaty i wypłaty z ostatnich tygodni.",
       "recentToggle": {
         "expand": "Pokaż więcej",
@@ -1144,21 +1361,36 @@
     "form": {
       "category": "Kategoria",
       "category.select": "Wybierz kategorię...",
-      "description": "Opis",
+      "categoryHint": "Wybierz cel oszczędnościowy",
+      "description": "Opis (opcjonalnie)",
+      "descriptionHint": "Krótka notatka, np. 'premia za kwiecień'",
       "amount": "Kwota",
+      "amountHint": "Ile chcesz wpłacić lub wypłacić?",
       "date": "Data",
       "endDate": "Data zakończenia",
-      "savingType": "Typ",
-      "isRecurring": "Oszczędność cykliczna",
-      "targetAmount": "Kwota docelowa"
+      "endDateHint": "Kiedy zakończyć cykliczne wpłaty?",
+      "savingType": "Co chcesz zrobić?",
+      "savingTypeHint": "Wpłata = odkładasz pieniądze, Wypłata = korzystasz z oszczędności",
+      "isRecurring": "Powtarzaj co miesiąc",
+      "isRecurringHint": "Włącz dla stałych wpłat, np. comiesięczne oszczędzanie",
+      "targetAmount": "Kwota docelowa",
+      "targetAmountHint": "Ile chcesz uzbierać? Możesz śledzić postęp.",
+      "accountType": "Typ konta (III filar)",
+      "accountTypeHint": "Dla IKE/IKZE limity są śledzone automatycznie",
+      "annualReturnRate": "Oczekiwana stopa zwrotu (%)",
+      "annualReturnRate.placeholder": "np. 5 dla 5%",
+      "annualReturnRateHint": "Używane do prognoz z procentem składanym"
     },
     "goalProjection": {
-      "title": "Prognoza celów",
-      "monthlyRate": "Przy obecnej wpłacie {amount}/miesiąc",
+      "title": "Prognoza celów (procent składany)",
+      "monthlyRate": "Przy wpłacie {amount}/mies. i stopie zwrotu {rate}% rocznie",
+      "monthlyRateSimple": "Przy obecnej wpłacie {amount}/miesiąc",
       "emergencyFund": "Fundusz awaryjny",
       "complete": "Ukończony!",
       "nextMilestone": "Osiągniesz {amount}",
-      "inMonths": "Za {months} miesięcy"
+      "inMonths": "Za {months} miesięcy",
+      "projectedIn10Years": "Za 10 lat",
+      "compoundInterestNote": "Kalkulacja uwzględnia procent składany"
     },
     "table": {
       "category": "Kategoria",
@@ -1184,9 +1416,10 @@
       "genericError": "Coś poszło nie tak. Spróbuj ponownie."
     },
     "dialog": {
-      "createTitle": "Dodaj wpis oszczędności",
-      "editTitle": "Edytuj wpis oszczędności",
-      "createSubmit": "Dodaj oszczędność",
+      "createTitle": "Nowa wpłata lub wypłata",
+      "createDescription": "Zacznij od wyboru czy chcesz wpłacić czy wypłacić pieniądze.",
+      "editTitle": "Edytuj wpis",
+      "createSubmit": "Zapisz",
       "editSubmit": "Zapisz zmiany"
     },
     "deleteDialog": {
@@ -1196,6 +1429,59 @@
     },
     "noEntries": "Brak zapisów oszczędności",
     "loadError": "Nie udało się załadować oszczędności. Spróbuj ponownie później."
+  },
+  "goals": {
+    "title": "Cele oszczędnościowe",
+    "addGoal": "Dodaj cel",
+    "empty": "Nie masz jeszcze własnych celów oszczędnościowych",
+    "createFirst": "Stwórz własny cel",
+    "babySteps": {
+      "badge": "Krok {step}",
+      "emergencyFund": "Fundusz awaryjny (1 mies.)",
+      "sixMonthFund": "Pełny fundusz bezpieczeństwa (6 mies.)",
+      "autoCalculated": "Cel automatyczny"
+    },
+    "form": {
+      "name": "Nazwa celu",
+      "targetAmount": "Kwota docelowa",
+      "category": "Kategoria",
+      "deadline": "Termin realizacji",
+      "notes": "Notatki"
+    },
+    "status": {
+      "active": "Aktywny",
+      "completed": "Osiągnięty",
+      "paused": "Wstrzymany",
+      "abandoned": "Porzucony"
+    },
+    "onTrack": "Na dobrej drodze",
+    "behindSchedule": "Opóźnienie",
+    "remaining": "Pozostało: {amount}",
+    "pausedGoals": "Wstrzymane cele",
+    "completedCount": "Osiągnięte cele ({count})",
+    "viewDetails": "Zobacz szczegóły",
+    "markComplete": "Oznacz jako osiągnięty",
+    "pause": "Wstrzymaj",
+    "resume": "Wznów",
+    "dialog": {
+      "createTitle": "Nowy cel oszczędnościowy",
+      "editTitle": "Edytuj cel",
+      "create": "Utwórz cel",
+      "save": "Zapisz zmiany"
+    },
+    "toast": {
+      "createSuccess": "Cel został utworzony",
+      "updateSuccess": "Cel został zaktualizowany",
+      "deleteSuccess": "Cel został usunięty",
+      "error": "Wystąpił błąd",
+      "loadError": "Nie udało się załadować celów",
+      "completedSuccess": "Gratulacje! Cel został osiągnięty 🎉"
+    },
+    "deleteDialog": {
+      "title": "Usuń cel",
+      "description": "Czy na pewno chcesz usunąć ten cel? Wszystkie przypisane oszczędności zostaną od niego odłączone.",
+      "confirm": "Usuń cel"
+    }
   },
   "onboarding": {
     "header": {
@@ -1331,7 +1617,11 @@
         "salary": "Wynagrodzenie",
         "additionalSources": "Źródła dodatkowe",
         "irregularIncome": "Dochody nieregularne (miesięczny ekwiwalent)",
-        "taxForm": "Forma opodatkowania"
+        "taxForm": "Forma opodatkowania",
+        "ppk": "PPK (Pracownicze Plany Kapitałowe)",
+        "authorsCosts": "Koszty autorskie (KUP 50%)",
+        "youthRelief": "Ulga dla młodych",
+        "youthReliefEligible": "Tak (wiek: {age} lat)"
       },
       "expenses": {
         "fixedCosts": "Wydatki miesięczne (powtarzalne)",
@@ -1420,11 +1710,26 @@
         "employmentStatus": {
           "label": "Status zawodowy",
           "options": {
-            "employee": "Etat",
-            "business": "Działalność",
+            "employee": "Etat (UoP)",
+            "b2b": "B2B (kontrakt)",
+            "business": "Własna działalność (JDG)",
+            "contract": "Umowa zlecenie/dzieło",
             "freelancer": "Freelancer",
             "unemployed": "Bez zatrudnienia"
           }
+        },
+        "birthYear": {
+          "label": "Rok urodzenia",
+          "tooltip": "Potrzebujemy tej informacji do sprawdzenia ulgi dla młodych (do 26 r.ż.).",
+          "hint": "Ulga dla młodych zwalnia z PIT dochody do 85 528 zł rocznie."
+        },
+        "ppkEnrolled": {
+          "label": "Czy jesteś zapisany do PPK?",
+          "hint": "Pracownicze Plany Kapitałowe – pracodawca dopłaca min. 1,5% do Twojej składki."
+        },
+        "useAuthorsCosts": {
+          "label": "Czy stosujesz koszty autorskie (50%)?",
+          "hint": "KUP 50% dla twórców – programiści, graficy, architekci, dziennikarze itp."
         },
         "taxForm": {
           "label": "Forma opodatkowania",
@@ -1719,25 +2024,37 @@
           "option": "Kredyt samochodowy",
           "cardTitle": "Kredyt samochodowy"
         },
-        "consumer": {
-          "option": "Pożyczka konsumpcyjna",
-          "cardTitle": "Pożyczka konsumpcyjna"
+        "personal": {
+          "option": "Kredyt gotówkowy",
+          "cardTitle": "Kredyt gotówkowy"
         },
-        "card": {
-          "option": "Karta kredytowa / limit",
-          "cardTitle": "Karta kredytowa / limit"
+        "student": {
+          "option": "Kredyt studencki",
+          "cardTitle": "Kredyt studencki"
         },
-        "line": {
-          "option": "Linia kredytowa",
-          "cardTitle": "Linia kredytowa"
+        "credit_card": {
+          "option": "Karta kredytowa",
+          "cardTitle": "Karta kredytowa"
+        },
+        "cash_loan": {
+          "option": "Pożyczka gotówkowa",
+          "cardTitle": "Pożyczka gotówkowa"
+        },
+        "installment": {
+          "option": "Zakupy ratalne",
+          "cardTitle": "Zakupy ratalne"
         },
         "leasing": {
           "option": "Leasing",
           "cardTitle": "Leasing"
         },
-        "nonbank": {
-          "option": "Pożyczka pozabankowa",
-          "cardTitle": "Pożyczka pozabankowa"
+        "overdraft": {
+          "option": "Debet / limit w koncie",
+          "cardTitle": "Debet / limit w koncie"
+        },
+        "other": {
+          "option": "Inne zobowiązanie",
+          "cardTitle": "Inne zobowiązanie"
         }
       }
     },
@@ -2123,5 +2440,34 @@
       "terms": "Regulamin",
       "rights": "Wszelkie prawa zastrzeżone."
     }
+  },
+  "validation": {
+    "required": "To pole jest wymagane",
+    "categoryRequired": "Wybierz kategorię",
+    "amount": {
+      "nonPositive": "Kwota musi być większa od zera",
+      "tooLarge": "Kwota jest zbyt duża",
+      "nonNegative": "Kwota nie może być ujemna"
+    },
+    "interestRate": {
+      "negative": "Oprocentowanie nie może być ujemne",
+      "max": "Oprocentowanie nie może przekraczać 100%"
+    },
+    "remainingBalance": {
+      "negative": "Saldo nie może być ujemne",
+      "exceedsAmount": "Saldo nie może przekraczać kwoty głównej"
+    },
+    "monthlyPayment": {
+      "negative": "Rata nie może być ujemna",
+      "exceedsAmount": "Rata nie może przekraczać kwoty głównej"
+    },
+    "date": {
+      "future": "Data nie może być w przyszłości",
+      "tooEarly": "Data jest zbyt wczesna"
+    },
+    "description": {
+      "tooLong": "Opis jest zbyt długi (max 200 znaków)"
+    },
+    "endDateAfterStartDate": "Data końcowa musi być późniejsza niż data początkowa"
   }
 }

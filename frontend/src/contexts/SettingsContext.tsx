@@ -17,7 +17,18 @@ interface Settings {
   emergency_fund_target?: number; // Target amount for Baby Step 1
   emergency_fund_months?: number; // Months for Baby Step 3
   base_currency?: string; // Base currency for emergency fund target
+  // Polish tax-specific settings (from onboarding)
+  employment_status?: string; // employee, b2b, business, contract, freelancer, unemployed
+  tax_form?: string; // scale, linear, lumpsum, card
+  birth_year?: number; // For youth tax relief eligibility
+  use_authors_costs?: boolean; // KUP 50% for creators
+  ppk_enrolled?: boolean; // PPK enrollment status
+  ppk_employee_rate?: number; // PPK employee contribution (0.5% - 4%)
+  ppk_employer_rate?: number; // PPK employer contribution (1.5% - 4%)
+  children_count?: number; // For child tax relief calculation
 }
+
+export type { Settings };
 
 interface SettingsContextType {
   settings: Settings | null;

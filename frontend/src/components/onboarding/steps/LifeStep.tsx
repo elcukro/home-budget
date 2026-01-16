@@ -185,6 +185,33 @@ export default function LifeStep({
       <FieldGroup
         label={
           <>
+            {intl.formatMessage({ id: 'onboarding.life.fields.birthYear.label' })}{' '}
+            <TooltipTrigger text={intl.formatMessage({ id: 'onboarding.life.fields.birthYear.tooltip' })}>
+              <Info className="h-4 w-4 text-primary" />
+            </TooltipTrigger>
+          </>
+        }
+        error={errors['birthYear']}
+        hint={intl.formatMessage({ id: 'onboarding.life.fields.birthYear.hint' })}
+      >
+        <Input
+          type="number"
+          min={1940}
+          max={new Date().getFullYear()}
+          value={data.birthYear ?? ''}
+          onChange={(event) =>
+            onChange({ birthYear: event.target.value ? Number(event.target.value) : undefined })
+          }
+          placeholder={intl.formatMessage(
+            { id: 'onboarding.placeholders.exampleNumber' },
+            { value: 1995 },
+          )}
+        />
+      </FieldGroup>
+
+      <FieldGroup
+        label={
+          <>
             {intl.formatMessage({ id: 'onboarding.life.fields.housingType.label' })}{' '}
             <TooltipTrigger text={intl.formatMessage({ id: 'onboarding.life.fields.housingType.tooltip' })}>
               <Info className="h-4 w-4 text-primary" />
@@ -247,6 +274,10 @@ export default function LifeStep({
           onValueChange={(value) =>
             onChange({
               employmentStatus: value as OnboardingData['life']['employmentStatus'],
+              // Reset PPK when switching away from employee
+              ppkEnrolled: value === 'employee' ? data.ppkEnrolled : undefined,
+              // Reset tax form when not business
+              taxForm: (value === 'business' || value === 'b2b') ? data.taxForm : '',
             })
           }
         >
@@ -257,8 +288,14 @@ export default function LifeStep({
             <SelectItem value="employee">
               {intl.formatMessage({ id: 'onboarding.life.fields.employmentStatus.options.employee' })}
             </SelectItem>
+            <SelectItem value="b2b">
+              {intl.formatMessage({ id: 'onboarding.life.fields.employmentStatus.options.b2b' })}
+            </SelectItem>
             <SelectItem value="business">
               {intl.formatMessage({ id: 'onboarding.life.fields.employmentStatus.options.business' })}
+            </SelectItem>
+            <SelectItem value="contract">
+              {intl.formatMessage({ id: 'onboarding.life.fields.employmentStatus.options.contract' })}
             </SelectItem>
             <SelectItem value="freelancer">
               {intl.formatMessage({ id: 'onboarding.life.fields.employmentStatus.options.freelancer' })}
@@ -270,7 +307,43 @@ export default function LifeStep({
         </Select>
       </FieldGroup>
 
-      {data.employmentStatus === 'business' && (
+      {/* PPK for employees */}
+      {data.employmentStatus === 'employee' && (
+        <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-primary">
+              {intl.formatMessage({ id: 'onboarding.life.fields.ppkEnrolled.label' })}
+            </p>
+            <p className="text-xs text-secondary">
+              {intl.formatMessage({ id: 'onboarding.life.fields.ppkEnrolled.hint' })}
+            </p>
+          </div>
+          <Switch
+            checked={data.ppkEnrolled ?? false}
+            onCheckedChange={(checked) => onChange({ ppkEnrolled: checked })}
+          />
+        </div>
+      )}
+
+      {/* KUP 50% for employees/contractors/freelancers with creative work */}
+      {(data.employmentStatus === 'employee' || data.employmentStatus === 'contract' || data.employmentStatus === 'freelancer') && (
+        <div className="flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-primary">
+              {intl.formatMessage({ id: 'onboarding.life.fields.useAuthorsCosts.label' })}
+            </p>
+            <p className="text-xs text-secondary">
+              {intl.formatMessage({ id: 'onboarding.life.fields.useAuthorsCosts.hint' })}
+            </p>
+          </div>
+          <Switch
+            checked={data.useAuthorsCosts ?? false}
+            onCheckedChange={(checked) => onChange({ useAuthorsCosts: checked })}
+          />
+        </div>
+      )}
+
+      {(data.employmentStatus === 'business' || data.employmentStatus === 'b2b') && (
         <FieldGroup
           label={intl.formatMessage({ id: 'onboarding.life.fields.taxForm.label' })}
           error={errors['taxForm']}

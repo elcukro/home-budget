@@ -87,6 +87,36 @@ export default function SummaryStep({
     ]);
   }
 
+  // Add PPK enrollment status for employees
+  if (data.life.employmentStatus === 'employee' && data.life.ppkEnrolled !== undefined) {
+    incomeItems.push([
+      intl.formatMessage({ id: 'onboarding.summary.income.ppk' }),
+      data.life.ppkEnrolled
+        ? intl.formatMessage({ id: 'common.yes' })
+        : intl.formatMessage({ id: 'common.no' }),
+    ]);
+  }
+
+  // Add KUP 50% status for eligible employment types
+  if (data.life.useAuthorsCosts) {
+    incomeItems.push([
+      intl.formatMessage({ id: 'onboarding.summary.income.authorsCosts' }),
+      intl.formatMessage({ id: 'common.yes' }),
+    ]);
+  }
+
+  // Add youth relief eligibility based on birth year
+  if (data.life.birthYear) {
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - data.life.birthYear;
+    if (age < 26) {
+      incomeItems.push([
+        intl.formatMessage({ id: 'onboarding.summary.income.youthRelief' }),
+        intl.formatMessage({ id: 'onboarding.summary.income.youthReliefEligible' }, { age }),
+      ]);
+    }
+  }
+
   const expensesItems: Array<[string, string]> = [
     [
       intl.formatMessage({ id: 'onboarding.summary.expenses.fixedCosts' }),

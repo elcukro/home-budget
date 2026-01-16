@@ -121,7 +121,17 @@ export function validateMonthlyPayment(
   return null
 }
 
-export function validateDateString(value: string): ValidationIssue | null {
+interface DateValidationOptions {
+  allowFuture?: boolean
+  maxFutureYears?: number
+}
+
+export function validateDateString(
+  value: string,
+  options: DateValidationOptions = {}
+): ValidationIssue | null {
+  const { allowFuture = false, maxFutureYears = 5 } = options
+
   if (!value?.trim()) {
     return { messageId: "validation.required" }
   }
@@ -148,13 +158,22 @@ export function validateDateString(value: string): ValidationIssue | null {
     return { messageId: "validation.required" }
   }
 
-  const date = new Date(Date.UTC(year, month - 1, day))
+  const date = new Date(year, month - 1, day)
+  date.setHours(0, 0, 0, 0)
   const today = new Date()
-  today.setUTCHours(0, 0, 0, 0)
-  const earliest = new Date(Date.UTC(2000, 0, 1))
+  today.setHours(0, 0, 0, 0)
+  const earliest = new Date(2000, 0, 1)
 
-  if (date > today) {
+  if (!allowFuture && date > today) {
     return { messageId: "validation.date.future" }
+  }
+
+  if (allowFuture) {
+    const maxFuture = new Date()
+    maxFuture.setFullYear(maxFuture.getFullYear() + maxFutureYears)
+    if (date > maxFuture) {
+      return { messageId: "validation.date.tooFarFuture" }
+    }
   }
 
   if (date < earliest) {

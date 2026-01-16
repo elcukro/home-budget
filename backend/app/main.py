@@ -7,7 +7,7 @@ from . import models, database
 from pydantic import BaseModel, Field, model_validator
 from datetime import date, datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func
+from sqlalchemy import func, case, or_
 import calendar
 from fastapi.responses import JSONResponse, StreamingResponse
 import csv
@@ -51,7 +51,7 @@ app.include_router(tink.router)
 app.include_router(stripe_billing.router)
 
 # Loan models
-VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "other"]
+VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]
 
 class LoanBase(BaseModel):
     loan_type: str = Field(..., description="Type of loan")
@@ -62,6 +62,9 @@ class LoanBase(BaseModel):
     monthly_payment: float = Field(..., ge=0, description="Monthly payment amount")
     start_date: date = Field(..., description="Loan start date")
     term_months: int = Field(..., gt=0, description="Loan term in months")
+    # Polish prepayment regulations (since 2022, banks cannot charge fees for first 3 years)
+    overpayment_fee_percent: float | None = Field(default=0, ge=0, le=10, description="Prepayment fee percentage (0-10%)")
+    overpayment_fee_waived_until: date | None = Field(default=None, description="Date until prepayment fees are waived")
 
     @model_validator(mode='after')
     def validate_loan(self):
@@ -119,13 +122,20 @@ class Expense(ExpenseBase):
         }
 
 # Income models
+# Employment types for Polish tax calculation
+EMPLOYMENT_TYPES = ["uop", "b2b", "zlecenie", "dzielo", "other"]
+
 class IncomeBase(BaseModel):
     category: str
     description: str
-    amount: float
+    amount: float  # Net amount (netto) - what you receive after tax
     is_recurring: bool = False
     date: date  # Start date (for recurring) or occurrence date (for one-off)
     end_date: date | None = None  # Optional end date for recurring items (null = forever)
+    # Polish employment type for tax calculation
+    employment_type: str | None = Field(default=None, description="Employment type: uop (umowa o pracę), b2b, zlecenie, dzielo, other")
+    gross_amount: float | None = Field(default=None, ge=0, description="Gross amount (brutto) before tax")
+    is_gross: bool = Field(default=False, description="Whether the entered amount was gross (true) or net (false)")
 
 class IncomeCreate(IncomeBase):
     pass
@@ -525,6 +535,47 @@ def delete_expense(user_id: str, expense_id: int, db: Session = Depends(database
         print(f"[FastAPI] Error in delete_expense: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/users/{user_id}/expenses/monthly")
+def get_monthly_expenses(user_id: str, db: Session = Depends(database.get_db)):
+    """Get total monthly recurring expenses for the user (for Baby Step 3 calculation)."""
+    try:
+        print(f"[FastAPI] Getting monthly expenses for user: {user_id}")
+        today = datetime.now()
+        month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+        # Non-recurring expenses in current month
+        non_recurring = db.query(func.sum(models.Expense.amount)).filter(
+            models.Expense.user_id == user_id,
+            models.Expense.is_recurring == False,
+            models.Expense.date >= month_start,
+            models.Expense.date <= month_end
+        ).scalar() or 0
+
+        # Recurring expenses active in current month
+        recurring = db.query(func.sum(models.Expense.amount)).filter(
+            models.Expense.user_id == user_id,
+            models.Expense.is_recurring == True,
+            models.Expense.date <= month_end,  # Started before or during this month
+            or_(
+                models.Expense.end_date == None,  # No end date (ongoing)
+                models.Expense.end_date >= month_start  # Or end_date is this month or later
+            )
+        ).scalar() or 0
+
+        total_monthly = non_recurring + recurring
+        print(f"[FastAPI] Monthly expenses: non_recurring={non_recurring}, recurring={recurring}, total={total_monthly}")
+
+        return {
+            "total": float(total_monthly),
+            "non_recurring": float(non_recurring),
+            "recurring": float(recurring),
+            "month": month_start.strftime("%Y-%m")
+        }
+    except Exception as e:
+        print(f"[FastAPI] Error in get_monthly_expenses: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Income endpoints
 @app.get("/users/{user_id}/income", response_model=List[Income])
 def get_user_income(user_id: str, db: Session = Depends(database.get_db)):
@@ -624,10 +675,16 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
             models.Income.is_recurring == False
         ).scalar() or 0
 
-        # Fetch recurring income (regardless of date)
+        # Fetch recurring income (active in current month)
+        # Must have started before/during this month AND not ended before this month
         monthly_income_recurring = db.query(func.sum(models.Income.amount)).filter(
             models.Income.user_id == user_id,
-            models.Income.is_recurring == True
+            models.Income.is_recurring == True,
+            models.Income.date <= month_end,  # Started before or during this month
+            or_(
+                models.Income.end_date == None,  # No end date (ongoing)
+                models.Income.end_date >= month_start  # Or end_date is this month or later
+            )
         ).scalar() or 0
 
         # Total monthly income
@@ -641,10 +698,16 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
             models.Expense.is_recurring == False
         ).scalar() or 0
 
-        # Fetch recurring expenses (regardless of date)
+        # Fetch recurring expenses (active in current month)
+        # Must have started before/during this month AND not ended before this month
         monthly_expenses_recurring = db.query(func.sum(models.Expense.amount)).filter(
             models.Expense.user_id == user_id,
-            models.Expense.is_recurring == True
+            models.Expense.is_recurring == True,
+            models.Expense.date <= month_end,  # Started before or during this month
+            or_(
+                models.Expense.end_date == None,  # No end date (ongoing)
+                models.Expense.end_date >= month_start  # Or end_date is this month or later
+            )
         ).scalar() or 0
 
         # Total monthly expenses
@@ -674,43 +737,91 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
         if monthly_income > 0:
             debt_to_income = monthly_loan_payments / monthly_income
 
-        # Get income distribution by category
+        # Get income distribution by category (current month only)
         income_distribution = []
-        income_categories = db.query(
+
+        # Non-recurring income in current month
+        income_non_recurring_by_cat = db.query(
             models.Income.category,
             func.sum(models.Income.amount).label("total_amount")
         ).filter(
-            models.Income.user_id == user_id
-        ).group_by(
-            models.Income.category
-        ).all()
+            models.Income.user_id == user_id,
+            models.Income.is_recurring == False,
+            models.Income.date >= month_start,
+            models.Income.date <= month_end
+        ).group_by(models.Income.category).all()
 
-        total_income = sum(category.total_amount for category in income_categories)
-        for category in income_categories:
-            percentage = (category.total_amount / total_income * 100) if total_income > 0 else 0
+        # Recurring income (active in current month)
+        income_recurring_by_cat = db.query(
+            models.Income.category,
+            func.sum(models.Income.amount).label("total_amount")
+        ).filter(
+            models.Income.user_id == user_id,
+            models.Income.is_recurring == True,
+            models.Income.date <= month_end,  # Started before or during this month
+            or_(
+                models.Income.end_date == None,  # No end date (ongoing)
+                models.Income.end_date >= month_start  # Or end_date is this month or later
+            )
+        ).group_by(models.Income.category).all()
+
+        # Combine income by category
+        income_by_category = {}
+        for cat in income_non_recurring_by_cat:
+            income_by_category[cat.category] = cat.total_amount
+        for cat in income_recurring_by_cat:
+            income_by_category[cat.category] = income_by_category.get(cat.category, 0) + cat.total_amount
+
+        total_income_dist = sum(income_by_category.values())
+        for category, amount in income_by_category.items():
+            percentage = (amount / total_income_dist * 100) if total_income_dist > 0 else 0
             income_distribution.append({
-                "category": category.category,
-                "amount": float(category.total_amount),
+                "category": category,
+                "amount": float(amount),
                 "percentage": float(percentage)
             })
 
-        # Get expense distribution by category
+        # Get expense distribution by category (current month only)
         expense_distribution = []
-        expense_categories = db.query(
+
+        # Non-recurring expenses in current month
+        expense_non_recurring_by_cat = db.query(
             models.Expense.category,
             func.sum(models.Expense.amount).label("total_amount")
         ).filter(
-            models.Expense.user_id == user_id
-        ).group_by(
-            models.Expense.category
-        ).all()
+            models.Expense.user_id == user_id,
+            models.Expense.is_recurring == False,
+            models.Expense.date >= month_start,
+            models.Expense.date <= month_end
+        ).group_by(models.Expense.category).all()
 
-        total_expenses = sum(category.total_amount for category in expense_categories)
-        for category in expense_categories:
-            percentage = (category.total_amount / total_expenses * 100) if total_expenses > 0 else 0
+        # Recurring expenses (active in current month)
+        expense_recurring_by_cat = db.query(
+            models.Expense.category,
+            func.sum(models.Expense.amount).label("total_amount")
+        ).filter(
+            models.Expense.user_id == user_id,
+            models.Expense.is_recurring == True,
+            models.Expense.date <= month_end,  # Started before or during this month
+            or_(
+                models.Expense.end_date == None,  # No end date (ongoing)
+                models.Expense.end_date >= month_start  # Or end_date is this month or later
+            )
+        ).group_by(models.Expense.category).all()
+
+        # Combine expenses by category
+        expense_by_category = {}
+        for cat in expense_non_recurring_by_cat:
+            expense_by_category[cat.category] = cat.total_amount
+        for cat in expense_recurring_by_cat:
+            expense_by_category[cat.category] = expense_by_category.get(cat.category, 0) + cat.total_amount
+
+        total_expense_dist = sum(expense_by_category.values())
+        for category, amount in expense_by_category.items():
+            percentage = (amount / total_expense_dist * 100) if total_expense_dist > 0 else 0
             expense_distribution.append({
-                "category": category.category,
-                "amount": float(category.total_amount),
+                "category": category,
+                "amount": float(amount),
                 "percentage": float(percentage)
             })
 
@@ -725,6 +836,28 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
             month_end_date = (month_start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
             month_str = f"{current_year}-{month:02d}"
             
+            # Calculate recurring income for THIS specific month
+            month_income_recurring = db.query(func.sum(models.Income.amount)).filter(
+                models.Income.user_id == user_id,
+                models.Income.is_recurring == True,
+                models.Income.date <= month_end_date,  # Started before or during this month
+                or_(
+                    models.Income.end_date == None,  # No end date (ongoing)
+                    models.Income.end_date >= month_start_date  # Or end_date is this month or later
+                )
+            ).scalar() or 0
+
+            # Calculate recurring expenses for THIS specific month
+            month_expenses_recurring = db.query(func.sum(models.Expense.amount)).filter(
+                models.Expense.user_id == user_id,
+                models.Expense.is_recurring == True,
+                models.Expense.date <= month_end_date,  # Started before or during this month
+                or_(
+                    models.Expense.end_date == None,  # No end date (ongoing)
+                    models.Expense.end_date >= month_start_date  # Or end_date is this month or later
+                )
+            ).scalar() or 0
+
             # For past and current months, use actual data
             if month <= today.month:
                 # Non-recurring income for this month
@@ -734,10 +867,10 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
                     models.Income.date <= month_end_date,
                     models.Income.is_recurring == False
                 ).scalar() or 0
-                
-                # Include recurring income
-                month_income = month_income_non_recurring + monthly_income_recurring
-                
+
+                # Include recurring income for this specific month
+                month_income = month_income_non_recurring + month_income_recurring
+
                 # Non-recurring expenses for this month
                 month_expenses_non_recurring = db.query(func.sum(models.Expense.amount)).filter(
                     models.Expense.user_id == user_id,
@@ -745,20 +878,20 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
                     models.Expense.date <= month_end_date,
                     models.Expense.is_recurring == False
                 ).scalar() or 0
-                
-                # Include recurring expenses
-                month_expenses = month_expenses_non_recurring + monthly_expenses_recurring
-                
+
+                # Include recurring expenses for this specific month
+                month_expenses = month_expenses_non_recurring + month_expenses_recurring
+
                 # Loan payments for this month
                 month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
                     models.Loan.user_id == user_id,
                     models.Loan.start_date <= month_end_date
                 ).scalar() or 0
             else:
-                # For future months, use projections based on recurring data
-                month_income = monthly_income_recurring
-                month_expenses = monthly_expenses_recurring
-                
+                # For future months, use projections based on recurring data for this specific month
+                month_income = month_income_recurring
+                month_expenses = month_expenses_recurring
+
                 # Loan payments for future months (assuming all current loans continue)
                 month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
                     models.Loan.user_id == user_id,
@@ -789,16 +922,98 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
             total_amount = loan.principal_amount
             paid_amount = total_amount - loan.remaining_balance
             progress = paid_amount / total_amount if total_amount > 0 else 0
-            
-        loans_data.append({
-            "id": str(loan.id),
-            "description": loan.description,
-            "balance": float(loan.remaining_balance),
-            "monthlyPayment": float(loan.monthly_payment),
-            "interestRate": float(loan.interest_rate),
-            "progress": float(progress),
-            "totalAmount": float(total_amount)
-        })
+
+            loans_data.append({
+                "id": str(loan.id),
+                "description": loan.description,
+                "balance": float(loan.remaining_balance),
+                "monthlyPayment": float(loan.monthly_payment),
+                "interestRate": float(loan.interest_rate),
+                "progress": float(progress),
+                "totalAmount": float(total_amount)
+            })
+
+        # Fetch savings data for the user
+        # Total savings balance (all time deposits - withdrawals)
+        total_deposits = db.query(func.sum(models.Saving.amount)).filter(
+            models.Saving.user_id == user_id,
+            models.Saving.saving_type == 'deposit'
+        ).scalar() or 0
+
+        total_withdrawals = db.query(func.sum(models.Saving.amount)).filter(
+            models.Saving.user_id == user_id,
+            models.Saving.saving_type == 'withdrawal'
+        ).scalar() or 0
+
+        total_savings_balance = total_deposits - total_withdrawals
+
+        # Monthly savings (current month non-recurring + all recurring deposits/withdrawals)
+        monthly_deposits_non_recurring = db.query(func.sum(models.Saving.amount)).filter(
+            models.Saving.user_id == user_id,
+            models.Saving.saving_type == 'deposit',
+            models.Saving.is_recurring == False,
+            models.Saving.date >= month_start,
+            models.Saving.date <= month_end
+        ).scalar() or 0
+
+        monthly_deposits_recurring = db.query(func.sum(models.Saving.amount)).filter(
+            models.Saving.user_id == user_id,
+            models.Saving.saving_type == 'deposit',
+            models.Saving.is_recurring == True,
+            models.Saving.date <= month_end,  # Started before or during this month
+            or_(
+                models.Saving.end_date == None,  # No end date (ongoing)
+                models.Saving.end_date >= month_start  # Or end_date is this month or later
+            )
+        ).scalar() or 0
+
+        monthly_withdrawals_non_recurring = db.query(func.sum(models.Saving.amount)).filter(
+            models.Saving.user_id == user_id,
+            models.Saving.saving_type == 'withdrawal',
+            models.Saving.is_recurring == False,
+            models.Saving.date >= month_start,
+            models.Saving.date <= month_end
+        ).scalar() or 0
+
+        monthly_withdrawals_recurring = db.query(func.sum(models.Saving.amount)).filter(
+            models.Saving.user_id == user_id,
+            models.Saving.saving_type == 'withdrawal',
+            models.Saving.is_recurring == True,
+            models.Saving.date <= month_end,  # Started before or during this month
+            or_(
+                models.Saving.end_date == None,  # No end date (ongoing)
+                models.Saving.end_date >= month_start  # Or end_date is this month or later
+            )
+        ).scalar() or 0
+
+        monthly_savings = (monthly_deposits_non_recurring + monthly_deposits_recurring) - \
+                          (monthly_withdrawals_non_recurring + monthly_withdrawals_recurring)
+
+        # Savings goals (group by category with targets)
+        savings_goals = []
+        savings_by_category = db.query(
+            models.Saving.category,
+            func.sum(
+                case(
+                    (models.Saving.saving_type == 'deposit', models.Saving.amount),
+                    else_=-models.Saving.amount
+                )
+            ).label('current_amount'),
+            func.max(models.Saving.target_amount).label('target_amount')
+        ).filter(
+            models.Saving.user_id == user_id
+        ).group_by(models.Saving.category).all()
+
+        for goal in savings_by_category:
+            target = goal.target_amount or 0
+            current = float(goal.current_amount or 0)
+            progress = (current / target * 100) if target > 0 else 0
+            savings_goals.append({
+                "category": goal.category,
+                "currentAmount": current,
+                "targetAmount": float(target),
+                "progress": min(float(progress), 100)  # Cap at 100%
+            })
 
         recent_activities = db.query(models.Activity).filter(
             models.Activity.user_id == user_id
@@ -893,6 +1108,9 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
             "cash_flow": cash_flow,
             "loans": loans_data,
             "activities": activities_payload,
+            "total_savings_balance": float(total_savings_balance),
+            "monthly_savings": float(monthly_savings),
+            "savings_goals": savings_goals,
         }
         print(f"[FastAPI] Summary data: {summary}")
         return summary
@@ -1035,7 +1253,32 @@ def get_yearly_budget(
         except Exception as e:
             print(f"[FastAPI] Error fetching loans: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Error fetching loans: {str(e)}")
-        
+
+        # Get all non-recurring savings for the period
+        try:
+            regular_savings = db.query(models.Saving).filter(
+                models.Saving.user_id == user_id,
+                models.Saving.date >= start_datetime,
+                models.Saving.date <= end_datetime,
+                models.Saving.is_recurring == False
+            ).all()
+            print(f"[FastAPI] Found {len(regular_savings)} regular savings")
+        except Exception as e:
+            print(f"[FastAPI] Error fetching regular savings: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error fetching regular savings: {str(e)}")
+
+        # Get recurring savings
+        try:
+            recurring_savings = db.query(models.Saving).filter(
+                models.Saving.user_id == user_id,
+                models.Saving.is_recurring == True,
+                models.Saving.date <= end_datetime
+            ).all()
+            print(f"[FastAPI] Found {len(recurring_savings)} recurring savings")
+        except Exception as e:
+            print(f"[FastAPI] Error fetching recurring savings: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error fetching recurring savings: {str(e)}")
+
         # Initialize monthly data
         monthly_data = {}
         
@@ -1048,7 +1291,10 @@ def get_yearly_budget(
                 year = current_date.year
 
                 print(f"[FastAPI] Processing month: {month_name} year: {year}")
-                
+
+                # Convert current_date to date for comparison
+                current_date_only = current_date.date()
+
                 # Regular incomes for this month
                 monthly_regular_incomes = [
                     {
@@ -1063,6 +1309,7 @@ def get_yearly_budget(
                 ]
                 
                 # Add recurring incomes if they started before or during this month
+                # and haven't ended yet (end_date is None or >= current month)
                 monthly_recurring_incomes = [
                     {
                         "id": inc.id,
@@ -1071,8 +1318,10 @@ def get_yearly_budget(
                         "category": inc.category,
                         "date": inc.date.isoformat()
                     }
-                    for inc in recurring_incomes 
-                    if inc.date <= current_date.date()
+                    for inc in recurring_incomes
+                    if inc.date <= current_date.date() and (
+                        inc.end_date is None or inc.end_date >= current_date_only
+                    )
                 ]
                 
                 # Regular expenses for this month
@@ -1089,6 +1338,7 @@ def get_yearly_budget(
                 ]
                 
                 # Add recurring expenses if they started before or during this month
+                # and haven't ended yet (end_date is None or >= current month)
                 monthly_recurring_expenses = [
                     {
                         "id": exp.id,
@@ -1097,12 +1347,11 @@ def get_yearly_budget(
                         "category": exp.category,
                         "date": exp.date.isoformat()
                     }
-                    for exp in recurring_expenses 
-                    if exp.date <= current_date.date()
+                    for exp in recurring_expenses
+                    if exp.date <= current_date.date() and (
+                        exp.end_date is None or exp.end_date >= current_date_only
+                    )
                 ]
-                
-                # Convert current_date to date for comparison
-                current_date_only = current_date.date()
 
                 # Get active loans for this month
                 monthly_loans = []
@@ -1135,7 +1384,52 @@ def get_yearly_budget(
                     except (ValueError, TypeError, AttributeError) as e:
                         print(f"[FastAPI] Error processing loan {loan.id}: {str(e)}")
                         continue
-                
+
+                # Regular savings for this month
+                monthly_regular_savings = [
+                    {
+                        "id": sav.id,
+                        "title": sav.description,
+                        "amount": float(sav.amount),
+                        "category": sav.category,
+                        "saving_type": sav.saving_type,
+                        "date": sav.date.isoformat()
+                    }
+                    for sav in regular_savings
+                    if sav.date.year == year and sav.date.month == month_idx
+                ]
+
+                # Add recurring savings if they started before or during this month
+                # and haven't ended yet (end_date is None or >= current month)
+                monthly_recurring_savings = [
+                    {
+                        "id": sav.id,
+                        "title": sav.description,
+                        "amount": float(sav.amount),
+                        "category": sav.category,
+                        "saving_type": sav.saving_type,
+                        "date": sav.date.isoformat()
+                    }
+                    for sav in recurring_savings
+                    if sav.date <= current_date.date() and (
+                        sav.end_date is None or sav.end_date >= current_date_only
+                    )
+                ]
+
+                # Combine all savings for this month
+                all_monthly_savings = monthly_regular_savings + monthly_recurring_savings
+
+                # Calculate savings totals (deposits - withdrawals)
+                total_deposits = sum(
+                    sav["amount"] for sav in all_monthly_savings
+                    if sav["saving_type"] == "deposit"
+                )
+                total_withdrawals = sum(
+                    sav["amount"] for sav in all_monthly_savings
+                    if sav["saving_type"] == "withdrawal"
+                )
+                net_savings = float(total_deposits - total_withdrawals)
+
                 # Calculate totals
                 total_regular_income = sum(inc["amount"] for inc in monthly_regular_incomes)
                 total_recurring_income = sum(inc["amount"] for inc in monthly_recurring_incomes)
@@ -1145,16 +1439,20 @@ def get_yearly_budget(
                 total_income = float(total_regular_income + total_recurring_income)
                 total_expenses = float(total_regular_expenses + total_recurring_expenses)
                 
-                print(f"[FastAPI] {month_name} {year} - Income: {total_income}, Expenses: {total_expenses}, Loan Payments: {monthly_loan_payments_total}")
-                
+                print(f"[FastAPI] {month_name} {year} - Income: {total_income}, Expenses: {total_expenses}, Loan Payments: {monthly_loan_payments_total}, Savings: {net_savings}")
+
                 monthly_data[f"{month_name} {year}"] = {
                     "incomes": monthly_regular_incomes + monthly_recurring_incomes,
                     "expenses": monthly_regular_expenses + monthly_recurring_expenses,
                     "loanPayments": monthly_loans,
+                    "savings": all_monthly_savings,
                     "totals": {
                         "income": total_income,
                         "expenses": total_expenses,
                         "loanPayments": monthly_loan_payments_total,
+                        "savings": net_savings,
+                        "deposits": float(total_deposits),
+                        "withdrawals": float(total_withdrawals),
                         "balance": total_income - total_expenses - monthly_loan_payments_total
                     }
                 }
@@ -1829,12 +2127,33 @@ async def get_user_financial_data(user_id: str, db: Session):
     incomes = db.query(models.Income).filter(models.Income.user_id == user_id).all()
     expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
     loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
+    savings = db.query(models.Saving).filter(models.Saving.user_id == user_id).all()
+    savings_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == user_id).all()
+    financial_freedom = db.query(models.FinancialFreedom).filter(models.FinancialFreedom.userId == user_id).first()
     settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+
+    # Calculate current year for age-based tax benefits
+    current_year = datetime.now().year
+    user_age = current_year - settings.birth_year if settings and settings.birth_year else None
 
     return {
         "settings": {
             "language": settings.language if settings else "en",
-            "currency": settings.currency if settings else "USD"
+            "currency": settings.currency if settings else "PLN",
+            # Emergency fund settings
+            "emergency_fund_target": settings.emergency_fund_target if settings else 1000,
+            "emergency_fund_months": settings.emergency_fund_months if settings else 3,
+            # Polish tax settings
+            "employment_status": settings.employment_status if settings else None,
+            "tax_form": settings.tax_form if settings else None,
+            "birth_year": settings.birth_year if settings else None,
+            "user_age": user_age,
+            "use_authors_costs": settings.use_authors_costs if settings else False,
+            # PPK settings
+            "ppk_enrolled": settings.ppk_enrolled if settings else None,
+            "ppk_employee_rate": settings.ppk_employee_rate if settings else None,
+            "ppk_employer_rate": settings.ppk_employer_rate if settings else None,
+            "children_count": settings.children_count if settings else 0,
         },
         "incomes": [
             {
@@ -1842,7 +2161,10 @@ async def get_user_financial_data(user_id: str, db: Session):
                 "amount": income.amount,
                 "category": income.category,
                 "description": income.description,
-                "is_recurring": income.is_recurring
+                "is_recurring": income.is_recurring,
+                "employment_type": income.employment_type,
+                "gross_amount": income.gross_amount,
+                "is_gross": income.is_gross,
             }
             for income in incomes
         ],
@@ -1865,217 +2187,385 @@ async def get_user_financial_data(user_id: str, db: Session):
                 "interest_rate": loan.interest_rate,
                 "monthly_payment": loan.monthly_payment,
                 "term_months": loan.term_months,
-                "start_date": loan.start_date.isoformat()
+                "start_date": loan.start_date.isoformat() if loan.start_date else None,
+                "overpayment_fee_percent": loan.overpayment_fee_percent,
+                "overpayment_fee_waived_until": loan.overpayment_fee_waived_until.isoformat() if loan.overpayment_fee_waived_until else None,
             }
             for loan in loans
-        ]
+        ],
+        "savings": [
+            {
+                "category": saving.category,
+                "description": saving.description,
+                "amount": saving.amount,
+                "date": saving.date.isoformat(),
+                "is_recurring": saving.is_recurring,
+                "saving_type": saving.saving_type,
+                "account_type": saving.account_type,
+                "annual_return_rate": saving.annual_return_rate,
+                "goal_id": saving.goal_id,
+            }
+            for saving in savings
+        ],
+        "savings_goals": [
+            {
+                "name": goal.name,
+                "category": goal.category,
+                "target_amount": goal.target_amount,
+                "current_amount": goal.current_amount,
+                "deadline": goal.deadline.isoformat() if goal.deadline else None,
+                "status": goal.status,
+                "priority": goal.priority,
+            }
+            for goal in savings_goals
+        ],
+        "financial_freedom": {
+            "steps": financial_freedom.steps if financial_freedom else None,
+            "start_date": financial_freedom.startDate.isoformat() if financial_freedom and financial_freedom.startDate else None,
+        } if financial_freedom else None,
     }
 
 async def generate_insights(user_data: dict, api_key: str):
     """
-    Generate financial insights using the OpenAI API.
+    Generate financial insights using the Anthropic Claude API.
+    Aligned with FIRE (Financial Independence, Retire Early) philosophy
+    and Dave Ramsey's Baby Steps methodology.
 
     Args:
-        user_data: Dictionary containing user's financial data (incomes, expenses, loans)
-        api_key: OpenAI API key from user settings
+        user_data: Dictionary containing user's complete financial data
+        api_key: Anthropic API key from user settings
 
     Returns:
         InsightsResponse object with AI-generated insights
     """
     try:
-        # Calculate some basic financial metrics to include in the prompt
+        # Extract all data
+        settings = user_data.get("settings", {})
         incomes = user_data.get("incomes", [])
         expenses = user_data.get("expenses", [])
         loans = user_data.get("loans", [])
-        currency = user_data.get("settings", {}).get("currency", "USD")
-        language = user_data.get("settings", {}).get("language", "en")
-        
-        # Calculate total income, expenses, and loan payments
+        savings = user_data.get("savings", [])
+        savings_goals = user_data.get("savings_goals", [])
+        financial_freedom = user_data.get("financial_freedom", {})
+
+        currency = settings.get("currency", "PLN")
+        language = settings.get("language", "en")
+
+        # Calculate basic financial metrics
         total_income = sum(income["amount"] for income in incomes)
         total_expenses = sum(expense["amount"] for expense in expenses)
         total_loan_payments = sum(loan["monthly_payment"] for loan in loans)
         total_loan_balance = sum(loan["remaining_balance"] for loan in loans)
-        
+
         # Calculate monthly balance
         monthly_balance = total_income - total_expenses - total_loan_payments
-        
-        # Calculate savings rate if income is not zero
-        savings_rate = 0
-        if total_income > 0:
-            savings_rate = (monthly_balance / total_income) * 100
-            
-        # Calculate debt-to-income ratio if income is not zero
-        debt_to_income = 0
-        if total_income > 0:
-            debt_to_income = (total_loan_payments / total_income) * 100
-            
+
+        # Calculate savings rate
+        savings_rate = (monthly_balance / total_income * 100) if total_income > 0 else 0
+
+        # Calculate debt-to-income ratio
+        debt_to_income = (total_loan_payments / total_income * 100) if total_income > 0 else 0
+
         # Group expenses by category
         expense_categories = {}
         for expense in expenses:
             category = expense["category"]
-            if category not in expense_categories:
-                expense_categories[category] = 0
-            expense_categories[category] += expense["amount"]
-            
-        # Group incomes by category
+            expense_categories[category] = expense_categories.get(category, 0) + expense["amount"]
+
+        # Group incomes by category and employment type
         income_categories = {}
+        income_by_employment = {}
         for income in incomes:
             category = income["category"]
-            if category not in income_categories:
-                income_categories[category] = 0
-            income_categories[category] += income["amount"]
-        
-        # Map language codes to full language names for OpenAI prompt formatting
-        language_names = {
-            "en": "English",
-            "pl": "Polish",
-            "es": "Spanish",
-            "fr": "French"
-        }
-        
-        # Get the full language name, default to English if not found
+            income_categories[category] = income_categories.get(category, 0) + income["amount"]
+            emp_type = income.get("employment_type") or "unknown"
+            income_by_employment[emp_type] = income_by_employment.get(emp_type, 0) + income["amount"]
+
+        # Calculate savings totals by category and account type
+        savings_by_category = {}
+        savings_by_account_type = {}
+        total_savings_deposits = 0
+        for saving in savings:
+            if saving.get("saving_type") == "deposit":
+                total_savings_deposits += saving["amount"]
+                cat = saving["category"]
+                savings_by_category[cat] = savings_by_category.get(cat, 0) + saving["amount"]
+                acc_type = saving.get("account_type") or "standard"
+                savings_by_account_type[acc_type] = savings_by_account_type.get(acc_type, 0) + saving["amount"]
+
+        # Calculate emergency fund status
+        emergency_fund_target = settings.get("emergency_fund_target", 1000)
+        emergency_fund_months = settings.get("emergency_fund_months", 3)
+        emergency_fund_current = savings_by_category.get("emergency_fund", 0)
+        full_emergency_target = total_expenses * emergency_fund_months if total_expenses > 0 else emergency_fund_target * emergency_fund_months
+
+        # Pre-calculate emergency fund difference to avoid AI math errors
+        emergency_fund_difference = emergency_fund_current - full_emergency_target
+        emergency_fund_status = "surplus" if emergency_fund_difference > 0 else "deficit" if emergency_fund_difference < 0 else "exact"
+        baby_step_1_complete = emergency_fund_current >= emergency_fund_target
+        baby_step_3_complete = emergency_fund_current >= full_emergency_target
+
+        # Determine current Baby Step
+        baby_steps = financial_freedom.get("steps", []) if financial_freedom else []
+        current_baby_step = 0
+        baby_steps_summary = []
+        for step in baby_steps:
+            step_num = step.get("id", 0)
+            is_completed = step.get("isCompleted", False)
+            progress = step.get("progress", 0)
+            baby_steps_summary.append({
+                "step": step_num,
+                "completed": is_completed,
+                "progress": progress,
+                "target": step.get("targetAmount"),
+                "current": step.get("currentAmount"),
+            })
+            if not is_completed and current_baby_step == 0:
+                current_baby_step = step_num
+
+        # Sort loans by balance for debt snowball analysis
+        loans_sorted_by_balance = sorted(loans, key=lambda x: x.get("remaining_balance", 0))
+        # Sort loans by interest rate for debt avalanche analysis
+        loans_sorted_by_rate = sorted(loans, key=lambda x: x.get("interest_rate", 0), reverse=True)
+
+        # Polish tax context
+        user_age = settings.get("user_age")
+        employment_status = settings.get("employment_status")
+        tax_form = settings.get("tax_form")
+        ppk_enrolled = settings.get("ppk_enrolled")
+        use_authors_costs = settings.get("use_authors_costs")
+        children_count = settings.get("children_count", 0)
+
+        # IKE/IKZE limits for 2026 (Poland)
+        ike_limit_2026 = 28260  # PLN
+        ikze_limit_2026 = 11304  # PLN (16956 for self-employed)
+        ikze_limit_b2b = 16956  # PLN
+
+        # Calculate FIRE number (25x annual expenses = 4% withdrawal rate)
+        annual_expenses = total_expenses * 12
+        fire_number = annual_expenses * 25 if annual_expenses > 0 else 0
+
+        # Map language codes
+        language_names = {"en": "English", "pl": "Polish", "es": "Spanish"}
         language_name = language_names.get(language, "English")
-        
-        # Create the prompt for GPT
-        prompt = f"""
-You are a financial advisor analyzing a user's financial data. Based on the data provided, generate insights in the following categories:
-1. Overall Financial Health
-2. Spending Patterns
-3. Savings Strategy
-4. Debt Management
-5. Budget Optimization
 
-For each category, provide 1-3 specific insights. Each insight should include:
-- A clear title
-- A detailed description
-- Priority level (high, medium, or low)
-- 1-3 actionable recommendations
-- Relevant metrics with values and trends
+        # Categorize loans for proper Baby Steps handling
+        mortgage_loans = [l for l in loans if l.get("loan_type") == "mortgage"]
+        leasing_loans = [l for l in loans if l.get("loan_type") == "leasing"]
+        baby_step_2_debts = [l for l in loans if l.get("loan_type") not in ("mortgage", "leasing")]
+        high_interest_loans = [l for l in loans if l.get("interest_rate", 0) >= 5 and l.get("loan_type") not in ("mortgage", "leasing")]
 
-IMPORTANT: Please provide your entire response in {language_name}. The user's preferred language is {language_name}.
+        # Calculate debt totals by category
+        baby_step_2_debt_total = sum(l.get("remaining_balance", 0) for l in baby_step_2_debts)
+        mortgage_debt_total = sum(l.get("remaining_balance", 0) for l in mortgage_loans)
+        leasing_debt_total = sum(l.get("remaining_balance", 0) for l in leasing_loans)
 
-Here's the user's financial data:
+        # Build comprehensive prompt
+        prompt = f"""You are a FIRE (Financial Independence, Retire Early) coach and financial advisor specializing in Dave Ramsey's Baby Steps methodology, with expertise in Polish financial regulations.
 
-Currency: {currency}
+PHILOSOPHY:
+- Focus on building wealth through intentional living, not deprivation
+- Follow the Baby Steps: (1) $1000 starter emergency fund, (2) Pay off all debt (EXCEPT mortgage) using debt snowball, (3) 3-6 months emergency fund, (4) Invest 15% for retirement, (5) College savings, (6) Pay off home early, (7) Build wealth and give
+- Use DEBT SNOWBALL method ONLY (smallest balance first) - this is non-negotiable for Baby Steps. Do NOT recommend debt avalanche.
+- Savings rate is king - the higher the better for reaching FIRE
 
-SUMMARY METRICS:
-- Total Monthly Income: {total_income} {currency}
-- Total Monthly Expenses: {total_expenses} {currency}
-- Total Monthly Loan Payments: {total_loan_payments} {currency}
-- Total Loan Balance: {total_loan_balance} {currency}
-- Monthly Balance (Income - Expenses - Loan Payments): {monthly_balance} {currency}
-- Savings Rate: {savings_rate:.2f}%
-- Debt-to-Income Ratio: {debt_to_income:.2f}%
+CRITICAL DEBT RULES:
+1. **Baby Step 2 debts** (pay off now, smallest to largest): Consumer loans, cash loans, car loans, credit cards, personal loans, installment loans
+2. **NEVER include in Baby Step 2**: Mortgages (Baby Step 6), Leasing (fixed contracts)
+3. **Leasing (0% or any rate)**: These are FIXED CONTRACTS - user CANNOT prepay them early. Never suggest paying off leasing early - it's not possible and doesn't make financial sense.
+4. **Mortgage**: Only addressed in Baby Step 6 AFTER completing Baby Steps 1-5. If user is on Baby Step 2-5, ignore mortgage for now.
+5. **High-interest loans (>5%)**: For Baby Step 2 debts with high interest, strongly recommend OVERPAYMENT to minimize total interest paid. Calculate potential interest savings.
+6. **Overpayment fees**: In Poland, since 2022 banks cannot charge prepayment fees for first 3 years. Check overpayment_fee_percent and overpayment_fee_waived_until fields.
 
-INCOME BREAKDOWN BY CATEGORY:
-{json.dumps(income_categories, indent=2)}
+CURRENT BABY STEP: {current_baby_step if current_baby_step > 0 else "Not started or data unavailable"}
 
-EXPENSE BREAKDOWN BY CATEGORY:
+BABY STEPS PROGRESS:
+{json.dumps(baby_steps_summary, indent=2) if baby_steps_summary else "No Baby Steps data available"}
+
+USER CONTEXT (Polish market):
+- Age: {user_age if user_age else "MISSING → link to /settings"}
+- Employment: {employment_status or "MISSING → link to /settings"} ({tax_form or "Unknown"} tax form)
+- PPK enrolled: {ppk_enrolled if ppk_enrolled is not None else "MISSING → link to /settings"}
+- Uses author's costs (50% KUP): {use_authors_costs}
+- Children: {children_count}
+- Currency: {currency}
+
+MISSING DATA - INCLUDE THESE LINKS IN INSIGHTS:
+{"- Age unknown: Include markdown link [Uzupełnij profil podatkowy](/settings) to check youth tax relief eligibility" if not user_age else ""}
+{"- PPK status unknown: Include markdown link [Uzupełnij profil podatkowy](/settings)" if ppk_enrolled is None else ""}
+{"- Employment status unknown: Include markdown link [Uzupełnij profil podatkowy](/settings) for better tax optimization" if not employment_status else ""}
+
+POLISH TAX OPTIMIZATION OPPORTUNITIES:
+- Youth tax relief (ulga dla młodych): Available if under 26 years old, income up to 85,528 PLN/year tax-free
+- IKE (Individual Retirement Account): 2026 limit = {ike_limit_2026} PLN, tax-free capital gains
+- IKZE (Individual Retirement Security Account): 2026 limit = {ikze_limit_2026} PLN (or {ikze_limit_b2b} PLN for B2B), tax-deductible contributions
+- PPK: Employer matches contributions, free money if enrolled
+- Author's costs (KUP 50%): 50% of income tax-deductible for creative work
+
+FINANCIAL SUMMARY:
+- Monthly Income (net): {total_income} {currency}
+- Monthly Expenses: {total_expenses} {currency}
+- Monthly Loan Payments: {total_loan_payments} {currency}
+- Monthly Balance: {monthly_balance} {currency}
+- Savings Rate: {savings_rate:.1f}%
+- Debt-to-Income Ratio: {debt_to_income:.1f}%
+- Total All Debt: {total_loan_balance} {currency}
+- Baby Step 2 Debt (to pay off now): {baby_step_2_debt_total} {currency}
+- Mortgage Debt (Baby Step 6): {mortgage_debt_total} {currency}
+- Leasing Debt (fixed contracts, ignore): {leasing_debt_total} {currency}
+- FIRE Number (25x annual expenses): {fire_number:,.0f} {currency}
+
+EMERGENCY FUND STATUS (PRE-CALCULATED - use these values, do NOT recalculate):
+- Baby Step 1 Target: {emergency_fund_target} {currency}
+- Baby Step 3 Target ({emergency_fund_months} months expenses): {full_emergency_target:,.0f} {currency}
+- Current Emergency Fund: {emergency_fund_current} {currency}
+- DIFFERENCE: {abs(emergency_fund_difference):,.0f} {currency} {"SURPLUS (user has MORE than needed)" if emergency_fund_status == "surplus" else "DEFICIT (user needs MORE)" if emergency_fund_status == "deficit" else "EXACT (perfect match)"}
+- Baby Step 1 Complete: {"YES" if baby_step_1_complete else "NO"}
+- Baby Step 3 Complete: {"YES" if baby_step_3_complete else "NO"}
+
+INCOME BY EMPLOYMENT TYPE:
+{json.dumps(income_by_employment, indent=2)}
+
+EXPENSE BREAKDOWN:
 {json.dumps(expense_categories, indent=2)}
 
-LOANS:
-{json.dumps(loans, indent=2)}
+BABY STEP 2 DEBTS (sorted by balance - Debt Snowball order):
+{json.dumps(sorted([l for l in loans if l.get("loan_type") not in ("mortgage", "leasing")], key=lambda x: x.get("remaining_balance", 0)), indent=2)}
 
-DETAILED INCOME TRANSACTIONS:
-{json.dumps(incomes, indent=2)}
+MORTGAGE (Baby Step 6 - ignore until Baby Steps 1-5 completed):
+{json.dumps([l for l in loans if l.get("loan_type") == "mortgage"], indent=2)}
 
-DETAILED EXPENSE TRANSACTIONS:
-{json.dumps(expenses, indent=2)}
+LEASING (FIXED CONTRACTS - cannot be prepaid, ignore for payoff strategy):
+{json.dumps([l for l in loans if l.get("loan_type") == "leasing"], indent=2)}
 
-Respond with a JSON object that follows this exact structure:
+HIGH INTEREST DEBTS (>5% - recommend overpayment):
+{json.dumps([l for l in loans if l.get("interest_rate", 0) >= 5 and l.get("loan_type") not in ("mortgage", "leasing")], indent=2)}
+
+SAVINGS BY CATEGORY:
+{json.dumps(savings_by_category, indent=2)}
+
+SAVINGS BY ACCOUNT TYPE (IKE/IKZE/PPK/Standard):
+{json.dumps(savings_by_account_type, indent=2)}
+
+SAVINGS GOALS:
+{json.dumps(savings_goals, indent=2)}
+
+Generate insights in these categories based on the user's current Baby Step:
+1. **baby_steps** - Where they are in the Baby Steps journey, what to focus on NOW
+2. **debt** - Debt payoff strategy (snowball vs avalanche), specific next steps
+3. **savings** - Emergency fund progress, retirement accounts (IKE/IKZE optimization)
+4. **fire** - FIRE number, savings rate analysis, time to financial independence
+5. **tax_optimization** - Polish-specific tax opportunities based on their situation
+
+IMPORTANT GUIDELINES:
+- Be specific and actionable - tell them EXACTLY what to do next
+- Reference their actual numbers
+- Use DEBT SNOWBALL only (smallest balance first) - NEVER recommend debt avalanche
+- If they're on Baby Step 2, focus ONLY on Baby Step 2 debts (exclude mortgage and leasing)
+- NEVER suggest paying off leasing early - it's a fixed contract
+- For mortgage - ONLY discuss in Baby Step 6 context, not before
+- For high-interest Baby Step 2 debts: calculate interest savings from overpayment and recommend specific monthly overpayment amounts
+- If user has high-interest debt AND savings, suggest using savings (beyond emergency fund) for debt payoff
+- CRITICAL: Use the PRE-CALCULATED emergency fund values exactly as provided. Do NOT do your own math on emergency fund surplus/deficit - use the DIFFERENCE value provided.
+- LINKS FOR MISSING DATA: When user data is missing (age, PPK, employment), include markdown links in actionItems. Use these formats:
+  * For missing profile/tax data: "[Uzupełnij profil podatkowy](/settings)"
+  * For financial freedom setup: "[Skonfiguruj Baby Steps](/financial-freedom)"
+  * For savings goals: "[Dodaj cel oszczędnościowy](/savings)"
+  * For IKE/IKZE setup: "[Dodaj oszczędności](/savings)"
+- When mentioning other sections of the app, include helpful links in actionItems (not in description)
+- If they're past Baby Step 3, focus on IKE/IKZE optimization and FIRE progress
+- Celebrate achievements but be direct about what needs improvement
+- For Polish users, always mention relevant tax benefits they might be missing
+
+RESPOND IN: {language_name}
+
+JSON Response Structure:
 {{
   "categories": {{
-    "health": [
+    "baby_steps": [
       {{
         "type": "observation|recommendation|alert|achievement",
         "title": "Insight title",
-        "description": "Detailed description",
+        "description": "Detailed description with specific numbers",
         "priority": "high|medium|low",
-        "actionItems": ["Action 1", "Action 2"],
+        "actionItems": ["Specific action 1", "Specific action 2"],
         "metrics": [
-          {{
-            "label": "Metric name",
-            "value": "Metric value",
-            "trend": "up|down|stable"
-          }}
+          {{"label": "Metric", "value": "Value", "trend": "up|down|stable"}}
         ]
       }}
     ],
-    "spending": [...],
-    "savings": [...],
     "debt": [...],
-    "budget": [...]
+    "savings": [...],
+    "fire": [...],
+    "tax_optimization": [...]
   }},
   "status": {{
-    "health": "good|ok|can_be_improved|bad",
-    "spending": "good|ok|can_be_improved|bad",
-    "savings": "good|ok|can_be_improved|bad",
+    "baby_steps": "good|ok|can_be_improved|bad",
     "debt": "good|ok|can_be_improved|bad",
-    "budget": "good|ok|can_be_improved|bad"
-  }}
+    "savings": "good|ok|can_be_improved|bad",
+    "fire": "good|ok|can_be_improved|bad",
+    "tax_optimization": "good|ok|can_be_improved|bad"
+  }},
+  "currentBabyStep": {current_baby_step},
+  "fireNumber": {fire_number},
+  "savingsRate": {savings_rate:.1f}
 }}
 
-Ensure your response is valid JSON and follows the exact structure above. Do not include any explanations or text outside the JSON object.
-Remember to write all text content (titles, descriptions, action items, etc.) in {language_name}.
-"""
+Respond with valid JSON only. All text in {language_name}."""
 
-        # Make the API call to OpenAI Responses endpoint (supports project-scoped keys)
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        # Make the API call to Anthropic Claude API
+        async with httpx.AsyncClient(timeout=90.0) as client:
             response = await client.post(
-                "https://api.openai.com/v1/responses",
+                "https://api.anthropic.com/v1/messages",
                 headers={
-                    "Authorization": f"Bearer {api_key}",
+                    "x-api-key": api_key,
                     "Content-Type": "application/json",
-                    "OpenAI-Beta": "assistants=v2",
+                    "anthropic-version": "2023-06-01",
                 },
                 json={
-                    "model": "gpt-4o-mini",
-                    "temperature": 0.2,
-                    "input": [
-                        {
-                            "role": "system",
-                            "content": "You are a seasoned financial advisor who provides concise, actionable insights."
-                        },
+                    "model": "claude-sonnet-4-20250514",
+                    "max_tokens": 4096,
+                    "messages": [
                         {
                             "role": "user",
                             "content": prompt
                         }
-                    ]
+                    ],
+                    "system": "You are a FIRE (Financial Independence, Retire Early) coach specializing in Dave Ramsey's Baby Steps methodology and Polish financial regulations. You provide direct, actionable insights focused on debt elimination, emergency fund building, and wealth accumulation. Always respond with valid JSON only, no additional text."
                 },
             )
-        
+
         # Check if the request was successful
         if response.status_code != 200:
-            print(f"[OpenAI API] Error: {response.status_code} - {response.text}")
-            
+            print(f"[Anthropic API] Error: {response.status_code} - {response.text}")
+
             # Provide more specific error messages based on status code
             if response.status_code == 529:
-                raise Exception(f"OpenAI API error: 529 - Service overloaded. The OpenAI API is currently experiencing high demand. Please try again later.")
+                raise Exception(f"Anthropic API error: 529 - Service overloaded. Please try again later.")
             elif response.status_code == 401:
-                raise Exception(f"OpenAI API error: 401 - Invalid API key. Please check your OpenAI API key in settings.")
+                raise Exception(f"Anthropic API error: 401 - Invalid API key. Please check your Anthropic API key in settings.")
             elif response.status_code == 403:
-                raise Exception(f"OpenAI API error: 403 - Forbidden. Your API key may not have permission to use this model.")
+                raise Exception(f"Anthropic API error: 403 - Forbidden. Your API key may not have permission to use this model.")
             elif response.status_code == 429:
-                raise Exception(f"OpenAI API error: 429 - Rate limit exceeded. Please try again later.")
+                raise Exception(f"Anthropic API error: 429 - Rate limit exceeded. Please try again later.")
             else:
-                raise Exception(f"OpenAI API error: {response.status_code}")
-            
+                raise Exception(f"Anthropic API error: {response.status_code}")
+
         # Parse the response
-        openai_response = response.json()
-        output = openai_response.get("output", [])
+        anthropic_response = response.json()
+        content = anthropic_response.get("content", [])
 
-        if not output:
-            raise Exception("Empty response from OpenAI API")
+        if not content:
+            raise Exception("Empty response from Anthropic API")
 
-        # Responses API returns a list of content blocks; extract text segments
-        content_blocks = output[0].get("content", [])
-        text_segments = [
-            block.get("text", "")
-            for block in content_blocks
-            if block.get("type") in {"output_text", "text"}
-        ]
-        text_content = "\n".join(filter(None, text_segments)).strip()
-        
+        # Extract text from content blocks
+        text_content = ""
+        for block in content:
+            if block.get("type") == "text":
+                text_content += block.get("text", "")
+
+        text_content = text_content.strip()
+
         # Try to parse the JSON response
         try:
             # Find JSON in the response (it might be wrapped in markdown code blocks)
@@ -2085,30 +2575,30 @@ Remember to write all text content (titles, descriptions, action items, etc.) in
                 insights_data = json.loads(json_str)
             else:
                 insights_data = json.loads(text_content)
-                
+
             # Add metadata
             insights_data["metadata"] = {
                 "generatedAt": datetime.now().isoformat(),
-                "source": "gpt-4o-mini"
+                "source": "claude-sonnet-4"
             }
-            
+
             return insights_data
-            
+
         except json.JSONDecodeError as e:
-            print(f"[OpenAI API] JSON parse error: {e}")
-            print(f"[OpenAI API] Response content: {text_content}")
-            raise Exception(f"Failed to parse OpenAI API response: {e}")
-            
+            print(f"[Anthropic API] JSON parse error: {e}")
+            print(f"[Anthropic API] Response content: {text_content}")
+            raise Exception(f"Failed to parse Anthropic API response: {e}")
+
     except Exception as e:
-        print(f"[OpenAI API] Error generating insights: {str(e)}")
-        
+        print(f"[Anthropic API] Error generating insights: {str(e)}")
+
         # Return a fallback response in case of error
         sample_insight = {
             "type": "observation",
             "title": "API Error",
             "description": f"We encountered an error while generating insights: {str(e)}. Please try again later.",
             "priority": "medium",
-            "actionItems": ["Check your OpenAI API key", "Try again later"],
+            "actionItems": ["Check your Anthropic API key", "Try again later"],
             "metrics": [
                 {
                     "label": "Error",
@@ -2117,22 +2607,25 @@ Remember to write all text content (titles, descriptions, action items, etc.) in
                 }
             ]
         }
-        
+
         return {
             "categories": {
-                "health": [sample_insight],
-                "spending": [sample_insight],
-                "savings": [sample_insight],
+                "baby_steps": [sample_insight],
                 "debt": [sample_insight],
-                "budget": [sample_insight]
+                "savings": [sample_insight],
+                "fire": [sample_insight],
+                "tax_optimization": [sample_insight]
             },
             "status": {
-                "health": "ok",
-                "spending": "ok",
-                "savings": "ok",
+                "baby_steps": "ok",
                 "debt": "ok",
-                "budget": "ok"
+                "savings": "ok",
+                "fire": "ok",
+                "tax_optimization": "ok"
             },
+            "currentBabyStep": 0,
+            "fireNumber": 0,
+            "savingsRate": 0,
             "metadata": {
                 "generatedAt": datetime.now().isoformat(),
                 "source": "error_fallback",

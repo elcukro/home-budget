@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import BabyStepsProgress from '@/components/financial-freedom/BabyStepsProgress';
 import BabyStepCard from '@/components/financial-freedom/BabyStepCard';
 import ProgressSummary from '@/components/financial-freedom/ProgressSummary';
+import FIRECalculator from '@/components/financial-freedom/FIRECalculator';
 import { BabyStep, FinancialFreedomData } from '@/types/financial-freedom';
 import { useSettings } from '@/contexts/SettingsContext';
 import ProtectedPage from '@/components/ProtectedPage';
@@ -62,6 +63,8 @@ export default function FinancialFreedomPage() {
   const [data, setData] = useState<FinancialFreedomData | null>(null);
   const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
   const [totalNonMortgageDebt, setTotalNonMortgageDebt] = useState<number>(0);
+  const [monthlyExpensesAmount, setMonthlyExpensesAmount] = useState<number>(8000);
+  const [totalSavings, setTotalSavings] = useState<number>(0);
 
   // Single data loading effect - loads all data at once
   useEffect(() => {
@@ -100,6 +103,8 @@ export default function FinancialFreedomPage() {
         
         // Set total debt state
         setTotalNonMortgageDebt(nonMortgageDebt);
+        setMonthlyExpensesAmount(monthlyExpenses || 8000);
+        setTotalSavings(liquidSavings || 0);
         
         // Get settings values or use defaults
         const emergencyFundMonths = settings?.emergency_fund_months || 3;
@@ -295,10 +300,19 @@ export default function FinancialFreedomPage() {
         {/* Removed debug section - no longer needed */}
 
         <div className="mb-8">
-          <ProgressSummary 
-            data={data} 
+          <ProgressSummary
+            data={data}
             formatCurrency={formatCurrency}
             currency={settings?.currency || 'USD'}
+          />
+        </div>
+
+        {/* FIRE Calculator */}
+        <div className="mb-8">
+          <FIRECalculator
+            monthlyExpenses={monthlyExpensesAmount}
+            currentSavings={totalSavings}
+            monthlyInvestment={2000}
           />
         </div>
       </div>

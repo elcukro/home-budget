@@ -265,25 +265,39 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency 
 
         {step.id === 6 && (
           <div className="space-y-1">
-            <p className="text-sm text-secondary">
-              {step.isCompleted
-                ? intl.formatMessage({ id: 'financialFreedom.steps.step6.mortgageFree' })
-                : intl.formatMessage(
-                    { id: 'financialFreedom.steps.step6.remainingMortgage' },
-                    { amount: formatCurrency(step.currentAmount || 0) }
-                  )}
-            </p>
-            {!step.isCompleted && (step.targetAmount ?? 0) > 0 && (
-              <p className="text-sm text-secondary">
-                {intl.formatMessage(
-                  { id: 'financialFreedom.steps.step6.originalAmount' },
-                  { amount: formatCurrency(step.targetAmount || 0) }
+            {/* Check if user has no mortgage (targetAmount is 0 or undefined) */}
+            {(!step.targetAmount || step.targetAmount === 0) ? (
+              <>
+                <p className="text-sm text-secondary">
+                  {intl.formatMessage({ id: 'financialFreedom.steps.step6.noMortgage' })}
+                </p>
+                <p className="text-xs text-secondary italic mt-1">
+                  {intl.formatMessage({ id: 'financialFreedom.steps.step6.noMortgageTip' })}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-secondary">
+                  {step.isCompleted
+                    ? intl.formatMessage({ id: 'financialFreedom.steps.step6.mortgageFree' })
+                    : intl.formatMessage(
+                        { id: 'financialFreedom.steps.step6.remainingMortgage' },
+                        { amount: formatCurrency(step.currentAmount || 0) }
+                      )}
+                </p>
+                {!step.isCompleted && (
+                  <p className="text-sm text-secondary">
+                    {intl.formatMessage(
+                      { id: 'financialFreedom.steps.step6.originalAmount' },
+                      { amount: formatCurrency(step.targetAmount || 0) }
+                    )}
+                  </p>
                 )}
-              </p>
+                <p className="text-xs text-secondary italic mt-1">
+                  {intl.formatMessage({ id: 'financialFreedom.steps.step6.tip' })}
+                </p>
+              </>
             )}
-            <p className="text-xs text-secondary italic mt-1">
-              {intl.formatMessage({ id: 'financialFreedom.steps.step6.tip' })}
-            </p>
           </div>
         )}
 

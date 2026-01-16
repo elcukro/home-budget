@@ -14,11 +14,14 @@ export default function ChunkErrorHandler() {
       const message = event.message || '';
       const filename = event.filename || '';
 
-      // Check if this is a chunk loading error
+      // Check if this is a chunk loading error or related React error
       const isChunkError =
         message.includes('Loading chunk') ||
         message.includes('ChunkLoadError') ||
         message.includes('Loading CSS chunk') ||
+        message.includes('Minified React error #423') ||
+        message.includes('Minified React error #418') ||
+        message.includes('Minified React error #419') ||
         (filename.includes('_next/static') && event.error?.name === 'ChunkLoadError');
 
       if (isChunkError) {

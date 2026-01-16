@@ -1,13 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, or_, and_
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import logging
 
 from ..database import get_db
-from ..models import User, Saving
-from ..schemas.savings import SavingCreate, SavingUpdate, Saving as SavingSchema, SavingsSummary, SavingCategory
+from ..models import User, Saving, Settings, SavingsGoal
+from ..schemas.savings import (
+    SavingCreate, SavingUpdate, Saving as SavingSchema, SavingsSummary,
+    SavingCategory, AccountType, RetirementAccountLimit, RetirementLimitsResponse,
+    SavingsGoalCreate, SavingsGoalUpdate, SavingsGoal as SavingsGoalSchema,
+    SavingsGoalWithSavings, GoalStatus
+)
 from ..dependencies import get_current_user
 
 # Set up logging
@@ -158,74 +163,97 @@ async def get_savings_summary(
     """Get a summary of user's savings."""
     try:
         logger.info(f"Getting savings summary for user: {current_user.id}")
-        
-        # Calculate total deposits
-        deposits = db.query(
-            func.sum(Saving.amount)
-        ).filter(
-            Saving.user_id == current_user.id,
-            Saving.saving_type == 'deposit'
-        ).scalar() or 0.0
-        
-        # Calculate total withdrawals
-        withdrawals = db.query(
-            func.sum(Saving.amount)
-        ).filter(
-            Saving.user_id == current_user.id,
-            Saving.saving_type == 'withdrawal'
-        ).scalar() or 0.0
-        
+
+        today = datetime.now().date()
+
+        # Helper function to add active recurring filter
+        # Non-recurring items are always counted
+        # Recurring items only count if: date <= today AND (end_date IS NULL OR end_date >= today)
+        def active_savings_filter(query, saving_type: str):
+            return query.filter(
+                Saving.user_id == current_user.id,
+                Saving.saving_type == saving_type,
+                Saving.date <= today,  # Must have started
+                or_(
+                    Saving.is_recurring == False,  # Non-recurring always count
+                    and_(
+                        Saving.is_recurring == True,
+                        or_(
+                            Saving.end_date == None,  # No end date (ongoing)
+                            Saving.end_date >= today  # Or still active
+                        )
+                    )
+                )
+            )
+
+        # Calculate total deposits (only active items)
+        deposits_query = db.query(func.sum(Saving.amount))
+        deposits = active_savings_filter(deposits_query, 'deposit').scalar() or 0.0
+
+        # Calculate total withdrawals (only active items)
+        withdrawals_query = db.query(func.sum(Saving.amount))
+        withdrawals = active_savings_filter(withdrawals_query, 'withdrawal').scalar() or 0.0
+
         total_savings = deposits - withdrawals
-        
-        # Calculate emergency fund total
-        emergency_fund_deposits = db.query(
-            func.sum(Saving.amount)
-        ).filter(
-            Saving.user_id == current_user.id,
-            Saving.category == SavingCategory.EMERGENCY_FUND,
-            Saving.saving_type == 'deposit'
-        ).scalar() or 0.0
-        
-        emergency_fund_withdrawals = db.query(
-            func.sum(Saving.amount)
-        ).filter(
-            Saving.user_id == current_user.id,
-            Saving.category == SavingCategory.EMERGENCY_FUND,
-            Saving.saving_type == 'withdrawal'
-        ).scalar() or 0.0
-        
+
+        # Calculate emergency fund total (only active items)
+        ef_deposits_query = db.query(func.sum(Saving.amount)).filter(
+            Saving.category == SavingCategory.EMERGENCY_FUND
+        )
+        emergency_fund_deposits = active_savings_filter(ef_deposits_query, 'deposit').scalar() or 0.0
+
+        ef_withdrawals_query = db.query(func.sum(Saving.amount)).filter(
+            Saving.category == SavingCategory.EMERGENCY_FUND
+        )
+        emergency_fund_withdrawals = active_savings_filter(ef_withdrawals_query, 'withdrawal').scalar() or 0.0
+
         emergency_fund = emergency_fund_deposits - emergency_fund_withdrawals
-        
-        # Calculate monthly contribution (total deposits in the current month)
-        month_start = datetime.now().date().replace(day=1)
-        monthly_contribution = db.query(
+
+        # Calculate monthly contribution (current month's deposits - non-recurring in this month + active recurring)
+        month_start = today.replace(day=1)
+        month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+
+        # Non-recurring deposits in current month
+        monthly_non_recurring = db.query(
             func.sum(Saving.amount)
         ).filter(
             Saving.user_id == current_user.id,
             Saving.saving_type == 'deposit',
-            Saving.date >= month_start
+            Saving.is_recurring == False,
+            Saving.date >= month_start,
+            Saving.date <= month_end
         ).scalar() or 0.0
-        
-        # Calculate category totals
+
+        # Recurring deposits active in current month
+        monthly_recurring = db.query(
+            func.sum(Saving.amount)
+        ).filter(
+            Saving.user_id == current_user.id,
+            Saving.saving_type == 'deposit',
+            Saving.is_recurring == True,
+            Saving.date <= month_end,  # Started before or during this month
+            or_(
+                Saving.end_date == None,  # No end date (ongoing)
+                Saving.end_date >= month_start  # Or end_date is this month or later
+            )
+        ).scalar() or 0.0
+
+        monthly_contribution = monthly_non_recurring + monthly_recurring
+
+        # Calculate category totals (only active items)
         category_totals = {}
         for category in SavingCategory:
-            deposits = db.query(
-                func.sum(Saving.amount)
-            ).filter(
-                Saving.user_id == current_user.id,
-                Saving.category == category,
-                Saving.saving_type == 'deposit'
-            ).scalar() or 0.0
-            
-            withdrawals = db.query(
-                func.sum(Saving.amount)
-            ).filter(
-                Saving.user_id == current_user.id,
-                Saving.category == category,
-                Saving.saving_type == 'withdrawal'
-            ).scalar() or 0.0
-            
-            category_totals[category] = deposits - withdrawals
+            cat_deposits_query = db.query(func.sum(Saving.amount)).filter(
+                Saving.category == category
+            )
+            cat_deposits = active_savings_filter(cat_deposits_query, 'deposit').scalar() or 0.0
+
+            cat_withdrawals_query = db.query(func.sum(Saving.amount)).filter(
+                Saving.category == category
+            )
+            cat_withdrawals = active_savings_filter(cat_withdrawals_query, 'withdrawal').scalar() or 0.0
+
+            category_totals[category] = cat_deposits - cat_withdrawals
         
         # Get recent transactions
         recent_transactions = db.query(Saving).filter(
@@ -234,8 +262,13 @@ async def get_savings_summary(
             Saving.date.desc()
         ).limit(5).all()
         
+        # Get user settings for emergency fund target
+        user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+        emergency_fund_target = 3000  # Default Baby Step 1 target
+        if user_settings and hasattr(user_settings, 'emergency_fund_target') and user_settings.emergency_fund_target:
+            emergency_fund_target = user_settings.emergency_fund_target
+
         # Calculate emergency fund progress
-        emergency_fund_target = 1000  # Baby step 1 target
         emergency_fund_progress = min((emergency_fund / emergency_fund_target) * 100, 100) if emergency_fund_target > 0 else 0
         
         summary = SavingsSummary(
@@ -255,4 +288,401 @@ async def get_savings_summary(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error generating savings summary: {str(e)}"
-        ) 
+        )
+
+
+# Polish III Pillar limits for 2026
+# These are updated annually by the government
+RETIREMENT_LIMITS_2026 = {
+    AccountType.IKE: 28260.0,       # IKE 2026 limit (no capital gains tax)
+    AccountType.IKZE: 11304.0,      # IKZE 2026 standard limit (tax deductible)
+    AccountType.IKZE: 16956.0,      # IKZE 2026 self-employed (JDG) limit
+    AccountType.PPK: None,          # PPK has no annual limit (employer-employee matching)
+    AccountType.OIPE: 28260.0,      # OIPE - same as IKE
+}
+
+
+@router.get("/retirement-limits", response_model=RetirementLimitsResponse)
+async def get_retirement_limits(
+    year: Optional[int] = None,
+    is_self_employed: bool = False,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get retirement account contribution limits and current usage.
+
+    Tracks Polish III Pillar accounts (IKE, IKZE, PPK, OIPE) against
+    annual limits set by the Polish government.
+
+    Args:
+        year: Year to check (defaults to current year)
+        is_self_employed: If true, uses higher IKZE limit for self-employed (JDG)
+    """
+    try:
+        target_year = year or datetime.now().year
+        year_start = date(target_year, 1, 1)
+        year_end = date(target_year, 12, 31)
+
+        logger.info(f"Getting retirement limits for user {current_user.id}, year {target_year}")
+
+        # Polish 2026 limits
+        ike_limit = 28260.0
+        ikze_limit = 16956.0 if is_self_employed else 11304.0
+        oipe_limit = 28260.0  # Same as IKE
+
+        accounts = []
+        total_contributions = 0.0
+
+        # Calculate contributions for each retirement account type
+        for account_type in [AccountType.IKE, AccountType.IKZE, AccountType.PPK, AccountType.OIPE]:
+            # Get deposits for this account type in the target year
+            deposits = db.query(func.sum(Saving.amount)).filter(
+                Saving.user_id == current_user.id,
+                Saving.account_type == account_type.value,
+                Saving.saving_type == 'deposit',
+                Saving.date >= year_start,
+                Saving.date <= year_end
+            ).scalar() or 0.0
+
+            # Get withdrawals for this account type in the target year
+            withdrawals = db.query(func.sum(Saving.amount)).filter(
+                Saving.user_id == current_user.id,
+                Saving.account_type == account_type.value,
+                Saving.saving_type == 'withdrawal',
+                Saving.date >= year_start,
+                Saving.date <= year_end
+            ).scalar() or 0.0
+
+            # Net contributions (deposits minus withdrawals)
+            current_contributions = max(0, deposits - withdrawals)
+            total_contributions += current_contributions
+
+            # Determine limit based on account type
+            if account_type == AccountType.IKE:
+                annual_limit = ike_limit
+            elif account_type == AccountType.IKZE:
+                annual_limit = ikze_limit
+            elif account_type == AccountType.OIPE:
+                annual_limit = oipe_limit
+            else:  # PPK has no annual limit
+                annual_limit = 0
+
+            remaining = max(0, annual_limit - current_contributions) if annual_limit > 0 else 0
+            percentage = (current_contributions / annual_limit * 100) if annual_limit > 0 else 0
+
+            accounts.append(RetirementAccountLimit(
+                account_type=account_type,
+                year=target_year,
+                annual_limit=annual_limit,
+                current_contributions=current_contributions,
+                remaining_limit=remaining,
+                percentage_used=round(percentage, 1),
+                is_over_limit=current_contributions > annual_limit if annual_limit > 0 else False
+            ))
+
+        return RetirementLimitsResponse(
+            year=target_year,
+            accounts=accounts,
+            total_retirement_contributions=total_contributions,
+            ike_limit=ike_limit,
+            ikze_limit_standard=11304.0,
+            ikze_limit_jdg=16956.0
+        )
+
+    except Exception as e:
+        logger.error(f"Error in get_retirement_limits: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching retirement limits: {str(e)}"
+        )
+
+
+# ============== Savings Goals Endpoints ==============
+
+def _calculate_goal_stats(goal: SavingsGoal, db: Session) -> dict:
+    """Calculate computed fields for a savings goal."""
+    # Sum deposits minus withdrawals for this goal
+    deposits = db.query(func.sum(Saving.amount)).filter(
+        Saving.goal_id == goal.id,
+        Saving.saving_type == 'deposit'
+    ).scalar() or 0.0
+
+    withdrawals = db.query(func.sum(Saving.amount)).filter(
+        Saving.goal_id == goal.id,
+        Saving.saving_type == 'withdrawal'
+    ).scalar() or 0.0
+
+    current_amount = max(0, deposits - withdrawals)
+    remaining = max(0, goal.target_amount - current_amount)
+    progress = (current_amount / goal.target_amount * 100) if goal.target_amount > 0 else 0
+
+    # Calculate if on track based on deadline
+    is_on_track = None
+    monthly_needed = None
+
+    if goal.deadline and goal.status == 'active':
+        today = date.today()
+        if goal.deadline > today:
+            months_remaining = (goal.deadline.year - today.year) * 12 + (goal.deadline.month - today.month)
+            if months_remaining > 0:
+                monthly_needed = remaining / months_remaining
+                # Check if they're on track (linear projection)
+                total_months = (goal.deadline.year - goal.created_at.year) * 12 + (goal.deadline.month - goal.created_at.month)
+                if total_months > 0:
+                    expected_progress = ((total_months - months_remaining) / total_months) * 100
+                    is_on_track = progress >= expected_progress * 0.9  # 10% tolerance
+
+    return {
+        'current_amount': current_amount,
+        'progress_percent': round(progress, 1),
+        'remaining_amount': remaining,
+        'is_on_track': is_on_track,
+        'monthly_needed': round(monthly_needed, 2) if monthly_needed else None
+    }
+
+
+def _goal_to_schema(goal: SavingsGoal, db: Session) -> SavingsGoalSchema:
+    """Convert a SavingsGoal model to schema with computed fields."""
+    stats = _calculate_goal_stats(goal, db)
+
+    return SavingsGoalSchema(
+        id=goal.id,
+        user_id=goal.user_id,
+        name=goal.name,
+        category=goal.category,
+        target_amount=goal.target_amount,
+        current_amount=stats['current_amount'],
+        deadline=goal.deadline,
+        icon=goal.icon,
+        color=goal.color,
+        status=goal.status or GoalStatus.ACTIVE,
+        priority=goal.priority or 0,
+        notes=goal.notes,
+        created_at=goal.created_at,
+        updated_at=goal.updated_at,
+        completed_at=goal.completed_at,
+        progress_percent=stats['progress_percent'],
+        remaining_amount=stats['remaining_amount'],
+        is_on_track=stats['is_on_track'],
+        monthly_needed=stats['monthly_needed']
+    )
+
+
+@router.get("/goals", response_model=List[SavingsGoalSchema])
+async def get_savings_goals(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    status: Optional[GoalStatus] = None,
+    category: Optional[SavingCategory] = None
+):
+    """Get all savings goals for the current user."""
+    try:
+        logger.info(f"Getting savings goals for user: {current_user.id}")
+        query = db.query(SavingsGoal).filter(SavingsGoal.user_id == current_user.id)
+
+        if status:
+            query = query.filter(SavingsGoal.status == status.value)
+        if category:
+            query = query.filter(SavingsGoal.category == category.value)
+
+        goals = query.order_by(SavingsGoal.priority.desc(), SavingsGoal.created_at.desc()).all()
+
+        return [_goal_to_schema(goal, db) for goal in goals]
+    except Exception as e:
+        logger.error(f"Error in get_savings_goals: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching savings goals: {str(e)}"
+        )
+
+
+@router.get("/goals/{goal_id}", response_model=SavingsGoalWithSavings)
+async def get_savings_goal(
+    goal_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific savings goal with its linked savings entries."""
+    try:
+        logger.info(f"Getting savings goal {goal_id} for user: {current_user.id}")
+        goal = db.query(SavingsGoal).filter(
+            SavingsGoal.id == goal_id,
+            SavingsGoal.user_id == current_user.id
+        ).first()
+
+        if not goal:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Goal not found"
+            )
+
+        # Get linked savings
+        savings = db.query(Saving).filter(
+            Saving.goal_id == goal_id
+        ).order_by(Saving.date.desc()).all()
+
+        goal_schema = _goal_to_schema(goal, db)
+
+        return SavingsGoalWithSavings(
+            **goal_schema.dict(),
+            savings=savings
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in get_savings_goal: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching savings goal: {str(e)}"
+        )
+
+
+@router.post("/goals", response_model=SavingsGoalSchema)
+async def create_savings_goal(
+    goal: SavingsGoalCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new savings goal."""
+    try:
+        logger.info(f"Creating savings goal for user: {current_user.id}")
+        db_goal = SavingsGoal(
+            **goal.dict(),
+            user_id=current_user.id,
+            status='active',
+            current_amount=0
+        )
+        db.add(db_goal)
+        db.commit()
+        db.refresh(db_goal)
+
+        logger.info(f"Created savings goal with ID: {db_goal.id}")
+        return _goal_to_schema(db_goal, db)
+    except Exception as e:
+        logger.error(f"Error in create_savings_goal: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating savings goal: {str(e)}"
+        )
+
+
+@router.put("/goals/{goal_id}", response_model=SavingsGoalSchema)
+async def update_savings_goal(
+    goal_id: int,
+    goal_update: SavingsGoalUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update a savings goal."""
+    try:
+        logger.info(f"Updating savings goal {goal_id} for user: {current_user.id}")
+        db_goal = db.query(SavingsGoal).filter(
+            SavingsGoal.id == goal_id,
+            SavingsGoal.user_id == current_user.id
+        ).first()
+
+        if not db_goal:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Goal not found"
+            )
+
+        # Update only provided fields
+        update_data = goal_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            if value is not None:
+                setattr(db_goal, key, value.value if hasattr(value, 'value') else value)
+
+        # Mark completed_at if status changed to completed
+        if goal_update.status == GoalStatus.COMPLETED and db_goal.completed_at is None:
+            db_goal.completed_at = datetime.now()
+
+        db.commit()
+        db.refresh(db_goal)
+
+        logger.info(f"Updated savings goal {goal_id}")
+        return _goal_to_schema(db_goal, db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in update_savings_goal: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating savings goal: {str(e)}"
+        )
+
+
+@router.delete("/goals/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_savings_goal(
+    goal_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a savings goal. Linked savings entries will have their goal_id set to NULL."""
+    try:
+        logger.info(f"Deleting savings goal {goal_id} for user: {current_user.id}")
+        db_goal = db.query(SavingsGoal).filter(
+            SavingsGoal.id == goal_id,
+            SavingsGoal.user_id == current_user.id
+        ).first()
+
+        if not db_goal:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Goal not found"
+            )
+
+        db.delete(db_goal)
+        db.commit()
+
+        logger.info(f"Deleted savings goal {goal_id}")
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in delete_savings_goal: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting savings goal: {str(e)}"
+        )
+
+
+@router.post("/goals/{goal_id}/complete", response_model=SavingsGoalSchema)
+async def mark_goal_complete(
+    goal_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Mark a savings goal as complete."""
+    try:
+        logger.info(f"Marking goal {goal_id} as complete for user: {current_user.id}")
+        db_goal = db.query(SavingsGoal).filter(
+            SavingsGoal.id == goal_id,
+            SavingsGoal.user_id == current_user.id
+        ).first()
+
+        if not db_goal:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Goal not found"
+            )
+
+        db_goal.status = 'completed'
+        db_goal.completed_at = datetime.now()
+        db.commit()
+        db.refresh(db_goal)
+
+        return _goal_to_schema(db_goal, db)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error marking goal complete: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error completing goal: {str(e)}"
+        )

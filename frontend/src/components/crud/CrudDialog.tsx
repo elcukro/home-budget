@@ -74,6 +74,14 @@ export interface FormFieldConfig<TFormValues extends FieldValues> {
   autoFocus?: boolean;
   onValueChange?: (value: unknown, form: UseFormReturn<TFormValues>) => void;
   showWhen?: (values: TFormValues) => boolean;
+  /** For icon-select: number of columns (default 3) */
+  columns?: number;
+  /** For icon-select: compact horizontal layout (icon + text side by side) */
+  compact?: boolean;
+  /** Group fields into same row - fields with same rowGroup value render side by side */
+  rowGroup?: string;
+  /** Width within row group: "auto" | "1/2" | "1/3" | "2/3" (default "1/2") */
+  rowWidth?: "auto" | "1/2" | "1/3" | "2/3";
 }
 
 export interface CrudDialogProps<TFormValues extends FieldValues> {
@@ -147,32 +155,63 @@ export function CrudDialog<TFormValues extends FieldValues>({
     await onSubmit(values);
   };
 
+  // Debug: Log validation errors when form submission fails
+  const onFormError = (errors: any) => {
+    console.error("[CrudDialog] Form validation errors:", errors);
+    // Also show in UI for easier debugging
+    Object.entries(errors).forEach(([field, error]: [string, any]) => {
+      console.error(`  - ${field}: ${error?.message || JSON.stringify(error)}`);
+    });
+  };
+
   // Watch all form values to enable conditional field rendering
   const watchedValues = form.watch();
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{intl.formatMessage({ id: titleId })}</DialogTitle>
-          {descriptionId && (
-            <DialogDescription>
-              {intl.formatMessage({ id: descriptionId })}
-            </DialogDescription>
-          )}
-        </DialogHeader>
+  // Group fields by rowGroup for horizontal layout
+  const groupedFields = React.useMemo(() => {
+    const visibleFields = fields.filter(
+      (f) => !f.showWhen || f.showWhen(watchedValues as TFormValues)
+    );
 
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-4"
-            noValidate
-          >
-            {fields
-              .filter((fieldConfig) =>
-                !fieldConfig.showWhen || fieldConfig.showWhen(watchedValues as TFormValues)
-              )
-              .map((fieldConfig) => (
+    const groups: { key: string; fields: FormFieldConfig<TFormValues>[] }[] = [];
+    const processedIndices = new Set<number>();
+
+    visibleFields.forEach((field, index) => {
+      if (processedIndices.has(index)) return;
+
+      if (field.rowGroup) {
+        // Find all fields with the same rowGroup
+        const groupFields = visibleFields
+          .map((f, i) => ({ field: f, index: i }))
+          .filter(({ field: f }) => f.rowGroup === field.rowGroup);
+
+        groupFields.forEach(({ index: i }) => processedIndices.add(i));
+        groups.push({
+          key: `row-${field.rowGroup}`,
+          fields: groupFields.map(({ field: f }) => f),
+        });
+      } else {
+        processedIndices.add(index);
+        groups.push({
+          key: `single-${field.name}`,
+          fields: [field],
+        });
+      }
+    });
+
+    return groups;
+  }, [fields, watchedValues]);
+
+  const getRowWidthClass = (width?: string) => {
+    switch (width) {
+      case "1/3": return "w-1/3";
+      case "2/3": return "w-2/3";
+      case "auto": return "flex-1";
+      default: return "w-1/2";
+    }
+  };
+
+  const renderField = (fieldConfig: FormFieldConfig<TFormValues>) => (
               <FormField
                 key={fieldConfig.name}
                 control={form.control}
@@ -184,7 +223,11 @@ export function CrudDialog<TFormValues extends FieldValues>({
                     </FormLabel>
                     <FormControl>
                       {fieldConfig.component === "icon-select" ? (
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className={`grid gap-2 ${
+                          fieldConfig.columns === 2 ? "grid-cols-2" :
+                          fieldConfig.columns === 4 ? "grid-cols-4" :
+                          "grid-cols-3"
+                        }`}>
                           {fieldConfig.options?.map((option) => {
                             const isSelected = field.value === option.value;
                             return (
@@ -195,18 +238,18 @@ export function CrudDialog<TFormValues extends FieldValues>({
                                   field.onChange(option.value);
                                   fieldConfig.onValueChange?.(option.value, form);
                                 }}
-                                className={`flex flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all ${
+                                className={`flex ${fieldConfig.compact ? "flex-row gap-2 p-2" : "flex-col gap-2 p-3"} items-center rounded-xl border-2 transition-all ${
                                   isSelected
                                     ? "border-primary bg-primary/10 text-primary"
                                     : "border-muted hover:border-primary/50 hover:bg-muted/50"
                                 }`}
                               >
-                                <span className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                                  isSelected ? "bg-primary/20" : "bg-muted"
-                                }`}>
+                                <span className={`flex items-center justify-center rounded-full ${
+                                  fieldConfig.compact ? "h-8 w-8" : "h-10 w-10"
+                                } ${isSelected ? "bg-primary/20" : "bg-muted"}`}>
                                   {option.icon}
                                 </span>
-                                <span className="text-xs font-medium">
+                                <span className={`${fieldConfig.compact ? "text-sm" : "text-xs"} font-medium`}>
                                   {intl.formatMessage({ id: option.labelId })}
                                 </span>
                               </button>
@@ -387,7 +430,53 @@ export function CrudDialog<TFormValues extends FieldValues>({
                   </FormItem>
                 )}
               />
-            ))}
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{intl.formatMessage({ id: titleId })}</DialogTitle>
+          {descriptionId && (
+            <DialogDescription>
+              {intl.formatMessage({ id: descriptionId })}
+            </DialogDescription>
+          )}
+        </DialogHeader>
+
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(handleSubmit, onFormError)}
+            className="space-y-4"
+            noValidate
+          >
+            {/* Show form-level errors */}
+            {Object.keys(form.formState.errors).length > 0 && (
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                <p className="font-medium mb-1">Popraw błędy w formularzu:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {Object.entries(form.formState.errors).map(([field, error]: [string, any]) => (
+                    <li key={field}>{field}: {error?.message || "Nieprawidłowa wartość"}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {groupedFields.map((group) =>
+              group.fields.length === 1 ? (
+                renderField(group.fields[0])
+              ) : (
+                <div key={group.key} className="flex gap-3">
+                  {group.fields.map((fieldConfig) => (
+                    <div
+                      key={fieldConfig.name}
+                      className={getRowWidthClass(fieldConfig.rowWidth)}
+                    >
+                      {renderField(fieldConfig)}
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
 
             <DialogFooter className="gap-2">
               <Button

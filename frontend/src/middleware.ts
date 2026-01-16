@@ -17,8 +17,8 @@ export default withAuth(
     });
 
     if (!token) {
-      logger.debug('[middleware][debug] No token found, redirecting to sign-in');
-      return NextResponse.redirect(new URL('/auth/signin', req.url));
+      logger.debug('[middleware][debug] No token found, redirecting to landing page');
+      return NextResponse.redirect(new URL('/', req.url));
     }
 
     return NextResponse.next();
@@ -34,7 +34,7 @@ export default withAuth(
       },
     },
     pages: {
-      signIn: '/auth/signin',
+      signIn: '/',
     },
   }
 );

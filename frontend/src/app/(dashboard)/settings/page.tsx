@@ -66,6 +66,15 @@ interface UserSettings {
   banking?: {
     connections?: BankingConnection[];
   };
+  // Polish tax profile
+  employment_status?: string | null;
+  tax_form?: string | null;
+  birth_year?: number | null;
+  use_authors_costs?: boolean;
+  ppk_enrolled?: boolean | null;
+  ppk_employee_rate?: number | null;
+  ppk_employer_rate?: number | null;
+  children_count?: number;
   created_at: string;
   updated_at: string | null;
 }
@@ -82,6 +91,22 @@ const currencies = [
   { code: "EUR", symbol: "€", name: "settings.currencies.EUR" },
   { code: "GBP", symbol: "£", name: "settings.currencies.GBP" },
   { code: "JPY", symbol: "¥", name: "settings.currencies.JPY" },
+];
+
+const employmentStatuses = [
+  { code: "employee", name: "settings.taxProfile.employmentStatuses.employee" },
+  { code: "b2b", name: "settings.taxProfile.employmentStatuses.b2b" },
+  { code: "contract", name: "settings.taxProfile.employmentStatuses.contract" },
+  { code: "freelancer", name: "settings.taxProfile.employmentStatuses.freelancer" },
+  { code: "business", name: "settings.taxProfile.employmentStatuses.business" },
+  { code: "unemployed", name: "settings.taxProfile.employmentStatuses.unemployed" },
+];
+
+const taxForms = [
+  { code: "scale", name: "settings.taxProfile.taxForms.scale" },
+  { code: "linear", name: "settings.taxProfile.taxForms.linear" },
+  { code: "lumpsum", name: "settings.taxProfile.taxForms.lumpsum" },
+  { code: "card", name: "settings.taxProfile.taxForms.card" },
 ];
 
 export default function SettingsPage() {
@@ -246,6 +271,15 @@ export default function SettingsPage() {
         emergency_fund_target: settings.emergency_fund_target,
         emergency_fund_months: settings.emergency_fund_months,
         base_currency: settings.currency,
+        // Polish tax profile (convert null to undefined for type compatibility)
+        employment_status: settings.employment_status ?? undefined,
+        tax_form: settings.tax_form ?? undefined,
+        birth_year: settings.birth_year ?? undefined,
+        use_authors_costs: settings.use_authors_costs ?? undefined,
+        ppk_enrolled: settings.ppk_enrolled ?? undefined,
+        ppk_employee_rate: settings.ppk_employee_rate ?? undefined,
+        ppk_employer_rate: settings.ppk_employer_rate ?? undefined,
+        children_count: settings.children_count ?? undefined,
       });
 
       toast({
@@ -526,7 +560,215 @@ export default function SettingsPage() {
               />
             </div>
 
-            <Button type="submit">
+            <Separator className="my-6" />
+
+            {/* Tax Profile Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary">
+                {intl.formatMessage({ id: "settings.taxProfile.title" })}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {intl.formatMessage({ id: "settings.taxProfile.description" })}
+              </p>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="birth_year">
+                    {intl.formatMessage({ id: "settings.taxProfile.birthYear" })}
+                  </Label>
+                  <Input
+                    id="birth_year"
+                    type="number"
+                    min={1940}
+                    max={new Date().getFullYear()}
+                    value={settings.birth_year ?? ""}
+                    onChange={(event) =>
+                      setSettings((prev) =>
+                        prev && {
+                          ...prev,
+                          birth_year: event.target.value ? Number(event.target.value) : null,
+                        },
+                      )
+                    }
+                    placeholder="np. 1990"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {intl.formatMessage({ id: "settings.taxProfile.birthYearHint" })}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="children_count">
+                    {intl.formatMessage({ id: "settings.taxProfile.childrenCount" })}
+                  </Label>
+                  <Input
+                    id="children_count"
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={settings.children_count ?? 0}
+                    onChange={(event) =>
+                      setSettings((prev) =>
+                        prev && {
+                          ...prev,
+                          children_count: Number(event.target.value),
+                        },
+                      )
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="employment_status">
+                    {intl.formatMessage({ id: "settings.taxProfile.employmentStatus" })}
+                  </Label>
+                  <Select
+                    value={settings.employment_status ?? ""}
+                    onValueChange={(value) =>
+                      setSettings((prev) => prev && { ...prev, employment_status: value || null })
+                    }
+                  >
+                    <SelectTrigger id="employment_status">
+                      <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectEmployment" })} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employmentStatuses.map((status) => (
+                        <SelectItem key={status.code} value={status.code}>
+                          {intl.formatMessage({ id: status.name })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="tax_form">
+                    {intl.formatMessage({ id: "settings.taxProfile.taxForm" })}
+                  </Label>
+                  <Select
+                    value={settings.tax_form ?? ""}
+                    onValueChange={(value) =>
+                      setSettings((prev) => prev && { ...prev, tax_form: value || null })
+                    }
+                  >
+                    <SelectTrigger id="tax_form">
+                      <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectTaxForm" })} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {taxForms.map((form) => (
+                        <SelectItem key={form.code} value={form.code}>
+                          {intl.formatMessage({ id: form.name })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-lg border border-default p-4 bg-muted/30">
+                <h4 className="font-medium text-primary">
+                  {intl.formatMessage({ id: "settings.taxProfile.ppkSection" })}
+                </h4>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="ppk_enrolled">
+                      {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolled" })}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolledHint" })}
+                    </p>
+                  </div>
+                  <Select
+                    value={settings.ppk_enrolled === true ? "yes" : settings.ppk_enrolled === false ? "no" : "unknown"}
+                    onValueChange={(value) =>
+                      setSettings((prev) => prev && {
+                        ...prev,
+                        ppk_enrolled: value === "yes" ? true : value === "no" ? false : null
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unknown">{intl.formatMessage({ id: "settings.taxProfile.ppkUnknown" })}</SelectItem>
+                      <SelectItem value="yes">{intl.formatMessage({ id: "settings.taxProfile.ppkYes" })}</SelectItem>
+                      <SelectItem value="no">{intl.formatMessage({ id: "settings.taxProfile.ppkNo" })}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {settings.ppk_enrolled === true && (
+                  <div className="grid gap-4 md:grid-cols-2 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="ppk_employee_rate">
+                        {intl.formatMessage({ id: "settings.taxProfile.ppkEmployeeRate" })}
+                      </Label>
+                      <Input
+                        id="ppk_employee_rate"
+                        type="number"
+                        min={0.5}
+                        max={4}
+                        step={0.5}
+                        value={settings.ppk_employee_rate ?? 2}
+                        onChange={(event) =>
+                          setSettings((prev) =>
+                            prev && { ...prev, ppk_employee_rate: Number(event.target.value) }
+                          )
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">0.5% - 4%</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ppk_employer_rate">
+                        {intl.formatMessage({ id: "settings.taxProfile.ppkEmployerRate" })}
+                      </Label>
+                      <Input
+                        id="ppk_employer_rate"
+                        type="number"
+                        min={1.5}
+                        max={4}
+                        step={0.5}
+                        value={settings.ppk_employer_rate ?? 1.5}
+                        onChange={(event) =>
+                          setSettings((prev) =>
+                            prev && { ...prev, ppk_employer_rate: Number(event.target.value) }
+                          )
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">1.5% - 4%</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border border-default p-4 bg-muted/30">
+                <div>
+                  <Label htmlFor="use_authors_costs">
+                    {intl.formatMessage({ id: "settings.taxProfile.authorsCosts" })}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {intl.formatMessage({ id: "settings.taxProfile.authorsCostsHint" })}
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  id="use_authors_costs"
+                  checked={settings.use_authors_costs ?? false}
+                  onChange={(event) =>
+                    setSettings((prev) =>
+                      prev && { ...prev, use_authors_costs: event.target.checked }
+                    )
+                  }
+                  className="h-5 w-5 rounded border-gray-300"
+                />
+              </div>
+            </div>
+
+            <Button type="submit" className="mt-6">
               {intl.formatMessage({ id: "settings.form.submit" })}
             </Button>
           </form>

@@ -15,6 +15,7 @@ import {
   ArrowRightOnRectangleIcon,
   StarIcon,
   UserPlusIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline';
 import { useIntl } from 'react-intl';
 import SproutlyFiLogo from './SproutlyFiLogo';
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'navigation.loans', href: '/loans', icon: BuildingLibraryIcon },
   { name: 'navigation.savings', href: '/savings', icon: CurrencyDollarIcon },
   { name: 'navigation.reports', href: '/reports', icon: ChartBarIcon },
+  { name: 'navigation.aiAnalysis', href: '/ai-analysis', icon: SparklesIcon },
   { name: 'navigation.settings', href: '/settings', icon: Cog6ToothIcon }
 ];
 
@@ -96,9 +98,9 @@ export default function Sidebar() {
           <div className="mt-auto pt-4">
             {session && (
               <button
-                onClick={() => signOut({ 
-                  callbackUrl: '/auth/signin',
-                  redirect: true 
+                onClick={() => signOut({
+                  callbackUrl: '/',
+                  redirect: true
                 })}
                 className="w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg text-secondary hover:bg-mint/40 hover:text-primary transition-colors"
               >

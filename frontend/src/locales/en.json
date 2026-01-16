@@ -56,6 +56,8 @@
     "oneOff": "One-off",
     "historical": "Historical",
     "now": "now",
+    "years": "years",
+    "month": "mo",
     "currency": {
       "pln": "PLN"
     },
@@ -159,7 +161,8 @@
     },
     "date": {
       "future": "Date cannot be in the future.",
-      "tooEarly": "Date cannot be before 2000."
+      "tooEarly": "Date cannot be before 2000.",
+      "tooFarFuture": "Date cannot be more than 5 years in the future."
     },
     "interestRate": {
       "negative": "Interest rate cannot be negative.",
@@ -203,12 +206,29 @@
     "loans": "Loans",
     "reports": "Reports",
     "financialFreedom": "Financial Freedom",
+    "aiAnalysis": "AI Analysis",
     "settings": "Settings",
     "darkMode": "Dark Mode",
     "lightMode": "Light Mode",
     "signOut": "Sign Out",
     "savings": "Savings",
     "banking": "Banking"
+  },
+  "aiAnalysis": {
+    "title": "AI Analysis",
+    "subtitle": "Personalized advice aligned with FIRE and Baby Steps methodology",
+    "noApiKey": {
+      "title": "API Key Required"
+    },
+    "status": {
+      "cached": "Using cached analysis",
+      "fresh": "Fresh analysis"
+    },
+    "metrics": {
+      "currentStep": "Current Step",
+      "fireNumber": "FIRE Number",
+      "savingsRate": "Savings Rate"
+    }
   },
   "dashboard": {
     "title": "Financial Dashboard",
@@ -235,7 +255,19 @@
       "loans": {
         "title": "Loan overview",
         "description": "Progress on repayments and remaining balances."
+      },
+      "savings": {
+        "title": "Savings Goals",
+        "description": "Track your progress toward financial goals."
       }
+    },
+    "savings": {
+      "totalBalance": "Total Savings",
+      "monthlySavings": "This Month",
+      "goalsTitle": "Your Goals",
+      "goalTarget": "Goal: {amount}",
+      "noGoals": "No savings goals yet",
+      "addGoal": "Add your first savings goal"
     },
     "quickActions": {
       "addIncome": "Record a new source of income",
@@ -314,11 +346,11 @@
         "refreshing": "Refreshing...",
         "close": "Close",
         "categories": {
-          "health": "Overall Financial Health",
-          "spending": "Spending Patterns",
-          "savings": "Savings Strategy",
-          "debt": "Debt Management",
-          "budget": "Budget Optimization"
+          "baby_steps": "Baby Steps Journey",
+          "debt": "Debt Payoff",
+          "savings": "Savings & Emergency Fund",
+          "fire": "Path to FIRE",
+          "tax_optimization": "Tax Optimization"
         },
         "status": {
           "good": "Good",
@@ -335,8 +367,8 @@
         "refreshNeeded": "Your financial data has changed. Refresh insights for updated analysis.",
         "upToDate": "Insights are up to date with your current financial data.",
         "apiErrors": {
-          "overloaded": "OpenAI is currently experiencing high demand. Please try again later.",
-          "invalidKey": "Invalid API key. Please check your OpenAI API key in settings.",
+          "overloaded": "AI service is currently experiencing high demand. Please try again later.",
+          "invalidKey": "Invalid API key. Please check your Anthropic API key in settings.",
           "forbidden": "Your API key doesn't have permission to use this model.",
           "rateLimit": "Rate limit exceeded. Please try again later.",
           "generic": "An error occurred while generating insights. Please try again later."
@@ -499,10 +531,22 @@
       "category.select": "Select a category...",
       "description": "Description",
       "amount": "Amount",
+      "amountHint": "Enter net (take-home) or gross amount, depending on the toggle below.",
       "date": "Date",
       "startDate": "Start date",
       "endDate": "End date (optional)",
-      "recurring": "Recurring monthly income"
+      "recurring": "Recurring monthly income",
+      "isGross": "Gross amount",
+      "isGrossHint": "Enable if entering pre-tax (gross) amount. Disable for net (take-home) amount.",
+      "employmentType": "Employment type",
+      "employmentTypeHint": "Select your contract type for more accurate tax calculations."
+    },
+    "employmentTypes": {
+      "uop": "Employment Contract",
+      "b2b": "B2B (Self-employed)",
+      "zlecenie": "Civil law contract (zlecenie)",
+      "dzielo": "Contract for work (dzieło)",
+      "other": "Other"
     },
     "table": {
       "category": "Category",
@@ -696,6 +740,11 @@
       "car": "Car Loan",
       "personal": "Personal Loan",
       "student": "Student Loan",
+      "credit_card": "Credit Card",
+      "cash_loan": "Cash Loan",
+      "installment": "Installment Plan",
+      "leasing": "Leasing",
+      "overdraft": "Overdraft",
       "other": "Other"
     },
     "form": {
@@ -805,12 +854,77 @@
         "years": "{count, plural, one {# year} other {# years}}",
         "yearsAndMonths": "{years, plural, one {# year} other {# years}} {months} mo."
       }
+    },
+    "view": {
+      "expanded": "Expanded view",
+      "compact": "Compact view"
+    },
+    "creditCard": {
+      "utilization": "Limit utilization",
+      "limit": "Limit: {limit}",
+      "currentDebt": "Current debt",
+      "plannedPayment": "Planned payment",
+      "minPaymentHint": "Min. payment: ~5% of balance",
+      "highUtilization": "High utilization negatively affects your credit score"
+    },
+    "calculator": {
+      "button": "Calculator",
+      "title": "Loan Calculator",
+      "description": "Calculate monthly payment, term, or maximum loan amount based on other parameters.",
+      "calculateLabel": "What to calculate?",
+      "target": {
+        "monthlyPayment": "Monthly payment",
+        "termMonths": "Loan term",
+        "principal": "Loan amount"
+      },
+      "result": {
+        "monthlyPayment": "Monthly payment:",
+        "termMonths": "Loan term:",
+        "principal": "Loan amount:"
+      },
+      "totalCost": "Total cost:",
+      "totalInterest": "Total interest:",
+      "apply": "Apply"
+    },
+    "quickAdd": {
+      "title": "Quick add - select loan type:",
+      "mortgage": {
+        "description": "Home loan"
+      },
+      "car": {
+        "description": "Vehicle financing"
+      },
+      "credit_card": {
+        "description": "Credit card debt"
+      },
+      "cash_loan": {
+        "description": "Cash loan"
+      },
+      "installment": {
+        "description": "Installment purchases"
+      },
+      "leasing": {
+        "description": "Operating or finance lease"
+      },
+      "overdraft": {
+        "description": "Account overdraft"
+      }
     }
   },
   "reports": {
     "title": "Financial Reports",
+    "subtitle": "Monitor your financial progress over time",
     "monthlyBalance": "Monthly Balance",
     "savingsRate": "Savings Rate",
+    "totalIncome": "Total Income",
+    "totalExpenses": "Total Expenses",
+    "totalLoans": "Loan Payments",
+    "totalSavings": "Net Savings",
+    "savings": "Savings",
+    "ofIncome": "of income",
+    "netBalance": "Net Balance",
+    "monthlyBreakdown": "Monthly Breakdown",
+    "incomeDistribution": "Income Distribution",
     "totalLoanBalance": "Total Loan Balance",
     "monthlyFlow": "Monthly Cash Flow",
     "expenseDistribution": "Expense Distribution",
@@ -825,6 +939,11 @@
     "period": {
       "from": "From",
       "to": "To",
+      "currentYear": "Current Year",
+      "previousYear": "Previous Year",
+      "last2Years": "Last 2 Years",
+      "last5Years": "Last 5 Years",
+      "custom": "Custom Dates",
       "presets": {
         "last3Months": "Last 3 months",
         "last6Months": "Last 6 months",
@@ -851,6 +970,7 @@
       "expenseRatio": "Expense Ratio"
     },
     "chart": {
+      "title": "Financial Trends",
       "income": "Income",
       "expenses": "Expenses",
       "loanPayments": "Loan Payments",
@@ -873,6 +993,41 @@
       "emergencyFundMonths": "Baby Step 3: Emergency Fund Months",
       "months": "months"
     },
+    "taxProfile": {
+      "title": "Tax Profile",
+      "description": "This data helps AI provide better tax and investment advice tailored to your situation.",
+      "birthYear": "Birth Year",
+      "birthYearHint": "Needed to check youth tax relief eligibility (under 26)",
+      "childrenCount": "Number of Children",
+      "employmentStatus": "Employment Status",
+      "selectEmployment": "Select status",
+      "taxForm": "Tax Form",
+      "selectTaxForm": "Select form",
+      "ppkSection": "Employee Capital Plans (PPK)",
+      "ppkEnrolled": "Are you enrolled in PPK?",
+      "ppkEnrolledHint": "PPK provides extra retirement money from your employer",
+      "ppkUnknown": "Don't know",
+      "ppkYes": "Yes",
+      "ppkNo": "No",
+      "ppkEmployeeRate": "Your contribution (%)",
+      "ppkEmployerRate": "Employer contribution (%)",
+      "authorsCosts": "Author's costs (50% deduction)",
+      "authorsCostsHint": "For creators - 50% of income as deductible costs",
+      "employmentStatuses": {
+        "employee": "Employment contract",
+        "b2b": "B2B / Self-employed",
+        "contract": "Service contract",
+        "freelancer": "Freelancer",
+        "business": "Own business",
+        "unemployed": "Unemployed / Student"
+      },
+      "taxForms": {
+        "scale": "Tax scale (12%/32%)",
+        "linear": "Flat tax (19%)",
+        "lumpsum": "Lump sum",
+        "card": "Tax card"
+      }
+    },
     "languages": {
       "en": "English",
       "es": "Spanish",
@@ -888,8 +1043,8 @@
     },
     "ai": {
       "title": "AI Insights Configuration",
-      "apiKey": "OpenAI API Key",
-      "apiKeyDescription": "Enter your OpenAI API key to enable personalized insights",
+      "apiKey": "Anthropic API Key",
+      "apiKeyDescription": "Enter your Anthropic API key to enable personalized insights",
       "frequency": {
         "label": "Insights Refresh Frequency",
         "daily": "Daily",
@@ -900,13 +1055,13 @@
       "lastGenerated": "Last generated: {date}",
       "saveSuccess": "AI settings saved successfully",
       "testConnection": "Test Connection",
-      "connectionSuccess": "Successfully connected to OpenAI",
+      "connectionSuccess": "Successfully connected to Anthropic",
       "connectionError": "Failed to connect: {error}"
     },
     "tooltips": {
       "language": "Select your preferred language for the application",
       "currency": "Select your preferred currency for financial calculations",
-      "claudeApiKey": "Enter your OpenAI API key to enable AI-powered insights",
+      "claudeApiKey": "Enter your Anthropic API key to enable AI-powered insights",
       "export": "Export your data in JSON, CSV, or Excel format for backup or analysis",
       "import": "Import your previously exported data to restore or merge with your current records",
       "emergencyFundTarget": "Set your target amount for Baby Step 1 (Initial Emergency Fund)",
@@ -916,8 +1071,8 @@
       "language": "Language",
       "currency": "Currency",
       "submit": "Save Settings",
-      "claudeApiKey": "OpenAI API Key",
-      "claudeApiKeyPlaceholder": "Enter your OpenAI API key"
+      "claudeApiKey": "Anthropic API Key",
+      "claudeApiKeyPlaceholder": "Enter your Anthropic API key"
     },
     "messages": {
       "success": "Settings updated successfully",
@@ -926,7 +1081,7 @@
       "notLoggedIn": "You must be logged in to access settings",
       "exportSuccess": "Data exported successfully",
       "exportError": "Failed to export data",
-      "claudeApiKeyRequired": "OpenAI API key is required for AI insights",
+      "claudeApiKeyRequired": "Anthropic API key is required for AI insights",
       "importSuccess": "Data imported successfully",
       "importError": "Failed to import data. Please check the file format and try again.",
       "currencyConverted": "Your emergency fund target has been converted from {oldCurrency} to {newCurrency}: {amount}",
@@ -973,8 +1128,8 @@
   },
   "financialFreedom": {
     "title": "Financial Freedom Journey",
-    "subtitle": "Track your progress through Dave Ramsey's 7 Baby Steps",
-    "overview": "The 7 Baby Steps are a proven plan to help you get out of debt, save money, and build wealth.",
+    "subtitle": "7 Steps to Financial Independence",
+    "overview": "FIRE plan (Financial Independence, Retire Early) - get out of debt, save money, and build wealth that allows you to live off investments. Adapted for Polish tax benefits: IKE, IKZE, PPK.",
     "yourProgress": "Your Progress",
     "startDate": "Journey Started: {date}",
     "updateProgress": "Update Progress",
@@ -1016,38 +1171,42 @@
         "tip": "Calculate your monthly expenses and multiply by {months} to determine your target."
       },
       "step4": {
-        "title": "Baby Step 4: 15% to Retirement",
-        "shortTitle": "Retirement",
-        "description": "Invest 15% of your household income into retirement accounts.",
+        "title": "Step 4: 15% to Retirement",
+        "shortTitle": "IKE/IKZE/PPK",
+        "description": "Invest 15% of income in long-term savings: PPK (employer match), IKE (2026 limit: 28,260 PLN, no capital gains tax), IKZE (limit: 11,304 PLN or 16,956 PLN for self-employed, tax-deductible).",
         "target": "Target: 15% of income",
         "current": "Current: {percent}% of income",
-        "tip": "Take advantage of any employer match in retirement plans first."
+        "tip": "Priority order: maximize PPK first (free money from employer!), then IKE, finally IKZE."
       },
       "step5": {
-        "title": "Baby Step 5: College Fund",
-        "shortTitle": "College Fund",
-        "description": "Save for your children's college education using education savings accounts.",
+        "title": "Step 5: Children's Future Fund",
+        "shortTitle": "Future Fund",
+        "description": "In Poland, universities are free, but young adults need: down payment for apartment (30-50k PLN), driver's license, first car, startup savings.",
         "inProgress": "In Progress",
         "completed": "Completed",
         "notApplicable": "Not Applicable",
-        "tip": "Consider 529 plans or Education Savings Accounts (ESAs)."
+        "tip": "Save in a regular account or ETFs for 10-15 years. Goal: 50-100k PLN per child. For international studies: 150-200k PLN."
       },
       "step6": {
-        "title": "Baby Step 6: Pay Off Home Early",
-        "shortTitle": "Pay Off Home",
-        "description": "Pay off your home mortgage early.",
+        "title": "Step 6: Pay Off Mortgage Early",
+        "shortTitle": "Mortgage Payoff",
+        "description": "Pay off your mortgage early. Every extra payment shortens the loan term and reduces total interest cost.",
         "remainingMortgage": "Remaining Mortgage: {amount}",
         "originalAmount": "Original Mortgage: {amount}",
-        "mortgageFree": "You're mortgage free!",
-        "tip": "Make extra payments toward your principal to pay off your mortgage faster."
+        "mortgageFree": "Your home is paid off!",
+        "noMortgage": "You don't have a mortgage",
+        "noMortgageTip": "This step is already complete! You can move on to the next step.",
+        "tip": "Extra 500 PLN/month on a 400k PLN mortgage shortens repayment by 7 years and saves ~87k PLN in interest. Note: since 2022, Polish banks cannot charge prepayment fees for the first 3 years."
       },
       "step7": {
-        "title": "Baby Step 7: Build Wealth & Give",
-        "shortTitle": "Build Wealth",
-        "description": "Build wealth and give generously to others.",
-        "wealthBuilding": "Wealth Building: In Progress",
+        "title": "Step 7: Reach Your FIRE Number",
+        "shortTitle": "FIRE Number",
+        "description": "Build wealth that allows for financial independence. FIRE Number = annual expenses × 25 (4% rule). When you reach this amount, you can live off the returns. Give generously to others.",
+        "wealthBuilding": "Progress to FIRE Number",
         "giving": "Charitable Giving: {amount}/year",
-        "tip": "Continue investing and find causes you're passionate about to support."
+        "fireNumber": "Your FIRE Number: {amount}",
+        "fireProgress": "Progress: {percent}%",
+        "tip": "FIRE Number = annual expenses × 25. With 8,000 PLN/month expenses (96,000 PLN/year) = 2,400,000 PLN. With 4% return = 96,000 PLN/year passive income."
       }
     },
     "status": {
@@ -1071,6 +1230,30 @@
       "suggestion": "Suggestion: {text}"
     }
   },
+  "fireCalculator": {
+    "title": "FIRE Calculator",
+    "subtitle": "Calculate your Financial Independence, Retire Early (FIRE) number",
+    "monthlyExpenses": "Monthly Expenses",
+    "currentSavings": "Current Savings",
+    "monthlyInvestment": "Monthly Investment",
+    "annualReturn": "Expected Annual Return (%)",
+    "fireNumber": "Your FIRE Number",
+    "fireFormula": "= Annual expenses × 25",
+    "yearsToFire": "Years to FIRE",
+    "fireReached": "Already reached!",
+    "notCalculable": "N/A",
+    "withCompoundInterest": "With compound interest",
+    "progress": "Progress",
+    "monthlyPassiveIncome": "Monthly Passive Income",
+    "whenFireReached": "When FIRE is reached (4% rule)",
+    "projections": "Projected Portfolio Value",
+    "in5Years": "In 5 years",
+    "in10Years": "In 10 years",
+    "in20Years": "In 20 years",
+    "in30Years": "In 30 years",
+    "coastFireTitle": "Coast FIRE Number",
+    "coastFireDescription": "If you have this amount today, you can stop contributing and still reach FIRE in 20 years with {rate}% annual returns."
+  },
   "savings": {
     "title": "Savings Management",
     "subtitle": "Track deposits, withdrawals, and saving goals in one view.",
@@ -1092,9 +1275,40 @@
       "deposit": "Deposit",
       "withdrawal": "Withdrawal"
     },
+    "accountTypes": {
+      "standard": "Standard account",
+      "ike": "IKE (limit 28,260 PLN/year)",
+      "ikze": "IKZE (limit 11,304/16,956 PLN/year)",
+      "ppk": "PPK",
+      "oipe": "OIPE"
+    },
+    "retirementLimits": {
+      "title": "Pillar III Limits",
+      "subtitle": "Retirement account contributions in {year}",
+      "tooltip": "Annual contribution limits for IKE and IKZE are set by the Ministry of Finance. Exceeding limits may result in tax penalties.",
+      "contributed": "Contributed",
+      "ofLimit": "of limit",
+      "limit": "Limit",
+      "remaining": "Remaining: {amount}",
+      "overLimit": "Over limit by {amount}!",
+      "totalContributions": "Total retirement contributions",
+      "noContributions": "No Pillar III contributions this year",
+      "addAccountHint": "Add a deposit with account type IKE, IKZE or OIPE to track limits",
+      "limitsInfo": "Contribution limits for {year}",
+      "noCapitalGainsTax": "(no capital gains tax)",
+      "taxDeductible": "(tax deductible)",
+      "jdgLimit": "self-employed limit",
+      "accounts": {
+        "ike": "IKE",
+        "ikze": "IKZE",
+        "ppk": "PPK",
+        "oipe": "OIPE",
+        "standard": "Standard"
+      }
+    },
     "summary": {
       "totalSavings": "Total Savings",
-      "monthlyContribution": "Monthly Contribution",
+      "monthlyContribution": "Deposits This Month",
       "recentTransactions": "Recent Transactions",
       "noRecent": "No recent transactions",
       "changePositive": "↑ {amount} vs {previousMonth}",
@@ -1103,8 +1317,8 @@
       "changeFirst": "First month recorded — {amount} saved!",
       "changeNoData": "No historical data yet.",
       "topCategory": "Largest share: {category}",
-      "monthlyContributionHint": "You're planning to save about {amount} this month.",
-      "monthlyContributionDescription": "Based on deposits recorded this month. Adjust your goal to stay on track.",
+      "monthlyContributionHint": "Total amount deposited to savings this month.",
+      "monthlyContributionDescription": "Sum of all deposits to savings in the current month.",
       "recentHint": "Latest deposits and withdrawals from recent weeks.",
       "recentToggle": {
         "expand": "Show more",
@@ -1153,20 +1367,35 @@
     "form": {
       "category": "Category",
       "category.select": "Select a category...",
-      "description": "Description",
+      "categoryHint": "Choose your savings goal",
+      "description": "Description (optional)",
+      "descriptionHint": "Short note, e.g. 'April bonus'",
       "amount": "Amount",
+      "amountHint": "How much do you want to deposit or withdraw?",
       "date": "Date",
       "endDate": "End date",
-      "savingType": "Type",
-      "isRecurring": "Recurring saving",
-      "targetAmount": "Target amount"
+      "endDateHint": "When should recurring deposits stop?",
+      "savingType": "What do you want to do?",
+      "savingTypeHint": "Deposit = save money, Withdrawal = use your savings",
+      "isRecurring": "Repeat monthly",
+      "isRecurringHint": "Enable for regular deposits, e.g. monthly savings",
+      "targetAmount": "Target amount",
+      "targetAmountHint": "How much do you want to save? Track your progress.",
+      "accountType": "Account type (III Pillar)",
+      "accountTypeHint": "IKE/IKZE limits are tracked automatically",
+      "annualReturnRate": "Expected annual return (%)",
+      "annualReturnRate.placeholder": "e.g. 5 for 5%",
+      "annualReturnRateHint": "Used for compound interest projections"
     },
     "goalProjection": {
-      "title": "Goal Projection",
-      "monthlyRate": "At your current rate of {amount}/month",
+      "title": "Goal Projection (Compound Interest)",
+      "monthlyRate": "At {amount}/month and {rate}% annual return",
+      "monthlyRateSimple": "At your current rate of {amount}/month",
       "emergencyFund": "Emergency Fund",
       "complete": "Complete!",
       "nextMilestone": "Reach {amount}",
+      "projectedIn10Years": "In 10 years",
+      "compoundInterestNote": "Calculation includes compound interest",
       "inMonths": "In {months} months"
     },
     "table": {
@@ -1205,6 +1434,59 @@
     },
     "noEntries": "No savings entries yet",
     "loadError": "Failed to load savings data. Please try again later."
+  },
+  "goals": {
+    "title": "Savings Goals",
+    "addGoal": "Add Goal",
+    "empty": "You don't have any custom savings goals yet",
+    "createFirst": "Create your own goal",
+    "babySteps": {
+      "badge": "Step {step}",
+      "emergencyFund": "Emergency Fund (1 month)",
+      "sixMonthFund": "Full Emergency Fund (6 months)",
+      "autoCalculated": "Auto-calculated"
+    },
+    "form": {
+      "name": "Goal name",
+      "targetAmount": "Target amount",
+      "category": "Category",
+      "deadline": "Deadline",
+      "notes": "Notes"
+    },
+    "status": {
+      "active": "Active",
+      "completed": "Completed",
+      "paused": "Paused",
+      "abandoned": "Abandoned"
+    },
+    "onTrack": "On track",
+    "behindSchedule": "Behind schedule",
+    "remaining": "{amount} remaining",
+    "pausedGoals": "Paused goals",
+    "completedCount": "Completed goals ({count})",
+    "viewDetails": "View details",
+    "markComplete": "Mark as complete",
+    "pause": "Pause",
+    "resume": "Resume",
+    "dialog": {
+      "createTitle": "New Savings Goal",
+      "editTitle": "Edit Goal",
+      "create": "Create Goal",
+      "save": "Save Changes"
+    },
+    "toast": {
+      "createSuccess": "Goal created successfully",
+      "updateSuccess": "Goal updated successfully",
+      "deleteSuccess": "Goal deleted successfully",
+      "error": "An error occurred",
+      "loadError": "Failed to load goals",
+      "completedSuccess": "Congratulations! Goal achieved 🎉"
+    },
+    "deleteDialog": {
+      "title": "Delete Goal",
+      "description": "Are you sure you want to delete this goal? All linked savings will be unlinked.",
+      "confirm": "Delete Goal"
+    }
   },
   "banking": {
     "title": "Banking Data Integration",
@@ -1383,7 +1665,11 @@
         "salary": "Salary",
         "additionalSources": "Additional sources",
         "irregularIncome": "Irregular income (monthly equivalent)",
-        "taxForm": "Tax regime"
+        "taxForm": "Tax regime",
+        "ppk": "PPK (Employee Capital Plans)",
+        "authorsCosts": "Author's costs (50% deductible)",
+        "youthRelief": "Youth tax relief",
+        "youthReliefEligible": "Yes (age: {age})"
       },
       "expenses": {
         "fixedCosts": "Monthly expenses (recurring)",
@@ -1472,11 +1758,26 @@
         "employmentStatus": {
           "label": "Employment status",
           "options": {
-            "employee": "Employee",
-            "business": "Business owner",
+            "employee": "Employee (full-time)",
+            "b2b": "B2B contractor",
+            "business": "Business owner (self-employed)",
+            "contract": "Contract/gig work",
             "freelancer": "Freelancer",
             "unemployed": "Not employed"
           }
+        },
+        "birthYear": {
+          "label": "Year of birth",
+          "tooltip": "Used to check eligibility for youth tax relief (under 26).",
+          "hint": "Youth relief exempts income up to ~85,528 PLN/year from income tax."
+        },
+        "ppkEnrolled": {
+          "label": "Are you enrolled in PPK?",
+          "hint": "Employee Capital Plans – your employer contributes at least 1.5% on top of your contribution."
+        },
+        "useAuthorsCosts": {
+          "label": "Do you use author's deductible costs (50%)?",
+          "hint": "50% tax deductible costs for creative work – developers, designers, architects, journalists, etc."
         },
         "taxForm": {
           "label": "Tax regime",
@@ -1771,25 +2072,37 @@
           "option": "Car loan",
           "cardTitle": "Car loan"
         },
-        "consumer": {
-          "option": "Consumer loan",
-          "cardTitle": "Consumer loan"
+        "personal": {
+          "option": "Personal loan",
+          "cardTitle": "Personal loan"
         },
-        "card": {
-          "option": "Credit card / credit limit",
-          "cardTitle": "Credit card / credit limit"
+        "student": {
+          "option": "Student loan",
+          "cardTitle": "Student loan"
         },
-        "line": {
-          "option": "Credit line",
-          "cardTitle": "Credit line"
+        "credit_card": {
+          "option": "Credit card",
+          "cardTitle": "Credit card"
+        },
+        "cash_loan": {
+          "option": "Cash loan",
+          "cardTitle": "Cash loan"
+        },
+        "installment": {
+          "option": "Installment purchase",
+          "cardTitle": "Installment purchase"
         },
         "leasing": {
           "option": "Leasing",
           "cardTitle": "Leasing"
         },
-        "nonbank": {
-          "option": "Non-bank loan",
-          "cardTitle": "Non-bank loan"
+        "overdraft": {
+          "option": "Overdraft / credit line",
+          "cardTitle": "Overdraft / credit line"
+        },
+        "other": {
+          "option": "Other liability",
+          "cardTitle": "Other liability"
         }
       }
     },
@@ -2175,5 +2488,34 @@
       "terms": "Terms of Service",
       "rights": "All rights reserved."
     }
+  },
+  "validation": {
+    "required": "This field is required",
+    "categoryRequired": "Please select a category",
+    "amount": {
+      "nonPositive": "Amount must be greater than zero",
+      "tooLarge": "Amount is too large",
+      "nonNegative": "Amount cannot be negative"
+    },
+    "interestRate": {
+      "negative": "Interest rate cannot be negative",
+      "max": "Interest rate cannot exceed 100%"
+    },
+    "remainingBalance": {
+      "negative": "Balance cannot be negative",
+      "exceedsAmount": "Balance cannot exceed principal amount"
+    },
+    "monthlyPayment": {
+      "negative": "Payment cannot be negative",
+      "exceedsAmount": "Payment cannot exceed principal amount"
+    },
+    "date": {
+      "future": "Date cannot be in the future",
+      "tooEarly": "Date is too early"
+    },
+    "description": {
+      "tooLong": "Description is too long (max 200 characters)"
+    },
+    "endDateAfterStartDate": "End date must be after start date"
   }
 }

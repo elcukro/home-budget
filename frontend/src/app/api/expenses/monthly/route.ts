@@ -13,47 +13,39 @@ export async function GET() {
   try {
     // Get the user session
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
-    // Fetch the user's expenses
+
+    // Fetch monthly expenses from the backend (which handles end_date filtering)
     const response = await fetch(
-      `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses`,
+      `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/monthly`,
       {
         headers: {
           'Content-Type': 'application/json',
         },
       }
     );
-    
+
     if (!response.ok) {
-      throw new Error('Failed to fetch expenses');
+      throw new Error('Failed to fetch monthly expenses');
     }
-    
-    const expenses = await response.json();
-    
-    // Filter only recurring expenses
-    const recurringExpenses = expenses.filter((expense: any) => expense.is_recurring === true);
-    
-    // Calculate the total recurring monthly expenses
-    const totalMonthlyExpenses = recurringExpenses.reduce(
-      (sum: number, expense: any) => sum + parseFloat(expense.amount),
-      0
-    );
-    
-    logger.debug(`Total monthly expenses for ${session.user.email}: ${totalMonthlyExpenses}`);
-    
-    // Return the monthly expenses
+
+    const data = await response.json();
+
+    logger.debug(`Monthly expenses for ${session.user.email}: total=${data.total}, recurring=${data.recurring}`);
+
+    // Return the monthly expenses (backend already handles end_date filtering)
     return NextResponse.json({
-      total: totalMonthlyExpenses,
-      monthly_recurring: totalMonthlyExpenses,
-      recurring_count: recurringExpenses.length,
-      calculation_method: 'sum of recurring expenses',
+      total: data.total,
+      non_recurring: data.non_recurring,
+      recurring: data.recurring,
+      month: data.month,
+      calculation_method: 'backend with end_date filtering',
     });
   } catch (error) {
     logger.error('Error calculating monthly expenses:', error);

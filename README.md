@@ -11,7 +11,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - 💵 **Savings Management**: Track your savings with categories and goals, deposits and withdrawals
 - 📈 **Financial Reports**: Generate detailed reports and analytics with interactive charts
 - 🔄 **Recurring Transactions**: Set up and manage recurring income, expenses, and savings
-- 🤖 **AI Financial Insights**: Personalized financial analysis and recommendations powered by OpenAI GPT, with multilingual support and efficient caching for quick access
+- 🤖 **AI Financial Insights**: Personalized financial analysis and recommendations powered by Anthropic Claude, aligned with FIRE philosophy and Dave Ramsey's Baby Steps methodology, with Polish tax optimization and efficient caching
 - 🛣️ **Financial Freedom Journey**: Track your progress through Dave Ramsey's 7 Baby Steps with customizable goals and detailed progress tracking
 - 🏦 **Banking Integration**: Securely connect to bank accounts and access transaction data using Tink API (supports Polish banks: ING, PKO BP, mBank, etc.)
 - 🏠 **Landing Page**: Beautiful public landing page with storytelling about financial freedom journey
@@ -58,10 +58,41 @@ A modern, full-stack personal finance management application built with Next.js,
 - Alembic for database migrations
 - JWT for authentication
 - CORS for secure cross-origin requests
-- OpenAI GPT integration for intelligent financial insights
+- Anthropic Claude integration for FIRE-aligned financial insights
 - GoCardless API integration for secure bank account access
 
 ## 📝 Changelog
+
+### 2026-01-16
+- 🤖 **AI Analysis Major Improvements**:
+  - Changed AI provider from OpenAI to Anthropic Claude for better financial insights
+  - Moved AI Analysis from modal dialog to dedicated `/ai-analysis` page with sidebar navigation
+  - Added FIRE (Financial Independence, Retire Early) and Baby Steps methodology alignment
+  - Fixed debt payoff strategy - now uses Debt Snowball (smallest balance first) as per Dave Ramsey method
+  - Added proper loan type categorization:
+    - Baby Step 2 debts: consumer loans, credit cards, personal loans (pay off now)
+    - Mortgage: Baby Step 6 only (ignored until steps 1-5 complete)
+    - Leasing: fixed contracts that cannot be prepaid (excluded from payoff suggestions)
+  - Added high-interest loan overpayment recommendations with interest savings calculations
+  - Fixed emergency fund calculations - pre-calculated values to prevent AI math errors
+  - Added Polish tax optimization context (IKE/IKZE limits, youth tax relief, PPK, author's costs)
+  - Added cache status banner with generation timestamp and refresh button
+  - Added FIRE metrics banner showing current Baby Step, FIRE Number, and savings rate
+  - Added clickable markdown links in action items pointing to relevant app sections
+- ⚙️ **Tax Profile Settings**:
+  - Added "Tax Profile" section to Settings page with editable fields:
+    - Birth year (for youth tax relief eligibility check)
+    - Number of children
+    - Employment status (employee, B2B, contract, freelancer, business, unemployed)
+    - Tax form (scale, flat, lump sum, tax card)
+    - PPK enrollment status with contribution rates
+    - Author's costs (50% KUP) toggle
+  - Data now used by AI Analysis for personalized tax optimization advice
+  - Full i18n support for all new fields (PL, EN)
+- 🌍 **Internationalization**:
+  - Added translations for AI Analysis page and new insight categories
+  - Added translations for Tax Profile settings section
+  - Updated insight categories: `baby_steps`, `debt`, `savings`, `fire`, `tax_optimization`
 
 ### 2026-01-15
 - 🏠 **Landing Page**:

@@ -13,20 +13,36 @@ export interface Insight {
 
 export type InsightStatus = 'good' | 'can_be_improved' | 'ok' | 'bad';
 
+// New FIRE-aligned category keys
+export type InsightCategoryKey = 'baby_steps' | 'debt' | 'savings' | 'fire' | 'tax_optimization';
+
 export interface InsightsResponse {
   categories: {
-    health: Insight[];
-    spending: Insight[];
-    savings: Insight[];
+    baby_steps: Insight[];
     debt: Insight[];
-    budget: Insight[];
+    savings: Insight[];
+    fire: Insight[];
+    tax_optimization: Insight[];
   };
   status: {
-    health: InsightStatus;
-    spending: InsightStatus;
-    savings: InsightStatus;
+    baby_steps: InsightStatus;
     debt: InsightStatus;
-    budget: InsightStatus;
+    savings: InsightStatus;
+    fire: InsightStatus;
+    tax_optimization: InsightStatus;
   };
-  generatedAt: string;
+  // FIRE-specific metrics
+  currentBabyStep?: number;
+  fireNumber?: number;
+  savingsRate?: number;
+  generatedAt?: string;
+  metadata?: {
+    isCached?: boolean;
+    createdAt?: string;
+    lastRefreshDate?: string;
+    language?: string;
+    validityReason?: string;
+    generatedAt?: string;
+    source?: string;
+  };
 } 

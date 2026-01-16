@@ -23,6 +23,8 @@ import {
   Wallet,
   ShoppingBag,
   Plus,
+  Target,
+  Landmark,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -245,6 +247,16 @@ interface DashboardData {
     nextPaymentDate?: string;
   }>;
   activities: Activity[];
+  savings: {
+    totalBalance: number;
+    monthlySavings: number;
+    goals: Array<{
+      category: string;
+      currentAmount: number;
+      targetAmount: number;
+      progress: number;
+    }>;
+  };
 }
 
 export default function Home() {
@@ -391,7 +403,17 @@ export default function Home() {
             interestPaidYtd: loan.interest_paid_ytd ?? loan.interestPaidYtd,
             nextPaymentDate: loan.next_payment_date ?? loan.nextPaymentDate,
           })),
-          activities: data.activities || []
+          activities: data.activities || [],
+          savings: {
+            totalBalance: data.total_savings_balance || 0,
+            monthlySavings: data.monthly_savings || 0,
+            goals: (data.savings_goals || []).map((goal: any) => ({
+              category: goal.category,
+              currentAmount: goal.currentAmount || 0,
+              targetAmount: goal.targetAmount || 0,
+              progress: goal.progress || 0,
+            })),
+          }
         };
         
         setDashboardData(mappedData);
@@ -534,11 +556,91 @@ export default function Home() {
 
         <section className="space-y-4">
           <SectionHeader
-            icon={<PiggyBank className="h-5 w-5" />}
+            icon={<Landmark className="h-5 w-5" />}
             title={intl.formatMessage({ id: 'dashboard.sections.loans.title' })}
             description={intl.formatMessage({ id: 'dashboard.sections.loans.description' })}
           />
           <LoanOverview loans={dashboardData.loans} formatCurrency={formatCurrency} />
+        </section>
+
+        {/* Savings Section */}
+        <section className="space-y-4">
+          <SectionHeader
+            icon={<PiggyBank className="h-5 w-5" />}
+            title={intl.formatMessage({ id: 'dashboard.sections.savings.title', defaultMessage: 'Savings Goals' })}
+            description={intl.formatMessage({ id: 'dashboard.sections.savings.description', defaultMessage: 'Track your progress toward financial goals' })}
+          />
+          <div className="bg-card border border-default rounded-xl shadow-sm p-6">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div className="bg-emerald-50 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Wallet className="h-4 w-4 text-emerald-600" />
+                  <span className="text-sm text-emerald-700">
+                    {intl.formatMessage({ id: 'dashboard.savings.totalBalance', defaultMessage: 'Total Savings' })}
+                  </span>
+                </div>
+                <p className="text-2xl font-bold text-emerald-800">
+                  {formatCurrency(dashboardData.savings.totalBalance)}
+                </p>
+              </div>
+              <div className="bg-sky-50 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="h-4 w-4 text-sky-600" />
+                  <span className="text-sm text-sky-700">
+                    {intl.formatMessage({ id: 'dashboard.savings.monthlySavings', defaultMessage: 'This Month' })}
+                  </span>
+                </div>
+                <p className={`text-2xl font-bold ${dashboardData.savings.monthlySavings >= 0 ? 'text-sky-800' : 'text-rose-600'}`}>
+                  {dashboardData.savings.monthlySavings >= 0 ? '+' : ''}{formatCurrency(dashboardData.savings.monthlySavings)}
+                </p>
+              </div>
+            </div>
+
+            {/* Goals List */}
+            {dashboardData.savings.goals.length > 0 ? (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-secondary mb-2">
+                  {intl.formatMessage({ id: 'dashboard.savings.goalsTitle', defaultMessage: 'Your Goals' })}
+                </h4>
+                {dashboardData.savings.goals.map((goal, index) => (
+                  <div key={index} className="border border-default rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-primary" />
+                        <span className="font-medium text-primary">
+                          {intl.formatMessage({ id: `savings.categories.${goal.category}`, defaultMessage: goal.category })}
+                        </span>
+                      </div>
+                      <span className="text-sm text-secondary">
+                        {goal.progress.toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2 mb-1">
+                      <div
+                        className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min(goal.progress, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-secondary">
+                      <span>{formatCurrency(goal.currentAmount)}</span>
+                      {goal.targetAmount > 0 && (
+                        <span>{intl.formatMessage({ id: 'dashboard.savings.goalTarget', defaultMessage: 'Goal: {amount}' }, { amount: formatCurrency(goal.targetAmount) })}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-secondary">
+                <PiggyBank className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>{intl.formatMessage({ id: 'dashboard.savings.noGoals', defaultMessage: 'No savings goals yet' })}</p>
+                <Link href="/savings" className="text-primary hover:underline text-sm mt-1 inline-block">
+                  {intl.formatMessage({ id: 'dashboard.savings.addGoal', defaultMessage: 'Add your first savings goal' })}
+                </Link>
+              </div>
+            )}
+          </div>
         </section>
 
         <section className="space-y-4">

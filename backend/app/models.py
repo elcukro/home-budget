@@ -25,6 +25,7 @@ class User(Base):
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
     financial_freedom = relationship("FinancialFreedom", back_populates="user", uselist=False)
     savings = relationship("Saving", back_populates="user", cascade="all, delete-orphan")
+    savings_goals = relationship("SavingsGoal", back_populates="user", cascade="all, delete-orphan")
     banking_connections = relationship("BankingConnection", back_populates="user", cascade="all, delete-orphan")
     tink_connections = relationship("TinkConnection", back_populates="user", cascade="all, delete-orphan")
     bank_transactions = relationship("BankTransaction", back_populates="user", cascade="all, delete-orphan")
@@ -44,6 +45,9 @@ class Loan(Base):
     monthly_payment = Column(Float)
     start_date = Column(Date)
     term_months = Column(Integer)
+    # Polish prepayment regulations (since 2022, banks cannot charge fees for first 3 years)
+    overpayment_fee_percent = Column(Float, nullable=True, default=0)  # Fee percentage for prepayment (0-3%)
+    overpayment_fee_waived_until = Column(Date, nullable=True)  # Date until prepayment fees are waived
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -77,12 +81,16 @@ class Income(Base):
     user_id = Column(String, ForeignKey("users.id"))
     category = Column(String)
     description = Column(String)
-    amount = Column(Float)
+    amount = Column(Float)  # Net amount (after tax) - netto
     is_recurring = Column(Boolean, default=False)
     date = Column(Date)  # Start date (for recurring) or occurrence date (for one-off)
     end_date = Column(Date, nullable=True)  # Optional end date for recurring items (null = forever)
     source = Column(String, default="manual")  # "manual" or "bank_import"
     bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
+    # Polish employment types for tax calculation
+    employment_type = Column(String, nullable=True)  # uop, b2b, zlecenie, dzielo, other
+    gross_amount = Column(Float, nullable=True)  # Brutto (gross) amount before tax
+    is_gross = Column(Boolean, default=False)  # Whether amount entered was gross (true) or net (false)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -103,6 +111,17 @@ class Settings(Base):
     emergency_fund_months = Column(Integer, default=3)     # Months for Baby Step 3
     base_currency = Column(String, default="USD")          # Base currency for emergency fund target
     banking = Column(JSON)                                # Banking settings
+
+    # Polish tax-specific settings (from onboarding)
+    employment_status = Column(String, nullable=True)      # employee, b2b, business, contract, freelancer, unemployed
+    tax_form = Column(String, nullable=True)               # scale, linear, lumpsum, card
+    birth_year = Column(Integer, nullable=True)            # For youth tax relief eligibility
+    use_authors_costs = Column(Boolean, default=False)     # KUP 50% for creators
+    ppk_enrolled = Column(Boolean, nullable=True)          # PPK enrollment status
+    ppk_employee_rate = Column(Float, nullable=True)       # PPK employee contribution (0.5% - 4%)
+    ppk_employer_rate = Column(Float, nullable=True)       # PPK employer contribution (1.5% - 4%)
+    children_count = Column(Integer, default=0)            # For child tax relief calculation
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -202,28 +221,65 @@ class FinancialFreedom(Base):
         Index('idx_financial_freedom_steps', 'steps', postgresql_using='gin'),
     )
 
+class SavingsGoal(Base):
+    """Dedicated savings goals - separate from individual transactions."""
+    __tablename__ = "savings_goals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    name = Column(String, nullable=False)  # e.g., "Wakacje 2026", "Nowy samochód"
+    category = Column(String, nullable=False)  # Links to SavingCategory enum
+    target_amount = Column(Float, nullable=False)  # Goal amount
+    current_amount = Column(Float, default=0)  # Cached sum of linked deposits (updated on save)
+    deadline = Column(Date, nullable=True)  # Optional target date
+    icon = Column(String, nullable=True)  # Optional icon identifier
+    color = Column(String, nullable=True)  # Optional color for UI
+    status = Column(String, default='active')  # active, completed, paused, abandoned
+    priority = Column(Integer, default=0)  # For sorting (higher = more important)
+    notes = Column(String, nullable=True)  # User notes about the goal
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)  # When goal was marked complete
+
+    user = relationship("User", back_populates="savings_goals")
+    savings = relationship("Saving", back_populates="goal", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('idx_savings_goals_user_id', 'user_id'),
+        Index('idx_savings_goals_category', 'category'),
+        Index('idx_savings_goals_status', 'status'),
+    )
+
+
 class Saving(Base):
     __tablename__ = "savings"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    goal_id = Column(Integer, ForeignKey("savings_goals.id", ondelete="SET NULL"), nullable=True)  # Link to goal
     category = Column(String, nullable=False)
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
     date = Column(Date, nullable=False)  # Start date (for recurring) or occurrence date (for one-off)
     end_date = Column(Date, nullable=True)  # Optional end date for recurring items (null = forever)
     is_recurring = Column(Boolean, default=False)
-    target_amount = Column(Float, nullable=True)
+    target_amount = Column(Float, nullable=True)  # Deprecated - use goal.target_amount instead
     saving_type = Column(String, nullable=False)  # 'deposit' or 'withdrawal'
+    # Polish III Pillar retirement accounts
+    account_type = Column(String, default='standard')  # standard, ike, ikze, ppk, oipe
+    annual_return_rate = Column(Float, nullable=True)  # Expected annual return rate for compound interest (e.g., 0.05 for 5%)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     user = relationship("User", back_populates="savings")
+    goal = relationship("SavingsGoal", back_populates="savings")
 
     __table_args__ = (
         Index('idx_savings_user_id', 'user_id'),
         Index('idx_savings_category', 'category'),
         Index('idx_savings_date', 'date'),
+        Index('idx_savings_account_type', 'account_type'),
+        Index('idx_savings_goal_id', 'goal_id'),
     )
 
 class BankingConnection(Base):

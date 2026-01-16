@@ -137,21 +137,33 @@ export default function LiabilitiesStep({
         }),
       },
       {
-        value: 'consumer',
+        value: 'personal',
         label: intl.formatMessage({
-          id: 'onboarding.liabilities.types.consumer.option',
+          id: 'onboarding.liabilities.types.personal.option',
         }),
       },
       {
-        value: 'card',
+        value: 'student',
         label: intl.formatMessage({
-          id: 'onboarding.liabilities.types.card.option',
+          id: 'onboarding.liabilities.types.student.option',
         }),
       },
       {
-        value: 'line',
+        value: 'credit_card',
         label: intl.formatMessage({
-          id: 'onboarding.liabilities.types.line.option',
+          id: 'onboarding.liabilities.types.credit_card.option',
+        }),
+      },
+      {
+        value: 'cash_loan',
+        label: intl.formatMessage({
+          id: 'onboarding.liabilities.types.cash_loan.option',
+        }),
+      },
+      {
+        value: 'installment',
+        label: intl.formatMessage({
+          id: 'onboarding.liabilities.types.installment.option',
         }),
       },
       {
@@ -161,9 +173,15 @@ export default function LiabilitiesStep({
         }),
       },
       {
-        value: 'nonbank',
+        value: 'overdraft',
         label: intl.formatMessage({
-          id: 'onboarding.liabilities.types.nonbank.option',
+          id: 'onboarding.liabilities.types.overdraft.option',
+        }),
+      },
+      {
+        value: 'other',
+        label: intl.formatMessage({
+          id: 'onboarding.liabilities.types.other.option',
         }),
       },
     ],
@@ -179,20 +197,29 @@ export default function LiabilitiesStep({
         car: intl.formatMessage({
           id: 'onboarding.liabilities.types.car.cardTitle',
         }),
-        consumer: intl.formatMessage({
-          id: 'onboarding.liabilities.types.consumer.cardTitle',
+        personal: intl.formatMessage({
+          id: 'onboarding.liabilities.types.personal.cardTitle',
         }),
-        card: intl.formatMessage({
-          id: 'onboarding.liabilities.types.card.cardTitle',
+        student: intl.formatMessage({
+          id: 'onboarding.liabilities.types.student.cardTitle',
         }),
-        line: intl.formatMessage({
-          id: 'onboarding.liabilities.types.line.cardTitle',
+        credit_card: intl.formatMessage({
+          id: 'onboarding.liabilities.types.credit_card.cardTitle',
+        }),
+        cash_loan: intl.formatMessage({
+          id: 'onboarding.liabilities.types.cash_loan.cardTitle',
+        }),
+        installment: intl.formatMessage({
+          id: 'onboarding.liabilities.types.installment.cardTitle',
         }),
         leasing: intl.formatMessage({
           id: 'onboarding.liabilities.types.leasing.cardTitle',
         }),
-        nonbank: intl.formatMessage({
-          id: 'onboarding.liabilities.types.nonbank.cardTitle',
+        overdraft: intl.formatMessage({
+          id: 'onboarding.liabilities.types.overdraft.cardTitle',
+        }),
+        other: intl.formatMessage({
+          id: 'onboarding.liabilities.types.other.cardTitle',
         }),
         default: intl.formatMessage({
           id: 'onboarding.liabilities.types.default.cardTitle',
@@ -248,7 +275,8 @@ export default function LiabilitiesStep({
         return Home;
       case 'car':
         return Car;
-      case 'card':
+      case 'credit_card':
+      case 'overdraft':
         return Wallet;
       case 'leasing':
         return TrendingDown;
@@ -259,9 +287,10 @@ export default function LiabilitiesStep({
 
   const handleTypeChange = (id: string, value: string) => {
     const currentItem = items.find((liability) => liability.id === id);
+    const isRevolvingCredit = ['credit_card', 'overdraft'].includes(value);
     onUpdate(id, {
       type: value,
-      repaymentType: ['card', 'line'].includes(value)
+      repaymentType: isRevolvingCredit
         ? 'unknown'
         : currentItem?.repaymentType || 'equal',
       propertyValue:
@@ -269,9 +298,13 @@ export default function LiabilitiesStep({
     });
   };
 
-  const shouldShowEndDate = (type: string) => !['card', 'line'].includes(type);
-  const shouldShowRepaymentType = (type: string) => !['card', 'line', 'nonbank'].includes(type);
+  // Revolving credit (credit_card, overdraft) doesn't have end date
+  const shouldShowEndDate = (type: string) => !['credit_card', 'overdraft'].includes(type);
+  // Revolving credit and leasing don't have repayment type (equal/decreasing)
+  const shouldShowRepaymentType = (type: string) => !['credit_card', 'overdraft', 'leasing'].includes(type);
   const shouldShowPropertyValue = (type: string) => type === 'mortgage';
+  // Leasing doesn't need interest rate (it's included in the rate)
+  const shouldShowInterestRate = (type: string) => type !== 'leasing';
 
   return (
     <div className="space-y-5">
@@ -364,24 +397,26 @@ export default function LiabilitiesStep({
                   />
                 </FieldGroup>
 
-                <FieldGroup label={interestRateLabel} error={fieldError('interestRate')}>
-                  <Input
-                    type="number"
-                    step={0.1}
-                    min={0}
-                    max={100}
-                    value={item.interestRate ?? ''}
-                    onChange={(event) =>
-                      onUpdate(item.id, {
-                        interestRate:
-                          event.target.value === ''
-                            ? null
-                            : Number(event.target.value) || 0,
-                      })
-                    }
-                    placeholder={interestRatePlaceholder}
-                  />
-                </FieldGroup>
+                {shouldShowInterestRate(item.type) && (
+                  <FieldGroup label={interestRateLabel} error={fieldError('interestRate')}>
+                    <Input
+                      type="number"
+                      step={0.1}
+                      min={0}
+                      max={100}
+                      value={item.interestRate ?? ''}
+                      onChange={(event) =>
+                        onUpdate(item.id, {
+                          interestRate:
+                            event.target.value === ''
+                              ? null
+                              : Number(event.target.value) || 0,
+                        })
+                      }
+                      placeholder={interestRatePlaceholder}
+                    />
+                  </FieldGroup>
+                )}
 
                 {shouldShowRepaymentType(item.type) && (
                   <FieldGroup label={repaymentTypeLabel} hint={repaymentTypeHint}>

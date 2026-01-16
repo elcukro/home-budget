@@ -50,14 +50,27 @@ import { logger } from "@/lib/logger";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import Tooltip from "@/components/Tooltip";
 
+// Polish employment types for tax calculation
+enum EmploymentType {
+  UOP = "uop",       // Umowa o pracę (employment contract)
+  B2B = "b2b",       // Business-to-business
+  ZLECENIE = "zlecenie", // Umowa zlecenie (civil law contract)
+  DZIELO = "dzielo",  // Umowa o dzieło (contract for specific work)
+  OTHER = "other"
+}
+
 interface Income {
   id: number | string;
   category: string;
   description: string;
-  amount: number;
+  amount: number;  // Net amount (netto)
   date: string;  // Start date for recurring, occurrence date for one-off
   end_date: string | null;  // Optional end date for recurring items
   is_recurring: boolean;
+  // Polish employment type and tax calculation fields
+  employment_type?: EmploymentType | null;
+  gross_amount?: number | null;  // Brutto (before tax)
+  is_gross?: boolean;  // Whether entered amount was gross
   created_at: string;
 }
 
@@ -114,6 +127,19 @@ const incomeSchema = z.object({
     .optional()
     .transform((value) => value || null),
   is_recurring: z.boolean().default(false),
+  // Polish employment type for tax calculation
+  employment_type: z.string().nullable().optional(),
+  gross_amount: z
+    .union([z.string(), z.number()])
+    .nullable()
+    .optional()
+    .transform((value) => {
+      if (value === null || value === undefined) return null;
+      const raw = typeof value === "number" ? value.toString() : value.trim();
+      if (!raw) return null;
+      return parseNumber(raw) ?? null;
+    }),
+  is_gross: z.boolean().default(false),
 });
 
 type IncomeFormValues = z.infer<typeof incomeSchema>;
@@ -127,7 +153,18 @@ const incomeDefaultValues: IncomeFormValues = {
   date: todayISO,
   end_date: null,
   is_recurring: false,
+  employment_type: null,
+  gross_amount: null,
+  is_gross: false,
 };
+
+const employmentTypeOptions = [
+  { value: EmploymentType.UOP, labelId: "income.employmentTypes.uop" },
+  { value: EmploymentType.B2B, labelId: "income.employmentTypes.b2b" },
+  { value: EmploymentType.ZLECENIE, labelId: "income.employmentTypes.zlecenie" },
+  { value: EmploymentType.DZIELO, labelId: "income.employmentTypes.dzielo" },
+  { value: EmploymentType.OTHER, labelId: "income.employmentTypes.other" },
+];
 
 const categoryOptions = [
   { value: "salary", labelId: "income.categories.salary", icon: <Briefcase className="h-5 w-5" /> },
@@ -152,7 +189,21 @@ const incomeFieldConfig: FormFieldConfig<IncomeFormValues>[] = [
   {
     name: "amount",
     labelId: "income.form.amount",
+    descriptionId: "income.form.amountHint",
     component: "currency",
+  },
+  {
+    name: "is_gross",
+    labelId: "income.form.isGross",
+    descriptionId: "income.form.isGrossHint",
+    component: "switch",
+  },
+  {
+    name: "employment_type",
+    labelId: "income.form.employmentType",
+    descriptionId: "income.form.employmentTypeHint",
+    component: "select",
+    options: employmentTypeOptions,
   },
   {
     name: "date",
@@ -228,6 +279,9 @@ const mapIncomeToFormValues = (income: Income): IncomeFormValues => ({
   date: income.date.slice(0, 10),
   end_date: income.end_date ? income.end_date.slice(0, 10) : null,
   is_recurring: income.is_recurring,
+  employment_type: income.employment_type || null,
+  gross_amount: income.gross_amount || null,
+  is_gross: income.is_gross || false,
 });
 
 export default function IncomePage() {

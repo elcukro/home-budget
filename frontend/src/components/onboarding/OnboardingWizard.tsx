@@ -175,10 +175,13 @@ export interface LiabilityItem {
   remainingAmount: number;
   monthlyPayment: number;
   interestRate?: number | null;
+  startDate?: string;
   endDate?: string;
+  termMonths?: number | null;
   purpose?: string;
   repaymentType?: 'equal' | 'decreasing' | 'unknown';
   propertyValue?: number | null;
+  description?: string;
 }
 
 export interface PropertyItem {
@@ -432,17 +435,19 @@ const EXPENSE_GROUP_HINTS: Record<ExpenseGroupKey, string> = {
   other: 'Small expenses add up – total them so nothing slips through.',
 };
 
+// Map onboarding expense groups to backend expense categories
+// Backend categories: housing, transportation, food, utilities, insurance, healthcare, entertainment, other
 const EXPENSE_CATEGORY_MAP: Record<ExpenseGroupKey, string> = {
-  home: 'housing',
-  transport: 'transportation',
-  food: 'food',
-  family: 'other',
-  lifestyle: 'healthcare',
-  subscriptions: 'utilities',
-  obligations: 'other',
-  pets: 'other',
-  insurance: 'insurance',
-  other: 'entertainment',
+  home: 'housing',         // Rent, mortgage, repairs
+  transport: 'transportation', // Car, fuel, public transport
+  food: 'food',            // Groceries, dining out
+  family: 'other',         // Childcare, education, toys (no dedicated category)
+  lifestyle: 'entertainment',  // Fitness, beauty, hobbies
+  subscriptions: 'entertainment', // Streaming, apps, memberships
+  obligations: 'other',    // Alimony, regular payments
+  pets: 'other',           // Pet food, vet (no dedicated category)
+  insurance: 'insurance',  // All insurance types
+  other: 'other',          // Miscellaneous expenses
 };
 
 const ADDITIONAL_SOURCE_META: Record<
@@ -847,9 +852,15 @@ export interface OnboardingData {
     childrenAgeRange?: '0-6' | '7-12' | '13+' | 'mixed' | '';
     housingType: 'rent' | 'mortgage' | 'owned' | '';
     hasMortgage?: boolean;
-    employmentStatus: 'employee' | 'business' | 'freelancer' | 'unemployed' | '';
+    employmentStatus: 'employee' | 'b2b' | 'business' | 'contract' | 'freelancer' | 'unemployed' | '';
     taxForm: '' | 'scale' | 'linear' | 'lumpsum' | 'card';
     householdCost: number;
+    // Polish tax-specific fields
+    birthYear?: number;  // For youth tax relief (ulga dla młodych < 26)
+    useAuthorsCosts?: boolean;  // KUP 50% for creators
+    ppkEnrolled?: boolean;  // PPK enrollment status (for employees)
+    ppkEmployeeRate?: number;  // PPK employee contribution rate (0.5% - 4%)
+    ppkEmployerRate?: number;  // PPK employer contribution rate (1.5% - 4%)
   };
   income: {
     salaryNet: number;
@@ -889,6 +900,11 @@ const createDefaultOnboardingData = (intl: IntlShape): OnboardingData => ({
     employmentStatus: '',
     taxForm: '',
     householdCost: 0,
+    birthYear: undefined,
+    useAuthorsCosts: false,
+    ppkEnrolled: undefined,
+    ppkEmployeeRate: 0.02,  // 2% default
+    ppkEmployerRate: 0.015,  // 1.5% minimum
   },
   income: {
     salaryNet: 0,
@@ -1681,7 +1697,19 @@ export default function OnboardingWizard() {
         amount: number;
         is_recurring: boolean;
         date: string;
+        employment_type?: string | null;
       }> = [];
+
+      // Map life step employment status to income employment_type
+      const employmentTypeMap: Record<string, string | null> = {
+        employee: 'uop',
+        b2b: 'b2b',
+        business: 'b2b',
+        contract: 'zlecenie',
+        freelancer: 'other',
+        unemployed: null,
+      };
+      const employmentType = employmentTypeMap[data.life.employmentStatus] ?? null;
 
       if (data.income.salaryNet > 0) {
         incomePayloads.push({
@@ -1692,6 +1720,7 @@ export default function OnboardingWizard() {
           amount: data.income.salaryNet,
           is_recurring: true,
           date: todayISO,
+          employment_type: employmentType,
         });
       }
 
@@ -1823,12 +1852,17 @@ export default function OnboardingWizard() {
       }
 
       for (const group of Object.keys(data.expenses) as ExpenseGroupKey[]) {
-        const category = EXPENSE_CATEGORY_MAP[group] ?? 'other';
+        const groupCategory = EXPENSE_CATEGORY_MAP[group] ?? 'other';
         const items = data.expenses[group] ?? [];
         for (const item of items) {
           if (!item.amount || item.amount <= 0) {
             continue;
           }
+          // Use item-level category if set, otherwise fall back to group category
+          const category = item.category && isValidExpenseCategory(item.category)
+            ? item.category
+            : groupCategory;
+
           const translationKey = `onboarding.expenses.groups.${group}.items.${
             item.templateId ?? item.id
           }`;
@@ -1984,16 +2018,34 @@ export default function OnboardingWizard() {
           ? intl.formatMessage({ id: labelKey })
           : fallbackLoanLabel;
 
-        const startDate = new Date();
+        const startDate = liability.startDate ? new Date(liability.startDate) : new Date();
         const endDate = liability.endDate ? new Date(liability.endDate) : null;
-        const termMonths = endDate
+        const termMonths = liability.termMonths ?? (endDate
           ? differenceInMonths(startDate, endDate)
-          : 12;
+          : 12);
 
-        const principalAmount =
-          liability.propertyValue && liability.propertyValue > 0
-            ? liability.propertyValue
-            : liability.remainingAmount;
+        // Special handling for different loan types
+        const isLeasing = liability.type === 'leasing';
+        const isRevolvingCredit = ['credit_card', 'overdraft'].includes(liability.type);
+
+        let principalAmount: number;
+        let interestRate = liability.interestRate ?? 0;
+
+        if (isLeasing) {
+          // Leasing: calculate total from monthly × term
+          principalAmount = liability.monthlyPayment * Math.max(termMonths, 1);
+          interestRate = 0; // Interest is built into the rate for leasing
+        } else if (liability.propertyValue && liability.propertyValue > 0) {
+          // Mortgage: use property value as principal
+          principalAmount = liability.propertyValue;
+        } else {
+          principalAmount = liability.remainingAmount;
+        }
+
+        // For revolving credit, remaining balance is the current usage, principal is the limit
+        const remainingBalance = isRevolvingCredit
+          ? liability.remainingAmount
+          : liability.remainingAmount || principalAmount;
 
         const response = await fetch(
           `${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`,
@@ -2001,14 +2053,14 @@ export default function OnboardingWizard() {
             method: 'POST',
             headers: jsonHeaders,
             body: JSON.stringify({
-              loan_type: liability.type || 'loan',
+              loan_type: liability.type || 'other',
               description,
               principal_amount: principalAmount,
-              remaining_balance: liability.remainingAmount,
-              interest_rate: liability.interestRate ?? 0,
+              remaining_balance: remainingBalance,
+              interest_rate: interestRate,
               monthly_payment: liability.monthlyPayment,
               start_date: toISODate(startDate),
-              term_months: termMonths,
+              term_months: Math.max(termMonths, 1),
             }),
           }
         );
@@ -2096,7 +2148,7 @@ export default function OnboardingWizard() {
       data.assets.properties.forEach((property) => {
         if (property.value > 0) {
           savingsPayloads.push({
-            category: 'general',
+            category: 'real_estate',
             description:
               property.name ||
               intl.formatMessage({
@@ -2164,6 +2216,36 @@ export default function OnboardingWizard() {
             total: savingsTotal || index + 1,
           })
         );
+      }
+
+      // --- Sync tax-specific settings from life data ---
+      try {
+        const settingsResponse = await fetch(`/api/users/${encodeURIComponent(userEmail)}/settings`);
+        if (settingsResponse.ok) {
+          const currentSettings = await settingsResponse.json();
+          const updatedSettings = {
+            ...currentSettings,
+            employment_status: data.life.employmentStatus || null,
+            tax_form: data.life.taxForm || null,
+            birth_year: data.life.birthYear || null,
+            use_authors_costs: data.life.useAuthorsCosts ?? false,
+            ppk_enrolled: data.life.ppkEnrolled ?? null,
+            ppk_employee_rate: data.life.ppkEmployeeRate ?? null,
+            ppk_employer_rate: data.life.ppkEmployerRate ?? null,
+            children_count: data.life.childrenCount ?? 0,
+          };
+
+          const updateResponse = await fetch(`/api/users/${encodeURIComponent(userEmail)}/settings`, {
+            method: 'PUT',
+            headers: jsonHeaders,
+            body: JSON.stringify(updatedSettings),
+          });
+          await assertOk(updateResponse, 'sync tax settings');
+          logger.debug('[Onboarding] Synced tax settings to backend');
+        }
+      } catch (settingsError) {
+        logger.warn('[Onboarding] Failed to sync tax settings (non-fatal)', settingsError);
+        // Don't throw - this is non-critical
       }
     } catch (error) {
       logger.error('[Onboarding] Failed to sync savings', error);
@@ -2257,8 +2339,20 @@ export default function OnboardingWizard() {
         nextLife.hasMortgage = false;
       }
 
-      if (updates.employmentStatus && updates.employmentStatus !== 'business') {
+      if (updates.employmentStatus && updates.employmentStatus !== 'business' && updates.employmentStatus !== 'b2b') {
         nextLife.taxForm = '';
+      }
+
+      // Reset PPK when not employee
+      if (updates.employmentStatus && updates.employmentStatus !== 'employee') {
+        nextLife.ppkEnrolled = undefined;
+        nextLife.ppkEmployeeRate = undefined;
+        nextLife.ppkEmployerRate = undefined;
+      }
+
+      // Reset author's costs when not applicable
+      if (updates.employmentStatus && !['employee', 'contract', 'freelancer'].includes(updates.employmentStatus)) {
+        nextLife.useAuthorsCosts = false;
       }
 
       return {

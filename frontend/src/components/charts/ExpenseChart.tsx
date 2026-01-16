@@ -282,8 +282,12 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
                   key={item.key}
                   className="flex-1 min-w-[24px] max-w-[60px] flex flex-col items-center justify-end group h-full"
                 >
-                  {/* Tooltip */}
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity mb-1 px-2 py-1 bg-rose-800 text-white text-xs rounded shadow-lg whitespace-nowrap z-10">
+                  {/* Tooltip - shift right for first bars to avoid Y-axis overlap */}
+                  <div
+                    className={`opacity-0 group-hover:opacity-100 transition-opacity mb-1 px-2 py-1 bg-rose-800 text-white text-xs rounded shadow-lg whitespace-nowrap z-10 ${
+                      index < 2 ? 'translate-x-2' : ''
+                    }`}
+                  >
                     {formatCurrency(item.total)}
                     {item.hasChange && (
                       <span className="ml-1 text-amber-300">

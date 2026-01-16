@@ -36,6 +36,15 @@ class SettingsBase(BaseModel):
     emergency_fund_target: int | None = 1000  # Default to $1000 for Baby Step 1
     emergency_fund_months: int | None = 3     # Default to 3 months for Baby Step 3
     base_currency: str | None = "USD"         # Base currency for emergency fund target
+    # Polish tax-specific settings
+    employment_status: str | None = None      # employee, b2b, business, contract, freelancer, unemployed
+    tax_form: str | None = None               # scale, linear, lumpsum, card
+    birth_year: int | None = None             # For youth tax relief eligibility
+    use_authors_costs: bool | None = False    # KUP 50% for creators
+    ppk_enrolled: bool | None = None          # PPK enrollment status
+    ppk_employee_rate: float | None = None    # PPK employee contribution (0.5% - 4%)
+    ppk_employer_rate: float | None = None    # PPK employer contribution (1.5% - 4%)
+    children_count: int | None = 0            # For child tax relief calculation
 
 class Settings(SettingsBase):
     id: int

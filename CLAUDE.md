@@ -72,3 +72,17 @@ journalctl -u home-budget-backend -f
 - Requisition IDs are stored and persist for 90 days (varies by bank)
 - Connection management is handled in user settings
 - Flow: get token → select bank → create requisition → get accounts → access data
+
+## Skills
+
+### /security-check
+Run `/security-check` after completing complex implementations or changes that could introduce security vulnerabilities. This includes:
+- Authentication/authorization changes
+- New API endpoints
+- User input handling
+- File uploads or downloads
+- Payment or financial data processing
+- Third-party integrations
+- Database queries with user-provided data
+
+The skill performs a red-team style security audit and suggests specific fixes.

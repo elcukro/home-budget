@@ -7,16 +7,23 @@ import { z } from "zod";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
+  Banknote,
   CalendarDays,
   Car,
   CreditCard,
   GraduationCap,
   Home,
   Info,
+  Landmark,
+  LayoutGrid,
+  List,
   Pencil,
   PiggyBank,
   Plus,
+  ShoppingCart,
   Trash2,
+  Truck,
+  Wallet,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -60,6 +67,9 @@ import { logger } from "@/lib/logger";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import Tooltip from "@/components/Tooltip";
 import DebtPayoffStrategy from "@/components/loans/DebtPayoffStrategy";
+import QuickAddLoanTiles, { type LoanTemplate } from "@/components/loans/QuickAddLoanTiles";
+import CompactLoanCard from "@/components/loans/CompactLoanCard";
+import LoanCalculator from "@/components/loans/LoanCalculator";
 
 interface Loan {
   id: number | string;
@@ -71,6 +81,9 @@ interface Loan {
   monthly_payment: number;
   start_date: string;
   term_months: number;
+  // Polish prepayment regulations
+  overpayment_fee_percent?: number;  // Fee percentage for prepayment (0-10%)
+  overpayment_fee_waived_until?: string;  // Date until prepayment fees are waived
   created_at: string;
 }
 
@@ -82,6 +95,11 @@ const loanTypeOptions = [
   { value: "car", labelId: "loans.types.car" },
   { value: "personal", labelId: "loans.types.personal" },
   { value: "student", labelId: "loans.types.student" },
+  { value: "credit_card", labelId: "loans.types.credit_card" },
+  { value: "cash_loan", labelId: "loans.types.cash_loan" },
+  { value: "installment", labelId: "loans.types.installment" },
+  { value: "leasing", labelId: "loans.types.leasing" },
+  { value: "overdraft", labelId: "loans.types.overdraft" },
   { value: "other", labelId: "loans.types.other" },
 ];
 
@@ -102,7 +120,7 @@ const LOAN_TYPE_META: Record<
 > = {
   mortgage: {
     Icon: Home,
-    toneClass: "bg-emerald-100 text-amber-700",
+    toneClass: "bg-emerald-100 text-emerald-700",
     accentClass: "text-emerald-600",
   },
   car: {
@@ -120,8 +138,33 @@ const LOAN_TYPE_META: Record<
     toneClass: "bg-purple-100 text-purple-700",
     accentClass: "text-purple-600",
   },
-  other: {
+  credit_card: {
     Icon: CreditCard,
+    toneClass: "bg-rose-100 text-rose-700",
+    accentClass: "text-rose-600",
+  },
+  cash_loan: {
+    Icon: Banknote,
+    toneClass: "bg-orange-100 text-orange-700",
+    accentClass: "text-orange-600",
+  },
+  installment: {
+    Icon: ShoppingCart,
+    toneClass: "bg-indigo-100 text-indigo-700",
+    accentClass: "text-indigo-600",
+  },
+  leasing: {
+    Icon: Truck,
+    toneClass: "bg-teal-100 text-teal-700",
+    accentClass: "text-teal-600",
+  },
+  overdraft: {
+    Icon: Wallet,
+    toneClass: "bg-red-100 text-red-700",
+    accentClass: "text-red-600",
+  },
+  other: {
+    Icon: Landmark,
     toneClass: "bg-slate-100 text-slate-700",
     accentClass: "text-slate-600",
   },
@@ -346,31 +389,38 @@ const loanSchema = z
     ),
   })
   .superRefine((data, ctx) => {
-    const balanceIssue = validateRemainingBalance(
-      data.remaining_balance,
-      data.principal_amount,
-    );
-    if (balanceIssue) {
-      ctx.addIssue({
-        path: ["remaining_balance"],
-        code: z.ZodIssueCode.custom,
-        message: balanceIssue.messageId,
-      });
+    // For leasing, principal and remaining_balance are auto-calculated from monthly_payment * term_months
+    // Skip validation that doesn't apply
+    const isLeasing = data.loan_type === "leasing";
+
+    if (!isLeasing) {
+      const balanceIssue = validateRemainingBalance(
+        data.remaining_balance,
+        data.principal_amount,
+      );
+      if (balanceIssue) {
+        ctx.addIssue({
+          path: ["remaining_balance"],
+          code: z.ZodIssueCode.custom,
+          message: balanceIssue.messageId,
+        });
+      }
+
+      const paymentIssue = validateMonthlyPayment(
+        data.monthly_payment,
+        data.principal_amount,
+      );
+      if (paymentIssue) {
+        ctx.addIssue({
+          path: ["monthly_payment"],
+          code: z.ZodIssueCode.custom,
+          message: paymentIssue.messageId,
+        });
+      }
     }
 
-    const paymentIssue = validateMonthlyPayment(
-      data.monthly_payment,
-      data.principal_amount,
-    );
-    if (paymentIssue) {
-      ctx.addIssue({
-        path: ["monthly_payment"],
-        code: z.ZodIssueCode.custom,
-        message: paymentIssue.messageId,
-      });
-    }
-
-    const dateIssue = validateDateString(data.start_date);
+    // Allow future dates for loans (e.g., leasing starts next month)
+    const dateIssue = validateDateString(data.start_date, { allowFuture: true });
     if (dateIssue) {
       ctx.addIssue({
         path: ["start_date"],
@@ -395,6 +445,20 @@ const loanDefaultValues: LoanFormValues = {
   term_months: 1,
 };
 
+// Helper to auto-calculate principal for leasing (total = monthly_payment * term_months)
+const autoCalculateLeasingPrincipal = (form: any) => {
+  const loanType = form.getValues("loan_type");
+  if (loanType === "leasing") {
+    const monthlyPayment = parseFloat(form.getValues("monthly_payment")) || 0;
+    const termMonths = parseInt(form.getValues("term_months")) || 0;
+    if (monthlyPayment > 0 && termMonths > 0) {
+      const total = monthlyPayment * termMonths;
+      form.setValue("principal_amount", total);
+      form.setValue("remaining_balance", total);
+    }
+  }
+};
+
 const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
   {
     name: "loan_type",
@@ -402,6 +466,12 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
     component: "select",
     placeholderId: "loans.form.type.select",
     options: loanTypeOptions,
+    onValueChange: (value, form) => {
+      // When switching to leasing, auto-calculate if we have monthly_payment and term
+      if (value === "leasing") {
+        autoCalculateLeasingPrincipal(form);
+      }
+    },
   },
   {
     name: "description",
@@ -414,6 +484,7 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
     component: "number",
     step: "0.01",
     min: 0,
+    showWhen: (values) => values.loan_type !== "leasing",
   },
   {
     name: "remaining_balance",
@@ -421,6 +492,7 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
     component: "number",
     step: "0.01",
     min: 0,
+    showWhen: (values) => values.loan_type !== "leasing",
   },
   {
     name: "interest_rate",
@@ -428,6 +500,7 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
     component: "number",
     step: "0.01",
     min: 0,
+    showWhen: (values) => values.loan_type !== "leasing",
   },
   {
     name: "monthly_payment",
@@ -435,6 +508,9 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
     component: "number",
     step: "0.01",
     min: 0,
+    onValueChange: (_value, form) => {
+      autoCalculateLeasingPrincipal(form);
+    },
   },
   {
     name: "term_months",
@@ -442,6 +518,9 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
     component: "number",
     step: "1",
     min: 1,
+    onValueChange: (_value, form) => {
+      autoCalculateLeasingPrincipal(form);
+    },
   },
   {
     name: "start_date",
@@ -483,6 +562,8 @@ export default function LoansPage() {
   const [sortKey, setSortKey] = useState<LoanSortKey>("start_date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [scheduleLoan, setScheduleLoan] = useState<Loan | null>(null);
+  const [prefilledValues, setPrefilledValues] = useState<Partial<LoanTemplate> | null>(null);
+  const [viewMode, setViewMode] = useState<"expanded" | "compact">("expanded");
 
   const userEmail = session?.user?.email ?? null;
 
@@ -747,14 +828,16 @@ export default function LoansPage() {
   const hasLoans = loans.length > 0;
   const hasVisibleLoans = sortedLoans.length > 0;
 
-  const handleOpenCreate = () => {
+  const handleOpenCreate = (prefilled?: Partial<LoanTemplate>) => {
     setActiveLoan(null);
+    setPrefilledValues(prefilled || null);
     setDialogMode("create");
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (loan: Loan) => {
     setActiveLoan(loan);
+    setPrefilledValues(null);
     setDialogMode("edit");
     setDialogOpen(true);
   };
@@ -763,7 +846,12 @@ export default function LoansPage() {
     setDialogOpen(open);
     if (!open) {
       setActiveLoan(null);
+      setPrefilledValues(null);
     }
+  };
+
+  const handleQuickAdd = (template: Partial<LoanTemplate>) => {
+    handleOpenCreate(template);
   };
 
   const showErrorToast = (messageId: string) => {
@@ -782,6 +870,14 @@ export default function LoansPage() {
     setIsSubmitting(true);
     try {
       const payload = { ...values };
+
+      // For leasing, auto-calculate principal and remaining_balance from monthly_payment * term_months
+      if (payload.loan_type === "leasing") {
+        const totalLeaseValue = payload.monthly_payment * payload.term_months;
+        payload.principal_amount = totalLeaseValue;
+        payload.remaining_balance = totalLeaseValue;
+        payload.interest_rate = 0; // Leasing doesn't show interest rate separately
+      }
 
       if (dialogMode === "create") {
         const response = await fetch(
@@ -920,10 +1016,23 @@ export default function LoansPage() {
             <FormattedMessage id="loans.subtitle" />
           </p>
         </div>
-        <Button onClick={handleOpenCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          <FormattedMessage id="loans.actions.add" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <LoanCalculator
+            onApply={(values) => {
+              handleOpenCreate({
+                principal_amount: values.principal,
+                remaining_balance: values.principal,
+                interest_rate: values.interestRate,
+                monthly_payment: values.monthlyPayment,
+                term_months: values.termMonths,
+              });
+            }}
+          />
+          <Button onClick={() => handleOpenCreate()}>
+            <Plus className="mr-2 h-4 w-4" />
+            <FormattedMessage id="loans.actions.add" />
+          </Button>
+        </div>
       </div>
 
       {apiError && (
@@ -976,6 +1085,9 @@ export default function LoansPage() {
           </p>
         </div>
       </div>
+
+      {/* Quick Add Loan Tiles */}
+      <QuickAddLoanTiles onQuickAdd={handleQuickAdd} />
 
       {/* Debt Payoff Strategy */}
       {loans.length > 0 && <DebtPayoffStrategy loans={loans} />}
@@ -1050,9 +1162,33 @@ export default function LoansPage() {
             ))}
           </select>
         </div>
+
+        {/* View toggle */}
+        <div className="ml-auto flex items-center gap-1 rounded-lg border border-muted bg-card p-1">
+          <Tooltip content={intl.formatMessage({ id: "loans.view.expanded" })}>
+            <Button
+              variant={viewMode === "expanded" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("expanded")}
+              className="h-8 w-8"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+          <Tooltip content={intl.formatMessage({ id: "loans.view.compact" })}>
+            <Button
+              variant={viewMode === "compact" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("compact")}
+              className="h-8 w-8"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+        </div>
       </div>
 
-      {hasVisibleLoans && (
+      {hasVisibleLoans && viewMode === "expanded" && (
         <div className="space-y-6">
           {sortedLoans.map((loan) => {
             const meta = LOAN_TYPE_META[loan.loan_type] ?? DEFAULT_LOAN_META;
@@ -1101,6 +1237,12 @@ export default function LoansPage() {
                 maximumFractionDigits: 2,
               },
             );
+
+            // Credit cards and overdrafts are revolving credit
+            const isRevolvingCredit = loan.loan_type === 'credit_card' || loan.loan_type === 'overdraft';
+            const utilizationPercent = isRevolvingCredit && metrics.principalAmount > 0
+              ? Math.round((metrics.remainingBalance / metrics.principalAmount) * 100)
+              : 0;
 
             return (
               <div
@@ -1247,37 +1389,75 @@ export default function LoansPage() {
                 </div>
 
                 <div className="mt-6">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                    <span className="font-medium text-emerald-900">
-                      <FormattedMessage
-                        id="loans.summary.progressLabel"
-                        values={{ percentage: progressLabel }}
-                      />
-                    </span>
-                    <span>
-                      <FormattedMessage
-                        id="loans.summary.progressDescription"
-                        values={{
-                          paid: (
-                            <span className="font-medium text-amber-700">
-                              {formatCurrency(metrics.amountPaid)}
-                            </span>
-                          ),
-                          principal: (
-                            <span className="font-medium text-slate-600">
-                              {formatCurrency(metrics.principalAmount)}
-                            </span>
-                          ),
-                        }}
-                      />
-                    </span>
-                  </div>
-                  <div className="mt-2 h-2.5 w-full rounded-full bg-emerald-100" aria-hidden="true">
-                    <div
-                      className="h-2.5 rounded-full bg-emerald-500 transition-all"
-                      style={{ width: `${progressPercent}%` }}
-                    />
-                  </div>
+                  {isRevolvingCredit ? (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                        <span className="font-medium text-emerald-900">
+                          <FormattedMessage id="loans.creditCard.utilization" />
+                        </span>
+                        <span className={cn(
+                          "font-semibold",
+                          utilizationPercent > 80 ? "text-destructive" : utilizationPercent > 50 ? "text-amber-600" : "text-emerald-600"
+                        )}>
+                          {utilizationPercent}%
+                          <span className="ml-2 font-normal text-muted-foreground">
+                            <FormattedMessage
+                              id="loans.creditCard.limit"
+                              values={{ limit: formatCurrency(metrics.principalAmount) }}
+                            />
+                          </span>
+                        </span>
+                      </div>
+                      <div className="mt-2 h-2.5 w-full rounded-full bg-slate-100" aria-hidden="true">
+                        <div
+                          className={cn(
+                            "h-2.5 rounded-full transition-all",
+                            utilizationPercent > 80 ? "bg-destructive" : utilizationPercent > 50 ? "bg-amber-500" : "bg-emerald-500"
+                          )}
+                          style={{ width: `${Math.min(utilizationPercent, 100)}%` }}
+                        />
+                      </div>
+                      {utilizationPercent > 80 && (
+                        <p className="mt-2 text-xs text-amber-600">
+                          <FormattedMessage id="loans.creditCard.highUtilization" />
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                        <span className="font-medium text-emerald-900">
+                          <FormattedMessage
+                            id="loans.summary.progressLabel"
+                            values={{ percentage: progressLabel }}
+                          />
+                        </span>
+                        <span>
+                          <FormattedMessage
+                            id="loans.summary.progressDescription"
+                            values={{
+                              paid: (
+                                <span className="font-medium text-amber-700">
+                                  {formatCurrency(metrics.amountPaid)}
+                                </span>
+                              ),
+                              principal: (
+                                <span className="font-medium text-slate-600">
+                                  {formatCurrency(metrics.principalAmount)}
+                                </span>
+                              ),
+                            }}
+                          />
+                        </span>
+                      </div>
+                      <div className="mt-2 h-2.5 w-full rounded-full bg-emerald-100" aria-hidden="true">
+                        <div
+                          className="h-2.5 rounded-full bg-emerald-500 transition-all"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Warning: payment doesn't cover interest */}
@@ -1301,6 +1481,62 @@ export default function LoansPage() {
                   </div>
                 )}
               </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Compact view */}
+      {hasVisibleLoans && viewMode === "compact" && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {sortedLoans.map((loan) => {
+            const fallbackMonthlyPayment = Math.max(loan.monthly_payment ?? 0, 0);
+            const fallbackPrincipal = Math.max(loan.principal_amount ?? 0, 0);
+            const fallbackRemaining = Math.max(loan.remaining_balance ?? 0, 0);
+            const fallbackMonths =
+              fallbackMonthlyPayment > 0
+                ? Math.max(
+                    Math.ceil(fallbackRemaining / fallbackMonthlyPayment),
+                    0,
+                  )
+                : Math.max(loan.term_months ?? 0, 0);
+            const metrics =
+              loanMetrics[String(loan.id)] ?? {
+                principalAmount: fallbackPrincipal,
+                remainingBalance: fallbackRemaining,
+                amountPaid: Math.max(fallbackPrincipal - fallbackRemaining, 0),
+                monthlyPayment: fallbackMonthlyPayment,
+                interestRate: Math.max(loan.interest_rate ?? 0, 0),
+                termMonths: Math.max(loan.term_months ?? 0, 0),
+                monthsRemaining: fallbackMonths,
+                progress:
+                  fallbackPrincipal > 0
+                    ? Math.min(
+                        Math.max(
+                          (fallbackPrincipal - fallbackRemaining) /
+                            fallbackPrincipal,
+                          0,
+                        ),
+                        1,
+                      )
+                    : 0,
+                nextPaymentDate: null,
+                paymentCoversInterest: true,
+              };
+
+            return (
+              <CompactLoanCard
+                key={loan.id}
+                loan={loan}
+                metrics={metrics}
+                formatCurrency={formatCurrency}
+                onEdit={handleOpenEdit}
+                onDelete={(loan) => {
+                  setPendingDelete(loan);
+                  setConfirmOpen(true);
+                }}
+                onViewSchedule={setScheduleLoan}
+              />
             );
           })}
         </div>
@@ -1493,7 +1729,9 @@ export default function LoansPage() {
         initialValues={
           dialogMode === "edit" && activeLoan
             ? mapLoanToFormValues(activeLoan)
-            : undefined
+            : prefilledValues
+              ? { ...loanDefaultValues, ...prefilledValues }
+              : undefined
         }
         fields={loanFieldConfig}
         onSubmit={handleSubmit}
