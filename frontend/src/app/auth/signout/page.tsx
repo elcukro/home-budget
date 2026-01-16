@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useIntl } from 'react-intl';
+import Image from 'next/image';
 import { LogIn, Lightbulb, Sparkles, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -77,10 +78,16 @@ export default function SignOutPage() {
 
       <div className="w-full max-w-lg mx-4 relative z-10">
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-emerald-100 p-8 md:p-12">
-          {/* Decorative top element */}
+          {/* Illustration */}
           <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="relative w-48 h-48 md:w-56 md:h-56">
+              <Image
+                src="/images/signout-illustration.jpg"
+                alt=""
+                fill
+                className="object-contain rounded-2xl"
+                priority
+              />
             </div>
           </div>
 
