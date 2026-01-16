@@ -80,7 +80,7 @@ export default function SignOutPage() {
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-emerald-100 p-8 md:p-12">
           {/* Illustration */}
           <div className="flex justify-center mb-6">
-            <div className="relative w-48 h-48 md:w-56 md:h-56">
+            <div className="relative w-64 h-48 md:w-80 md:h-60">
               <Image
                 src="/images/signout-illustration.jpg"
                 alt=""

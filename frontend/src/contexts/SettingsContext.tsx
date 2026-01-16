@@ -38,6 +38,21 @@ interface SettingsContextType {
   formatCurrency: (amount: number) => string;
 }
 
+const LANGUAGE_STORAGE_KEY = 'firedup_language';
+
+const getStoredLanguage = (): string => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem(LANGUAGE_STORAGE_KEY) || DEFAULT_LOCALE;
+  }
+  return DEFAULT_LOCALE;
+};
+
+const storeLanguage = (language: string): void => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+  }
+};
+
 const DEFAULT_SETTINGS: Settings = {
   language: DEFAULT_LOCALE,
   currency: 'USD',
@@ -67,8 +82,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchSettings = async () => {
     if (!session?.user?.email) {
-      logger.debug('[SettingsContext] No user email available, using default settings');
-      setSettings(DEFAULT_SETTINGS);
+      logger.debug('[SettingsContext] No user email available, using default settings with stored language');
+      const storedLanguage = getStoredLanguage();
+      setSettings({ ...DEFAULT_SETTINGS, language: storedLanguage });
       setIsLoading(false);
       return;
     }
@@ -89,6 +105,10 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       const data = await response.json();
       logger.debug('[SettingsContext] Received settings:', data);
       setSettings(data);
+      // Store language preference for use after logout
+      if (data.language) {
+        storeLanguage(data.language);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
       logger.error('[SettingsContext] Error fetching settings:', errorMessage);
@@ -104,7 +124,9 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     if (session?.user?.email) {
       fetchSettings();
     } else {
-      setSettings(DEFAULT_SETTINGS);
+      // Use stored language preference for logged out users
+      const storedLanguage = getStoredLanguage();
+      setSettings({ ...DEFAULT_SETTINGS, language: storedLanguage });
       setIsLoading(false);
     }
   }, [session]);
@@ -174,6 +196,11 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       
       // Update local state
       setSettings(newSettings);
+
+      // Store language preference for use after logout
+      if (newSettings.language) {
+        storeLanguage(newSettings.language);
+      }
 
       // We no longer need to force a page reload for language changes
       // The IntlProviderWrapper will handle the language change
