@@ -10,8 +10,10 @@ import {
   Banknote,
   CalendarDays,
   Car,
+  CheckCircle2,
   CreditCard,
   GraduationCap,
+  History,
   Home,
   Info,
   Landmark,
@@ -23,10 +25,15 @@ import {
   ShoppingCart,
   Trash2,
   Truck,
+  Undo2,
   Wallet,
+  Bell,
+  Clock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -620,6 +627,15 @@ export default function LoansPage() {
   const [prefilledValues, setPrefilledValues] = useState<Partial<LoanTemplate> | null>(null);
   const [viewMode, setViewMode] = useState<"expanded" | "compact">("expanded");
 
+  // Payment tracking state
+  const [loanPayments, setLoanPayments] = useState<Record<number, LoanPayment[]>>({});
+  const [loadingPayments, setLoadingPayments] = useState<Record<number, boolean>>({});
+  const [overpayLoan, setOverpayLoan] = useState<Loan | null>(null);
+  const [overpayAmount, setOverpayAmount] = useState("");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentHistoryLoan, setPaymentHistoryLoan] = useState<Loan | null>(null);
+  const [confirmUndoPayment, setConfirmUndoPayment] = useState<{ loan: Loan; payment: LoanPayment } | null>(null);
+
   const userEmail = session?.user?.email ?? null;
 
   useEffect(() => {
@@ -658,6 +674,244 @@ export default function LoansPage() {
 
     void loadLoans();
   }, [userEmail, intl]);
+
+  // Fetch payments for a specific loan
+  const fetchLoanPayments = async (loanId: number) => {
+    if (!userEmail) return;
+
+    setLoadingPayments(prev => ({ ...prev, [loanId]: true }));
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/loans/${loanId}/payments`,
+        { headers: { Accept: "application/json" } }
+      );
+      if (response.ok) {
+        const payments: LoanPayment[] = await response.json();
+        setLoanPayments(prev => ({ ...prev, [loanId]: payments }));
+      }
+    } catch (error) {
+      logger.error(`[Loans] Failed to fetch payments for loan ${loanId}`, error);
+    } finally {
+      setLoadingPayments(prev => ({ ...prev, [loanId]: false }));
+    }
+  };
+
+  // Load payments for all loans when loans are loaded
+  useEffect(() => {
+    if (loans.length > 0 && userEmail) {
+      loans.forEach(loan => {
+        if (typeof loan.id === 'number') {
+          void fetchLoanPayments(loan.id);
+        }
+      });
+    }
+  }, [loans, userEmail]);
+
+  // Check if payment for current month exists
+  const hasCurrentMonthPayment = (loanId: number): boolean => {
+    const payments = loanPayments[loanId] || [];
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+    return payments.some(
+      p => p.payment_type === "regular" && p.covers_month === currentMonth && p.covers_year === currentYear
+    );
+  };
+
+  // Get payment status for a loan
+  const getPaymentStatus = (loan: Loan): "paid" | "due_soon" | "overdue" | "ok" => {
+    const loanId = typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string);
+    if (hasCurrentMonthPayment(loanId)) return "paid";
+
+    const now = new Date();
+    const dueDay = loan.due_day ?? 1;
+    const currentDay = now.getDate();
+
+    if (currentDay > dueDay) return "overdue";
+    if (currentDay >= dueDay - 3) return "due_soon";
+    return "ok";
+  };
+
+  // Create a regular payment
+  const handleMarkAsPaid = async (loan: Loan) => {
+    if (!userEmail || isProcessingPayment) return;
+
+    const loanId = typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string);
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    setIsProcessingPayment(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/loans/${loanId}/payments`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            amount: loan.monthly_payment,
+            payment_date: now.toISOString().split("T")[0],
+            payment_type: "regular",
+            covers_month: currentMonth,
+            covers_year: currentYear,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to record payment");
+      }
+
+      const newPayment: LoanPayment = await response.json();
+
+      // Update local payments state
+      setLoanPayments(prev => ({
+        ...prev,
+        [loanId]: [newPayment, ...(prev[loanId] || [])],
+      }));
+
+      // Update loan remaining balance locally
+      setLoans(prev =>
+        prev.map(l =>
+          l.id === loan.id
+            ? { ...l, remaining_balance: Math.max(0, l.remaining_balance - loan.monthly_payment) }
+            : l
+        )
+      );
+
+      toast({
+        title: intl.formatMessage({ id: "loans.payment.toast.success" }),
+      });
+    } catch (error) {
+      logger.error("[Loans] Failed to record payment", error);
+      toast({
+        title: intl.formatMessage({ id: "loans.payment.toast.error" }),
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // Create an overpayment
+  const handleOverpayment = async () => {
+    if (!userEmail || !overpayLoan || isProcessingPayment) return;
+
+    const amount = parseNumber(overpayAmount.replace(",", "."));
+    if (!amount || amount <= 0) return;
+
+    const loanId = typeof overpayLoan.id === 'number' ? overpayLoan.id : parseInt(overpayLoan.id as string);
+    const now = new Date();
+
+    setIsProcessingPayment(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/loans/${loanId}/payments`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            amount,
+            payment_date: now.toISOString().split("T")[0],
+            payment_type: "overpayment",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to record overpayment");
+      }
+
+      const newPayment: LoanPayment = await response.json();
+
+      // Update local payments state
+      setLoanPayments(prev => ({
+        ...prev,
+        [loanId]: [newPayment, ...(prev[loanId] || [])],
+      }));
+
+      // Update loan remaining balance locally
+      setLoans(prev =>
+        prev.map(l =>
+          l.id === overpayLoan.id
+            ? { ...l, remaining_balance: Math.max(0, l.remaining_balance - amount) }
+            : l
+        )
+      );
+
+      toast({
+        title: intl.formatMessage({ id: "loans.payment.toast.success" }),
+      });
+
+      setOverpayLoan(null);
+      setOverpayAmount("");
+    } catch (error) {
+      logger.error("[Loans] Failed to record overpayment", error);
+      toast({
+        title: intl.formatMessage({ id: "loans.payment.toast.error" }),
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  // Undo a payment
+  const handleUndoPayment = async () => {
+    if (!userEmail || !confirmUndoPayment || isProcessingPayment) return;
+
+    const { loan, payment } = confirmUndoPayment;
+    const loanId = typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string);
+
+    setIsProcessingPayment(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/loans/${loanId}/payments/${payment.id}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to undo payment");
+      }
+
+      // Update local payments state
+      setLoanPayments(prev => ({
+        ...prev,
+        [loanId]: (prev[loanId] || []).filter(p => p.id !== payment.id),
+      }));
+
+      // Restore loan remaining balance locally
+      setLoans(prev =>
+        prev.map(l =>
+          l.id === loan.id
+            ? { ...l, remaining_balance: l.remaining_balance + payment.amount }
+            : l
+        )
+      );
+
+      toast({
+        title: intl.formatMessage({ id: "loans.payment.toast.undoSuccess" }),
+      });
+
+      setConfirmUndoPayment(null);
+    } catch (error) {
+      logger.error("[Loans] Failed to undo payment", error);
+      toast({
+        title: intl.formatMessage({ id: "loans.payment.toast.error" }),
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   const loanMetrics = useMemo(() => {
     return loans.reduce<Record<string, {
@@ -1355,6 +1609,83 @@ export default function LoansPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    {/* Payment status indicator */}
+                    {(() => {
+                      const status = getPaymentStatus(loan);
+                      const loanId = typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string);
+                      if (status === "paid") {
+                        return (
+                          <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <FormattedMessage id="loans.payment.paidThisMonth" />
+                          </div>
+                        );
+                      }
+                      if (status === "overdue") {
+                        return (
+                          <div className="flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-xs font-medium text-red-700">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            <FormattedMessage id="loans.payment.overdue" values={{ day: loan.due_day ?? 1 }} />
+                          </div>
+                        );
+                      }
+                      if (status === "due_soon") {
+                        return (
+                          <div className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-700">
+                            <Clock className="h-3.5 w-3.5" />
+                            <FormattedMessage id="loans.payment.dueSoon" values={{ day: loan.due_day ?? 1 }} />
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Payment action buttons */}
+                    {!hasCurrentMonthPayment(typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string)) && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleMarkAsPaid(loan)}
+                        disabled={isProcessingPayment}
+                        className="rounded-full border border-emerald-200 bg-emerald-100 px-4 py-1.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-200"
+                      >
+                        <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                        <FormattedMessage id="loans.payment.markAsPaid" />
+                      </Button>
+                    )}
+
+                    {/* Overpay button - only for non-leasing */}
+                    {loan.loan_type !== "leasing" && (
+                      <Tooltip content={intl.formatMessage({ id: "loans.payment.overpayTooltip" })}>
+                        <Button
+                          variant="secondary"
+                          onClick={() => {
+                            setOverpayLoan(loan);
+                            setOverpayAmount("");
+                          }}
+                          disabled={isProcessingPayment}
+                          className="rounded-full border border-amber-200 bg-amber-100 px-4 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-200"
+                        >
+                          <Wallet className="mr-1.5 h-4 w-4" />
+                          <FormattedMessage id="loans.payment.overpay" />
+                        </Button>
+                      </Tooltip>
+                    )}
+
+                    {/* Payment history button */}
+                    <Tooltip content={intl.formatMessage({ id: "loans.payment.historyTooltip" })}>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setPaymentHistoryLoan(loan)}
+                        className="h-10 w-10 rounded-full border-primary/10 hover:bg-primary/10 hover:text-primary"
+                      >
+                        <History className="h-4 w-4" />
+                        <span className="sr-only">
+                          <FormattedMessage id="loans.payment.history" />
+                        </span>
+                      </Button>
+                    </Tooltip>
+
                     <Button
                       variant="secondary"
                       onClick={() => setScheduleLoan(loan)}
@@ -1872,6 +2203,218 @@ export default function LoansPage() {
           <p className="text-xs text-muted-foreground leading-relaxed">
             <FormattedMessage id="loans.schedule.note" />
           </p>
+        </DialogContent>
+      </Dialog>
+
+      {/* Overpayment Dialog */}
+      <Dialog
+        open={Boolean(overpayLoan)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOverpayLoan(null);
+            setOverpayAmount("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md space-y-4">
+          <DialogHeader>
+            <DialogTitle>
+              <FormattedMessage id="loans.payment.overpayDialogTitle" />
+            </DialogTitle>
+            <DialogDescription>
+              <FormattedMessage
+                id="loans.payment.overpayDialogDescription"
+                values={{ loan: overpayLoan?.description ?? "" }}
+              />
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="overpay-amount">
+                <FormattedMessage id="loans.payment.overpayAmount" />
+              </Label>
+              <Input
+                id="overpay-amount"
+                type="text"
+                inputMode="decimal"
+                value={overpayAmount}
+                onChange={(e) => setOverpayAmount(e.target.value)}
+                placeholder={intl.formatMessage({ id: "loans.payment.overpayAmountPlaceholder" })}
+                className="text-lg"
+              />
+            </div>
+            {overpayLoan && overpayLoan.remaining_balance > 0 && (
+              <p className="text-sm text-muted-foreground">
+                <FormattedMessage
+                  id="loans.payment.overpayRemainingBalance"
+                  values={{ balance: formatCurrency(overpayLoan.remaining_balance) }}
+                />
+              </p>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setOverpayLoan(null);
+                setOverpayAmount("");
+              }}
+            >
+              <FormattedMessage id="common.cancel" />
+            </Button>
+            <Button
+              onClick={handleOverpayment}
+              disabled={isProcessingPayment || !overpayAmount || parseNumber(overpayAmount.replace(",", ".")) === null || (parseNumber(overpayAmount.replace(",", ".")) ?? 0) <= 0}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              <FormattedMessage id="loans.payment.overpayConfirm" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment History Dialog */}
+      <Dialog
+        open={Boolean(paymentHistoryLoan)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPaymentHistoryLoan(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl space-y-4">
+          <DialogHeader>
+            <DialogTitle>
+              <FormattedMessage
+                id="loans.payment.historyDialogTitle"
+                values={{ loan: paymentHistoryLoan?.description ?? "" }}
+              />
+            </DialogTitle>
+            <DialogDescription>
+              <FormattedMessage id="loans.payment.historyDialogDescription" />
+            </DialogDescription>
+          </DialogHeader>
+          {paymentHistoryLoan && (() => {
+            const loanId = typeof paymentHistoryLoan.id === 'number' ? paymentHistoryLoan.id : parseInt(paymentHistoryLoan.id as string);
+            const payments = loanPayments[loanId] || [];
+            const isLoading = loadingPayments[loanId];
+
+            if (isLoading) {
+              return (
+                <div className="py-8 text-center text-muted-foreground">
+                  <FormattedMessage id="common.loading" />
+                </div>
+              );
+            }
+
+            if (payments.length === 0) {
+              return (
+                <div className="py-8 text-center text-muted-foreground">
+                  <FormattedMessage id="loans.payment.noPayments" />
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {payments.map((payment) => (
+                  <div
+                    key={payment.id}
+                    className="flex items-center justify-between rounded-xl border border-muted/50 bg-muted/20 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-full",
+                        payment.payment_type === "regular"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-amber-100 text-amber-700"
+                      )}>
+                        {payment.payment_type === "regular" ? (
+                          <CheckCircle2 className="h-5 w-5" />
+                        ) : (
+                          <Wallet className="h-5 w-5" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">
+                          {payment.payment_type === "regular" ? (
+                            <FormattedMessage
+                              id="loans.payment.regularPayment"
+                              values={{
+                                month: payment.covers_month,
+                                year: payment.covers_year,
+                              }}
+                            />
+                          ) : (
+                            <FormattedMessage id="loans.payment.overpaymentLabel" />
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          <FormattedDate value={new Date(payment.payment_date)} />
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg font-semibold text-amber-700">
+                        {formatCurrency(payment.amount)}
+                      </span>
+                      <Tooltip content={intl.formatMessage({ id: "loans.payment.undoTooltip" })}>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setConfirmUndoPayment({ loan: paymentHistoryLoan, payment })}
+                          className="h-8 w-8 rounded-full border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                      </Tooltip>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Undo Payment Confirmation Dialog */}
+      <Dialog
+        open={Boolean(confirmUndoPayment)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmUndoPayment(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md space-y-4">
+          <DialogHeader>
+            <DialogTitle>
+              <FormattedMessage id="loans.payment.undoDialogTitle" />
+            </DialogTitle>
+            <DialogDescription>
+              <FormattedMessage
+                id="loans.payment.undoDialogDescription"
+                values={{
+                  amount: confirmUndoPayment ? formatCurrency(confirmUndoPayment.payment.amount) : "",
+                }}
+              />
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setConfirmUndoPayment(null)}
+            >
+              <FormattedMessage id="common.cancel" />
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleUndoPayment}
+              disabled={isProcessingPayment}
+            >
+              <FormattedMessage id="loans.payment.undoConfirm" />
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
