@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import {
   PiggyBank,
   Snowflake,
@@ -99,22 +100,36 @@ export default function BabyStepsExplainer() {
   const [expandedStep, setExpandedStep] = useState<number | null>(1);
 
   return (
-    <section className="py-20 bg-gradient-to-b from-emerald-50/30 to-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 mb-4">
-            7 Kroków do Wolności Finansowej
-          </h2>
-          <p className="text-lg text-emerald-700/70 max-w-2xl mx-auto">
-            Metoda Dave'a Ramseya, zaadaptowana do polskich realiów.
-            Każdy krok buduje na poprzednim - nie przeskakuj, nie kombinuj.
-            Ta kolejność działa.
-          </p>
+    <section className="py-20 bg-gradient-to-b from-emerald-50/30 to-white overflow-hidden">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header with character illustration */}
+        <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-12 mb-12">
+          {/* Character pointing right */}
+          <div className="hidden lg:block flex-shrink-0">
+            <Image
+              src="/images/pointing-character.png"
+              alt="Postać wskazująca na 7 kroków"
+              width={280}
+              height={400}
+              className="w-auto h-64 xl:h-80 drop-shadow-lg"
+            />
+          </div>
+
+          {/* Text content */}
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 mb-4">
+              7 Kroków do Wolności Finansowej
+            </h2>
+            <p className="text-lg text-emerald-700/70 max-w-2xl">
+              Metoda Dave'a Ramseya, zaadaptowana do polskich realiów.
+              Każdy krok buduje na poprzednim - nie przeskakuj, nie kombinuj.
+              Ta kolejność działa.
+            </p>
+          </div>
         </div>
 
         {/* Steps Timeline */}
-        <div className="relative">
+        <div className="relative max-w-4xl mx-auto">
           {/* Vertical line */}
           <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-300 via-emerald-500 to-emerald-300 hidden sm:block" />
 
