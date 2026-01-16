@@ -677,10 +677,17 @@ export default function IncomePage() {
 
     setIsChangingRate(true);
     try {
+      // Parse the effective date string directly to avoid timezone issues
+      const [effYear, effMonth] = values.effectiveDate.split("-").map(Number);
+
       // Calculate the end date for the old item (month before effective date)
-      const effectiveDate = new Date(values.effectiveDate);
-      const endDate = new Date(effectiveDate.getFullYear(), effectiveDate.getMonth() - 1, 1);
-      const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, "0")}-01`;
+      let endYear = effYear;
+      let endMonth = effMonth - 1;
+      if (endMonth < 1) {
+        endMonth = 12;
+        endYear -= 1;
+      }
+      const endDateStr = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
 
       // Step 1: Update the existing item with end_date
       const updateResponse = await fetch(
@@ -706,7 +713,15 @@ export default function IncomePage() {
       const updatedOld: Income = await updateResponse.json();
 
       // Step 2: Create a new item with the new amount
-      const effectiveDateStr = `${effectiveDate.getFullYear()}-${String(effectiveDate.getMonth() + 1).padStart(2, "0")}-01`;
+      // Use the effective date (first of the month)
+      const effectiveDateStr = `${effYear}-${String(effMonth).padStart(2, "0")}-01`;
+
+      console.log("[Income] Creating new income with rate change:", {
+        effectiveDate: values.effectiveDate,
+        effectiveDateStr,
+        originalDate: changeRateItem.date,
+      });
+
       const createResponse = await fetch(
         `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/income`,
         {
@@ -722,6 +737,10 @@ export default function IncomePage() {
             date: effectiveDateStr,
             end_date: null,
             is_recurring: true,
+            // Preserve employment details from original income
+            employment_type: changeRateItem.employment_type || null,
+            gross_amount: changeRateItem.is_gross ? values.newAmount : (changeRateItem.gross_amount || null),
+            is_gross: changeRateItem.is_gross || false,
           }),
         },
       );
