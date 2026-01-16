@@ -138,13 +138,13 @@ export default function TestimonialsSection() {
 
               {/* Author */}
               <div className="flex items-start gap-4">
-                <div className={`w-16 h-16 ${testimonial.color} rounded-full flex items-center justify-center overflow-hidden flex-shrink-0`}>
+                <div className={`w-16 h-20 ${testimonial.color} rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0`}>
                   {testimonial.image ? (
                     <Image
                       src={testimonial.image}
                       alt={testimonial.name}
                       width={64}
-                      height={64}
+                      height={80}
                       className="w-full h-full object-cover"
                     />
                   ) : (
