@@ -219,12 +219,12 @@ export default function ModulesShowcase() {
   }, []);
 
   return (
-    <section className="py-20 bg-gradient-to-b from-background to-lilac/10">
+    <section className="py-20 bg-gradient-to-b from-white to-violet-50/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl sm:text-4xl font-bold text-primary text-center mb-4">
+        <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 text-center mb-4">
           Zobacz, jak to działa
         </h2>
-        <p className="text-secondary text-center mb-12 max-w-2xl mx-auto">
+        <p className="text-emerald-700/70 text-center mb-12 max-w-2xl mx-auto">
           Każdy moduł FiredUp został zaprojektowany, aby pokazać Ci rzeczy, których nie widzisz w zwykłej aplikacji bankowej.
         </p>
 
@@ -239,8 +239,8 @@ export default function ModulesShowcase() {
                 onClick={() => setActiveModule(index)}
                 className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
                   isActive
-                    ? 'bg-primary text-white shadow-lg'
-                    : 'bg-card border border-border text-secondary hover:border-primary/30'
+                    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-200'
+                    : 'bg-white/80 backdrop-blur-sm border border-emerald-100 text-emerald-700 hover:border-emerald-200'
                 }`}
               >
                 <Icon className="w-5 h-5" />
@@ -252,14 +252,14 @@ export default function ModulesShowcase() {
 
         {/* Module Content */}
         <div className="relative">
-          <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-xl">
+          <div className="bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-3xl p-6 sm:p-8 shadow-xl shadow-emerald-100/30">
             {/* Browser mockup header */}
-            <div className="flex items-center gap-2 mb-6 pb-4 border-b border-border">
-              <div className="w-3 h-3 rounded-full bg-destructive/50" />
-              <div className="w-3 h-3 rounded-full bg-warning/50" />
-              <div className="w-3 h-3 rounded-full bg-success/50" />
-              <div className="flex-1 h-8 bg-muted rounded-lg ml-4 flex items-center px-3">
-                <span className="text-xs text-secondary">firedup.app/{modules[activeModule].id}</span>
+            <div className="flex items-center gap-2 mb-6 pb-4 border-b border-emerald-100">
+              <div className="w-3 h-3 rounded-full bg-rose-300" />
+              <div className="w-3 h-3 rounded-full bg-amber-300" />
+              <div className="w-3 h-3 rounded-full bg-emerald-300" />
+              <div className="flex-1 h-8 bg-emerald-50 rounded-lg ml-4 flex items-center px-3">
+                <span className="text-xs text-emerald-600/70">firedup.app/{modules[activeModule].id}</span>
               </div>
             </div>
 
@@ -267,17 +267,17 @@ export default function ModulesShowcase() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left side - Description */}
               <div className="flex flex-col justify-center order-2 lg:order-1">
-                <h3 className="text-2xl font-bold text-primary mb-4">
+                <h3 className="text-2xl font-bold text-emerald-900 mb-4">
                   {modules[activeModule].title}
                 </h3>
-                <p className="text-secondary mb-6 leading-relaxed">
+                <p className="text-emerald-700/70 mb-6 leading-relaxed">
                   {modules[activeModule].description}
                 </p>
                 <ul className="space-y-3">
                   {modules[activeModule].features.map((feature, index) => (
                     <li key={index} className="flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                      <span className="text-secondary">{feature}</span>
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                      <span className="text-emerald-700/70">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -287,7 +287,7 @@ export default function ModulesShowcase() {
               <div className="order-1 lg:order-2">
                 <button
                   onClick={openLightbox}
-                  className="group relative w-full bg-background rounded-2xl overflow-hidden border border-border shadow-lg hover:shadow-xl hover:border-primary/30 transition-all duration-300 cursor-zoom-in"
+                  className="group relative w-full bg-emerald-50/50 rounded-2xl overflow-hidden border border-emerald-100 shadow-lg hover:shadow-xl hover:shadow-emerald-100/50 hover:border-emerald-200 transition-all duration-300 cursor-zoom-in"
                 >
                   <Image
                     src={modules[activeModule].thumbnail}
@@ -298,8 +298,8 @@ export default function ModulesShowcase() {
                     priority={activeModule === 0}
                   />
                   {/* Zoom overlay */}
-                  <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors duration-300 flex items-center justify-center">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-primary text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
+                  <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/5 transition-colors duration-300 flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
                       <ZoomIn className="w-4 h-4" />
                       <span className="text-sm font-medium">Powiększ</span>
                     </div>

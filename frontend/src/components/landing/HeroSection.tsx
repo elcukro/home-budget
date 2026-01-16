@@ -2,37 +2,65 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, PiggyBank, TrendingUp, Wallet, Target, Flame } from 'lucide-react';
+
+const FloatingIcon = ({
+  Icon,
+  className,
+  delay = 0
+}: {
+  Icon: typeof PiggyBank;
+  className: string;
+  delay?: number;
+}) => (
+  <div
+    className={`absolute opacity-[0.07] animate-float ${className}`}
+    style={{ animationDelay: `${delay}s` }}
+  >
+    <Icon className="w-16 h-16 text-emerald-600" />
+  </div>
+);
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-mint/30 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-lilac/20 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
-      </div>
+    <section className="relative min-h-screen flex items-center justify-center pt-16 overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+      {/* Floating background icons */}
+      <FloatingIcon Icon={PiggyBank} className="top-[15%] left-[8%]" delay={0} />
+      <FloatingIcon Icon={TrendingUp} className="top-[25%] right-[12%]" delay={1.5} />
+      <FloatingIcon Icon={Wallet} className="bottom-[25%] left-[12%]" delay={3} />
+      <FloatingIcon Icon={Target} className="bottom-[20%] right-[8%]" delay={2} />
+      <FloatingIcon Icon={PiggyBank} className="top-[55%] left-[5%]" delay={4} />
+      <FloatingIcon Icon={Sparkles} className="top-[45%] right-[6%]" delay={2.5} />
+      <FloatingIcon Icon={Flame} className="top-[10%] right-[25%]" delay={1} />
+      <FloatingIcon Icon={TrendingUp} className="bottom-[35%] right-[20%]" delay={3.5} />
 
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      {/* Gradient orbs */}
+      <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/40 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-100/30 rounded-full blur-3xl" />
+
+      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium mb-8 border border-emerald-200/50">
           <Sparkles className="w-4 h-4" />
           Metoda Baby Steps + polski system finansowy (IKE/IKZE/PPK)
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-primary leading-tight mb-6">
-          Wyobraź sobie życie bez długu
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-emerald-900 leading-tight mb-6">
+          Wyobraź sobie życie{' '}
+          <span className="bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">
+            bez długu
+          </span>
         </h1>
 
         {/* Subheadline */}
-        <p className="text-xl sm:text-2xl text-secondary mb-8 max-w-3xl mx-auto">
+        <p className="text-xl sm:text-2xl text-emerald-800/70 mb-8 max-w-3xl mx-auto">
           Gdzie każda złotówka ma sens, a przyszłość jest Twoja
         </p>
 
         {/* Description */}
-        <p className="text-base sm:text-lg text-secondary/80 mb-12 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base sm:text-lg text-emerald-700/60 mb-12 max-w-2xl mx-auto leading-relaxed">
           Większość Polaków żyje od wypłaty do wypłaty. Kredyty, rachunki, ciągły stres.
           Ale nie musi tak być. Wolność finansowa to nie marzenie bogatych —
           to umiejętność, której możesz się nauczyć.
@@ -41,31 +69,55 @@ export default function HeroSection() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <Link href="/auth/signin">
-            <Button size="lg" className="text-lg px-8 py-6 h-auto group">
+            <Button
+              size="lg"
+              className="text-lg px-8 py-6 h-auto group bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-300 hover:-translate-y-0.5"
+            >
               Zobacz swój pierwszy krok
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
           <button
             onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-            className="text-secondary hover:text-primary transition-colors underline underline-offset-4"
+            className="text-emerald-700 hover:text-emerald-800 transition-colors underline underline-offset-4 font-medium"
           >
             Jak to działa?
           </button>
         </div>
 
         {/* Trust text */}
-        <p className="text-sm text-secondary/60">
+        <p className="text-sm text-emerald-600/50">
           7 dni Premium gratis • Bez karty kredytowej • Anuluj kiedy chcesz
         </p>
       </div>
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-        <div className="w-6 h-10 rounded-full border-2 border-secondary/30 flex items-start justify-center p-2">
-          <div className="w-1 h-2 bg-secondary/50 rounded-full animate-pulse" />
+        <div className="w-6 h-10 rounded-full border-2 border-emerald-300/50 flex items-start justify-center p-2">
+          <div className="w-1 h-2 bg-emerald-400/60 rounded-full animate-pulse" />
         </div>
       </div>
+
+      {/* CSS for floating animation */}
+      <style jsx global>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          25% {
+            transform: translateY(-15px) rotate(5deg);
+          }
+          50% {
+            transform: translateY(-8px) rotate(-3deg);
+          }
+          75% {
+            transform: translateY(-20px) rotate(3deg);
+          }
+        }
+        .animate-float {
+          animation: float 10s ease-in-out infinite;
+        }
+      `}</style>
     </section>
   );
 }

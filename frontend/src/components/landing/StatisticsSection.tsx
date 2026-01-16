@@ -44,7 +44,6 @@ function StatCard({ value, label, source, delay = 0 }: StatCardProps) {
     const prefix = value.substring(0, value.indexOf(numericMatch[0]));
     const suffix = value.substring(value.indexOf(numericMatch[0]) + numericMatch[0].length);
 
-    let start = 0;
     const duration = 1500;
     const startTime = performance.now();
 
@@ -69,15 +68,15 @@ function StatCard({ value, label, source, delay = 0 }: StatCardProps) {
   return (
     <div
       ref={cardRef}
-      className={`bg-card border border-border rounded-2xl p-6 text-center transition-all duration-700 ${
+      className={`bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-2xl p-6 text-center transition-all duration-700 hover:shadow-lg hover:shadow-emerald-100/50 hover:border-emerald-200 ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}
     >
-      <div className="text-4xl sm:text-5xl font-bold text-primary mb-3">
+      <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-3">
         {displayValue}
       </div>
-      <p className="text-secondary text-sm sm:text-base mb-3">{label}</p>
-      <p className="text-xs text-secondary/50">{source}</p>
+      <p className="text-emerald-700/70 text-sm sm:text-base mb-3">{label}</p>
+      <p className="text-xs text-emerald-600/50">{source}</p>
     </div>
   );
 }
@@ -107,12 +106,12 @@ const stats = [
 
 export default function StatisticsSection() {
   return (
-    <section className="py-20 bg-gradient-to-b from-background to-mint/10">
+    <section className="py-20 bg-gradient-to-b from-white to-emerald-50/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl sm:text-4xl font-bold text-primary text-center mb-4">
+        <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 text-center mb-4">
           Polska rzeczywistość finansowa
         </h2>
-        <p className="text-secondary text-center mb-12 max-w-2xl mx-auto">
+        <p className="text-emerald-700/70 text-center mb-12 max-w-2xl mx-auto">
           Nie jesteś sam. Miliony Polaków borykają się z tymi samymi wyzwaniami.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
