@@ -101,26 +101,24 @@ export default function BabyStepsExplainer() {
 
   return (
     <section className="py-20 bg-gradient-to-b from-emerald-50/30 to-white overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Main layout with floating character */}
-        <div className="relative flex">
-          {/* Floating character - sticky on left side */}
-          <div className="hidden xl:block w-80 flex-shrink-0">
-            <div className="sticky top-32">
-              <div className="animate-float-character">
-                <Image
-                  src="/images/pointing-character.png"
-                  alt="Postać wskazująca na 7 kroków"
-                  width={400}
-                  height={570}
-                  className="w-auto h-[450px] drop-shadow-xl"
-                />
-              </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        {/* Floating character - absolute positioned, overlapping content */}
+        <div className="hidden xl:block absolute left-0 top-0 z-10 pointer-events-none">
+          <div className="sticky top-32">
+            <div className="animate-float-character">
+              <Image
+                src="/images/pointing-character.png"
+                alt="Postać wskazująca na 7 kroków"
+                width={400}
+                height={570}
+                className="w-auto h-[450px] drop-shadow-xl opacity-90"
+              />
             </div>
           </div>
+        </div>
 
-          {/* Content */}
-          <div className="flex-1 max-w-4xl mx-auto">
+        {/* Content - centered as before */}
+        <div className="max-w-4xl mx-auto">
             {/* Header */}
             <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 mb-4">
@@ -242,7 +240,6 @@ export default function BabyStepsExplainer() {
             {/* Disclaimer */}
             <TaxDisclaimer variant="compact" className="mt-12" />
           </div>
-        </div>
       </div>
 
       {/* CSS for floating animation */}
