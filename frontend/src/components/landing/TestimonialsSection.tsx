@@ -120,44 +120,47 @@ export default function TestimonialsSection() {
           {testimonials.map((testimonial, index) => (
             <div
               key={index}
-              className="relative bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-2xl p-8 hover:shadow-xl hover:shadow-emerald-100/50 hover:border-emerald-200 hover:-translate-y-1 transition-all duration-300"
+              className="relative bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-2xl overflow-hidden hover:shadow-xl hover:shadow-emerald-100/50 hover:border-emerald-200 hover:-translate-y-1 transition-all duration-300"
             >
-              <Quote className="absolute top-4 right-4 w-8 h-8 text-emerald-100" />
-
-              {/* Stars */}
-              <div className="flex gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                ))}
-              </div>
-
-              {/* Text */}
-              <p className="text-emerald-700/70 mb-6 leading-relaxed">
-                "{testimonial.text}"
-              </p>
-
-              {/* Author */}
-              <div className="flex items-start gap-4">
-                <div className={`w-28 h-24 ${testimonial.color} rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0`}>
-                  {testimonial.image ? (
-                    <Image
-                      src={testimonial.image}
-                      alt={testimonial.name}
-                      width={112}
-                      height={96}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className={`${testimonial.textColor} font-semibold text-xl`}>
+              {/* Photo at top */}
+              <div className={`w-full h-32 ${testimonial.color} overflow-hidden`}>
+                {testimonial.image ? (
+                  <Image
+                    src={testimonial.image}
+                    alt={testimonial.name}
+                    width={400}
+                    height={128}
+                    className="w-full h-full object-cover object-top"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className={`${testimonial.textColor} font-semibold text-3xl`}>
                       {testimonial.avatar}
                     </span>
-                  )}
-                </div>
-                <div className="min-w-0">
+                  </div>
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                {/* Author info */}
+                <div className="mb-4">
                   <p className="font-semibold text-emerald-900">{testimonial.name}</p>
                   <p className="text-sm text-emerald-600 font-medium">{testimonial.role}</p>
                   <p className="text-xs text-emerald-600/50 mt-1">{testimonial.location} • {testimonial.bio}</p>
                 </div>
+
+                {/* Stars */}
+                <div className="flex gap-1 mb-3">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+
+                {/* Text */}
+                <p className="text-emerald-700/70 leading-relaxed text-sm">
+                  "{testimonial.text}"
+                </p>
               </div>
             </div>
           ))}
