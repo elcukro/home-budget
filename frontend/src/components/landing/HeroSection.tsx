@@ -36,16 +36,16 @@ export default function HeroSection() {
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-100/30 rounded-full blur-3xl" />
 
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
-        {/* Hero illustration - above content */}
-        <div className="relative flex justify-center mb-8">
-          <div className="relative animate-float-slow">
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
+        {/* Hero illustration - above content with faded edges */}
+        <div className="relative flex justify-center mb-6">
+          <div className="relative animate-float-slow hero-illustration-container">
             <Image
               src="/images/hero-illustration.png"
               alt="Uwolnij się od długów z FiredUp"
-              width={800}
-              height={447}
-              className="w-full max-w-2xl md:max-w-3xl drop-shadow-2xl"
+              width={1000}
+              height={558}
+              className="w-full max-w-3xl md:max-w-4xl lg:max-w-5xl"
               priority
             />
           </div>
@@ -74,7 +74,7 @@ export default function HeroSection() {
         <p className="text-base sm:text-lg text-emerald-700/60 mb-10 max-w-2xl mx-auto leading-relaxed">
           Większość Polaków żyje od wypłaty do wypłaty. Kredyty, rachunki, ciągły stres.
           Ale nie musi tak być. Wolność finansowa to nie marzenie bogatych —
-          to umiejętność, której możesz się nauczyć.
+          to umiejętność, których możesz się nauczyć.
         </p>
 
         {/* CTA Buttons */}
@@ -109,7 +109,7 @@ export default function HeroSection() {
         </div>
       </div>
 
-      {/* CSS for floating animation */}
+      {/* CSS for floating animation and image fade */}
       <style jsx global>{`
         @keyframes float {
           0%, 100% {
@@ -138,6 +138,10 @@ export default function HeroSection() {
         }
         .animate-float-slow {
           animation: float-slow 5s ease-in-out infinite;
+        }
+        .hero-illustration-container {
+          -webkit-mask-image: radial-gradient(ellipse 80% 70% at center, black 40%, transparent 75%);
+          mask-image: radial-gradient(ellipse 80% 70% at center, black 40%, transparent 75%);
         }
       `}</style>
     </section>
