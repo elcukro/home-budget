@@ -101,142 +101,164 @@ export default function BabyStepsExplainer() {
 
   return (
     <section className="py-20 bg-gradient-to-b from-emerald-50/30 to-white overflow-hidden">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header with character illustration */}
-        <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-12 mb-12">
-          {/* Character pointing right */}
-          <div className="hidden lg:block flex-shrink-0">
-            <Image
-              src="/images/pointing-character.png"
-              alt="Postać wskazująca na 7 kroków"
-              width={280}
-              height={400}
-              className="w-auto h-64 xl:h-80 drop-shadow-lg"
-            />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Main layout with floating character */}
+        <div className="relative flex">
+          {/* Floating character - sticky on left side */}
+          <div className="hidden xl:block w-80 flex-shrink-0">
+            <div className="sticky top-32">
+              <div className="animate-float-character">
+                <Image
+                  src="/images/pointing-character.png"
+                  alt="Postać wskazująca na 7 kroków"
+                  width={400}
+                  height={570}
+                  className="w-auto h-[450px] drop-shadow-xl"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Text content */}
-          <div className="text-center lg:text-left">
-            <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 mb-4">
-              7 Kroków do Wolności Finansowej
-            </h2>
-            <p className="text-lg text-emerald-700/70 max-w-2xl">
-              Metoda Dave'a Ramseya, zaadaptowana do polskich realiów.
-              Każdy krok buduje na poprzednim - nie przeskakuj, nie kombinuj.
-              Ta kolejność działa.
-            </p>
-          </div>
-        </div>
+          {/* Content */}
+          <div className="flex-1 max-w-4xl mx-auto">
+            {/* Header */}
+            <div className="text-center mb-12">
+              <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 mb-4">
+                7 Kroków do Wolności Finansowej
+              </h2>
+              <p className="text-lg text-emerald-700/70 max-w-2xl mx-auto">
+                Metoda Dave'a Ramseya, zaadaptowana do polskich realiów.
+                Każdy krok buduje na poprzednim - nie przeskakuj, nie kombinuj.
+                Ta kolejność działa.
+              </p>
+            </div>
 
-        {/* Steps Timeline */}
-        <div className="relative max-w-4xl mx-auto">
-          {/* Vertical line */}
-          <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-300 via-emerald-500 to-emerald-300 hidden sm:block" />
+            {/* Steps Timeline */}
+            <div className="relative">
+              {/* Vertical line */}
+              <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-emerald-300 via-emerald-500 to-emerald-300 hidden sm:block" />
 
-          <div className="space-y-4">
-            {steps.map((step) => (
-              <div
-                key={step.number}
-                className="relative"
-              >
-                {/* Step card */}
-                <div
-                  className={`
-                    sm:ml-16 bg-white/80 backdrop-blur-sm border rounded-2xl overflow-hidden transition-all duration-300
-                    ${expandedStep === step.number ? 'border-emerald-300 shadow-lg shadow-emerald-100/50' : 'border-emerald-100 hover:border-emerald-200'}
-                  `}
-                >
-                  {/* Header - always visible */}
-                  <button
-                    onClick={() => setExpandedStep(expandedStep === step.number ? null : step.number)}
-                    className="w-full p-4 sm:p-6 flex items-center gap-4 text-left"
+              <div className="space-y-4">
+                {steps.map((step) => (
+                  <div
+                    key={step.number}
+                    className="relative"
                   >
-                    {/* Step number badge - mobile */}
-                    <div className={`sm:hidden flex-shrink-0 w-10 h-10 ${step.color} rounded-full flex items-center justify-center`}>
-                      <span className={`${step.iconColor} font-bold`}>{step.number}</span>
-                    </div>
+                    {/* Step card */}
+                    <div
+                      className={`
+                        sm:ml-16 bg-white/80 backdrop-blur-sm border rounded-2xl overflow-hidden transition-all duration-300
+                        ${expandedStep === step.number ? 'border-emerald-300 shadow-lg shadow-emerald-100/50' : 'border-emerald-100 hover:border-emerald-200'}
+                      `}
+                    >
+                      {/* Header - always visible */}
+                      <button
+                        onClick={() => setExpandedStep(expandedStep === step.number ? null : step.number)}
+                        className="w-full p-4 sm:p-6 flex items-center gap-4 text-left"
+                      >
+                        {/* Step number badge - mobile */}
+                        <div className={`sm:hidden flex-shrink-0 w-10 h-10 ${step.color} rounded-full flex items-center justify-center`}>
+                          <span className={`${step.iconColor} font-bold`}>{step.number}</span>
+                        </div>
 
-                    {/* Step number badge - desktop (on the timeline) */}
-                    <div className={`hidden sm:flex absolute -left-8 top-6 w-12 h-12 ${step.color} rounded-full items-center justify-center border-4 border-white shadow-md`}>
-                      <span className={`${step.iconColor} font-bold text-lg`}>{step.number}</span>
-                    </div>
+                        {/* Step number badge - desktop (on the timeline) */}
+                        <div className={`hidden sm:flex absolute -left-8 top-6 w-12 h-12 ${step.color} rounded-full items-center justify-center border-4 border-white shadow-md`}>
+                          <span className={`${step.iconColor} font-bold text-lg`}>{step.number}</span>
+                        </div>
 
-                    {/* Icon */}
-                    <div className={`hidden sm:flex flex-shrink-0 w-12 h-12 ${step.color} rounded-xl items-center justify-center`}>
-                      <step.icon className={`w-6 h-6 ${step.iconColor}`} />
-                    </div>
+                        {/* Icon */}
+                        <div className={`hidden sm:flex flex-shrink-0 w-12 h-12 ${step.color} rounded-xl items-center justify-center`}>
+                          <step.icon className={`w-6 h-6 ${step.iconColor}`} />
+                        </div>
 
-                    {/* Title and amount */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-emerald-900 text-lg">
-                        {step.title}
-                      </h3>
-                      <p className="text-sm text-emerald-600/70">
-                        {step.amount}
-                      </p>
-                    </div>
+                        {/* Title and amount */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-emerald-900 text-lg">
+                            {step.title}
+                          </h3>
+                          <p className="text-sm text-emerald-600/70">
+                            {step.amount}
+                          </p>
+                        </div>
 
-                    {/* Expand icon */}
-                    <div className="flex-shrink-0 text-emerald-500">
-                      {expandedStep === step.number ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </div>
-                  </button>
+                        {/* Expand icon */}
+                        <div className="flex-shrink-0 text-emerald-500">
+                          {expandedStep === step.number ? (
+                            <ChevronUp className="w-5 h-5" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5" />
+                          )}
+                        </div>
+                      </button>
 
-                  {/* Expanded content */}
-                  {expandedStep === step.number && (
-                    <div className="px-4 sm:px-6 pb-6 space-y-4 border-t border-emerald-100 pt-4">
-                      {/* Description */}
-                      <p className="text-emerald-700/70 leading-relaxed">
-                        {step.description}
-                      </p>
+                      {/* Expanded content */}
+                      {expandedStep === step.number && (
+                        <div className="px-4 sm:px-6 pb-6 space-y-4 border-t border-emerald-100 pt-4">
+                          {/* Description */}
+                          <p className="text-emerald-700/70 leading-relaxed">
+                            {step.description}
+                          </p>
 
-                      {/* IKZE Tax Calculator - only for Step 4 */}
-                      {step.number === 4 && (
-                        <IKZETaxBenefit />
-                      )}
+                          {/* IKZE Tax Calculator - only for Step 4 */}
+                          {step.number === 4 && (
+                            <IKZETaxBenefit />
+                          )}
 
-                      {/* Example */}
-                      <div className="bg-emerald-50 rounded-xl p-4">
-                        <div className="flex items-start gap-3">
-                          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-medium text-emerald-800 mb-1">Przykład z życia:</p>
-                            <p className="text-sm text-emerald-700/70">{step.example}</p>
+                          {/* Example */}
+                          <div className="bg-emerald-50 rounded-xl p-4">
+                            <div className="flex items-start gap-3">
+                              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-sm font-medium text-emerald-800 mb-1">Przykład z życia:</p>
+                                <p className="text-sm text-emerald-700/70">{step.example}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tip */}
+                          <div className="flex items-start gap-3 text-sm">
+                            <span className="text-emerald-600 font-medium">Tip:</span>
+                            <p className="text-emerald-700/70">{step.tip}</p>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Tip */}
-                      <div className="flex items-start gap-3 text-sm">
-                        <span className="text-emerald-600 font-medium">Tip:</span>
-                        <p className="text-emerald-700/70">{step.tip}</p>
-                      </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* Bottom CTA */}
+            <div className="mt-12 text-center">
+              <p className="text-emerald-700/70 mb-4">
+                FiredUp pomoże Ci przejść przez każdy krok. Zobaczysz gdzie jesteś i co robić dalej.
+              </p>
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 rounded-full text-emerald-700 text-sm font-medium">
+                <CheckCircle2 className="w-4 h-4" />
+                Aplikacja automatycznie wykryje Twój obecny krok
+              </div>
+            </div>
+
+            {/* Disclaimer */}
+            <TaxDisclaimer variant="compact" className="mt-12" />
           </div>
         </div>
-
-        {/* Bottom CTA */}
-        <div className="mt-12 text-center">
-          <p className="text-emerald-700/70 mb-4">
-            FiredUp pomoże Ci przejść przez każdy krok. Zobaczysz gdzie jesteś i co robić dalej.
-          </p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-100 rounded-full text-emerald-700 text-sm font-medium">
-            <CheckCircle2 className="w-4 h-4" />
-            Aplikacja automatycznie wykryje Twój obecny krok
-          </div>
-        </div>
-
-        {/* Disclaimer */}
-        <TaxDisclaimer variant="compact" className="mt-12" />
       </div>
+
+      {/* CSS for floating animation */}
+      <style jsx global>{`
+        @keyframes float-character {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
+        .animate-float-character {
+          animation: float-character 4s ease-in-out infinite;
+        }
+      `}</style>
     </section>
   );
 }
