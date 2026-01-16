@@ -55,7 +55,7 @@ export default function SignOutPage() {
 
   if (isSigningOut) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-amber-50 fixed inset-0">
         <div className="flex flex-col items-center space-y-4">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-emerald-700 font-medium">
@@ -67,7 +67,7 @@ export default function SignOutPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-amber-50 relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-amber-50 relative overflow-hidden fixed inset-0">
       {/* Floating background icons */}
       <FloatingIcon Icon={PiggyBank} className="top-[10%] left-[10%]" delay={0} />
       <FloatingIcon Icon={TrendingUp} className="top-[20%] right-[15%]" delay={1.5} />
