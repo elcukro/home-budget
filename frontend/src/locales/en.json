@@ -835,7 +835,32 @@
       "interestRate": "Interest rate (%)",
       "monthlyPayment": "Monthly payment",
       "termMonths": "Term (months)",
-      "startDate": "Start date"
+      "startDate": "Start date",
+      "dueDay": "Due day",
+      "dueDay.description": "Day of month when payment is due (1-31)"
+    },
+    "payment": {
+      "markAsPaid": "Mark as paid",
+      "markAsPaidFor": "Mark payment for {month}/{year} as paid",
+      "overpay": "Overpay",
+      "overpayTitle": "Loan overpayment",
+      "overpayDescription": "Enter the overpayment amount. It will be deducted from the loan balance.",
+      "overpayAmount": "Overpayment amount",
+      "overpaySubmit": "Make overpayment",
+      "history": "Payment history",
+      "noPayments": "No payments recorded",
+      "regular": "Regular",
+      "overpayment": "Overpayment",
+      "undo": "Undo",
+      "undoConfirm": "Are you sure you want to undo this payment? The amount {amount} will be restored to the loan balance.",
+      "paidThisMonth": "This month's payment has already been made",
+      "dueSoon": "Payment due soon ({day}th of the month)",
+      "overdue": "Payment overdue! Due: {day}th of the month",
+      "toast": {
+        "success": "Payment recorded successfully",
+        "undoSuccess": "Payment undone successfully",
+        "error": "Failed to record payment"
+      }
     },
     "table": {
       "type": "Loan type",

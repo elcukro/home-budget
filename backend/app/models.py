@@ -16,6 +16,7 @@ class User(Base):
 
     # Relationships
     loans = relationship("Loan", back_populates="user")
+    loan_payments = relationship("LoanPayment", back_populates="user", cascade="all, delete-orphan")
     expenses = relationship("Expense", back_populates="user")
     income = relationship("Income", back_populates="user")
     settings = relationship("Settings", back_populates="user", uselist=False)
@@ -45,14 +46,50 @@ class Loan(Base):
     monthly_payment = Column(Float)
     start_date = Column(Date)
     term_months = Column(Integer)
+    due_day = Column(Integer, nullable=True, default=1)  # Day of month when payment is due (1-31)
     # Polish prepayment regulations (since 2022, banks cannot charge fees for first 3 years)
     overpayment_fee_percent = Column(Float, nullable=True, default=0)  # Fee percentage for prepayment (0-3%)
     overpayment_fee_waived_until = Column(Date, nullable=True)  # Date until prepayment fees are waived
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationship
+    # Relationships
     user = relationship("User", back_populates="loans")
+    payments = relationship("LoanPayment", back_populates="loan", cascade="all, delete-orphan")
+
+
+class LoanPayment(Base):
+    """Tracks individual loan payments (regular and overpayments)."""
+    __tablename__ = "loan_payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    loan_id = Column(Integer, ForeignKey("loans.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    amount = Column(Float, nullable=False)  # Payment amount
+    payment_date = Column(Date, nullable=False)  # Date of payment
+    payment_type = Column(String, nullable=False)  # 'regular' or 'overpayment'
+
+    # For tracking which month this payment covers (for regular payments)
+    covers_month = Column(Integer, nullable=True)  # Month number (1-12)
+    covers_year = Column(Integer, nullable=True)  # Year
+
+    notes = Column(String, nullable=True)  # Optional notes
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    loan = relationship("Loan", back_populates="payments")
+    user = relationship("User", back_populates="loan_payments")
+
+    __table_args__ = (
+        Index('idx_loan_payments_loan_id', 'loan_id'),
+        Index('idx_loan_payments_user_id', 'user_id'),
+        Index('idx_loan_payments_payment_date', 'payment_date'),
+        Index('idx_loan_payments_covers', 'covers_year', 'covers_month'),
+    )
+
 
 class Expense(Base):
     __tablename__ = "expenses"

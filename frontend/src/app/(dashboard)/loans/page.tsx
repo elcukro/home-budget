@@ -81,9 +81,23 @@ interface Loan {
   monthly_payment: number;
   start_date: string;
   term_months: number;
+  due_day?: number;  // Day of month when payment is due (1-31)
   // Polish prepayment regulations
   overpayment_fee_percent?: number;  // Fee percentage for prepayment (0-10%)
   overpayment_fee_waived_until?: string;  // Date until prepayment fees are waived
+  created_at: string;
+}
+
+interface LoanPayment {
+  id: number;
+  loan_id: number;
+  user_id: string;
+  amount: number;
+  payment_date: string;
+  payment_type: "regular" | "overpayment";
+  covers_month?: number;
+  covers_year?: number;
+  notes?: string;
   created_at: string;
 }
 
@@ -377,6 +391,22 @@ const loanSchema = z
         return parseNumber(raw) ?? 0;
       }),
     start_date: z.string().trim().min(1, "validation.required"),
+    due_day: z.union([z.string(), z.number()])
+      .transform((value, ctx) => {
+        const raw = typeof value === "number" ? value.toString() : value.trim();
+        if (!raw) {
+          return 1; // Default to 1st of month
+        }
+        const parsed = parseNumber(raw);
+        if (parsed === null || !Number.isInteger(parsed) || parsed < 1 || parsed > 31) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "validation.dueDay.invalid",
+          });
+          return 1;
+        }
+        return parsed;
+      }),
     term_months: z.union([z.string(), z.number()])
       .transform((value, ctx) => {
         const raw = typeof value === "number" ? value.toString() : value.trim();
@@ -452,6 +482,7 @@ const loanDefaultValues: LoanFormValues = {
   interest_rate: 0,
   monthly_payment: 0,
   start_date: todayISO,
+  due_day: 1,
   term_months: 1,
 };
 
@@ -536,6 +567,19 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
     name: "start_date",
     labelId: "loans.form.startDate",
     component: "date",
+    rowGroup: "dates",
+    rowWidth: "1/2",
+  },
+  {
+    name: "due_day",
+    labelId: "loans.form.dueDay",
+    descriptionId: "loans.form.dueDay.description",
+    component: "number",
+    step: "1",
+    min: 1,
+    max: 31,
+    rowGroup: "dates",
+    rowWidth: "1/2",
   },
 ];
 
@@ -547,6 +591,7 @@ const mapLoanToFormValues = (loan: Loan): LoanFormValues => ({
   interest_rate: loan.interest_rate,
   monthly_payment: loan.monthly_payment,
   start_date: loan.start_date.slice(0, 10),
+  due_day: loan.due_day ?? 1,
   term_months: loan.term_months,
 });
 

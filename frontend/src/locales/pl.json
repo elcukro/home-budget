@@ -813,7 +813,32 @@
       "interestRate": "Stopa procentowa (%)",
       "monthlyPayment": "Rata miesięczna",
       "termMonths": "Okres (miesiące)",
-      "startDate": "Data rozpoczęcia"
+      "startDate": "Data rozpoczęcia",
+      "dueDay": "Dzień płatności",
+      "dueDay.description": "Dzień miesiąca, w którym przypada rata (1-31)"
+    },
+    "payment": {
+      "markAsPaid": "Spłaciłem ratę",
+      "markAsPaidFor": "Spłaciłem ratę za {month}/{year}",
+      "overpay": "Nadpłać",
+      "overpayTitle": "Nadpłata kredytu",
+      "overpayDescription": "Wprowadź kwotę nadpłaty. Zostanie ona odjęta od salda kredytu.",
+      "overpayAmount": "Kwota nadpłaty",
+      "overpaySubmit": "Dokonaj nadpłaty",
+      "history": "Historia spłat",
+      "noPayments": "Brak zarejestrowanych spłat",
+      "regular": "Rata",
+      "overpayment": "Nadpłata",
+      "undo": "Cofnij",
+      "undoConfirm": "Czy na pewno chcesz cofnąć tę spłatę? Kwota {amount} zostanie przywrócona do salda kredytu.",
+      "paidThisMonth": "Rata za ten miesiąc została już opłacona",
+      "dueSoon": "Termin płatności zbliża się ({day} dzień miesiąca)",
+      "overdue": "Rata przeterminowana! Termin: {day} dzień miesiąca",
+      "toast": {
+        "success": "Spłata została zarejestrowana",
+        "undoSuccess": "Spłata została cofnięta",
+        "error": "Wystąpił błąd podczas rejestracji spłaty"
+      }
     },
     "table": {
       "type": "Typ kredytu",

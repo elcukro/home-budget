@@ -75,6 +75,7 @@ class LoanBase(BaseModel):
     monthly_payment: float = Field(..., ge=0, description="Monthly payment amount")
     start_date: date = Field(..., description="Loan start date")
     term_months: int = Field(..., gt=0, description="Loan term in months")
+    due_day: int | None = Field(default=1, ge=1, le=31, description="Day of month when payment is due (1-31)")
     # Polish prepayment regulations (since 2022, banks cannot charge fees for first 3 years)
     overpayment_fee_percent: float | None = Field(default=0, ge=0, le=10, description="Prepayment fee percentage (0-10%)")
     overpayment_fee_waived_until: date | None = Field(default=None, description="Date until prepayment fees are waived")
@@ -109,6 +110,44 @@ class Loan(LoanBase):
         json_encoders = {
             datetime: lambda v: v.isoformat()
         }
+
+
+# Loan Payment models
+VALID_PAYMENT_TYPES = ["regular", "overpayment"]
+
+class LoanPaymentBase(BaseModel):
+    amount: float = Field(..., gt=0, description="Payment amount")
+    payment_date: date = Field(..., description="Date of payment")
+    payment_type: str = Field(..., description="Type: 'regular' or 'overpayment'")
+    covers_month: int | None = Field(default=None, ge=1, le=12, description="Month this payment covers (1-12)")
+    covers_year: int | None = Field(default=None, ge=2000, le=2100, description="Year this payment covers")
+    notes: str | None = Field(default=None, max_length=500, description="Optional notes")
+
+    @model_validator(mode='after')
+    def validate_payment(self):
+        if self.payment_type not in VALID_PAYMENT_TYPES:
+            raise ValueError(f"Invalid payment type. Must be one of: {', '.join(VALID_PAYMENT_TYPES)}")
+        # Regular payments should have covers_month and covers_year
+        if self.payment_type == "regular" and (self.covers_month is None or self.covers_year is None):
+            raise ValueError("Regular payments must specify covers_month and covers_year")
+        return self
+
+class LoanPaymentCreate(LoanPaymentBase):
+    pass
+
+class LoanPayment(LoanPaymentBase):
+    id: int
+    loan_id: int
+    user_id: str
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
 
 # Expense models
 class ExpenseBase(BaseModel):
@@ -487,6 +526,118 @@ def delete_loan(
     db.delete(db_loan)
     db.commit()
     return {"message": "Loan deleted successfully"}
+
+
+# Loan Payment endpoints
+@app.get("/users/{user_id}/loans/{loan_id}/payments", response_model=List[LoanPayment])
+def get_loan_payments(
+    user_id: str,
+    loan_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get all payments for a specific loan."""
+    validate_user_access(user_id, current_user)
+
+    # Verify loan exists and belongs to user
+    db_loan = db.query(models.Loan).filter(
+        models.Loan.id == loan_id,
+        models.Loan.user_id == current_user.id
+    ).first()
+    if not db_loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+
+    payments = db.query(models.LoanPayment).filter(
+        models.LoanPayment.loan_id == loan_id
+    ).order_by(models.LoanPayment.payment_date.desc()).all()
+    return payments
+
+
+@app.post("/users/{user_id}/loans/{loan_id}/payments", response_model=LoanPayment)
+def create_loan_payment(
+    user_id: str,
+    loan_id: int,
+    payment: LoanPaymentCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Create a payment for a loan and update remaining balance."""
+    validate_user_access(user_id, current_user)
+
+    # Verify loan exists and belongs to user
+    db_loan = db.query(models.Loan).filter(
+        models.Loan.id == loan_id,
+        models.Loan.user_id == current_user.id
+    ).first()
+    if not db_loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+
+    # For regular payments, check if payment already exists for this month
+    if payment.payment_type == "regular":
+        existing = db.query(models.LoanPayment).filter(
+            models.LoanPayment.loan_id == loan_id,
+            models.LoanPayment.payment_type == "regular",
+            models.LoanPayment.covers_month == payment.covers_month,
+            models.LoanPayment.covers_year == payment.covers_year
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Payment for {payment.covers_month}/{payment.covers_year} already exists"
+            )
+
+    # Create payment record
+    db_payment = models.LoanPayment(
+        **payment.model_dump(),
+        loan_id=loan_id,
+        user_id=current_user.id
+    )
+    db.add(db_payment)
+
+    # Update loan remaining balance
+    db_loan.remaining_balance = max(0, db_loan.remaining_balance - payment.amount)
+
+    db.commit()
+    db.refresh(db_payment)
+    return db_payment
+
+
+@app.delete("/users/{user_id}/loans/{loan_id}/payments/{payment_id}")
+def delete_loan_payment(
+    user_id: str,
+    loan_id: int,
+    payment_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Delete (undo) a loan payment and restore the balance."""
+    validate_user_access(user_id, current_user)
+
+    # Verify loan exists and belongs to user
+    db_loan = db.query(models.Loan).filter(
+        models.Loan.id == loan_id,
+        models.Loan.user_id == current_user.id
+    ).first()
+    if not db_loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+
+    # Find the payment
+    db_payment = db.query(models.LoanPayment).filter(
+        models.LoanPayment.id == payment_id,
+        models.LoanPayment.loan_id == loan_id
+    ).first()
+    if not db_payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    # Restore the balance
+    db_loan.remaining_balance = db_loan.remaining_balance + db_payment.amount
+
+    # Delete the payment
+    db.delete(db_payment)
+    db.commit()
+
+    return {"message": "Payment deleted and balance restored"}
+
 
 # Expense endpoints
 @app.get("/users/{user_id}/expenses", response_model=List[Expense])
