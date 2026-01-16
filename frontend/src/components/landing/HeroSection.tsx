@@ -36,16 +36,16 @@ export default function HeroSection() {
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-emerald-100/30 rounded-full blur-3xl" />
 
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
         {/* Hero illustration - above content with faded edges */}
         <div className="relative flex justify-center mb-6">
           <div className="relative animate-float-slow hero-illustration-container">
             <Image
               src="/images/hero-illustration.png"
               alt="Uwolnij się od długów z FiredUp"
-              width={1000}
-              height={558}
-              className="w-full max-w-3xl md:max-w-4xl lg:max-w-5xl"
+              width={1400}
+              height={781}
+              className="w-full max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl"
               priority
             />
           </div>
