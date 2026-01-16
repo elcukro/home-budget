@@ -1224,6 +1224,23 @@
       "googleSignIn": "Nie udało się zalogować przez Google. Spróbuj ponownie.",
       "googleCallback": "Nie udało się zakończyć logowania przez Google. Spróbuj ponownie.",
       "default": "Wystąpił błąd podczas logowania. Spróbuj ponownie."
+    },
+    "signedOut": {
+      "title": "Do zobaczenia!",
+      "subtitle": "Twoja sesja wygasła, ale Twój zapał do oszczędzania nie musi.",
+      "tipTitle": "Porada na dziś",
+      "tip0": "Zasada 50/30/20: 50% na potrzeby, 30% na zachcianki, 20% na oszczędności. Prosty przepis na spokój finansowy.",
+      "tip1": "Automatyzuj oszczędności – pieniądze, które nie trafiają na konto główne, nie kuszą do wydania.",
+      "tip2": "Przed każdym zakupem zadaj sobie pytanie: czy za rok będę cieszyć się, że to kupiłem?",
+      "tip3": "Fundusz awaryjny to nie luksus – to podstawa. Zacznij od 1000 zł, potem dąż do 3-6 miesięcy wydatków.",
+      "tip4": "Sprawdzaj subskrypcje raz na kwartał. Te 29 zł miesięcznie to 348 zł rocznie, których często nie zauważasz.",
+      "tip5": "Śniadanie w domu zamiast kawy na mieście? To nawet 3000 zł rocznie oszczędności.",
+      "tip6": "Najlepsza inwestycja to ta, którą rozumiesz. Nie inwestuj w coś, czego nie potrafisz wytłumaczyć.",
+      "tip7": "Długi o wysokim oprocentowaniu spłacaj najpierw – każda złotówka zapłaconych odsetek to złotówka mniej w Twojej kieszeni.",
+      "tip8": "Planuj większe zakupy z wyprzedzeniem. Impulsywne decyzje kosztują średnio 20% więcej.",
+      "tip9": "Twój przyszły Ty będzie Ci wdzięczny za każde 100 zł odłożone dzisiaj.",
+      "backToLogin": "Wróć do logowania",
+      "footer": "Twoje finanse czekają na Ciebie – wróć, kiedy będziesz gotowy!"
     }
   },
   "inactivity": {

@@ -197,6 +197,23 @@
       "googleSignIn": "Failed to sign in with Google. Please try again.",
       "googleCallback": "Failed to complete Google sign in. Please try again.",
       "default": "An error occurred during sign in. Please try again."
+    },
+    "signedOut": {
+      "title": "See you soon!",
+      "subtitle": "Your session has ended, but your savings momentum doesn't have to.",
+      "tipTitle": "Tip of the day",
+      "tip0": "The 50/30/20 rule: 50% for needs, 30% for wants, 20% for savings. A simple recipe for financial peace.",
+      "tip1": "Automate your savings – money that doesn't hit your main account doesn't tempt you to spend it.",
+      "tip2": "Before every purchase, ask yourself: will I be happy I bought this a year from now?",
+      "tip3": "An emergency fund isn't a luxury – it's a foundation. Start with $1,000, then aim for 3-6 months of expenses.",
+      "tip4": "Review your subscriptions quarterly. That $9.99/month is $120/year you often don't notice.",
+      "tip5": "Breakfast at home instead of coffee on the go? That's up to $1,500 a year in savings.",
+      "tip6": "The best investment is one you understand. Don't invest in something you can't explain.",
+      "tip7": "Pay off high-interest debt first – every dollar in interest is a dollar less in your pocket.",
+      "tip8": "Plan bigger purchases ahead. Impulse decisions cost an average of 20% more.",
+      "tip9": "Your future self will thank you for every $100 saved today.",
+      "backToLogin": "Back to login",
+      "footer": "Your finances are waiting for you – come back when you're ready!"
     }
   },
   "navigation": {
