@@ -39,6 +39,7 @@
     "delete": "Delete",
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "loading": "Loading...",
     "error": "Error: {message}",
     "confirm": "Are you sure?",
@@ -212,7 +213,85 @@
     "lightMode": "Light Mode",
     "signOut": "Sign Out",
     "savings": "Savings",
-    "banking": "Banking"
+    "banking": "Banking",
+    "bankTransactions": "Bank Transactions"
+  },
+  "bankTransactions": {
+    "title": "Bank Transactions",
+    "subtitle": "Analyze your spending and discover savings potential",
+    "sync": "Sync",
+    "syncing": "Syncing...",
+    "categorize": "Categorize AI",
+    "categorizing": "Categorizing...",
+    "allCategorized": "All categorized",
+    "categorizeModal": {
+      "title": "AI Categorization",
+      "step1": "Preparing transactions...",
+      "step2": "AI analyzing descriptions and amounts...",
+      "step3": "Saving results...",
+      "alreadyDone": "Check complete",
+      "success": "Categorized {count} transactions",
+      "successDesc": "Categories are now visible next to each transaction",
+      "allDone": "All done!",
+      "allDoneDesc": "All transactions are already categorized"
+    },
+    "lastSync": "Last sync",
+    "noConnection": "No bank connection",
+    "noConnectionDesc": "Connect your bank account in settings to see transactions.",
+    "goToSettings": "Go to settings",
+    "noTransactions": "No transactions",
+    "noTransactionsDesc": "Click 'Sync' to fetch transactions from your bank.",
+    "summary": {
+      "totalSpent": "Spent ({count} transactions)",
+      "largePurchases": "Large purchases (>300 PLN)",
+      "savingPotential": "Saving potential"
+    },
+    "insights": {
+      "title": "Spending patterns",
+      "coffee": "Coffee shops",
+      "coffeeAdvice": "Coffee out is nice, but making it at home saves up to 70%.",
+      "delivery": "Food delivery",
+      "deliveryAdvice": "Cooking at home is healthier and cheaper. Try meal prep on weekends.",
+      "restaurants": "Restaurants",
+      "restaurantsAdvice": "Cutting restaurant visits in half means significant savings.",
+      "savingPotential": "Saving potential: {amount}"
+    },
+    "categories": {
+      "title": "Spending by category"
+    },
+    "largePurchases": {
+      "title": "Large purchases",
+      "subtitle": "Transactions over 300 PLN - planned or impulse?"
+    },
+    "list": {
+      "title": "All transactions",
+      "showAll": "Show all ({count})",
+      "category": "Category"
+    },
+    "addToBudget": {
+      "title": "Add to budget",
+      "button": "Add to budget",
+      "success": "Transaction added to budget",
+      "error": "Error adding to budget"
+    },
+    "filters": {
+      "search": "Search transactions..."
+    },
+    "convert": {
+      "asExpense": "As expense",
+      "asIncome": "As income",
+      "category": "Category",
+      "description": "Description",
+      "amount": "Amount",
+      "date": "Date"
+    },
+    "toast": {
+      "syncSuccess": "Synced {count} transactions",
+      "syncError": "Sync error",
+      "categorizeSuccess": "Categorized {count} transactions with AI",
+      "categorizeError": "AI categorization error",
+      "categorizeNoApiKey": "Add Anthropic API key in Settings"
+    }
   },
   "aiAnalysis": {
     "title": "AI Analysis",

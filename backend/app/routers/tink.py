@@ -95,6 +95,7 @@ async def initiate_connection(
         # Use simple one-time flow (recommended for testing)
         tink_link_url, state = await tink_service.generate_simple_connect_url(
             user_id=current_user.id,
+            db=db,
             locale=request.locale
         )
 

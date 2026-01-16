@@ -39,6 +39,7 @@
     "delete": "Usuń",
     "save": "Zapisz",
     "cancel": "Anuluj",
+    "close": "Zamknij",
     "loading": "Ładowanie...",
     "error": "Błąd: {message}",
     "confirm": "Czy jesteś pewien?",
@@ -183,7 +184,85 @@
     "aiAnalysis": "Analiza AI",
     "settings": "Ustawienia",
     "savings": "Oszczędności",
-    "banking": "Bankowość"
+    "banking": "Bankowość",
+    "bankTransactions": "Transakcje bankowe"
+  },
+  "bankTransactions": {
+    "title": "Transakcje bankowe",
+    "subtitle": "Przeanalizuj swoje wydatki i odkryj potencjał oszczędności",
+    "sync": "Synchronizuj",
+    "syncing": "Synchronizuję...",
+    "categorize": "Kategoryzuj AI",
+    "categorizing": "Kategoryzuję...",
+    "allCategorized": "Wszystko skategoryzowane",
+    "categorizeModal": {
+      "title": "Kategoryzacja AI",
+      "step1": "Przygotowywanie transakcji...",
+      "step2": "AI analizuje opisy i kwoty...",
+      "step3": "Zapisywanie wyników...",
+      "alreadyDone": "Sprawdzanie zakończone",
+      "success": "Skategoryzowano {count} transakcji",
+      "successDesc": "Kategorie są widoczne przy każdej transakcji",
+      "allDone": "Wszystko gotowe!",
+      "allDoneDesc": "Wszystkie transakcje są już skategoryzowane"
+    },
+    "lastSync": "Ostatnia synchronizacja",
+    "noConnection": "Brak połączenia z bankiem",
+    "noConnectionDesc": "Połącz swoje konto bankowe w ustawieniach, aby zobaczyć transakcje.",
+    "goToSettings": "Przejdź do ustawień",
+    "noTransactions": "Brak transakcji",
+    "noTransactionsDesc": "Kliknij 'Synchronizuj', aby pobrać transakcje z banku.",
+    "summary": {
+      "totalSpent": "Wydano ({count} transakcji)",
+      "largePurchases": "Duże zakupy (>300 zł)",
+      "savingPotential": "Potencjał oszczędności"
+    },
+    "insights": {
+      "title": "Wzorce wydatków",
+      "coffee": "Kawiarnie",
+      "coffeeAdvice": "Kawa na mieście to przyjemność, ale domowa oszczędza nawet 70% kosztów.",
+      "delivery": "Dostawa jedzenia",
+      "deliveryAdvice": "Gotowanie w domu jest zdrowsze i tańsze. Spróbuj meal prep w weekendy.",
+      "restaurants": "Restauracje",
+      "restaurantsAdvice": "Ograniczenie wizyt w restauracjach o połowę to znaczące oszczędności.",
+      "savingPotential": "Potencjał oszczędności: {amount}"
+    },
+    "categories": {
+      "title": "Podział wydatków wg kategorii"
+    },
+    "largePurchases": {
+      "title": "Duże zakupy",
+      "subtitle": "Transakcje powyżej 300 zł - przemyślane czy impulsywne?"
+    },
+    "list": {
+      "title": "Wszystkie transakcje",
+      "showAll": "Pokaż wszystkie ({count})",
+      "category": "Kategoria"
+    },
+    "addToBudget": {
+      "title": "Dodaj do budżetu",
+      "button": "Dodaj do budżetu",
+      "success": "Transakcja dodana do budżetu",
+      "error": "Błąd dodawania do budżetu"
+    },
+    "filters": {
+      "search": "Szukaj transakcji..."
+    },
+    "convert": {
+      "asExpense": "Jako wydatek",
+      "asIncome": "Jako przychód",
+      "category": "Kategoria",
+      "description": "Opis",
+      "amount": "Kwota",
+      "date": "Data"
+    },
+    "toast": {
+      "syncSuccess": "Zsynchronizowano {count} transakcji",
+      "syncError": "Błąd synchronizacji",
+      "categorizeSuccess": "Skategoryzowano {count} transakcji przez AI",
+      "categorizeError": "Błąd kategoryzacji AI",
+      "categorizeNoApiKey": "Dodaj klucz API Anthropic w Ustawieniach"
+    }
   },
   "aiAnalysis": {
     "title": "Analiza AI",

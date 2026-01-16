@@ -27,7 +27,7 @@ from urllib.parse import urlencode
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 
-from ..models import TinkConnection, BankTransaction
+from ..models import TinkConnection, BankTransaction, TinkPendingAuth
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +57,59 @@ class TinkService:
         self.api_url = "https://api.tink.com"
         self.link_url = "https://link.tink.com"
         self._signing_key = os.getenv("NEXTAUTH_SECRET", self.client_secret).encode()
-        # Store pending authorization codes - maps state -> auth data
-        # TODO: In production, use Redis or database instead of memory
-        self._pending_auth: Dict[str, Dict[str, Any]] = {}
+        # Auth expiration time (15 minutes)
+        self._auth_expiration_minutes = 15
+
+    # =========================================================================
+    # Pending Auth Database Operations (replaces in-memory storage)
+    # =========================================================================
+    def store_pending_auth(
+        self,
+        db: Session,
+        state_token: str,
+        user_id: str,
+        tink_user_id: Optional[str] = None,
+        authorization_code: Optional[str] = None,
+    ) -> TinkPendingAuth:
+        """Store pending authorization in database."""
+        # Clean up expired entries first
+        self.cleanup_expired_auth(db)
+
+        pending = TinkPendingAuth(
+            state_token=state_token,
+            user_id=user_id,
+            tink_user_id=tink_user_id,
+            authorization_code=authorization_code,
+            expires_at=datetime.utcnow() + timedelta(minutes=self._auth_expiration_minutes),
+        )
+        db.add(pending)
+        db.commit()
+        db.refresh(pending)
+        return pending
+
+    def get_pending_auth(self, db: Session, state_token: str) -> Optional[TinkPendingAuth]:
+        """Get pending authorization from database."""
+        pending = db.query(TinkPendingAuth).filter(
+            TinkPendingAuth.state_token == state_token,
+            TinkPendingAuth.used == False,
+            TinkPendingAuth.expires_at > datetime.utcnow(),
+        ).first()
+        return pending
+
+    def mark_auth_used(self, db: Session, state_token: str) -> None:
+        """Mark pending authorization as used."""
+        db.query(TinkPendingAuth).filter(
+            TinkPendingAuth.state_token == state_token
+        ).update({"used": True})
+        db.commit()
+
+    def cleanup_expired_auth(self, db: Session) -> int:
+        """Clean up expired pending authorizations."""
+        deleted = db.query(TinkPendingAuth).filter(
+            TinkPendingAuth.expires_at < datetime.utcnow()
+        ).delete()
+        db.commit()
+        return deleted
 
     def _check_credentials(self):
         """Check if Tink credentials are configured."""
@@ -286,7 +336,12 @@ class TinkService:
     # =========================================================================
     # Simple One-Time Access Flow (recommended for testing)
     # =========================================================================
-    async def generate_simple_connect_url(self, user_id: str, locale: str = "pl_PL") -> tuple[str, str]:
+    async def generate_simple_connect_url(
+        self,
+        user_id: str,
+        db: Session,
+        locale: str = "pl_PL"
+    ) -> tuple[str, str]:
         """
         Generate a simple Tink Link URL for one-time access.
 
@@ -298,14 +353,14 @@ class TinkService:
         # Generate state token for CSRF protection
         state = self.generate_state_token(user_id)
 
-        # Store user info for callback
+        # Store user info for callback in database
         external_user_id = sanitize_external_user_id(user_id)
-        self._pending_auth[state] = {
-            "user_id": user_id,
-            "external_user_id": external_user_id,
-            "flow_type": "one_time",
-            "created_at": datetime.utcnow().isoformat(),
-        }
+        self.store_pending_auth(
+            db=db,
+            state_token=state,
+            user_id=user_id,
+            tink_user_id=external_user_id,  # Store external_user_id here
+        )
 
         # Build simple Tink Link URL - no authorization_code needed!
         params = {
@@ -324,7 +379,12 @@ class TinkService:
     # =========================================================================
     # Permanent Users Flow (complex, requires proper Tink Console setup)
     # =========================================================================
-    async def generate_connect_url(self, user_id: str, locale: str = "en_US") -> tuple[str, str]:
+    async def generate_connect_url(
+        self,
+        user_id: str,
+        db: Session,
+        locale: str = "en_US"
+    ) -> tuple[str, str]:
         """
         Generate Tink Link URL for user to connect their bank.
 
@@ -365,14 +425,14 @@ class TinkService:
         # Generate state token for CSRF protection
         state = self.generate_state_token(user_id)
 
-        # Store auth data for later exchange (IMPORTANT!)
-        self._pending_auth[state] = {
-            "auth_code": auth_code,
-            "user_id": user_id,
-            "external_user_id": external_user_id,
-            "tink_user_id": user_data.get("user_id"),
-            "created_at": datetime.utcnow().isoformat(),
-        }
+        # Store auth data for later exchange in database
+        self.store_pending_auth(
+            db=db,
+            state_token=state,
+            user_id=user_id,
+            tink_user_id=external_user_id,
+            authorization_code=auth_code,
+        )
 
         # Step 4: Build Tink Link URL
         params = {
@@ -492,22 +552,22 @@ class TinkService:
         1. One-time flow: code comes from callback, exchange directly
         2. Permanent users flow: generate new code using authorization-grant
         """
-        # Get stored auth data
-        pending = self._pending_auth.get(state)
+        # Get stored auth data from database
+        pending = self.get_pending_auth(db, state)
         if not pending:
             raise Exception("Authorization data not found. Please try connecting again.")
 
-        external_user_id = pending["external_user_id"]
-        flow_type = pending.get("flow_type", "permanent")
+        external_user_id = pending.tink_user_id  # We stored external_user_id in tink_user_id field
+        has_auth_code = bool(pending.authorization_code)
 
-        logger.info(f"Creating connection for user {user_id}, external: {external_user_id}, flow: {flow_type}")
+        logger.info(f"Creating connection for user {user_id}, external: {external_user_id}, has_auth_code: {has_auth_code}")
 
-        if flow_type == "one_time" and code:
+        if not has_auth_code and code:
             # One-time flow: use code from callback directly
             logger.info("Using one-time flow with code from callback")
             auth_code = code
-        else:
-            # Permanent users flow: generate new code
+        elif has_auth_code:
+            # Permanent users flow: generate new code using the stored external_user_id
             logger.info("Using permanent users flow, generating new auth code")
             client_token = await self.get_client_access_token()
             auth_code = await self.generate_user_auth_code(
@@ -515,6 +575,8 @@ class TinkService:
                 external_user_id,
                 scope="accounts:read,balances:read,transactions:read"
             )
+        else:
+            raise Exception("No authorization code available. Please try connecting again.")
 
         # Exchange auth code for user tokens
         token_data = await self.exchange_code_for_tokens(auth_code)
@@ -524,8 +586,8 @@ class TinkService:
         refresh_token = token_data.get("refresh_token", "")
         expires_in = token_data.get("expires_in", 7200)
 
-        # Clear the pending auth
-        del self._pending_auth[state]
+        # Mark the pending auth as used
+        self.mark_auth_used(db, state)
 
         # Fetch accounts using user token
         accounts = await self.fetch_accounts(access_token)

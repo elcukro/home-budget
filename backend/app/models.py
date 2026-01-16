@@ -305,6 +305,29 @@ class BankingConnection(Base):
     )
 
 
+class TinkPendingAuth(Base):
+    """Stores pending Tink authorization flows (replaces in-memory storage)."""
+    __tablename__ = "tink_pending_auth"
+
+    id = Column(Integer, primary_key=True, index=True)
+    state_token = Column(String(255), unique=True, nullable=False, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Tink flow data
+    tink_user_id = Column(String, nullable=True)
+    authorization_code = Column(String(500), nullable=True)
+
+    # Expiration and status
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used = Column(Boolean, default=False)
+
+    __table_args__ = (
+        Index('idx_tink_pending_auth_state', 'state_token'),
+        Index('idx_tink_pending_auth_expires', 'expires_at'),
+    )
+
+
 class TinkConnection(Base):
     """Stores Tink API connections and OAuth tokens per user."""
     __tablename__ = "tink_connections"

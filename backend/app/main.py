@@ -1,6 +1,6 @@
 import logging
 import traceback
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from . import models, database
@@ -14,7 +14,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions
 from .database import engine, Base
 from .routers.users import User, UserBase, Settings, SettingsBase  # Import User, UserBase, Settings, and SettingsBase models from users router
 import json
@@ -22,9 +22,21 @@ import re
 import httpx
 from .logging_utils import make_conditional_print
 from .services.subscription_service import SubscriptionService
+from .dependencies import get_current_user as get_authenticated_user
 
 logger = logging.getLogger(__name__)
+
+
 print = make_conditional_print(__name__)
+
+
+def validate_user_access(user_id_from_path: str, authenticated_user: models.User) -> None:
+    """Validate that the authenticated user matches the user_id in the path."""
+    if user_id_from_path != authenticated_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied: You can only access your own data"
+        )
 
 app = FastAPI()
 
@@ -48,6 +60,7 @@ app.include_router(savings.router)
 app.include_router(exchange_rates.router)
 app.include_router(banking.router)
 app.include_router(tink.router)
+app.include_router(bank_transactions.router)
 app.include_router(stripe_billing.router)
 
 # Loan models
@@ -226,17 +239,21 @@ class SettingsCreate(SettingsBase):
 
 # User endpoints
 @app.get("/users/me", response_model=User)
-def get_current_user(user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
+def get_or_create_current_user(
+    x_user_id: str = Header(..., alias="X-User-ID", description="Authenticated user ID from session"),
+    db: Session = Depends(database.get_db)
+):
+    """Get or create current user. Uses X-User-ID header from authenticated session."""
     try:
-        print(f"[FastAPI] Getting user with ID: {user_id}")
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        
+        print(f"[FastAPI] Getting user with ID: {x_user_id}")
+        user = db.query(models.User).filter(models.User.id == x_user_id).first()
+
         if not user:
-            print(f"[FastAPI] User not found with ID: {user_id}, creating new user")
+            print(f"[FastAPI] User not found with ID: {x_user_id}, creating new user")
             # Create new user
             user = models.User(
-                id=user_id,
-                email=user_id,  # Using ID as email since we use email as ID
+                id=x_user_id,
+                email=x_user_id,  # Using ID as email since we use email as ID
                 name=None
             )
             db.add(user)
@@ -244,10 +261,10 @@ def get_current_user(user_id: str = Query(..., description="The ID of the user")
                 db.commit()
                 db.refresh(user)
                 print(f"[FastAPI] Created new user: {user}")
-                
+
                 # Create default settings for the new user
                 settings = models.Settings(
-                    user_id=user_id,
+                    user_id=x_user_id,
                     language="en",
                     currency="USD",
                     ai={"apiKey": None}
@@ -259,11 +276,11 @@ def get_current_user(user_id: str = Query(..., description="The ID of the user")
                 db.rollback()
                 print(f"[FastAPI] Error creating user: {str(e)}")
                 raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
-        
+
         print(f"[FastAPI] Returning user: {user}")
         return user
     except Exception as e:
-        print(f"[FastAPI] Error in get_current_user: {str(e)}")
+        print(f"[FastAPI] Error in get_or_create_current_user: {str(e)}")
         print(f"[FastAPI] Error type: {type(e)}")
         import traceback
         print(f"[FastAPI] Traceback: {traceback.format_exc()}")
@@ -313,37 +330,25 @@ def create_user(user: UserBase, db: Session = Depends(database.get_db)):
 
 # Settings endpoints
 @app.get("/users/{user_id}/settings", response_model=Settings)
-def get_user_settings(user_id: str, db: Session = Depends(database.get_db)):
+def get_user_settings(
+    user_id: str,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get settings for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Getting settings for user: {user_id}")
-        
-        # First check if user exists
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if not user:
-            print(f"[FastAPI] User not found with ID: {user_id}, creating new user")
-            # Create new user
-            user = models.User(
-                id=user_id,
-                email=user_id,  # Using ID as email since we use email as ID
-                name=None
-            )
-            db.add(user)
-            try:
-                db.commit()
-                print(f"[FastAPI] Created new user: {user}")
-            except Exception as e:
-                db.rollback()
-                print(f"[FastAPI] Error creating user: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
-        
-        # Now get or create settings
-        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
-        
+        print(f"[FastAPI] Getting settings for user: {current_user.id}")
+
+        # Get or create settings
+        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
+
         if not settings:
-            print(f"[FastAPI] No settings found for user: {user_id}, creating default settings")
+            print(f"[FastAPI] No settings found for user: {current_user.id}, creating default settings")
             # Create default settings
             settings = models.Settings(
-                user_id=user_id,
+                user_id=current_user.id,
                 language="en",
                 currency="USD",
                 ai={"apiKey": None}
@@ -357,9 +362,11 @@ def get_user_settings(user_id: str, db: Session = Depends(database.get_db)):
                 db.rollback()
                 print(f"[FastAPI] Error creating settings: {str(e)}")
                 raise HTTPException(status_code=500, detail=f"Error creating settings: {str(e)}")
-        
+
         print(f"[FastAPI] Returning settings: {settings}")
         return settings
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in get_user_settings: {str(e)}")
         import traceback
@@ -367,47 +374,61 @@ def get_user_settings(user_id: str, db: Session = Depends(database.get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/users/{user_id}/settings", response_model=Settings)
-def update_user_settings(user_id: str, settings: SettingsCreate, db: Session = Depends(database.get_db)):
+def update_user_settings(
+    user_id: str,
+    settings: SettingsCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Update settings for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Updating settings for user: {user_id}")
-        db_settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
-        
+        print(f"[FastAPI] Updating settings for user: {current_user.id}")
+        db_settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
+
         if not db_settings:
-            print(f"[FastAPI] No settings found for user: {user_id}, creating new settings")
-            db_settings = models.Settings(user_id=user_id)
+            print(f"[FastAPI] No settings found for user: {current_user.id}, creating new settings")
+            db_settings = models.Settings(user_id=current_user.id)
             db.add(db_settings)
-        
+
         for key, value in settings.model_dump().items():
             setattr(db_settings, key, value)
-        
+
         db.commit()
         db.refresh(db_settings)
         print(f"[FastAPI] Updated settings: {db_settings}")
         return db_settings
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in update_user_settings: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Loan endpoints
 @app.get("/loans", response_model=List[Loan])
-def get_loans(user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
-    loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
+def get_loans(
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get all loans for the authenticated user."""
+    loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
     return loans
 
 @app.post("/loans", response_model=Loan)
-def create_loan(loan: LoanCreate, user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
+def create_loan(
+    loan: LoanCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Create a new loan for the authenticated user."""
     # Check subscription limits
-    can_add, message = SubscriptionService.can_add_loan(user_id, db)
+    can_add, message = SubscriptionService.can_add_loan(current_user.id, db)
     if not can_add:
         raise HTTPException(status_code=403, detail=message)
 
-    # Check if user exists
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     db_loan = models.Loan(
-        user_id=user_id,
+        user_id=current_user.id,
         loan_type=loan.loan_type,
         description=loan.description,
         principal_amount=loan.principal_amount,
@@ -423,130 +444,184 @@ def create_loan(loan: LoanCreate, user_id: str = Query(..., description="The ID 
     return db_loan
 
 @app.put("/loans/{loan_id}", response_model=Loan)
-def update_loan(loan_id: int, loan: LoanCreate, user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
+def update_loan(
+    loan_id: int,
+    loan: LoanCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Update a loan owned by the authenticated user."""
     db_loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == user_id
+        models.Loan.user_id == current_user.id
     ).first()
-    
+
     if not db_loan:
         raise HTTPException(status_code=404, detail="Loan not found")
-    
+
     for key, value in loan.model_dump().items():
         setattr(db_loan, key, value)
-    
+
     db.commit()
     db.refresh(db_loan)
     return db_loan
 
 @app.delete("/users/{user_id}/loans/{loan_id}")
-def delete_loan(user_id: str, loan_id: int, db: Session = Depends(database.get_db)):
+def delete_loan(
+    user_id: str,
+    loan_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Delete a loan owned by the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     db_loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == user_id
+        models.Loan.user_id == current_user.id
     ).first()
-    
+
     if not db_loan:
         raise HTTPException(status_code=404, detail="Loan not found")
-    
+
     db.delete(db_loan)
     db.commit()
     return {"message": "Loan deleted successfully"}
 
 # Expense endpoints
 @app.get("/users/{user_id}/expenses", response_model=List[Expense])
-def get_user_expenses(user_id: str, db: Session = Depends(database.get_db)):
+def get_user_expenses(
+    user_id: str,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get all expenses for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Getting expenses for user: {user_id}")
-        expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
+        print(f"[FastAPI] Getting expenses for user: {current_user.id}")
+        expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
         print(f"[FastAPI] Found {len(expenses)} expenses")
         return expenses
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in get_user_expenses: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/users/{user_id}/expenses", response_model=Expense)
-def create_expense(user_id: str, expense: ExpenseCreate, db: Session = Depends(database.get_db)):
+def create_expense(
+    user_id: str,
+    expense: ExpenseCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Create an expense for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Creating expense for user: {user_id}")
+        print(f"[FastAPI] Creating expense for user: {current_user.id}")
         # Check subscription limits
-        can_add, message = SubscriptionService.can_add_expense(user_id, db)
+        can_add, message = SubscriptionService.can_add_expense(current_user.id, db)
         if not can_add:
             raise HTTPException(status_code=403, detail=message)
 
-        # Check if user exists
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if not user:
-            print(f"[FastAPI] User not found with ID: {user_id}")
-            raise HTTPException(status_code=404, detail="User not found")
-
-        db_expense = models.Expense(**expense.model_dump(), user_id=user_id)
+        db_expense = models.Expense(**expense.model_dump(), user_id=current_user.id)
         db.add(db_expense)
         db.commit()
         db.refresh(db_expense)
         print(f"[FastAPI] Created expense: {db_expense}")
         return db_expense
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in create_expense: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/users/{user_id}/expenses/{expense_id}", response_model=Expense)
-def update_expense(user_id: str, expense_id: int, expense: ExpenseCreate, db: Session = Depends(database.get_db)):
+def update_expense(
+    user_id: str,
+    expense_id: int,
+    expense: ExpenseCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Update an expense for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Updating expense {expense_id} for user: {user_id}")
+        print(f"[FastAPI] Updating expense {expense_id} for user: {current_user.id}")
         db_expense = db.query(models.Expense).filter(
             models.Expense.id == expense_id,
-            models.Expense.user_id == user_id
+            models.Expense.user_id == current_user.id
         ).first()
-        
+
         if not db_expense:
             print(f"[FastAPI] Expense not found with ID: {expense_id}")
             raise HTTPException(status_code=404, detail="Expense not found")
-        
+
         for key, value in expense.model_dump().items():
             setattr(db_expense, key, value)
-        
+
         db.commit()
         db.refresh(db_expense)
         print(f"[FastAPI] Updated expense: {db_expense}")
         return db_expense
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in update_expense: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/users/{user_id}/expenses/{expense_id}")
-def delete_expense(user_id: str, expense_id: int, db: Session = Depends(database.get_db)):
+def delete_expense(
+    user_id: str,
+    expense_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Delete an expense for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Deleting expense {expense_id} for user: {user_id}")
+        print(f"[FastAPI] Deleting expense {expense_id} for user: {current_user.id}")
         db_expense = db.query(models.Expense).filter(
             models.Expense.id == expense_id,
-            models.Expense.user_id == user_id
+            models.Expense.user_id == current_user.id
         ).first()
-        
+
         if not db_expense:
             print(f"[FastAPI] Expense not found with ID: {expense_id}")
             raise HTTPException(status_code=404, detail="Expense not found")
-        
+
         db.delete(db_expense)
         db.commit()
         print(f"[FastAPI] Deleted expense: {db_expense}")
         return {"message": "Expense deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in delete_expense: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/users/{user_id}/expenses/monthly")
-def get_monthly_expenses(user_id: str, db: Session = Depends(database.get_db)):
-    """Get total monthly recurring expenses for the user (for Baby Step 3 calculation)."""
+def get_monthly_expenses(
+    user_id: str,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get total monthly recurring expenses for the authenticated user (for Baby Step 3 calculation)."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Getting monthly expenses for user: {user_id}")
+        print(f"[FastAPI] Getting monthly expenses for user: {current_user.id}")
         today = datetime.now()
         month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
         # Non-recurring expenses in current month
         non_recurring = db.query(func.sum(models.Expense.amount)).filter(
-            models.Expense.user_id == user_id,
+            models.Expense.user_id == current_user.id,
             models.Expense.is_recurring == False,
             models.Expense.date >= month_start,
             models.Expense.date <= month_end
@@ -554,7 +629,7 @@ def get_monthly_expenses(user_id: str, db: Session = Depends(database.get_db)):
 
         # Recurring expenses active in current month
         recurring = db.query(func.sum(models.Expense.amount)).filter(
-            models.Expense.user_id == user_id,
+            models.Expense.user_id == current_user.id,
             models.Expense.is_recurring == True,
             models.Expense.date <= month_end,  # Started before or during this month
             or_(
@@ -572,96 +647,139 @@ def get_monthly_expenses(user_id: str, db: Session = Depends(database.get_db)):
             "recurring": float(recurring),
             "month": month_start.strftime("%Y-%m")
         }
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in get_monthly_expenses: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Income endpoints
 @app.get("/users/{user_id}/income", response_model=List[Income])
-def get_user_income(user_id: str, db: Session = Depends(database.get_db)):
+def get_user_income(
+    user_id: str,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get all income entries for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Getting income for user: {user_id}")
-        income = db.query(models.Income).filter(models.Income.user_id == user_id).all()
+        print(f"[FastAPI] Getting income for user: {current_user.id}")
+        income = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
         print(f"[FastAPI] Found {len(income)} income entries")
         return income
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in get_user_income: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/users/{user_id}/income", response_model=Income)
-def create_income(user_id: str, income: IncomeCreate, db: Session = Depends(database.get_db)):
+def create_income(
+    user_id: str,
+    income: IncomeCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Create an income entry for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Creating income for user: {user_id}")
+        print(f"[FastAPI] Creating income for user: {current_user.id}")
         # Check subscription limits
-        can_add, message = SubscriptionService.can_add_income(user_id, db)
+        can_add, message = SubscriptionService.can_add_income(current_user.id, db)
         if not can_add:
             raise HTTPException(status_code=403, detail=message)
 
-        # Check if user exists
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if not user:
-            print(f"[FastAPI] User not found with ID: {user_id}")
-            raise HTTPException(status_code=404, detail="User not found")
-
-        db_income = models.Income(**income.model_dump(), user_id=user_id)
+        db_income = models.Income(**income.model_dump(), user_id=current_user.id)
         db.add(db_income)
         db.commit()
         db.refresh(db_income)
         print(f"[FastAPI] Created income: {db_income}")
         return db_income
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in create_income: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/users/{user_id}/income/{income_id}", response_model=Income)
-def update_income(user_id: str, income_id: int, income: IncomeCreate, db: Session = Depends(database.get_db)):
+def update_income(
+    user_id: str,
+    income_id: int,
+    income: IncomeCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Update an income entry for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Updating income {income_id} for user: {user_id}")
+        print(f"[FastAPI] Updating income {income_id} for user: {current_user.id}")
         db_income = db.query(models.Income).filter(
             models.Income.id == income_id,
-            models.Income.user_id == user_id
+            models.Income.user_id == current_user.id
         ).first()
-        
+
         if not db_income:
             print(f"[FastAPI] Income not found with ID: {income_id}")
             raise HTTPException(status_code=404, detail="Income not found")
-        
+
         for key, value in income.model_dump().items():
             setattr(db_income, key, value)
-        
+
         db.commit()
         db.refresh(db_income)
         print(f"[FastAPI] Updated income: {db_income}")
         return db_income
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in update_income: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/users/{user_id}/income/{income_id}")
-def delete_income(user_id: str, income_id: int, db: Session = Depends(database.get_db)):
+def delete_income(
+    user_id: str,
+    income_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Delete an income entry for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Deleting income {income_id} for user: {user_id}")
+        print(f"[FastAPI] Deleting income {income_id} for user: {current_user.id}")
         db_income = db.query(models.Income).filter(
             models.Income.id == income_id,
-            models.Income.user_id == user_id
+            models.Income.user_id == current_user.id
         ).first()
-        
+
         if not db_income:
             print(f"[FastAPI] Income not found with ID: {income_id}")
             raise HTTPException(status_code=404, detail="Income not found")
-        
+
         db.delete(db_income)
         db.commit()
         print(f"[FastAPI] Deleted income: {db_income}")
         return {"message": "Income deleted successfully"}
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in delete_income: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/users/{user_id}/summary")
-async def get_user_summary(user_id: str, db: Session = Depends(database.get_db)):
+async def get_user_summary(
+    user_id: str,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get financial summary for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Getting summary for user: {user_id}")
+        print(f"[FastAPI] Getting summary for user: {current_user.id}")
         # Get current month's start and end dates
         today = datetime.now()
         month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -1123,12 +1241,16 @@ async def get_user_summary(user_id: str, db: Session = Depends(database.get_db))
 def create_activity(
     user_id: str,
     activity: ActivityCreate,
+    current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
+    """Create an activity log for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Creating activity for user: {user_id}")
+        print(f"[FastAPI] Creating activity for user: {current_user.id}")
         db_activity = models.Activity(
-            user_id=user_id,
+            user_id=current_user.id,
             entity_type=activity.entity_type,
             operation_type=activity.operation_type,
             entity_id=activity.entity_id,
@@ -1140,6 +1262,8 @@ def create_activity(
         db.refresh(db_activity)
         print(f"[FastAPI] Created activity: {db_activity}")
         return db_activity
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in create_activity: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1149,18 +1273,24 @@ def get_user_activities(
     user_id: str,
     skip: int = 0,
     limit: int = 50,
+    current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
+    """Get activity log for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
-        print(f"[FastAPI] Getting activities for user: {user_id}")
+        print(f"[FastAPI] Getting activities for user: {current_user.id}")
         activities = db.query(models.Activity)\
-            .filter(models.Activity.user_id == user_id)\
+            .filter(models.Activity.user_id == current_user.id)\
             .order_by(models.Activity.timestamp.desc())\
             .offset(skip)\
             .limit(limit)\
             .all()
         print(f"[FastAPI] Found {len(activities)} activities")
         return activities
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in get_user_activities: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -1169,11 +1299,12 @@ def get_user_activities(
 def get_yearly_budget(
     start_date: str,
     end_date: str,
-    user_id: str = Query(..., description="The ID of the user"),
+    current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
+    """Get yearly budget report for the authenticated user."""
     try:
-        print(f"[FastAPI] Getting budget for user: {user_id}, period: {start_date} to {end_date}")
+        print(f"[FastAPI] Getting budget for user: {current_user.id}, period: {start_date} to {end_date}")
         
         try:
             # Parse date strings to datetime objects
@@ -1194,7 +1325,7 @@ def get_yearly_budget(
         # Get all non-recurring incomes for the period
         try:
             regular_incomes = db.query(models.Income).filter(
-                models.Income.user_id == user_id,
+                models.Income.user_id == current_user.id,
                 models.Income.date >= start_datetime,
                 models.Income.date <= end_datetime,
                 models.Income.is_recurring == False
@@ -1207,7 +1338,7 @@ def get_yearly_budget(
         # Get recurring incomes
         try:
             recurring_incomes = db.query(models.Income).filter(
-                models.Income.user_id == user_id,
+                models.Income.user_id == current_user.id,
                 models.Income.is_recurring == True,
                 models.Income.date <= end_datetime
             ).all()
@@ -1215,11 +1346,11 @@ def get_yearly_budget(
         except Exception as e:
             print(f"[FastAPI] Error fetching recurring incomes: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Error fetching recurring incomes: {str(e)}")
-        
+
         # Get all non-recurring expenses for the period
         try:
             regular_expenses = db.query(models.Expense).filter(
-                models.Expense.user_id == user_id,
+                models.Expense.user_id == current_user.id,
                 models.Expense.date >= start_datetime,
                 models.Expense.date <= end_datetime,
                 models.Expense.is_recurring == False
@@ -1232,7 +1363,7 @@ def get_yearly_budget(
         # Get recurring expenses
         try:
             recurring_expenses = db.query(models.Expense).filter(
-                models.Expense.user_id == user_id,
+                models.Expense.user_id == current_user.id,
                 models.Expense.is_recurring == True,
                 models.Expense.date <= end_datetime
             ).all()
@@ -1240,11 +1371,11 @@ def get_yearly_budget(
         except Exception as e:
             print(f"[FastAPI] Error fetching recurring expenses: {str(e)}")
             raise HTTPException(status_code=500, detail=f"Error fetching recurring expenses: {str(e)}")
-        
+
         # Get all loans that could be active during this period
         try:
             loans = db.query(models.Loan).filter(
-                models.Loan.user_id == user_id,
+                models.Loan.user_id == current_user.id,
                 models.Loan.start_date <= end_datetime
             ).all()
             print(f"[FastAPI] Found {len(loans)} loans")
@@ -1257,7 +1388,7 @@ def get_yearly_budget(
         # Get all non-recurring savings for the period
         try:
             regular_savings = db.query(models.Saving).filter(
-                models.Saving.user_id == user_id,
+                models.Saving.user_id == current_user.id,
                 models.Saving.date >= start_datetime,
                 models.Saving.date <= end_datetime,
                 models.Saving.is_recurring == False
@@ -1270,7 +1401,7 @@ def get_yearly_budget(
         # Get recurring savings
         try:
             recurring_savings = db.query(models.Saving).filter(
-                models.Saving.user_id == user_id,
+                models.Saving.user_id == current_user.id,
                 models.Saving.is_recurring == True,
                 models.Saving.date <= end_datetime
             ).all()
@@ -1480,24 +1611,24 @@ def get_yearly_budget(
 async def export_user_data(
     user_id: str,
     format: str = Query(..., description="Export format: 'json', 'csv', or 'xlsx'"),
+    current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
+    """Export user data in various formats for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
         # Check subscription for export format
-        can_export, message = SubscriptionService.can_export_format(user_id, format, db)
+        can_export, message = SubscriptionService.can_export_format(current_user.id, format, db)
         if not can_export:
             raise HTTPException(status_code=403, detail=message)
 
         # Fetch all user data
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
-        expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
-        incomes = db.query(models.Income).filter(models.Income.user_id == user_id).all()
-        loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
-        savings = db.query(models.Saving).filter(models.Saving.user_id == user_id).all()
+        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
+        expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
+        incomes = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
+        loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
+        savings = db.query(models.Saving).filter(models.Saving.user_id == current_user.id).all()
 
         # Prepare data structure for JSON
         data = {
@@ -1756,8 +1887,12 @@ async def export_user_data(
 async def import_user_data(
     user_id: str,
     payload: ImportPayload,
+    current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
+    """Import user data for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
         data = payload.data
         clear_existing = payload.clear_existing
@@ -1810,7 +1945,7 @@ async def import_user_data(
             new_values: Optional[dict] = None,
         ):
             activity = models.Activity(
-                user_id=user_id,
+                user_id=current_user.id,
                 entity_type=entity_type,
                 operation_type=operation,
                 entity_id=entity_id,
@@ -1819,14 +1954,9 @@ async def import_user_data(
             )
             db.add(activity)
 
-        # Verify user exists
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
         # Clear existing data if requested
         if clear_existing:
-            existing_expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
+            existing_expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
             for expense in existing_expenses:
                 add_activity(
                     entity_type="Expense",
@@ -1836,7 +1966,7 @@ async def import_user_data(
                 )
                 db.delete(expense)
 
-            existing_incomes = db.query(models.Income).filter(models.Income.user_id == user_id).all()
+            existing_incomes = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
             for income in existing_incomes:
                 add_activity(
                     entity_type="Income",
@@ -1846,7 +1976,7 @@ async def import_user_data(
                 )
                 db.delete(income)
 
-            existing_loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
+            existing_loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
             for loan in existing_loans:
                 add_activity(
                     entity_type="Loan",
@@ -1856,7 +1986,7 @@ async def import_user_data(
                 )
                 db.delete(loan)
 
-            existing_savings = db.query(models.Saving).filter(models.Saving.user_id == user_id).all()
+            existing_savings = db.query(models.Saving).filter(models.Saving.user_id == current_user.id).all()
             for saving in existing_savings:
                 add_activity(
                     entity_type="Saving",
@@ -1867,11 +1997,11 @@ async def import_user_data(
                 db.delete(saving)
 
             db.commit()
-            print(f"[FastAPI] Cleared existing data for user: {user_id}")
+            print(f"[FastAPI] Cleared existing data for user: {current_user.id}")
 
         # Import settings
         if "settings" in data:
-            settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+            settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
             if settings:
                 settings.language = data["settings"].get("language", settings.language)
                 settings.currency = data["settings"].get("currency", settings.currency)
@@ -1884,7 +2014,7 @@ async def import_user_data(
         if "expenses" in data:
             for expense_data in data["expenses"]:
                 expense = models.Expense(
-                    user_id=user_id,
+                    user_id=current_user.id,
                     category=expense_data["category"],
                     description=expense_data["description"],
                     amount=expense_data["amount"],
@@ -1904,7 +2034,7 @@ async def import_user_data(
         if "incomes" in data:
             for income_data in data["incomes"]:
                 income = models.Income(
-                    user_id=user_id,
+                    user_id=current_user.id,
                     category=income_data["category"],
                     description=income_data["description"],
                     amount=income_data["amount"],
@@ -1924,7 +2054,7 @@ async def import_user_data(
         if "loans" in data:
             for loan_data in data["loans"]:
                 loan = models.Loan(
-                    user_id=user_id,
+                    user_id=current_user.id,
                     loan_type=loan_data["loan_type"],
                     description=loan_data["description"],
                     principal_amount=loan_data["principal_amount"],
@@ -1942,12 +2072,12 @@ async def import_user_data(
                     entity_id=loan.id,
                     new_values=serialize_loan(loan),
                 )
-                
+
         # Import savings
         if "savings" in data:
             for saving_data in data["savings"]:
                 saving = models.Saving(
-                    user_id=user_id,
+                    user_id=current_user.id,
                     category=saving_data["category"],
                     description=saving_data["description"],
                     amount=saving_data["amount"],
@@ -1978,32 +2108,36 @@ async def import_user_data(
 async def get_user_insights(
     user_id: str,
     refresh: bool = False,  # Changed default to False
+    current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
+    """Get AI insights for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
     try:
         # Get user settings for AI API key
-        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
         if not settings or not settings.ai or not settings.ai.get("apiKey"):
             raise HTTPException(status_code=400, detail="AI API key not found")
 
         # If manual refresh requested, bypass cache
         if refresh:
-            return await refresh_user_insights(user_id, db)
-        
+            return await _refresh_insights_internal(current_user.id, db)
+
         # Get current financial data
-        current_data = await get_user_financial_data(user_id, db)
-        
+        current_data = await get_user_financial_data(current_user.id, db)
+
         # Get user's language preference
         language = current_data.get("settings", {}).get("language", "en")
-        
+
         # Calculate current totals
         current_income = sum(income["amount"] for income in current_data["incomes"])
         current_expenses = sum(expense["amount"] for expense in current_data["expenses"])
         current_loans = sum(loan["remaining_balance"] for loan in current_data["loans"])
-        
+
         # Check for valid cache for the current language
         cache = db.query(models.InsightsCache).filter(
-            models.InsightsCache.user_id == user_id,
+            models.InsightsCache.user_id == current_user.id,
             models.InsightsCache.language == language,
             models.InsightsCache.is_stale == False
         ).order_by(models.InsightsCache.created_at.desc()).first()
@@ -2013,22 +2147,22 @@ async def get_user_insights(
             days_since_refresh = (datetime.now() - cache.last_refresh_date).days
             if days_since_refresh >= 7:
                 print(f"[Insights] Cache expired due to time (7+ days old)")
-                return await refresh_user_insights(user_id, db)
-            
+                return await _refresh_insights_internal(current_user.id, db)
+
             # Check data change threshold (10%)
             cached_income = cache.total_income
             cached_expenses = cache.total_expenses
             cached_loans = cache.total_loans
-            
+
             income_change = abs((current_income - cached_income) / cached_income) if cached_income else 1
             expenses_change = abs((current_expenses - cached_expenses) / cached_expenses) if cached_expenses else 1
             loans_change = abs((current_loans - cached_loans) / cached_loans) if cached_loans else 1
-            
+
             # If any metric changed by more than 10%, refresh
             if income_change > 0.1 or expenses_change > 0.1 or loans_change > 0.1:
                 print(f"[Insights] Cache invalidated due to data changes: income={income_change:.2f}, expenses={expenses_change:.2f}, loans={loans_change:.2f}")
-                return await refresh_user_insights(user_id, db)
-            
+                return await _refresh_insights_internal(current_user.id, db)
+
             # Cache is valid, return it with metadata
             return {
                 **cache.insights,
@@ -2047,7 +2181,9 @@ async def get_user_insights(
             }
 
         # No valid cache exists for this language, generate new insights
-        return await refresh_user_insights(user_id, db)
+        return await _refresh_insights_internal(current_user.id, db)
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[FastAPI] Error in get_user_insights: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -2055,35 +2191,44 @@ async def get_user_insights(
 @app.post("/users/{user_id}/insights/refresh", response_model=InsightsResponse)
 async def refresh_user_insights(
     user_id: str,
+    current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
+    """Refresh AI insights for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
+    return await _refresh_insights_internal(current_user.id, db)
+
+
+async def _refresh_insights_internal(user_id: str, db: Session):
+    """Internal function to refresh insights for a user."""
     try:
         # Get user settings for AI API key
         settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
         if not settings or not settings.ai or not settings.ai.get("apiKey"):
             raise HTTPException(status_code=400, detail="AI API key not found")
-            
+
         # Get user's financial data
         user_data = await get_user_financial_data(user_id, db)
-        
+
         # Get user's language preference
         language = user_data.get("settings", {}).get("language", "en")
-        
+
         # Calculate totals for cache comparison
         total_income = sum(income["amount"] for income in user_data["incomes"])
         total_expenses = sum(expense["amount"] for expense in user_data["expenses"])
         total_loans = sum(loan["remaining_balance"] for loan in user_data["loans"])
-        
+
         # Generate new insights
         insights = await generate_insights(user_data, settings.ai["apiKey"])
-        
+
         # Mark existing cache entries as stale for this language
         db.query(models.InsightsCache).filter(
             models.InsightsCache.user_id == user_id,
             models.InsightsCache.language == language,
             models.InsightsCache.is_stale == False
         ).update({"is_stale": True})
-        
+
         # Save to cache with financial totals and language
         cache = models.InsightsCache(
             user_id=user_id,
@@ -2096,10 +2241,10 @@ async def refresh_user_insights(
             total_expenses=total_expenses,
             total_loans=total_loans
         )
-        
+
         db.add(cache)
         db.commit()
-        
+
         return {
             **insights,
             "metadata": {
@@ -2115,8 +2260,10 @@ async def refresh_user_insights(
                 }
             }
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"[FastAPI] Error in refresh_user_insights: {str(e)}")
+        print(f"[FastAPI] Error in _refresh_insights_internal: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 async def get_user_financial_data(user_id: str, db: Session):

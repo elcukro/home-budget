@@ -16,6 +16,7 @@ import {
   StarIcon,
   UserPlusIcon,
   SparklesIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { useIntl } from 'react-intl';
 import SproutlyFiLogo from './SproutlyFiLogo';
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'navigation.expenses', href: '/expenses', icon: CreditCardIcon },
   { name: 'navigation.loans', href: '/loans', icon: BuildingLibraryIcon },
   { name: 'navigation.savings', href: '/savings', icon: CurrencyDollarIcon },
+  { name: 'navigation.bankTransactions', href: '/banking/transactions', icon: ArrowPathIcon },
   { name: 'navigation.reports', href: '/reports', icon: ChartBarIcon },
   { name: 'navigation.aiAnalysis', href: '/ai-analysis', icon: SparklesIcon },
   { name: 'navigation.settings', href: '/settings', icon: Cog6ToothIcon }

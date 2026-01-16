@@ -1,6 +1,6 @@
 # Tink Integration Status
 
-**Last Updated:** January 13, 2026
+**Last Updated:** January 16, 2026
 
 ## Current State
 
@@ -42,18 +42,16 @@
 
 ### Critical Issues
 
-1. **In-Memory Auth Storage** (Line 59 in `tink_service.py`)
-   ```python
-   self._pending_auth: Dict[str, Dict[str, Any]] = {}
-   ```
-   - Auth codes are stored in memory, not persistent
-   - If server restarts between redirect and callback, auth fails
-   - **Fix:** Store in database or Redis
+1. ~~**In-Memory Auth Storage**~~ ✅ **FIXED (Jan 16, 2026)**
+   - Auth data now stored in `tink_pending_auth` database table
+   - Automatic expiration after 15 minutes
+   - Cleanup of expired entries on each new auth request
 
-2. **Missing Transaction Sync**
-   - `fetch_transactions()` method exists but no sync endpoint
-   - No scheduled job for automatic sync
-   - No review UI for pending transactions
+2. ~~**Missing Transaction Sync**~~ ✅ **IMPLEMENTED (Jan 16, 2026)**
+   - `POST /banking/transactions/sync` - Syncs transactions from Tink
+   - `GET /banking/transactions` - Lists transactions with filtering
+   - `GET /banking/transactions/pending` - Quick access to pending
+   - `GET /banking/transactions/stats` - Transaction counts by status
 
 ### Recently Fixed (Jan 13, 2026)
 
@@ -65,24 +63,32 @@
    - Added `useEffect` to refetch Tink connections when banking tab becomes active
    - Accounts now show immediately after returning from Tink callback
 
+### Implemented (Jan 16, 2026)
+
+1. **Transaction Import Flow** ✅
+   - [x] `POST /banking/transactions/sync` - Manual sync trigger
+   - [x] `GET /banking/transactions/pending` - Get unreviewed transactions
+   - [x] `POST /banking/transactions/{id}/convert` - Convert to income/expense
+   - [x] `POST /banking/transactions/{id}/accept` - Mark as already processed
+   - [x] `POST /banking/transactions/{id}/reject` - Reject transaction
+   - [x] Bulk actions: `/bulk/accept`, `/bulk/reject`, `/bulk/convert`
+
+2. **Transaction Categorization** ✅
+   - [x] Map Tink categories to app categories (basic mapping)
+   - [x] Auto-detect income vs expense based on amount sign
+   - [ ] Confidence scoring (optional, future)
+
 ### Not Implemented
 
-1. **Transaction Import Flow**
-   - [ ] `POST /transactions/sync` - Manual sync trigger
-   - [ ] `GET /transactions/pending` - Get unreviewed transactions
-   - [ ] `POST /transactions/{id}/accept` - Accept as income/expense
-   - [ ] `POST /transactions/{id}/reject` - Reject transaction
-   - [ ] Background sync job
+1. **Review UI** (Frontend - Phase 2)
+   - [ ] `/banking/transactions` page
+   - [ ] Transaction list with filters
+   - [ ] Convert/Accept/Reject buttons
+   - [ ] Bulk selection and actions
 
-2. **Transaction Categorization**
-   - [ ] Map Tink categories to app categories
-   - [ ] Auto-detect income vs expense
-   - [ ] Confidence scoring
-
-3. **Review UI**
-   - [ ] Pending transactions list
-   - [ ] Accept/reject buttons
-   - [ ] Bulk actions
+2. **Background Sync Job**
+   - [ ] APScheduler or Celery for automatic sync
+   - [ ] Configurable sync interval
 
 ## Environment Variables Required
 
@@ -110,9 +116,9 @@ f6cac24 fix: sanitize external_user_id for Tink API
 
 ## Next Steps (Priority Order)
 
-1. **Fix in-memory auth storage** - Move to database/Redis
-2. **Implement transaction sync endpoint**
-3. **Create transaction review UI**
-4. **Add categorization logic**
-5. **Set up background sync job**
+1. ~~**Fix in-memory auth storage**~~ ✅ Done
+2. ~~**Implement transaction sync endpoint**~~ ✅ Done
+3. **Create transaction review UI** (Frontend) ← CURRENT
+4. ~~**Add categorization logic**~~ ✅ Done (basic)
+5. **Set up background sync job** (optional)
 6. **Test full flow with sandbox bank**
