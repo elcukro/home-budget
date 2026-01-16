@@ -348,12 +348,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
                             type="text"
                             inputMode="decimal"
                             value={
-                              field.value === undefined ||
-                              field.value === null ||
-                              (mode === "create" &&
-                                (field.value === 0 ||
-                                  field.value === "0" ||
-                                  field.value === "0.0"))
+                              field.value === undefined || field.value === null || field.value === ""
                                 ? ""
                                 : String(field.value).replace('.', settings?.language === 'pl' ? ',' : '.')
                             }
@@ -391,12 +386,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
                           }
                           value={
                             fieldConfig.component === "number"
-                              ? field.value === undefined ||
-                                field.value === null ||
-                                (mode === "create" &&
-                                  (field.value === 0 ||
-                                    field.value === "0" ||
-                                    field.value === "0.0"))
+                              ? field.value === undefined || field.value === null || field.value === ""
                                 ? ""
                                 : (field.value as string | number)
                               : (field.value as string | number) ?? ""

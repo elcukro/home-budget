@@ -292,101 +292,111 @@ const loanSchema = z
       .trim()
       .min(1, "validation.description.required")
       .max(100, { message: "validation.description.tooLong" }),
-    principal_amount: z.preprocess(
-      (value) => (typeof value === "number" ? value.toString() : value),
-      z
-        .string()
-        .trim()
-        .min(1, "validation.required")
-        .transform((value, ctx) => {
-          const error = validateAmountPositive(value);
-          if (error) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: error.messageId,
-            });
-          }
-          return parseNumber(value) ?? 0;
-        })
-    ),
-    remaining_balance: z.preprocess(
-      (value) => (typeof value === "number" ? value.toString() : value),
-      z
-        .string()
-        .trim()
-        .min(1, "validation.required")
-        .transform((value, ctx) => {
-          const error = validateAmountNonNegative(value);
-          if (error) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: error.messageId,
-            });
-          }
-          return parseNumber(value) ?? 0;
-        })
-    ),
-    interest_rate: z.preprocess(
-      (value) => (typeof value === "number" ? value.toString() : value),
-      z
-        .string()
-        .trim()
-        .min(1, "validation.required")
-        .transform((value, ctx) => {
-          const parsed = parseNumber(value);
-          if (parsed === null) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "validation.required",
-            });
-            return 0;
-          }
-          const error = validateInterestRate(parsed);
-          if (error) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: error.messageId,
-            });
-          }
-          return parsed;
-        })
-    ),
-    monthly_payment: z.preprocess(
-      (value) => (typeof value === "number" ? value.toString() : value),
-      z
-        .string()
-        .trim()
-        .min(1, "validation.required")
-        .transform((value, ctx) => {
-          const error = validateAmountNonNegative(value);
-          if (error) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: error.messageId,
-            });
-          }
-          return parseNumber(value) ?? 0;
-        })
-    ),
+    principal_amount: z.union([z.string(), z.number()])
+      .transform((value, ctx) => {
+        const raw = typeof value === "number" ? value.toString() : value.trim();
+        if (!raw) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "validation.required",
+          });
+          return 0;
+        }
+        const error = validateAmountPositive(raw);
+        if (error) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: error.messageId,
+          });
+        }
+        return parseNumber(raw) ?? 0;
+      }),
+    remaining_balance: z.union([z.string(), z.number()])
+      .transform((value, ctx) => {
+        const raw = typeof value === "number" ? value.toString() : value.trim();
+        if (!raw) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "validation.required",
+          });
+          return 0;
+        }
+        const error = validateAmountNonNegative(raw);
+        if (error) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: error.messageId,
+          });
+        }
+        return parseNumber(raw) ?? 0;
+      }),
+    interest_rate: z.union([z.string(), z.number()])
+      .transform((value, ctx) => {
+        const raw = typeof value === "number" ? value.toString() : value.trim();
+        if (!raw) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "validation.required",
+          });
+          return 0;
+        }
+        const parsed = parseNumber(raw);
+        if (parsed === null) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "validation.required",
+          });
+          return 0;
+        }
+        const error = validateInterestRate(parsed);
+        if (error) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: error.messageId,
+          });
+        }
+        return parsed;
+      }),
+    monthly_payment: z.union([z.string(), z.number()])
+      .transform((value, ctx) => {
+        const raw = typeof value === "number" ? value.toString() : value.trim();
+        if (!raw) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "validation.required",
+          });
+          return 0;
+        }
+        const error = validateAmountNonNegative(raw);
+        if (error) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: error.messageId,
+          });
+        }
+        return parseNumber(raw) ?? 0;
+      }),
     start_date: z.string().trim().min(1, "validation.required"),
-    term_months: z.preprocess(
-      (value) => (typeof value === "number" ? value.toString() : value),
-      z
-        .string()
-        .trim()
-        .min(1, "validation.required")
-        .transform((value, ctx) => {
-          const parsed = parseNumber(value);
-          if (parsed === null || !Number.isInteger(parsed) || parsed <= 0) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "validation.termMonths.min",
-            });
-            return 0;
-          }
-          return parsed;
-        })
-    ),
+    term_months: z.union([z.string(), z.number()])
+      .transform((value, ctx) => {
+        const raw = typeof value === "number" ? value.toString() : value.trim();
+        if (!raw) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "validation.required",
+          });
+          return 0;
+        }
+        const parsed = parseNumber(raw);
+        if (parsed === null || !Number.isInteger(parsed) || parsed <= 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "validation.termMonths.min",
+          });
+          return 0;
+        }
+        return parsed;
+      }),
   })
   .superRefine((data, ctx) => {
     // For leasing, principal and remaining_balance are auto-calculated from monthly_payment * term_months

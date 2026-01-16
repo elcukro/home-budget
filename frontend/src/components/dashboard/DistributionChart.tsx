@@ -101,7 +101,10 @@ export default function DistributionChart({ title, data, formatCurrency, type }:
   const centerLabel = formatCurrency(totalAmount);
 
   const chartData = {
-    labels: data.map(item => intl.formatMessage({ id: `dashboard.categories.${type}.${item.category}` })),
+    labels: data.map(item => intl.formatMessage({
+      id: `dashboard.categories.${type}.${item.category.toLowerCase()}`,
+      defaultMessage: item.category
+    })),
     datasets: [
       {
         data: data.map(item => item.amount),

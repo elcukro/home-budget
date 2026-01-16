@@ -1234,7 +1234,10 @@ export default function ExpensesPage() {
                         </span>
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-emerald-900">
-                            <FormattedMessage id={`expenses.categories.${category}`} />
+                            <FormattedMessage
+                              id={`expenses.categories.${category.toLowerCase()}`}
+                              defaultMessage={category}
+                            />
                           </p>
                           <p className="text-xs text-muted-foreground">
                             <FormattedMessage id={meta.descriptionId} defaultMessage="" />
