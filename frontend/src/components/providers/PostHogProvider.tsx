@@ -9,7 +9,8 @@ import { usePathname, useSearchParams } from 'next/navigation';
 // Initialize PostHog only on client-side
 if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+    api_host: '/ingest', // Reverse proxy to bypass ad blockers
+    ui_host: 'https://eu.posthog.com', // For toolbar and feature flags UI
     person_profiles: 'identified_only',
     capture_pageview: false, // We'll capture manually for SPA routing
     capture_pageleave: true,
