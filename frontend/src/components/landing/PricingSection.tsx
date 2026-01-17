@@ -134,7 +134,7 @@ const featureLabels: Record<keyof PlanFeatures, string> = {
 export default function PricingSection() {
   return (
     <section id="pricing" className="py-20 bg-gradient-to-b from-white to-emerald-50/30">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 text-center mb-4">
           Zacznij za darmo
         </h2>
@@ -171,10 +171,11 @@ export default function PricingSection() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-16 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-16">
           {plans.map((plan) => {
             const features = plan.id === 'free' ? planFeatures.free : planFeatures.premium;
             const isFree = plan.id === 'free';
+            const isLifetime = plan.id === 'lifetime';
 
             return (
               <div
@@ -182,65 +183,72 @@ export default function PricingSection() {
                 className={`relative bg-white/80 backdrop-blur-sm border rounded-2xl p-8 transition-all duration-300 flex flex-col ${
                   plan.popular
                     ? 'border-emerald-300 shadow-xl shadow-emerald-100/50 scale-105 z-10'
-                    : 'border-emerald-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/50'
+                    : isLifetime
+                      ? 'border-amber-200 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-100/50'
+                      : 'border-emerald-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/50'
                 }`}
               >
+                {/* Top badges */}
                 {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-xs font-medium rounded-full shadow-lg shadow-emerald-200">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-xs font-medium rounded-full shadow-lg shadow-emerald-200 whitespace-nowrap">
                     Najpopularniejszy
                   </div>
                 )}
+                {plan.bonus && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-medium rounded-full shadow-lg shadow-amber-200 whitespace-nowrap">
+                    {plan.bonus}
+                  </div>
+                )}
 
-                {/* Name - fixed height */}
-                <h3 className="text-xl font-semibold text-emerald-900 h-7">
+                {/* Name - fixed height, centered */}
+                <h3 className="text-xl font-semibold text-emerald-900 h-7 text-center">
                   {plan.name}
                 </h3>
 
-                {/* Description - fixed height */}
-                <p className="text-sm text-emerald-600/60 h-10 mb-4">
+                {/* Description - fixed height, centered */}
+                <p className="text-sm text-emerald-600/60 h-10 mb-4 text-center">
                   {plan.description}
                 </p>
 
-                {/* Price - fixed height */}
-                <div className="flex items-baseline gap-1 h-10 mb-2">
+                {/* Price - fixed height, centered */}
+                <div className="flex items-baseline justify-center gap-1 h-10 mb-2">
                   <span className={`text-4xl font-bold ${isFree ? 'text-emerald-600' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent'}`}>
                     {plan.price}
                   </span>
-                  <span className="text-emerald-600/70 text-sm">PLN</span>
+                  <span className="text-emerald-600/70 text-sm">PLN /</span>
                   <span className="text-emerald-600/70 text-sm">
-                    / {plan.period}
+                    {plan.period}
                   </span>
                 </div>
 
-                {/* Badge area - fixed height */}
-                <div className="h-8 mb-4">
+                {/* Badge area - fixed height, centered */}
+                <div className="h-8 mb-4 text-center">
                   {plan.savings && (
                     <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
                       Oszczędzasz {plan.savings}
                     </span>
                   )}
-                  {plan.bonus && (
-                    <span className="inline-block px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                      {plan.bonus}
-                    </span>
-                  )}
                 </div>
 
-                {/* Button */}
-                <Link href="/auth/signin" className="block mb-6">
-                  <Button
-                    className={`w-full ${
-                      plan.popular
-                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200'
-                        : isFree
-                          ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                          : 'bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                    }`}
-                    variant={plan.popular ? 'default' : 'outline'}
-                  >
-                    {plan.buttonText}
-                  </Button>
-                </Link>
+                {/* Button - centered */}
+                <div className="mb-6">
+                  <Link href="/auth/signin" className="block">
+                    <Button
+                      className={`w-full ${
+                        plan.popular
+                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200'
+                          : isLifetime
+                            ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg shadow-amber-200'
+                            : isFree
+                              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                              : 'bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                      }`}
+                      variant={plan.popular || isLifetime ? 'default' : 'outline'}
+                    >
+                      {plan.buttonText}
+                    </Button>
+                  </Link>
+                </div>
 
                 {/* Features */}
                 <ul className="space-y-3 flex-1">
