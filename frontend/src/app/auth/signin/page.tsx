@@ -33,34 +33,13 @@ export default function SignIn() {
   const intl = useIntl();
   const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard";
   const error = searchParams?.get("error");
-  const plan = searchParams?.get("plan");
-  const validPlans = ['monthly', 'annual', 'lifetime'];
-
-  // Store selected plan in sessionStorage (for OAuth callback)
-  useEffect(() => {
-    if (plan && validPlans.includes(plan)) {
-      sessionStorage.setItem('selectedPlan', plan);
-      logger.debug('[auth][debug] Stored selected plan:', plan);
-    }
-  }, [plan]);
 
   useEffect(() => {
     if (session?.user) {
-      // Check plan from URL first (already logged in user), then sessionStorage (OAuth callback)
-      const selectedPlan = (plan && validPlans.includes(plan))
-        ? plan
-        : sessionStorage.getItem('selectedPlan');
-
-      if (selectedPlan) {
-        sessionStorage.removeItem('selectedPlan');
-        logger.debug('[auth][debug] Redirecting to checkout for plan:', selectedPlan);
-        router.replace(`/checkout?plan=${selectedPlan}`);
-      } else {
-        logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl);
-        router.replace(callbackUrl);
-      }
+      logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl);
+      router.replace(callbackUrl);
     }
-  }, [session, router, callbackUrl, plan]);
+  }, [session, router, callbackUrl]);
 
   const handleSignIn = async () => {
     logger.debug('[auth][debug] Initiating Google sign-in...');

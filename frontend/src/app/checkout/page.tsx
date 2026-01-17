@@ -25,9 +25,10 @@ export default function CheckoutPage() {
   const plan = searchParams?.get('plan');
 
   useEffect(() => {
-    // Redirect to signin if not authenticated
+    // Redirect to signin if not authenticated (with callback to return here)
     if (status === 'unauthenticated') {
-      router.replace('/auth/signin');
+      const callbackUrl = plan ? `/checkout?plan=${plan}` : '/checkout';
+      router.replace(`/auth/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`);
       return;
     }
 
