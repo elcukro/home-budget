@@ -34,10 +34,11 @@ export default function SignIn() {
   const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard";
   const error = searchParams?.get("error");
   const plan = searchParams?.get("plan");
+  const validPlans = ['monthly', 'annual', 'lifetime'];
 
-  // Store selected plan in sessionStorage for post-login checkout
+  // Store selected plan in sessionStorage (for OAuth callback)
   useEffect(() => {
-    if (plan && ['monthly', 'annual', 'lifetime'].includes(plan)) {
+    if (plan && validPlans.includes(plan)) {
       sessionStorage.setItem('selectedPlan', plan);
       logger.debug('[auth][debug] Stored selected plan:', plan);
     }
@@ -45,18 +46,21 @@ export default function SignIn() {
 
   useEffect(() => {
     if (session?.user) {
-      // Check if there's a stored plan for checkout
-      const storedPlan = sessionStorage.getItem('selectedPlan');
-      if (storedPlan) {
+      // Check plan from URL first (already logged in user), then sessionStorage (OAuth callback)
+      const selectedPlan = (plan && validPlans.includes(plan))
+        ? plan
+        : sessionStorage.getItem('selectedPlan');
+
+      if (selectedPlan) {
         sessionStorage.removeItem('selectedPlan');
-        logger.debug('[auth][debug] Redirecting to checkout for plan:', storedPlan);
-        router.replace(`/checkout?plan=${storedPlan}`);
+        logger.debug('[auth][debug] Redirecting to checkout for plan:', selectedPlan);
+        router.replace(`/checkout?plan=${selectedPlan}`);
       } else {
         logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl);
         router.replace(callbackUrl);
       }
     }
-  }, [session, router, callbackUrl]);
+  }, [session, router, callbackUrl, plan]);
 
   const handleSignIn = async () => {
     logger.debug('[auth][debug] Initiating Google sign-in...');
