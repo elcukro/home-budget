@@ -192,6 +192,29 @@ export default function PricingSection() {
               </div>
             ))}
           </div>
+
+          {/* Bank logos */}
+          <div className="mt-6 pt-6 border-t border-emerald-200/50">
+            <p className="text-xs text-emerald-600/70 text-center mb-4">Obsługiwane banki:</p>
+            <div className="flex flex-wrap justify-center items-center gap-4">
+              {supportedBanks.map((bank) => (
+                <div
+                  key={bank.name}
+                  className="w-12 h-12 bg-white rounded-xl border border-emerald-100 flex items-center justify-center p-2 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all"
+                  title={bank.name}
+                >
+                  <img
+                    src={bank.logo}
+                    alt={bank.name}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-emerald-600/40 text-center mt-3">
+              Logotypy są znakami towarowymi należącymi do ich właścicieli.
+            </p>
+          </div>
         </div>
 
         {/* Pricing Cards */}
