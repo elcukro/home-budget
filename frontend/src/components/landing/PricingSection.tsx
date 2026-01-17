@@ -96,39 +96,52 @@ interface PlanFeatures {
 
 const planFeatures: Record<string, PlanFeatures> = {
   free: {
-    expenses: '50 / miesiąc',
+    expenses: '20 / miesiąc',
     income: '3 źródła',
     loans: '3 pozycje',
     savings: '3 cele',
+    reports: 'Podstawowe',
+    babySteps: 'Podgląd kroków',
     bankIntegration: false,
     ai: false,
     export: false,
-    reports: 'Podstawowe',
-    babySteps: 'Podgląd kroków',
   },
   premium: {
     expenses: 'Bez limitu',
     income: 'Bez limitu',
     loans: 'Bez limitu',
     savings: 'Bez limitu',
+    reports: 'Wszystkie',
+    babySteps: 'Pełna analiza + rekomendacje',
     bankIntegration: true,
     ai: true,
     export: true,
-    reports: 'Wszystkie',
-    babySteps: 'Pełna analiza + rekomendacje',
   },
 };
+
+// Order: available in free first, then premium-only
+const featureOrder: Array<keyof PlanFeatures> = [
+  'expenses',
+  'income',
+  'loans',
+  'savings',
+  'reports',
+  'babySteps',
+  'bankIntegration',
+  'ai',
+  'export',
+];
 
 const featureLabels: Record<keyof PlanFeatures, string> = {
   expenses: 'Wydatki',
   income: 'Przychody',
   loans: 'Kredyty i pożyczki',
   savings: 'Cele oszczędnościowe',
+  reports: 'Raporty',
+  babySteps: '7 Kroków do wolności',
   bankIntegration: 'Integracja z bankiem (Tink)',
   ai: 'Analiza AI',
   export: 'Eksport (JSON, CSV, XLSX)',
-  reports: 'Raporty',
-  babySteps: '7 Kroków do wolności',
 };
 
 export default function PricingSection() {
@@ -252,7 +265,7 @@ export default function PricingSection() {
 
                 {/* Features */}
                 <ul className="space-y-3 flex-1">
-                  {(Object.keys(featureLabels) as Array<keyof PlanFeatures>).map((featureKey) => {
+                  {featureOrder.map((featureKey) => {
                     const value = features[featureKey];
                     const isAvailable = value !== false;
                     const displayValue = typeof value === 'string' ? value : null;
