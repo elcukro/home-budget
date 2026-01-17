@@ -62,10 +62,10 @@ export default function ProblemsSection() {
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
                 </div>
-                <h3 className="text-lg font-semibold text-emerald-900 mb-3 min-h-[3.5rem] flex items-start">
+                <h3 className="text-lg font-semibold text-emerald-900 mb-3 min-h-[3.5rem] flex items-center justify-center text-center">
                   {problem.title}
                 </h3>
-                <p className="text-emerald-700/70 text-sm leading-relaxed">
+                <p className="text-emerald-700/70 text-sm leading-relaxed text-justify">
                   {problem.description}
                 </p>
               </div>
