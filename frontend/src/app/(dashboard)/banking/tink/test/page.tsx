@@ -33,10 +33,29 @@ interface TinkDebugData {
   timestamp: string;
 }
 
+interface Provider {
+  name: string;
+  financialInstitutionId: string;
+  accessType: string;
+  images: {
+    icon?: string;
+    banner?: string;
+  };
+}
+
+interface ProvidersData {
+  market: string;
+  count: number;
+  providers: Provider[];
+  timestamp: string;
+}
+
 export default function TinkTestPage() {
   const router = useRouter();
   const [data, setData] = useState<TinkDebugData | null>(null);
+  const [providers, setProviders] = useState<ProvidersData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingProviders, setLoadingProviders] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
@@ -53,6 +72,19 @@ export default function TinkTestPage() {
       setError(err.message || 'Failed to fetch data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProviders = async () => {
+    setLoadingProviders(true);
+    try {
+      const response = await fetch('/api/banking/tink/providers?market=PL');
+      const result = await response.json();
+      setProviders(result);
+    } catch (err: any) {
+      console.error('Failed to fetch providers:', err);
+    } finally {
+      setLoadingProviders(false);
     }
   };
 
@@ -151,6 +183,9 @@ export default function TinkTestPage() {
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="accounts">Accounts ({data.accounts?.count || 0})</TabsTrigger>
               <TabsTrigger value="transactions">Transactions ({data.transactions?.count || 0})</TabsTrigger>
+              <TabsTrigger value="providers" onClick={() => !providers && fetchProviders()}>
+                Banks ({providers?.count || '...'})
+              </TabsTrigger>
               <TabsTrigger value="raw">Raw JSON</TabsTrigger>
             </TabsList>
 
@@ -321,7 +356,8 @@ export default function TinkTestPage() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left p-2">Date</th>
-                          <th className="text-left p-2">Description</th>
+                          <th className="text-left p-2">Description / Merchant</th>
+                          <th className="text-left p-2">MCC</th>
                           <th className="text-left p-2">Category</th>
                           <th className="text-right p-2">Amount</th>
                           <th className="text-left p-2">Status</th>
@@ -337,16 +373,30 @@ export default function TinkTestPage() {
                               <div className="max-w-xs truncate">
                                 {tx.descriptions?.display || tx.descriptions?.original || 'N/A'}
                               </div>
-                              {tx.merchantInformation?.name && (
-                                <div className="text-xs text-muted-foreground">
-                                  {tx.merchantInformation.name}
+                              {(tx.merchantInformation?.merchantName || tx.merchantInformation?.name) && (
+                                <div className="text-xs text-blue-600 font-medium">
+                                  🏪 {tx.merchantInformation?.merchantName || tx.merchantInformation?.name}
                                 </div>
                               )}
                             </td>
                             <td className="p-2">
+                              {tx.merchantInformation?.merchantCategoryCode ? (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-mono">
+                                  {tx.merchantInformation.merchantCategoryCode}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </td>
+                            <td className="p-2">
                               <span className="text-xs bg-muted px-2 py-1 rounded">
-                                {tx.categories?.pfm?.name || tx.types?.type || 'Unknown'}
+                                {tx.categories?.pfm?.name || tx.enrichedData?.categories?.pfm?.name || tx.types?.type || 'Unknown'}
                               </span>
+                              {(tx.categories?.pfm?.id || tx.enrichedData?.categories?.pfm?.id) && (
+                                <div className="text-[10px] text-muted-foreground mt-1">
+                                  ({tx.categories?.pfm?.id || tx.enrichedData?.categories?.pfm?.id})
+                                </div>
+                              )}
                             </td>
                             <td className="p-2 text-right whitespace-nowrap font-mono">
                               <span className={
@@ -398,6 +448,74 @@ export default function TinkTestPage() {
                     <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-auto max-h-96">
                       {JSON.stringify(data.transactions?.data.slice(0, 5), null, 2)}
                     </pre>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Providers (Banks) Tab */}
+            <TabsContent value="providers">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Available Banks in Poland</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchProviders}
+                      disabled={loadingProviders}
+                    >
+                      {loadingProviders ? 'Loading...' : 'Refresh'}
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {loadingProviders && !providers && (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                      <p className="text-muted-foreground">Loading banks...</p>
+                    </div>
+                  )}
+
+                  {providers && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {providers.providers.map((provider, index) => (
+                        <div
+                          key={provider.financialInstitutionId || index}
+                          className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            {provider.images?.icon ? (
+                              <img
+                                src={provider.images.icon}
+                                alt={provider.name}
+                                className="w-10 h-10 object-contain rounded"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-xs font-bold">
+                                {provider.name?.slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{provider.name}</p>
+                              <p className="text-xs text-muted-foreground">{provider.accessType}</p>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground font-mono truncate">
+                            {provider.financialInstitutionId}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {providers && (
+                    <p className="text-center text-sm text-muted-foreground mt-4">
+                      {providers.count} banks available in {providers.market}
+                    </p>
                   )}
                 </CardContent>
               </Card>

@@ -278,6 +278,44 @@ async def test_tink_api(
     }
 
 
+@router.get("/providers")
+async def get_providers(
+    market: str = "PL",
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get list of available bank providers for a market with their logos.
+
+    Returns provider data including:
+    - displayName: Bank display name
+    - financialInstitutionId: UUID for the bank
+    - images: { icon: "https://cdn.tink.se/...", banner: null }
+    """
+    try:
+        providers = await tink_service.fetch_providers(market)
+
+        # Extract relevant data for frontend
+        result = []
+        for provider in providers:
+            result.append({
+                "name": provider.get("displayName"),
+                "financialInstitutionId": provider.get("financialInstitutionId"),
+                "accessType": provider.get("accessType"),
+                "images": provider.get("images", {}),
+            })
+
+        return {
+            "market": market,
+            "count": len(result),
+            "providers": result,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching providers: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching providers: {str(e)}")
+
+
 @router.post("/refresh-data")
 async def refresh_tink_data(
     current_user: User = Depends(get_current_user),

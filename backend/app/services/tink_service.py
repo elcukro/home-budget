@@ -501,6 +501,31 @@ class TinkService:
             data = response.json()
             return data.get("accounts", [])
 
+    async def fetch_providers(self, market: str = "PL") -> List[Dict[str, Any]]:
+        """
+        Fetch available bank providers for a market with their logos.
+
+        Returns list of providers with:
+        - displayName: Bank display name
+        - financialInstitutionId: UUID for the bank
+        - images: { icon: "https://cdn.tink.se/...", banner: null }
+        """
+        # Get client access token (no user token needed for providers)
+        client_token = await self.get_client_access_token(scope="providers:read")
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.api_url}/api/v1/providers/{market}",
+                headers={"Authorization": f"Bearer {client_token}"}
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Failed to fetch providers: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to fetch providers: {response.text}")
+
+            data = response.json()
+            return data.get("providers", [])
+
     async def fetch_transactions(
         self,
         access_token: str,
@@ -508,8 +533,16 @@ class TinkService:
         from_date: Optional[datetime] = None,
         to_date: Optional[datetime] = None,
         page_token: Optional[str] = None,
+        use_enrichment: bool = True,
     ) -> Dict[str, Any]:
-        """Fetch transactions from Tink."""
+        """
+        Fetch transactions from Tink.
+
+        Args:
+            use_enrichment: If True, uses /enrichment/v1/transactions endpoint
+                           which includes MCC codes, merchant info, and PFM categories.
+                           If False, uses basic /data/v2/transactions endpoint.
+        """
         params = {"pageSize": 100}
 
         if account_id:
@@ -521,15 +554,28 @@ class TinkService:
         if page_token:
             params["pageToken"] = page_token
 
+        # Choose endpoint based on enrichment flag
+        if use_enrichment:
+            endpoint = f"{self.api_url}/enrichment/v1/transactions"
+        else:
+            endpoint = f"{self.api_url}/data/v2/transactions"
+
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{self.api_url}/data/v2/transactions",
+                endpoint,
                 params=params,
                 headers={"Authorization": f"Bearer {access_token}"}
             )
 
             if response.status_code != 200:
-                logger.error(f"Failed to fetch transactions: {response.status_code} - {response.text}")
+                logger.error(f"Failed to fetch transactions from {endpoint}: {response.status_code} - {response.text}")
+                # Fallback to basic endpoint if enrichment fails
+                if use_enrichment:
+                    logger.info("Falling back to basic transactions endpoint")
+                    return await self.fetch_transactions(
+                        access_token, account_id, from_date, to_date, page_token,
+                        use_enrichment=False
+                    )
                 raise Exception(f"Failed to fetch transactions: {response.text}")
 
             return response.json()
