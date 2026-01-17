@@ -20,6 +20,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useIntl } from 'react-intl';
 import SproutlyFiLogo from './SproutlyFiLogo';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 const navigation = [
   { name: 'navigation.onboarding', href: '/onboarding', icon: UserPlusIcon },
@@ -34,6 +35,40 @@ const navigation = [
   { name: 'navigation.aiAnalysis', href: '/ai-analysis', icon: SparklesIcon },
   { name: 'navigation.settings', href: '/settings', icon: Cog6ToothIcon }
 ];
+
+function SubscriptionBadge() {
+  const { subscription, isPremium, isTrial } = useSubscription();
+
+  if (subscription?.is_lifetime) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-amber-400 to-amber-500 text-white shadow-sm">
+        LIFETIME
+      </span>
+    );
+  }
+
+  if (isPremium && !isTrial) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-sm">
+        PREMIUM
+      </span>
+    );
+  }
+
+  if (isTrial) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-700">
+        TRIAL
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600">
+      FREE
+    </span>
+  );
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -51,19 +86,24 @@ export default function Sidebar() {
           {session?.user && (
             <div className="px-3 py-2 border-b border-default/70">
               <div className="flex items-center space-x-3">
-                {session.user.image && (
-                  <Image
-                    src={session.user.image}
-                    alt={session.user.name || 'User'}
-                    width={32}
-                    height={32}
-                    className="rounded-full"
-                  />
-                )}
+                <div className="relative">
+                  {session.user.image && (
+                    <Image
+                      src={session.user.image}
+                      alt={session.user.name || 'User'}
+                      width={32}
+                      height={32}
+                      className="rounded-full"
+                    />
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-primary truncate">
-                    {session.user.name}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-primary truncate">
+                      {session.user.name}
+                    </p>
+                    <SubscriptionBadge />
+                  </div>
                   <p className="text-xs text-secondary truncate">
                     {session.user.email}
                   </p>
