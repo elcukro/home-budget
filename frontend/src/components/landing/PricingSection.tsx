@@ -171,7 +171,7 @@ export default function PricingSection() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-16 max-w-7xl mx-auto">
           {plans.map((plan) => {
             const features = plan.id === 'free' ? planFeatures.free : planFeatures.premium;
             const isFree = plan.id === 'free';
@@ -179,7 +179,7 @@ export default function PricingSection() {
             return (
               <div
                 key={plan.id}
-                className={`relative bg-white/80 backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300 ${
+                className={`relative bg-white/80 backdrop-blur-sm border rounded-2xl p-8 transition-all duration-300 flex flex-col ${
                   plan.popular
                     ? 'border-emerald-300 shadow-xl shadow-emerald-100/50 scale-105 z-10'
                     : 'border-emerald-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/50'
@@ -191,39 +191,45 @@ export default function PricingSection() {
                   </div>
                 )}
 
-                <h3 className="text-lg font-semibold text-emerald-900 mb-1">
+                {/* Name - fixed height */}
+                <h3 className="text-xl font-semibold text-emerald-900 h-7">
                   {plan.name}
                 </h3>
 
-                <p className="text-xs text-emerald-600/60 mb-4">
+                {/* Description - fixed height */}
+                <p className="text-sm text-emerald-600/60 h-10 mb-4">
                   {plan.description}
                 </p>
 
-                <div className="flex items-baseline gap-1 mb-4">
-                  <span className={`text-3xl font-bold ${isFree ? 'text-emerald-600' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent'}`}>
+                {/* Price - fixed height */}
+                <div className="flex items-baseline gap-1 h-10 mb-2">
+                  <span className={`text-4xl font-bold ${isFree ? 'text-emerald-600' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent'}`}>
                     {plan.price}
                   </span>
                   <span className="text-emerald-600/70 text-sm">PLN</span>
-                  <span className="text-emerald-600/70 text-xs">
+                  <span className="text-emerald-600/70 text-sm">
                     / {plan.period}
                   </span>
                 </div>
 
-                {plan.savings && (
-                  <div className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full mb-4">
-                    Oszczędzasz {plan.savings}
-                  </div>
-                )}
+                {/* Badge area - fixed height */}
+                <div className="h-8 mb-4">
+                  {plan.savings && (
+                    <span className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
+                      Oszczędzasz {plan.savings}
+                    </span>
+                  )}
+                  {plan.bonus && (
+                    <span className="inline-block px-3 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                      {plan.bonus}
+                    </span>
+                  )}
+                </div>
 
-                {plan.bonus && (
-                  <div className="inline-block px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full mb-4">
-                    {plan.bonus}
-                  </div>
-                )}
-
-                <Link href="/auth/signin" className="block mb-5">
+                {/* Button */}
+                <Link href="/auth/signin" className="block mb-6">
                   <Button
-                    className={`w-full text-sm ${
+                    className={`w-full ${
                       plan.popular
                         ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200'
                         : isFree
@@ -236,7 +242,8 @@ export default function PricingSection() {
                   </Button>
                 </Link>
 
-                <ul className="space-y-2">
+                {/* Features */}
+                <ul className="space-y-3 flex-1">
                   {(Object.keys(featureLabels) as Array<keyof PlanFeatures>).map((featureKey) => {
                     const value = features[featureKey];
                     const isAvailable = value !== false;
@@ -245,16 +252,16 @@ export default function PricingSection() {
                     return (
                       <li key={featureKey} className="flex items-start gap-2">
                         {isAvailable ? (
-                          <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                          <Check className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                         ) : (
-                          <X className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5" />
+                          <X className="w-5 h-5 text-gray-300 flex-shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
-                          <span className={`text-xs ${isAvailable ? 'text-emerald-700/70' : 'text-gray-400'}`}>
+                          <span className={`text-sm ${isAvailable ? 'text-emerald-700' : 'text-gray-400'}`}>
                             {featureLabels[featureKey]}
                           </span>
                           {displayValue && (
-                            <span className={`text-xs ml-1 ${isFree ? 'text-emerald-600 font-medium' : 'text-emerald-500'}`}>
+                            <span className={`text-sm ml-1 ${isFree ? 'text-emerald-600 font-medium' : 'text-emerald-500'}`}>
                               ({displayValue})
                             </span>
                           )}
