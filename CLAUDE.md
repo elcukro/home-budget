@@ -97,3 +97,36 @@ Run `/security-check` after completing complex implementations or changes that c
 - Database queries with user-provided data
 
 The skill performs a red-team style security audit and suggests specific fixes.
+
+### /launch-readiness
+Run `/launch-readiness` before commercial launch to perform a comprehensive audit of production readiness. The skill checks:
+
+**Dokumentacja i prawne:**
+- Regulamin, Polityka Prywatności, RODO compliance
+- Cookie consent, dane administratora
+
+**Emaile transakcyjne:**
+- Welcome email, potwierdzenie płatności, przypomnienie o trialu
+- Konfiguracja SMTP/SendGrid/Resend
+
+**Zaślepki w kodzie:**
+- TODO/FIXME/HACK/PLACEHOLDER
+- Testowe dane, localhost URLs, testowe klucze API
+
+**Konfiguracja produkcyjna:**
+- Zmienne środowiskowe, klucze Stripe (live vs test)
+- HTTPS, CORS, rate limiting
+
+**Monitoring:**
+- Error tracking (Sentry), logi, health checks, alerty
+
+**Płatności:**
+- Stripe webhooks, obsługa błędów, refund flow
+
+**Infrastruktura:**
+- Backup, CI/CD, staging, rollback
+
+**Support:**
+- Formularz kontaktowy, FAQ, dokumentacja wewnętrzna
+
+Generuje raport z priorytetyzacją: Blokery > Ważne > Rekomendacje.
