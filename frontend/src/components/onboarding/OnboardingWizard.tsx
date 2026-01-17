@@ -1416,7 +1416,11 @@ const STEP_DEFINITIONS: StepDefinition[] = [
 
 type StepErrors = Record<string, string>;
 
-export default function OnboardingWizard() {
+interface OnboardingWizardProps {
+  fromPayment?: boolean;
+}
+
+export default function OnboardingWizard({ fromPayment = false }: OnboardingWizardProps) {
   const router = useRouter();
   const intl = useIntl();
   const { data: session } = useSession();
@@ -2662,6 +2666,7 @@ export default function OnboardingWizard() {
             <WelcomeStep
               onStart={() => handleNext()}
               onSkip={handleSkipAll}
+              fromPayment={fromPayment}
             />
           )}
 
