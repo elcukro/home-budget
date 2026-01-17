@@ -52,7 +52,6 @@ export const logActivity = async (activity: ActivityLog): Promise<void> => {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Origin': 'http://localhost:3000'
       },
       credentials: 'include',
       body: requestBody,
@@ -69,7 +68,6 @@ export const logActivity = async (activity: ActivityLog): Promise<void> => {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Origin': 'http://localhost:3000'
         },
         body: requestBody
       });

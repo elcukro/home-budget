@@ -1,13 +1,14 @@
 import logging
+import os
 import traceback
-from fastapi import FastAPI, Depends, HTTPException, Query, Header
+from fastapi import FastAPI, Depends, HTTPException, Query, Header, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from . import models, database
 from pydantic import BaseModel, Field, model_validator
 from datetime import date, datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, case, or_
+from sqlalchemy import func, case, or_, text
 import calendar
 from fastapi.responses import JSONResponse, StreamingResponse
 import csv
@@ -24,6 +25,33 @@ from .logging_utils import make_conditional_print
 from .services.subscription_service import SubscriptionService
 from .dependencies import get_current_user as get_authenticated_user
 
+# Rate limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# Sentry for error tracking
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+# Initialize Sentry
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        integrations=[
+            FastApiIntegration(transaction_style="endpoint"),
+            SqlalchemyIntegration(),
+        ],
+        traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+        profiles_sample_rate=0.1,
+        environment=os.getenv("ENVIRONMENT", "development"),
+    )
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,19 +66,58 @@ def validate_user_access(user_id_from_path: str, authenticated_user: models.User
             detail="Access denied: You can only access your own data"
         )
 
-app = FastAPI()
+app = FastAPI(
+    title="FiredUp API",
+    description="Personal finance management API",
+    version="1.0.0",
+)
 
-# Configure CORS
+# Add rate limiter to app state and exception handler
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Configure CORS - restrict in production
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+# Always allow these origins in addition to env config
+allowed_origins = [
+    "https://firedup.app",
+    "https://www.firedup.app",
+    *cors_origins
+]
+# Remove duplicates and empty strings
+allowed_origins = list(set(filter(None, allowed_origins)))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 # Create the database tables
 Base.metadata.create_all(bind=engine)
+
+
+# Health check endpoint
+@app.get("/health", tags=["Health"])
+async def health_check(db: Session = Depends(database.get_db)):
+    """
+    Health check endpoint for monitoring.
+    Verifies database connectivity.
+    """
+    try:
+        # Test database connection
+        db.execute(text("SELECT 1"))
+        db_status = "healthy"
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+
+    return {
+        "status": "ok" if db_status == "healthy" else "degraded",
+        "database": db_status,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
 
 # Include routers
 app.include_router(auth.router)
