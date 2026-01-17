@@ -6,7 +6,7 @@ import { useEffect, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
-// Initialize PostHog only on client-side and in production or with explicit key
+// Initialize PostHog only on client-side
 if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
     api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
@@ -14,16 +14,7 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
     capture_pageview: false, // We'll capture manually for SPA routing
     capture_pageleave: true,
     autocapture: true,
-    // Respect user privacy
-    respect_dnt: true,
-    // Session recording
-    enable_recording_console_log: false,
-    // Disable in development unless explicitly enabled
-    loaded: (posthog) => {
-      if (process.env.NODE_ENV === 'development') {
-        posthog.opt_out_capturing();
-      }
-    },
+    persistence: 'localStorage',
   });
 }
 
