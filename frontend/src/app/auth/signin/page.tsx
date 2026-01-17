@@ -33,11 +33,28 @@ export default function SignIn() {
   const intl = useIntl();
   const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard";
   const error = searchParams?.get("error");
+  const plan = searchParams?.get("plan");
+
+  // Store selected plan in sessionStorage for post-login checkout
+  useEffect(() => {
+    if (plan && ['monthly', 'annual', 'lifetime'].includes(plan)) {
+      sessionStorage.setItem('selectedPlan', plan);
+      logger.debug('[auth][debug] Stored selected plan:', plan);
+    }
+  }, [plan]);
 
   useEffect(() => {
     if (session?.user) {
-      logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl);
-      router.replace(callbackUrl);
+      // Check if there's a stored plan for checkout
+      const storedPlan = sessionStorage.getItem('selectedPlan');
+      if (storedPlan) {
+        sessionStorage.removeItem('selectedPlan');
+        logger.debug('[auth][debug] Redirecting to checkout for plan:', storedPlan);
+        router.replace(`/checkout?plan=${storedPlan}`);
+      } else {
+        logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl);
+        router.replace(callbackUrl);
+      }
     }
   }, [session, router, callbackUrl]);
 

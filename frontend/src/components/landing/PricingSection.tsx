@@ -279,7 +279,7 @@ export default function PricingSection() {
 
                 {/* Button - centered */}
                 <div className="mb-6">
-                  <Link href="/auth/signin" className="block">
+                  <Link href={isFree ? '/auth/signin' : `/auth/signin?plan=${plan.id}`} className="block">
                     <Button
                       className={`w-full ${
                         plan.popular
