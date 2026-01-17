@@ -47,8 +47,9 @@ export const config = {
      * 2. static assets (_next/static/*, _next/image/*, favicon.ico, public files with extensions)
      * 3. auth pages (/auth/*)
      * 4. public pages (/pricing, /privacy, /terms)
-     * 5. landing page (/) - handled separately with client-side auth check
+     * 5. checkout page (/checkout) - handles its own auth redirect
+     * 6. landing page (/) - handled separately with client-side auth check
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|auth/.*|pricing|privacy|terms|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$).+)',
+    '/((?!api|_next/static|_next/image|favicon.ico|auth/.*|pricing|privacy|terms|checkout|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$).+)',
   ],
 };
