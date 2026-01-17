@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Sparkles, PiggyBank, TrendingUp, Wallet, Target } from 'lucide-react';
+import { ArrowRight, Sparkles, PiggyBank, TrendingUp, Wallet, Target, Users } from 'lucide-react';
 
 const FloatingIcon = ({
   Icon,
@@ -59,9 +59,9 @@ export default function HeroSection() {
 
         {/* Headline */}
         <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-emerald-900 leading-tight mb-6">
-          Wyobraź sobie życie{' '}
+          Koniec z życiem{' '}
           <span className="bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">
-            bez długu
+            od wypłaty do wypłaty
           </span>
         </h1>
 
@@ -94,6 +94,23 @@ export default function HeroSection() {
           >
             Jak to działa?
           </button>
+        </div>
+
+        {/* Social Proof */}
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="flex -space-x-2">
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 border-2 border-white flex items-center justify-center"
+              >
+                <Users className="w-4 h-4 text-white" />
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-emerald-700">
+            <span className="font-semibold">Dołącz do 2,500+ Polaków</span>, którzy odzyskali kontrolę nad finansami
+          </p>
         </div>
 
         {/* Trust text */}

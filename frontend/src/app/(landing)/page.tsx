@@ -14,6 +14,7 @@ import FeaturesSection from '@/components/landing/FeaturesSection';
 import ModulesShowcase from '@/components/landing/ModulesShowcase';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import PricingSection from '@/components/landing/PricingSection';
+import FAQSection from '@/components/landing/FAQSection';
 import FinalCTASection from '@/components/landing/FinalCTASection';
 import LandingFooter from '@/components/landing/LandingFooter';
 
@@ -52,6 +53,7 @@ export default function LandingPage() {
         <ModulesShowcase />
         <TestimonialsSection />
         <PricingSection />
+        <FAQSection />
         <FinalCTASection />
       </main>
       <LandingFooter />
