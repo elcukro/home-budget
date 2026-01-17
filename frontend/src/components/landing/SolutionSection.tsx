@@ -1,26 +1,21 @@
 'use client';
 
-import { Eye, Map, Timer, Quote } from 'lucide-react';
+import Image from 'next/image';
+import { Quote } from 'lucide-react';
 
 const principles = [
   {
-    icon: Eye,
-    color: 'bg-emerald-100',
-    iconColor: 'text-emerald-600',
+    image: '/images/solutions/swiadomosc.png',
     title: 'Świadomość',
     description: 'Zacznij od wiedzy. Gdzie idą Twoje pieniądze? Co naprawdę jest ważne?',
   },
   {
-    icon: Map,
-    color: 'bg-violet-100',
-    iconColor: 'text-violet-600',
+    image: '/images/solutions/plan.png',
     title: 'Plan',
     description: '7 kroków do wolności finansowej. Sprawdzony system, krok po kroku.',
   },
   {
-    icon: Timer,
-    color: 'bg-amber-100',
-    iconColor: 'text-amber-600',
+    image: '/images/solutions/cierpliwosc.png',
     title: 'Cierpliwość',
     description: 'To maraton, nie sprint. Małe kroki prowadzą do wielkich zmian.',
   },
@@ -43,11 +38,16 @@ export default function SolutionSection() {
         {/* Principles */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {principles.map((principle, index) => {
-            const Icon = principle.icon;
             return (
               <div key={index} className="text-center group">
-                <div className={`w-16 h-16 ${principle.color} rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
-                  <Icon className={`w-8 h-8 ${principle.iconColor}`} />
+                <div className="w-32 h-32 relative mx-auto mb-4">
+                  <Image
+                    src={principle.image}
+                    alt={principle.title}
+                    fill
+                    className="object-contain group-hover:scale-105 transition-transform duration-300"
+                    sizes="128px"
+                  />
                 </div>
                 <h3 className="text-xl font-semibold text-emerald-900 mb-3">
                   {principle.title}
