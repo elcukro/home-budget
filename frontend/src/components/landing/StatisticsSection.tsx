@@ -68,15 +68,23 @@ function StatCard({ value, label, source, delay = 0 }: StatCardProps) {
   return (
     <div
       ref={cardRef}
-      className={`bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-2xl p-6 text-center transition-all duration-700 hover:shadow-lg hover:shadow-emerald-100/50 hover:border-emerald-200 ${
+      className={`bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-2xl p-6 text-center transition-all duration-700 hover:shadow-lg hover:shadow-emerald-100/50 hover:border-emerald-200 flex flex-col h-full ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}
     >
-      <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent mb-3">
-        {displayValue}
+      {/* Value - fixed height, single line */}
+      <div className="h-14 flex items-center justify-center">
+        <div className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent whitespace-nowrap">
+          {displayValue}
+        </div>
       </div>
-      <p className="text-emerald-700/70 text-sm sm:text-base mb-3">{label}</p>
-      <p className="text-xs text-emerald-600/50">{source}</p>
+      {/* Spacer to push description to bottom */}
+      <div className="flex-1" />
+      {/* Description - aligned at bottom */}
+      <div>
+        <p className="text-emerald-700/70 text-sm sm:text-base mb-3">{label}</p>
+        <p className="text-xs text-emerald-600/50">{source}</p>
+      </div>
     </div>
   );
 }
@@ -114,7 +122,7 @@ export default function StatisticsSection() {
         <p className="text-emerald-700/70 text-center mb-12 max-w-2xl mx-auto">
           Nie jesteś sam. Miliony Polaków borykają się z tymi samymi wyzwaniami.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {stats.map((stat, index) => (
             <StatCard key={index} {...stat} delay={index * 150} />
           ))}
