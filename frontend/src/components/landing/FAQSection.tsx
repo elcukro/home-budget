@@ -38,7 +38,27 @@ const faqItems: FAQItem[] = [
   {
     category: 'product',
     question: 'Co się stanie po zakończeniu okresu próbnego?',
-    answer: 'Po 7 dniach przechodzisz na darmowy plan, który pozwala śledzić podstawowe wydatki i przychody. Możesz korzystać z niego bez ograniczeń czasowych. Płatne plany odblokowują integrację z bankiem, zaawansowaną analitykę AI i pełny dostęp do metodologii Baby Steps.',
+    answer: 'Po 7 dniach przechodzisz na darmowy plan, który pozwala śledzić podstawowe wydatki i przychody. Przed zmianą planu możesz wyeksportować wszystkie swoje dane (Excel, CSV, JSON) - Twoje dane zawsze należą do Ciebie. Możesz korzystać z darmowego planu bez ograniczeń czasowych. Płatne plany odblokowują integrację z bankiem, zaawansowaną analitykę AI i pełny dostęp do metodologii Baby Steps.',
+  },
+  {
+    category: 'product',
+    question: 'Jak szybko zobaczę efekty?',
+    answer: 'Pierwsze efekty - pełną kontrolę nad tym, gdzie idą Twoje pieniądze - zobaczysz już w pierwszym tygodniu. Fundusz awaryjny (1000 zł) większość użytkowników buduje w 1-3 miesiące. Spłata długów zależy od ich wielkości, ale dzięki metodzie kuli śnieżnej każda spłacona rata motywuje do kolejnej. Kluczem jest konsekwencja, nie szybkość.',
+  },
+  {
+    category: 'product',
+    question: 'Czy mogę korzystać z aplikacji razem z partnerem/rodziną?',
+    answer: 'Tak! Możesz udostępnić dostęp do konta partnerowi - wspólne zarządzanie budżetem to klucz do sukcesu finansowego w związku. Widzicie te same dane, cele i postępy. W przyszłości planujemy też dedykowane konta rodzinne z oddzielnymi widokami dla każdego członka rodziny.',
+  },
+  {
+    category: 'debt',
+    question: 'Mam nieregularne dochody (freelancer/własna firma). Czy ta metoda zadziała?',
+    answer: 'Tak, metoda Baby Steps świetnie sprawdza się przy nieregularnych dochodach - właściwie jest dla nich idealna. Kluczem jest budżetowanie w oparciu o "najgorszy miesiąc" i priorytetyzacja wydatków. Aplikacja pomoże Ci stworzyć bufor na miesiące z niższymi przychodami i zarządzać przepływem gotówki.',
+  },
+  {
+    category: 'security',
+    question: 'Czy mogę usunąć swoje konto i wszystkie dane?',
+    answer: 'Oczywiście. W każdej chwili możesz usunąć swoje konto wraz ze wszystkimi danymi - wystarczy jedno kliknięcie w ustawieniach. Przed usunięciem możesz wyeksportować swoje dane. Usunięcie jest natychmiastowe i nieodwracalne, zgodnie z RODO masz pełną kontrolę nad swoimi danymi.',
   },
 ];
 
