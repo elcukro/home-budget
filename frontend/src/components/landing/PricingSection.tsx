@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Check, X, Sparkles, Shield, Zap, Ban, Building2 } from 'lucide-react';
+import { Check, X, Sparkles, Shield, Zap, Ban, Building2, Info } from 'lucide-react';
 import Link from 'next/link';
 
 const plans = [
@@ -111,7 +111,7 @@ const planFeatures: Record<string, PlanFeatures> = {
     income: 'Bez limitu',
     loans: 'Bez limitu',
     savings: 'Bez limitu',
-    reports: 'Wszystkie',
+    reports: 'Zaawansowane',
     babySteps: 'Pełna analiza + rekomendacje',
     bankIntegration: true,
     ai: true,
@@ -139,10 +139,21 @@ const featureLabels: Record<keyof PlanFeatures, string> = {
   savings: 'Cele oszczędnościowe',
   reports: 'Raporty',
   babySteps: '7 Kroków do wolności',
-  bankIntegration: 'Integracja z bankiem (Tink)',
-  ai: 'Analiza AI',
-  export: 'Eksport (JSON, CSV, XLSX)',
+  bankIntegration: 'Pobieranie transakcji z banku',
+  ai: 'Zaawansowana analiza AI',
+  export: 'Eksport danych (AI-ready JSON, Excel, CSV)',
 };
+
+const supportedBanks = [
+  { name: 'PKO BP', logo: '/images/banks/pko.png' },
+  { name: 'mBank', logo: '/images/banks/mbank.png' },
+  { name: 'ING', logo: '/images/banks/ing.png' },
+  { name: 'Santander', logo: '/images/banks/santander.png' },
+  { name: 'Millennium', logo: '/images/banks/millennium.png' },
+  { name: 'Pekao', logo: '/images/banks/pekao.png' },
+  { name: 'Alior', logo: '/images/banks/alior.png' },
+  { name: 'BNP Paribas', logo: '/images/banks/bnp.png' },
+];
 
 export default function PricingSection() {
   return (
@@ -269,6 +280,7 @@ export default function PricingSection() {
                     const value = features[featureKey];
                     const isAvailable = value !== false;
                     const displayValue = typeof value === 'string' ? value : null;
+                    const isBankFeature = featureKey === 'bankIntegration';
 
                     return (
                       <li key={featureKey} className="flex items-start gap-2">
@@ -285,6 +297,27 @@ export default function PricingSection() {
                             <span className={`text-sm ml-1 ${isFree ? 'text-emerald-600 font-medium' : 'text-emerald-500'}`}>
                               ({displayValue})
                             </span>
+                          )}
+                          {isBankFeature && isAvailable && (
+                            <div className="inline-block relative ml-1 group">
+                              <Info className="w-4 h-4 text-emerald-400 inline cursor-help" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                                <div className="bg-white border border-emerald-100 rounded-xl shadow-xl p-4 w-64">
+                                  <p className="text-xs text-emerald-700 font-medium mb-3">Obsługiwane banki w Polsce:</p>
+                                  <div className="grid grid-cols-4 gap-2">
+                                    {supportedBanks.map((bank) => (
+                                      <div key={bank.name} className="flex flex-col items-center gap-1">
+                                        <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center text-[10px] text-gray-500 font-medium">
+                                          {bank.name.slice(0, 3)}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <p className="text-[10px] text-emerald-600/60 mt-3">...i wiele innych przez Tink API</p>
+                                </div>
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-8 border-transparent border-t-white"></div>
+                              </div>
+                            </div>
                           )}
                         </div>
                       </li>
