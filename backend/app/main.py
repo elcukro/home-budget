@@ -36,18 +36,16 @@ from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 # Initialize Sentry
-sentry_dsn = os.getenv("SENTRY_DSN")
-if sentry_dsn:
-    sentry_sdk.init(
-        dsn=sentry_dsn,
-        integrations=[
-            FastApiIntegration(transaction_style="endpoint"),
-            SqlalchemyIntegration(),
-        ],
-        traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
-        profiles_sample_rate=0.1,
-        environment=os.getenv("ENVIRONMENT", "development"),
-    )
+sentry_sdk.init(
+    dsn="https://49db97f131e54426066081af30c141b7@o4510725745868800.ingest.de.sentry.io/4510725761204304",
+    integrations=[
+        FastApiIntegration(transaction_style="endpoint"),
+        SqlalchemyIntegration(),
+    ],
+    traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+    profiles_sample_rate=0.1,
+    environment=os.getenv("ENVIRONMENT", "production"),
+)
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
