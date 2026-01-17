@@ -227,8 +227,8 @@ async def create_checkout_session(
         "customer": customer_id,
         "line_items": [{"price": price_id, "quantity": 1}],
         "mode": mode,
-        "success_url": f"{FRONTEND_URL}/settings?tab=billing&success=true&session_id={{CHECKOUT_SESSION_ID}}",
-        "cancel_url": f"{FRONTEND_URL}/pricing?canceled=true",
+        "success_url": f"{FRONTEND_URL}/onboarding?from=payment&session_id={{CHECKOUT_SESSION_ID}}",
+        "cancel_url": f"{FRONTEND_URL}/#pricing",
         "metadata": {
             "user_id": user_id,
             "plan_type": plan_type
