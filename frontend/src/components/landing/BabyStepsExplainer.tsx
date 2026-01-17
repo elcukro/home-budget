@@ -158,12 +158,12 @@ export default function BabyStepsExplainer() {
                         </div>
 
                         {/* Icon */}
-                        <div className="hidden sm:flex flex-shrink-0 w-14 h-14 items-center justify-center">
+                        <div className="hidden sm:flex flex-shrink-0 w-[68px] h-[68px] items-center justify-center">
                           <Image
                             src={step.image}
                             alt={step.title}
-                            width={56}
-                            height={56}
+                            width={68}
+                            height={68}
                             className="object-contain"
                           />
                         </div>
