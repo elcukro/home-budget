@@ -40,13 +40,13 @@ export default function SolutionSection() {
           {principles.map((principle, index) => {
             return (
               <div key={index} className="text-center group">
-                <div className="w-32 h-32 relative mx-auto mb-4">
+                <div className="w-40 h-40 relative mx-auto mb-4">
                   <Image
                     src={principle.image}
                     alt={principle.title}
                     fill
                     className="object-contain group-hover:scale-105 transition-transform duration-300"
-                    sizes="128px"
+                    sizes="160px"
                   />
                 </div>
                 <h3 className="text-xl font-semibold text-emerald-900 mb-3">
