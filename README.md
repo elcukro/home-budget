@@ -63,6 +63,16 @@ A modern, full-stack personal finance management application built with Next.js,
 
 ## 📝 Changelog
 
+### 2026-01-17
+- 🗑️ **Account Deletion Feature**:
+  - Added permanent account deletion with GDPR compliance
+  - New "Account" tab in Settings with Danger Zone section
+  - Confirmation dialog with detailed warnings about data loss
+  - Requires typing confirmation phrase ("USUŃ KONTO" in Polish, "DELETE ACCOUNT" in English)
+  - Automatic Stripe subscription cancellation for active subscriptions
+  - Cascade deletion of all user data (income, expenses, loans, savings, bank connections, AI insights, etc.)
+  - Full i18n support for both Polish and English
+
 ### 2026-01-16
 - 🤖 **AI Analysis Major Improvements**:
   - Changed AI provider from OpenAI to Anthropic Claude for better financial insights
@@ -384,6 +394,9 @@ Connect securely to your bank accounts and access your financial data using the 
 - `PUT /users/{email}/settings/` - Update user settings
 - `GET /users/{email}/export/?format={format}` - Export user data (JSON/CSV/XLSX)
 - `POST /users/{email}/import` - Import user data (optional parameter: clear_existing)
+
+### Account Management
+- `DELETE /users/me/account?user_id={email}` - Permanently delete user account (requires confirmation_phrase in body: "USUŃ KONTO" or "DELETE ACCOUNT")
 
 ### AI Insights
 - `GET /users/{email}/insights` - Fetch AI-generated financial insights
