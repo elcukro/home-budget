@@ -15,14 +15,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { logger } from "@/lib/logger";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCrown, faInfinity } from "@fortawesome/free-solid-svg-icons";
+import { faCrown, faInfinity, faTriangleExclamation, faUser } from "@fortawesome/free-solid-svg-icons";
+import { signOut } from "next-auth/react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -126,6 +139,8 @@ export default function SettingsPage() {
       setActiveTab('banking');
     } else if (tabFromUrl === 'billing') {
       setActiveTab('billing');
+    } else if (tabFromUrl === 'account') {
+      setActiveTab('account');
     }
   }, [searchParams]);
 
@@ -787,6 +802,10 @@ export default function SettingsPage() {
             <FontAwesomeIcon icon={faCrown} className="w-4 h-4 mr-2" />
             {intl.formatMessage({ id: "billing.title" })}
           </TabsTrigger>
+          <TabsTrigger value="account">
+            <FontAwesomeIcon icon={faUser} className="w-4 h-4 mr-2" />
+            {intl.formatMessage({ id: "settings.tabs.account" })}
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="import-export">
           <Card>
@@ -996,6 +1015,7 @@ export default function SettingsPage() {
           </div>
         </TabsContent>
         <BillingTabContent />
+        <AccountTabContent />
       </Tabs>
     </div>
   );
@@ -1209,6 +1229,180 @@ function BillingTabContent() {
           </Card>
         )}
       </div>
+    </TabsContent>
+  );
+}
+
+function AccountTabContent() {
+  const intl = useIntl();
+  const { data: session } = useSession();
+  const { toast } = useToast();
+  const { subscription } = useSubscription();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmPhrase, setConfirmPhrase] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const userEmail = session?.user?.email ?? null;
+
+  // Get the confirmation phrase based on language
+  const requiredPhrase = intl.formatMessage({ id: "settings.account.deleteDialog.confirmPhrase" });
+  const isConfirmPhraseValid = confirmPhrase === requiredPhrase;
+
+  // Determine subscription info for the dialog
+  const hasActiveSubscription = subscription?.status === "active" || subscription?.status === "trialing";
+  const isLifetime = subscription?.is_lifetime;
+  const planType = subscription?.plan_type;
+
+  const handleDeleteAccount = async () => {
+    if (!userEmail || !isConfirmPhraseValid) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/me/account?user_id=${encodeURIComponent(userEmail)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            confirmation_phrase: confirmPhrase,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to delete account");
+      }
+
+      toast({
+        title: intl.formatMessage({ id: "settings.messages.deleteSuccess" }),
+      });
+
+      // Sign out and redirect to home
+      await signOut({ callbackUrl: "/" });
+    } catch (error) {
+      logger.error("[Settings] Failed to delete account", error);
+      toast({
+        title: intl.formatMessage({ id: "settings.messages.deleteError" }),
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+      setConfirmPhrase("");
+    }
+  };
+
+  return (
+    <TabsContent value="account">
+      <Card className="border-destructive/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <FontAwesomeIcon icon={faTriangleExclamation} className="w-5 h-5" />
+            {intl.formatMessage({ id: "settings.account.dangerZone.title" })}
+          </CardTitle>
+          <CardDescription>
+            {intl.formatMessage({ id: "settings.account.dangerZone.description" })}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">
+                {intl.formatMessage({ id: "settings.account.dangerZone.deleteButton" })}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="max-w-lg">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  <FontAwesomeIcon icon={faTriangleExclamation} className="w-5 h-5" />
+                  {intl.formatMessage({ id: "settings.account.deleteDialog.title" })}
+                </AlertDialogTitle>
+                <AlertDialogDescription asChild>
+                  <div className="space-y-4 text-left">
+                    <p className="font-semibold text-destructive">
+                      {intl.formatMessage({ id: "settings.account.deleteDialog.warning" })}
+                    </p>
+
+                    <div>
+                      <p className="font-medium mb-2">
+                        {intl.formatMessage({ id: "settings.account.deleteDialog.whatDeleted" })}
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        <li>{intl.formatMessage({ id: "settings.account.deleteDialog.items.financial" })}</li>
+                        <li>{intl.formatMessage({ id: "settings.account.deleteDialog.items.banking" })}</li>
+                        <li>{intl.formatMessage({ id: "settings.account.deleteDialog.items.progress" })}</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <p className="font-medium mb-1">
+                        {intl.formatMessage({ id: "settings.account.deleteDialog.subscription" })}
+                      </p>
+                      <p className="text-sm">
+                        {isLifetime ? (
+                          intl.formatMessage({ id: "settings.account.deleteDialog.subscriptionLifetime" })
+                        ) : hasActiveSubscription ? (
+                          intl.formatMessage(
+                            { id: "settings.account.deleteDialog.subscriptionActive" },
+                            { planType: planType || "monthly" }
+                          )
+                        ) : (
+                          intl.formatMessage({ id: "settings.account.deleteDialog.subscriptionNone" })
+                        )}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="font-medium mb-1">
+                        {intl.formatMessage({ id: "settings.account.deleteDialog.gdpr" })}
+                      </p>
+                      <p className="text-sm">
+                        {intl.formatMessage({ id: "settings.account.deleteDialog.gdprText" })}
+                      </p>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-phrase">
+                        {intl.formatMessage(
+                          { id: "settings.account.deleteDialog.confirmLabel" },
+                          { phrase: requiredPhrase }
+                        )}
+                      </Label>
+                      <Input
+                        id="confirm-phrase"
+                        value={confirmPhrase}
+                        onChange={(e) => setConfirmPhrase(e.target.value)}
+                        placeholder={intl.formatMessage({ id: "settings.account.deleteDialog.confirmPlaceholder" })}
+                        className="font-mono"
+                      />
+                    </div>
+                  </div>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setConfirmPhrase("")}>
+                  {intl.formatMessage({ id: "settings.account.deleteDialog.cancel" })}
+                </AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={!isConfirmPhraseValid || isDeleting}
+                >
+                  {isDeleting
+                    ? intl.formatMessage({ id: "settings.account.deleteDialog.deleting" })
+                    : intl.formatMessage({ id: "settings.account.deleteDialog.delete" })}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     </TabsContent>
   );
 }

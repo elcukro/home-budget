@@ -1107,7 +1107,8 @@
     },
     "tabs": {
       "importExport": "Import i eksport",
-      "banking": "Połączenia bankowe"
+      "banking": "Połączenia bankowe",
+      "account": "Konto"
     },
     "noData": "Brak dostępnych ustawień",
     "export": {
@@ -1164,7 +1165,38 @@
       "currencyConverted": "Twój docelowy fundusz awaryjny został przeliczony z {oldCurrency} na {newCurrency}: {amount}",
       "bankDeleteSuccess": "Połączenie bankowe zostało usunięte.",
       "bankDeleteError": "Nie udało się usunąć połączenia bankowego.",
-      "confirmBankDelete": "Czy na pewno chcesz usunąć to połączenie bankowe?"
+      "confirmBankDelete": "Czy na pewno chcesz usunąć to połączenie bankowe?",
+      "deleteSuccess": "Konto zostało usunięte.",
+      "deleteError": "Nie udało się usunąć konta. Spróbuj ponownie."
+    },
+    "account": {
+      "dangerZone": {
+        "title": "Strefa niebezpieczna",
+        "description": "Po usunięciu konta nie ma możliwości jego przywrócenia.",
+        "deleteButton": "Usuń konto"
+      },
+      "deleteDialog": {
+        "title": "Usuń swoje konto",
+        "warning": "Ta akcja jest nieodwracalna.",
+        "whatDeleted": "Co zostanie usunięte:",
+        "items": {
+          "financial": "Wszystkie przychody, wydatki, kredyty i oszczędności",
+          "banking": "Połączenia bankowe i historia transakcji",
+          "progress": "Postęp Wolności Finansowej i analizy AI"
+        },
+        "subscription": "Subskrypcja:",
+        "subscriptionActive": "Twoja subskrypcja {planType} zostanie anulowana natychmiast. Brak zwrotu za niewykorzystany okres.",
+        "subscriptionLifetime": "Twój dożywotni dostęp zostanie bezpowrotnie utracony.",
+        "subscriptionNone": "Nie masz aktywnej płatnej subskrypcji.",
+        "gdpr": "Zgodność z RODO:",
+        "gdprText": "Twoje dane zostaną trwale usunięte w ciągu 30 dni.",
+        "confirmLabel": "Aby potwierdzić, wpisz \"{phrase}\":",
+        "confirmPhrase": "USUŃ KONTO",
+        "confirmPlaceholder": "Wpisz USUŃ KONTO",
+        "cancel": "Anuluj",
+        "delete": "Usuń moje konto",
+        "deleting": "Usuwanie..."
+      }
     },
     "financialFreedom": {
       "title": "Ustawienia Wolności Finansowej",

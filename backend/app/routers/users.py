@@ -1,4 +1,5 @@
 import logging
+import os
 import traceback
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -7,6 +8,10 @@ from datetime import datetime
 from .. import models, database
 from pydantic import BaseModel
 from ..logging_utils import make_conditional_print
+
+import stripe
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 logger = logging.getLogger(__name__)
 print = make_conditional_print(__name__)
@@ -161,4 +166,74 @@ def update_user_settings(email: str, settings_update: SettingsBase, db: Session 
         return settings
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Delete account models and endpoint
+class DeleteAccountRequest(BaseModel):
+    confirmation_phrase: str  # "USUŃ KONTO" (PL) or "DELETE ACCOUNT" (EN)
+
+
+class DeleteAccountResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.delete("/me/account", response_model=DeleteAccountResponse)
+def delete_user_account(
+    request: DeleteAccountRequest,
+    user_id: str = Query(..., description="The ID of the user"),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Permanently delete user account and all associated data.
+    Requires confirmation phrase: "USUŃ KONTO" (PL) or "DELETE ACCOUNT" (EN).
+    If user has an active Stripe subscription (not lifetime), it will be cancelled.
+    """
+    # Validate confirmation phrase
+    valid_phrases = ["USUŃ KONTO", "DELETE ACCOUNT"]
+    if request.confirmation_phrase not in valid_phrases:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid confirmation phrase. Please type 'USUŃ KONTO' or 'DELETE ACCOUNT' exactly."
+        )
+
+    # Get user
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        # Check for active Stripe subscription and cancel if exists
+        subscription = db.query(models.Subscription).filter(
+            models.Subscription.user_id == user_id
+        ).first()
+
+        if subscription:
+            # Cancel Stripe subscription if active and not lifetime
+            if (subscription.stripe_subscription_id and
+                subscription.status in ["active", "trialing", "past_due"] and
+                not subscription.is_lifetime):
+                try:
+                    stripe.Subscription.cancel(subscription.stripe_subscription_id)
+                    logger.info(f"Cancelled Stripe subscription {subscription.stripe_subscription_id} for user {user_id}")
+                except stripe.error.StripeError as e:
+                    # Log error but continue with account deletion
+                    # Data protection takes priority over billing cleanup
+                    logger.error(f"Failed to cancel Stripe subscription for user {user_id}: {e}")
+
+        # Delete user (cascade will handle all related data due to relationship configuration)
+        db.delete(user)
+        db.commit()
+
+        logger.info(f"Successfully deleted account for user {user_id}")
+        return DeleteAccountResponse(
+            success=True,
+            message="Account deleted successfully"
+        )
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete account for user {user_id}: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")

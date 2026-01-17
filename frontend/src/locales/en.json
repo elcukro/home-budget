@@ -1221,11 +1221,43 @@
       "currencyConverted": "Your emergency fund target has been converted from {oldCurrency} to {newCurrency}: {amount}",
       "bankDeleteSuccess": "Bank connection removed successfully.",
       "bankDeleteError": "Failed to remove bank connection.",
-      "confirmBankDelete": "Are you sure you want to remove this bank connection?"
+      "confirmBankDelete": "Are you sure you want to remove this bank connection?",
+      "deleteSuccess": "Your account has been deleted.",
+      "deleteError": "Failed to delete account. Please try again."
     },
     "tabs": {
       "importExport": "Import & Export",
-      "banking": "Bank connections"
+      "banking": "Bank connections",
+      "account": "Account"
+    },
+    "account": {
+      "dangerZone": {
+        "title": "Danger Zone",
+        "description": "Once you delete your account, there is no going back.",
+        "deleteButton": "Delete Account"
+      },
+      "deleteDialog": {
+        "title": "Delete Your Account",
+        "warning": "This action is irreversible.",
+        "whatDeleted": "What will be deleted:",
+        "items": {
+          "financial": "All income, expenses, loans and savings",
+          "banking": "Bank connections and transaction history",
+          "progress": "Financial Freedom progress and AI insights"
+        },
+        "subscription": "Subscription:",
+        "subscriptionActive": "Your {planType} subscription will be cancelled immediately. No refund for partial period.",
+        "subscriptionLifetime": "Your lifetime access will be permanently lost.",
+        "subscriptionNone": "You have no active paid subscription.",
+        "gdpr": "GDPR Compliance:",
+        "gdprText": "Your data will be permanently deleted within 30 days.",
+        "confirmLabel": "To confirm, type \"{phrase}\":",
+        "confirmPhrase": "DELETE ACCOUNT",
+        "confirmPlaceholder": "Type DELETE ACCOUNT",
+        "cancel": "Cancel",
+        "delete": "Delete My Account",
+        "deleting": "Deleting..."
+      }
     },
     "export": {
       "title": "Export Data",
