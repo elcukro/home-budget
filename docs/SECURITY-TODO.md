@@ -20,15 +20,15 @@ The FiredUp home budget application has a solid technical foundation with modern
 | Backend .env | Hardcoded production secrets exposed | 🔴 CRITICAL | [ ] |
 | Frontend .env | Hardcoded Google OAuth secrets | 🔴 CRITICAL | [ ] |
 | Authentication | X-User-ID header can be spoofed | 🔴 CRITICAL | [ ] |
-| Security Headers | Missing CSP, X-Frame-Options, HSTS | 🟠 HIGH | [ ] |
+| Security Headers | Missing CSP, X-Frame-Options, HSTS | 🟠 HIGH | [x] ✅ |
 | CI/CD | No automated deployment pipeline | 🟠 HIGH | [ ] |
-| Database | Default password fallback in code | 🟠 HIGH | [ ] |
+| Database | Default password fallback in code | 🟠 HIGH | [x] ✅ |
 | Backup Strategy | No database backup automation | 🟠 HIGH | [ ] |
 | Environment Files | World-readable permissions (644) | 🟡 MEDIUM | [ ] |
 | Systemd Services | Service definitions not in repository | 🟡 MEDIUM | [ ] |
 | Monitoring | No infrastructure monitoring | 🟡 MEDIUM | [ ] |
 | Logging | Application logs not centralized | 🟡 MEDIUM | [ ] |
-| CORS Headers | allow_headers=["*"] too permissive | 🟡 MEDIUM | [ ] |
+| CORS Headers | allow_headers=["*"] too permissive | 🟡 MEDIUM | [x] ✅ |
 
 ---
 
@@ -219,7 +219,7 @@ allow_headers=["Content-Type", "Authorization", "X-User-ID", "X-Requested-With"]
 ## Quick Wins Checklist
 
 - [ ] Rotate all secrets (30 min)
-- [ ] Add security headers to nginx (10 min)
+- [x] Add security headers to nginx ✅
 - [ ] Fix .env file permissions (5 min)
 - [ ] Remove secrets from git history (20 min)
 - [ ] Implement database backups (30 min)
