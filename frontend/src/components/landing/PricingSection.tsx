@@ -145,14 +145,14 @@ const featureLabels: Record<keyof PlanFeatures, string> = {
 };
 
 const supportedBanks = [
-  { name: 'PKO BP', logo: '/images/banks/pko.png' },
-  { name: 'mBank', logo: '/images/banks/mbank.png' },
-  { name: 'ING', logo: '/images/banks/ing.png' },
-  { name: 'Santander', logo: '/images/banks/santander.png' },
-  { name: 'Millennium', logo: '/images/banks/millennium.png' },
-  { name: 'Pekao', logo: '/images/banks/pekao.png' },
-  { name: 'Alior', logo: '/images/banks/alior.png' },
-  { name: 'BNP Paribas', logo: '/images/banks/bnp.png' },
+  { name: 'PKO BP', logo: '/images/banks/pko.webp' },
+  { name: 'mBank', logo: '/images/banks/mbank.webp' },
+  { name: 'ING', logo: '/images/banks/ing.webp' },
+  { name: 'Santander', logo: '/images/banks/santander.webp' },
+  { name: 'Millennium', logo: '/images/banks/millennium.webp' },
+  { name: 'Pekao', logo: '/images/banks/pekao.webp' },
+  { name: 'Alior', logo: '/images/banks/alior.webp' },
+  { name: 'BNP Paribas', logo: '/images/banks/bnp.webp' },
 ];
 
 export default function PricingSection() {
@@ -302,18 +302,23 @@ export default function PricingSection() {
                             <div className="inline-block relative ml-1 group">
                               <Info className="w-4 h-4 text-emerald-400 inline cursor-help" />
                               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
-                                <div className="bg-white border border-emerald-100 rounded-xl shadow-xl p-4 w-64">
+                                <div className="bg-white border border-emerald-100 rounded-xl shadow-xl p-4 w-72">
                                   <p className="text-xs text-emerald-700 font-medium mb-3">Obsługiwane banki w Polsce:</p>
-                                  <div className="grid grid-cols-4 gap-2">
+                                  <div className="grid grid-cols-4 gap-3">
                                     {supportedBanks.map((bank) => (
                                       <div key={bank.name} className="flex flex-col items-center gap-1">
-                                        <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center text-[10px] text-gray-500 font-medium">
-                                          {bank.name.slice(0, 3)}
+                                        <div className="w-12 h-12 bg-white rounded-lg border border-gray-100 flex items-center justify-center p-1.5 shadow-sm">
+                                          <img
+                                            src={bank.logo}
+                                            alt={bank.name}
+                                            className="w-full h-full object-contain"
+                                          />
                                         </div>
+                                        <span className="text-[9px] text-gray-500 text-center leading-tight">{bank.name}</span>
                                       </div>
                                     ))}
                                   </div>
-                                  <p className="text-[10px] text-emerald-600/60 mt-3">...i wiele innych przez Tink API</p>
+                                  <p className="text-[10px] text-emerald-600/60 mt-3 text-center">...i wiele innych przez Tink API</p>
                                 </div>
                                 <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-8 border-transparent border-t-white"></div>
                               </div>
