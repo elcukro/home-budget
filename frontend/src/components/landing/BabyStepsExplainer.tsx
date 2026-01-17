@@ -3,13 +3,6 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import {
-  PiggyBank,
-  Snowflake,
-  Shield,
-  TrendingUp,
-  Home,
-  CreditCard,
-  Trophy,
   ChevronDown,
   ChevronUp,
   CheckCircle2
@@ -21,7 +14,7 @@ const steps = [
     number: 1,
     title: 'Fundusz Awaryjny Startowy',
     amount: '3 000 - 5 000 PLN',
-    icon: PiggyBank,
+    image: '/images/steps/krok1.png',
     color: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
     description: 'Zanim zaczniesz spłacać długi, zabezpiecz się na nagłe wydatki. Bez tego funduszu każda awaria samochodu czy zepsuta pralka zmusi Cię do wzięcia kolejnej chwilówki.',
@@ -32,7 +25,7 @@ const steps = [
     number: 2,
     title: 'Spłać Wszystkie Długi',
     amount: 'Metoda Kuli Śnieżnej',
-    icon: Snowflake,
+    image: '/images/steps/krok2.png',
     color: 'bg-violet-100',
     iconColor: 'text-violet-600',
     description: 'Płać minimalne raty wszędzie, ale najmniejszy dług spłacaj jak najszybciej. Jak go zamkniesz - bierzesz tę ratę i dorzucasz do kolejnego długu. Kula rośnie z każdym spłaconym zobowiązaniem.',
@@ -43,7 +36,7 @@ const steps = [
     number: 3,
     title: 'Pełny Fundusz Awaryjny',
     amount: '3-6 miesięcy wydatków',
-    icon: Shield,
+    image: '/images/steps/krok3.png',
     color: 'bg-amber-100',
     iconColor: 'text-amber-600',
     description: 'Teraz, gdy nie masz długów, zbuduj prawdziwe zabezpieczenie. 3-6 miesięcy Twoich wydatków na osobnym koncie. To Twoja polisa na wypadek utraty pracy lub choroby.',
@@ -54,7 +47,7 @@ const steps = [
     number: 4,
     title: '15% na Przyszłość',
     amount: 'IKE + IKZE + PPK + OIPE',
-    icon: TrendingUp,
+    image: '/images/steps/krok4.png',
     color: 'bg-sky-100',
     iconColor: 'text-sky-600',
     description: 'Inwestuj 15% dochodu w długoterminowe oszczędności emerytalne. W Polsce masz do dyspozycji: PPK (dopłata pracodawcy), IKE (brak podatku Belki przy wypłacie), IKZE (odliczenie od podatku co rok), OIPE (europejska emerytura). UWAGA: Inwestycje poza tymi "opakowaniami" są obciążone 19% podatkiem od zysków kapitałowych (tzw. podatek Belki).',
@@ -65,7 +58,7 @@ const steps = [
     number: 5,
     title: 'Start Dziecka w Dorosłość',
     amount: '30 000 - 100 000 PLN / dziecko',
-    icon: Home,
+    image: '/images/steps/krok5.png',
     color: 'bg-rose-100',
     iconColor: 'text-rose-600',
     description: 'W Polsce studia są darmowe, ale młody człowiek potrzebuje: wkładu własnego na mieszkanie, kursu prawa jazdy, pierwszego samochodu, zabezpieczenia na start. To Twój prezent dla dorosłego dziecka.',
@@ -76,7 +69,7 @@ const steps = [
     number: 6,
     title: 'Spłać Kredyt Hipoteczny',
     amount: 'Wcześniejsza spłata',
-    icon: CreditCard,
+    image: '/images/steps/krok6.png',
     color: 'bg-amber-100',
     iconColor: 'text-amber-600',
     description: 'Teraz atakujesz największy dług - hipotekę. Każda nadpłata skraca okres kredytowania i zmniejsza całkowity koszt odsetek. Dom bez kredytu to prawdziwa wolność.',
@@ -87,7 +80,7 @@ const steps = [
     number: 7,
     title: 'Buduj Majątek i Pomagaj',
     amount: 'Wolność Finansowa',
-    icon: Trophy,
+    image: '/images/steps/krok7.png',
     color: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
     description: 'Gratulacje - osiągnąłeś wolność finansową! Brak długów, zabezpieczona przyszłość, dom spłacony. Teraz możesz inwestować, pomagać rodzinie, wspierać cele charytatywne i żyć na własnych zasadach.',
@@ -165,8 +158,14 @@ export default function BabyStepsExplainer() {
                         </div>
 
                         {/* Icon */}
-                        <div className={`hidden sm:flex flex-shrink-0 w-12 h-12 ${step.color} rounded-xl items-center justify-center`}>
-                          <step.icon className={`w-6 h-6 ${step.iconColor}`} />
+                        <div className="hidden sm:flex flex-shrink-0 w-14 h-14 items-center justify-center">
+                          <Image
+                            src={step.image}
+                            alt={step.title}
+                            width={56}
+                            height={56}
+                            className="object-contain"
+                          />
                         </div>
 
                         {/* Title and amount */}
