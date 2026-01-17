@@ -1,16 +1,29 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Check, Sparkles, Shield, Zap, Ban, Building2 } from 'lucide-react';
+import { Check, X, Sparkles, Shield, Zap, Ban, Building2 } from 'lucide-react';
 import Link from 'next/link';
 
 const plans = [
+  {
+    id: 'free',
+    name: 'Darmowy',
+    price: '0',
+    period: 'na zawsze',
+    popular: false,
+    description: 'Zacznij swoją drogę do wolności finansowej',
+    buttonText: 'Zacznij za darmo',
+    buttonStyle: 'outline',
+  },
   {
     id: 'monthly',
     name: 'Miesięczny',
     price: '29',
     period: 'miesiąc',
     popular: false,
+    description: 'Pełna moc bez zobowiązań',
+    buttonText: 'Wybierz plan',
+    buttonStyle: 'outline',
   },
   {
     id: 'annual',
@@ -19,6 +32,9 @@ const plans = [
     period: 'rok',
     popular: true,
     savings: '28%',
+    description: 'Najlepsza wartość dla poważnych użytkowników',
+    buttonText: 'Wybierz plan',
+    buttonStyle: 'primary',
   },
   {
     id: 'lifetime',
@@ -27,6 +43,9 @@ const plans = [
     period: 'jednorazowo',
     popular: false,
     bonus: 'Płacisz raz, korzystasz zawsze',
+    description: 'Dla tych, którzy myślą długoterminowo',
+    buttonText: 'Wybierz plan',
+    buttonStyle: 'outline',
   },
 ];
 
@@ -61,16 +80,56 @@ const whyPaid = [
   },
 ];
 
-const features = [
-  'Nieograniczona liczba wydatków',
-  'Nieograniczona liczba przychodów',
-  'Nieograniczona liczba pożyczek',
-  'Nieograniczona liczba celów oszczędnościowych',
-  'Integracja z bankiem (Tink)',
-  'Analiza AI',
-  'Eksport do JSON, CSV, XLSX',
-  'Wszystkie raporty',
-];
+type FeatureValue = boolean | string;
+
+interface PlanFeatures {
+  expenses: FeatureValue;
+  income: FeatureValue;
+  loans: FeatureValue;
+  savings: FeatureValue;
+  bankIntegration: FeatureValue;
+  ai: FeatureValue;
+  export: FeatureValue;
+  reports: FeatureValue;
+  babySteps: FeatureValue;
+}
+
+const planFeatures: Record<string, PlanFeatures> = {
+  free: {
+    expenses: '50 / miesiąc',
+    income: '3 źródła',
+    loans: '2 pozycje',
+    savings: '1 cel',
+    bankIntegration: false,
+    ai: false,
+    export: false,
+    reports: 'Podstawowe',
+    babySteps: 'Podgląd kroków',
+  },
+  premium: {
+    expenses: 'Bez limitu',
+    income: 'Bez limitu',
+    loans: 'Bez limitu',
+    savings: 'Bez limitu',
+    bankIntegration: true,
+    ai: true,
+    export: true,
+    reports: 'Wszystkie',
+    babySteps: 'Pełna analiza + rekomendacje',
+  },
+};
+
+const featureLabels: Record<keyof PlanFeatures, string> = {
+  expenses: 'Wydatki',
+  income: 'Przychody',
+  loans: 'Kredyty i pożyczki',
+  savings: 'Cele oszczędnościowe',
+  bankIntegration: 'Integracja z bankiem (Tink)',
+  ai: 'Analiza AI',
+  export: 'Eksport (JSON, CSV, XLSX)',
+  reports: 'Raporty',
+  babySteps: '7 Kroków do wolności',
+};
 
 export default function PricingSection() {
   return (
@@ -112,81 +171,108 @@ export default function PricingSection() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative bg-white/80 backdrop-blur-sm border rounded-2xl p-8 transition-all duration-300 ${
-                plan.popular
-                  ? 'border-emerald-300 shadow-xl shadow-emerald-100/50 scale-105 z-10'
-                  : 'border-emerald-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/50'
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-sm font-medium rounded-full shadow-lg shadow-emerald-200">
-                  Najpopularniejszy
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          {plans.map((plan) => {
+            const features = plan.id === 'free' ? planFeatures.free : planFeatures.premium;
+            const isFree = plan.id === 'free';
+
+            return (
+              <div
+                key={plan.id}
+                className={`relative bg-white/80 backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300 ${
+                  plan.popular
+                    ? 'border-emerald-300 shadow-xl shadow-emerald-100/50 scale-105 z-10'
+                    : 'border-emerald-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/50'
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-xs font-medium rounded-full shadow-lg shadow-emerald-200">
+                    Najpopularniejszy
+                  </div>
+                )}
+
+                <h3 className="text-lg font-semibold text-emerald-900 mb-1">
+                  {plan.name}
+                </h3>
+
+                <p className="text-xs text-emerald-600/60 mb-4">
+                  {plan.description}
+                </p>
+
+                <div className="flex items-baseline gap-1 mb-4">
+                  <span className={`text-3xl font-bold ${isFree ? 'text-emerald-600' : 'bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent'}`}>
+                    {plan.price}
+                  </span>
+                  <span className="text-emerald-600/70 text-sm">PLN</span>
+                  <span className="text-emerald-600/70 text-xs">
+                    / {plan.period}
+                  </span>
                 </div>
-              )}
 
-              <h3 className="text-xl font-semibold text-emerald-900 mb-2">
-                {plan.name}
-              </h3>
+                {plan.savings && (
+                  <div className="inline-block px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full mb-4">
+                    Oszczędzasz {plan.savings}
+                  </div>
+                )}
 
-              <div className="flex items-baseline gap-1 mb-6">
-                <span className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">{plan.price}</span>
-                <span className="text-emerald-600/70">PLN</span>
-                <span className="text-emerald-600/70 text-sm">
-                  / {plan.period}
-                </span>
+                {plan.bonus && (
+                  <div className="inline-block px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full mb-4">
+                    {plan.bonus}
+                  </div>
+                )}
+
+                <Link href="/auth/signin" className="block mb-5">
+                  <Button
+                    className={`w-full text-sm ${
+                      plan.popular
+                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200'
+                        : isFree
+                          ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                          : 'bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                    variant={plan.popular ? 'default' : 'outline'}
+                  >
+                    {plan.buttonText}
+                  </Button>
+                </Link>
+
+                <ul className="space-y-2">
+                  {(Object.keys(featureLabels) as Array<keyof PlanFeatures>).map((featureKey) => {
+                    const value = features[featureKey];
+                    const isAvailable = value !== false;
+                    const displayValue = typeof value === 'string' ? value : null;
+
+                    return (
+                      <li key={featureKey} className="flex items-start gap-2">
+                        {isAvailable ? (
+                          <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                        ) : (
+                          <X className="w-4 h-4 text-gray-300 flex-shrink-0 mt-0.5" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <span className={`text-xs ${isAvailable ? 'text-emerald-700/70' : 'text-gray-400'}`}>
+                            {featureLabels[featureKey]}
+                          </span>
+                          {displayValue && (
+                            <span className={`text-xs ml-1 ${isFree ? 'text-emerald-600 font-medium' : 'text-emerald-500'}`}>
+                              ({displayValue})
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-
-              {plan.savings && (
-                <div className="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 text-sm font-medium rounded-full mb-6">
-                  Oszczędzasz {plan.savings}
-                </div>
-              )}
-
-              {plan.bonus && (
-                <div className="inline-block px-3 py-1 bg-amber-100 text-amber-700 text-sm font-medium rounded-full mb-6">
-                  {plan.bonus}
-                </div>
-              )}
-
-              <Link href="/auth/signin" className="block mb-6">
-                <Button
-                  className={`w-full ${
-                    plan.popular
-                      ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200'
-                      : 'bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                  }`}
-                  variant={plan.popular ? 'default' : 'outline'}
-                >
-                  Wybierz plan
-                </Button>
-              </Link>
-
-              <ul className="space-y-3">
-                {features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <Check className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-emerald-700/70 text-sm">
-                      {feature}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Free Tier Info */}
+        {/* Bottom note */}
         <div className="text-center">
-          <p className="text-emerald-700/70 mb-2">
-            Możesz też korzystać z darmowego planu z podstawowymi funkcjami.
+          <p className="text-emerald-700/70 text-sm">
+            Wszystkie płatne plany zawierają 7-dniowy okres próbny. Bez karty kredytowej.
           </p>
-          <Link href="/auth/signin" className="text-emerald-600 hover:text-emerald-700 hover:underline font-medium">
-            Zacznij za darmo →
-          </Link>
         </div>
       </div>
     </section>
