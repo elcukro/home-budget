@@ -98,8 +98,8 @@ const planFeatures: Record<string, PlanFeatures> = {
   free: {
     expenses: '50 / miesiąc',
     income: '3 źródła',
-    loans: '2 pozycje',
-    savings: '1 cel',
+    loans: '3 pozycje',
+    savings: '3 cele',
     bankIntegration: false,
     ai: false,
     export: false,
