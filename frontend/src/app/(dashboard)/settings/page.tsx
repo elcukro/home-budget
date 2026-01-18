@@ -897,12 +897,10 @@ export default function SettingsPage() {
                 </Button>
               </form>
 
-              {/* Onboarding Section - hidden if user already completed onboarding or has complete data */}
-              {!settings?.onboarding_completed && !hasCompleteData && (
-                <>
-                  <Separator className="my-6" />
+              {/* Onboarding Section - always visible in settings so users can re-run it */}
+              <Separator className="my-6" />
 
-                  <div className="space-y-4">
+              <div className="space-y-4">
                     <div className="flex items-center gap-2">
                       <FontAwesomeIcon icon={faPlay} className="w-4 h-4 text-muted-foreground" />
                       <h4 className="font-medium">{intl.formatMessage({ id: "settings.onboarding.title" })}</h4>
@@ -975,8 +973,6 @@ export default function SettingsPage() {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-                </>
-              )}
             </CardContent>
           </Card>
         </TabsContent>
