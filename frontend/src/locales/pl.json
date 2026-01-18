@@ -1106,6 +1106,15 @@
       "connectionError": "Błąd połączenia: {error}"
     },
     "tabs": {
+      "general": "Ogólne",
+      "generalDescription": "Podstawowe ustawienia aplikacji - język i waluta.",
+      "finance": "Finanse",
+      "financeDescription": "Ustaw cele funduszu awaryjnego i skonfiguruj analizy AI.",
+      "tax": "Podatki",
+      "integrations": "Integracje",
+      "integrationsDescription": "Połącz swoje konta bankowe, aby automatycznie importować transakcje.",
+      "data": "Dane",
+      "dataDescription": "Eksportuj lub importuj swoje dane finansowe.",
       "importExport": "Import i eksport",
       "banking": "Połączenia bankowe",
       "account": "Konto"

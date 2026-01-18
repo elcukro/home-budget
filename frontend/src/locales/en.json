@@ -1226,6 +1226,15 @@
       "deleteError": "Failed to delete account. Please try again."
     },
     "tabs": {
+      "general": "General",
+      "generalDescription": "Basic app settings - language and currency.",
+      "finance": "Finance",
+      "financeDescription": "Set emergency fund goals and configure AI analysis.",
+      "tax": "Taxes",
+      "integrations": "Integrations",
+      "integrationsDescription": "Connect your bank accounts to automatically import transactions.",
+      "data": "Data",
+      "dataDescription": "Export or import your financial data.",
       "importExport": "Import & Export",
       "banking": "Bank connections",
       "account": "Account"

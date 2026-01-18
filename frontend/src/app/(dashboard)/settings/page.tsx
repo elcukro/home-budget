@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useIntl } from "react-intl";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Card,
   CardContent,
@@ -21,7 +22,6 @@ import {
 } from "@/components/ui/card";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -34,7 +34,18 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { logger } from "@/lib/logger";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCrown, faInfinity, faTriangleExclamation, faUser } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCrown,
+  faInfinity,
+  faTriangleExclamation,
+  faUser,
+  faGlobe,
+  faPiggyBank,
+  faReceipt,
+  faBuilding,
+  faDatabase,
+  faKey,
+} from "@fortawesome/free-solid-svg-icons";
 import { signOut } from "next-auth/react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -130,17 +141,28 @@ export default function SettingsPage() {
   const { updateSettings: updateContextSettings } = useSettings();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState('import-export');
+  const [activeTab, setActiveTab] = useState('general');
 
   // Sync tab state with URL parameter (handles both initial load and navigation)
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl === 'banking') {
-      setActiveTab('banking');
+    if (tabFromUrl === 'general') {
+      setActiveTab('general');
+    } else if (tabFromUrl === 'finance') {
+      setActiveTab('finance');
+    } else if (tabFromUrl === 'tax') {
+      setActiveTab('tax');
+    } else if (tabFromUrl === 'integrations') {
+      setActiveTab('integrations');
+    } else if (tabFromUrl === 'data') {
+      setActiveTab('data');
     } else if (tabFromUrl === 'billing') {
       setActiveTab('billing');
     } else if (tabFromUrl === 'account') {
       setActiveTab('account');
+    } else if (tabFromUrl === 'banking') {
+      // Legacy support - redirect to integrations
+      setActiveTab('integrations');
     }
   }, [searchParams]);
 
@@ -258,12 +280,45 @@ export default function SettingsPage() {
     void fetchTinkConnections();
   }, [userEmail]);
 
-  // Refetch Tink connections when banking tab becomes active (e.g., after returning from callback)
+  // Refetch Tink connections when integrations tab becomes active (e.g., after returning from callback)
   useEffect(() => {
-    if (activeTab === 'banking') {
+    if (activeTab === 'integrations') {
       void fetchTinkConnections();
     }
   }, [activeTab]);
+
+  // Auto-save function for simple settings (language, currency)
+  const autoSaveSettings = useCallback(async (updates: Partial<UserSettings>) => {
+    if (!userEmail || !settings) return;
+
+    try {
+      await updateContextSettings({
+        language: updates.language ?? settings.language,
+        currency: updates.currency ?? settings.currency,
+        ai: settings.ai,
+        emergency_fund_target: settings.emergency_fund_target,
+        emergency_fund_months: settings.emergency_fund_months,
+        base_currency: updates.currency ?? settings.currency,
+        employment_status: settings.employment_status ?? undefined,
+        tax_form: settings.tax_form ?? undefined,
+        birth_year: settings.birth_year ?? undefined,
+        use_authors_costs: settings.use_authors_costs ?? undefined,
+        ppk_enrolled: settings.ppk_enrolled ?? undefined,
+        ppk_employee_rate: settings.ppk_employee_rate ?? undefined,
+        ppk_employer_rate: settings.ppk_employer_rate ?? undefined,
+        children_count: settings.children_count ?? undefined,
+      });
+      toast({
+        title: intl.formatMessage({ id: "settings.messages.success" }),
+      });
+    } catch (err) {
+      logger.error("[Settings] Auto-save failed", err);
+      toast({
+        title: intl.formatMessage({ id: "settings.messages.error" }),
+        variant: "destructive",
+      });
+    }
+  }, [userEmail, settings, updateContextSettings, toast, intl]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -455,430 +510,454 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{intl.formatMessage({ id: "settings.title" })}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="language">
-                  {intl.formatMessage({ id: "settings.form.language" })}
-                </Label>
-                <Select
-                  value={settings.language}
-                  onValueChange={(value) =>
-                    setSettings((prev) => prev && { ...prev, language: value })
-                  }
-                >
-                  <SelectTrigger id="language">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang.code} value={lang.code}>
-                        {intl.formatMessage({ id: lang.name })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold">{intl.formatMessage({ id: "settings.title" })}</h1>
+      </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="currency">
-                  {intl.formatMessage({ id: "settings.form.currency" })}
-                </Label>
-                <Select
-                  value={settings.currency}
-                  onValueChange={(value) =>
-                    setSettings((prev) => prev && { ...prev, currency: value })
-                  }
-                >
-                  <SelectTrigger id="currency">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {currencies.map((currency) => (
-                      <SelectItem key={currency.code} value={currency.code}>
-                        {`${currency.code} (${currency.symbol}) - ${intl.formatMessage({ id: currency.name })}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="w-full flex-wrap h-auto gap-1 p-1">
+          <TabsTrigger value="general" className="gap-2">
+            <FontAwesomeIcon icon={faGlobe} className="w-4 h-4" />
+            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.general" })}</span>
+          </TabsTrigger>
+          <TabsTrigger value="finance" className="gap-2">
+            <FontAwesomeIcon icon={faPiggyBank} className="w-4 h-4" />
+            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.finance" })}</span>
+          </TabsTrigger>
+          <TabsTrigger value="tax" className="gap-2">
+            <FontAwesomeIcon icon={faReceipt} className="w-4 h-4" />
+            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.tax" })}</span>
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="gap-2">
+            <FontAwesomeIcon icon={faBuilding} className="w-4 h-4" />
+            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.integrations" })}</span>
+          </TabsTrigger>
+          <TabsTrigger value="data" className="gap-2">
+            <FontAwesomeIcon icon={faDatabase} className="w-4 h-4" />
+            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.data" })}</span>
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="gap-2">
+            <FontAwesomeIcon icon={faCrown} className="w-4 h-4" />
+            <span className="hidden sm:inline">{intl.formatMessage({ id: "billing.title" })}</span>
+          </TabsTrigger>
+          <TabsTrigger value="account" className="gap-2">
+            <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
+            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.account" })}</span>
+          </TabsTrigger>
+        </TabsList>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="emergency_fund_target">
-                  {intl.formatMessage({ id: "settings.financialFreedom.emergencyFundTarget" })}
-                </Label>
-                <Input
-                  id="emergency_fund_target"
-                  type="number"
-                  min={1000}
-                  step={50}
-                  value={settings.emergency_fund_target}
-                  onChange={(event) =>
-                    setSettings((prev) =>
-                      prev && {
-                        ...prev,
-                        emergency_fund_target: Number(event.target.value),
-                      },
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="emergency_fund_months">
-                  {intl.formatMessage({ id: "settings.financialFreedom.emergencyFundMonths" })}
-                </Label>
-                <Input
-                  id="emergency_fund_months"
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={settings.emergency_fund_months}
-                  onChange={(event) =>
-                    setSettings((prev) =>
-                      prev && {
-                        ...prev,
-                        emergency_fund_months: Number(event.target.value),
-                      },
-                    )
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ai_api_key">
-                {intl.formatMessage({ id: "settings.form.claudeApiKey" })}
-              </Label>
-              <Input
-                id="ai_api_key"
-                type="password"
-                value={settings.ai?.apiKey ?? ""}
-                onChange={(event) =>
-                  setSettings((prev) =>
-                    prev && {
-                      ...prev,
-                      ai: {
-                        ...(prev.ai ?? {}),
-                        apiKey: event.target.value,
-                      },
-                    },
-                  )
-                }
-                placeholder={intl.formatMessage({ id: "settings.form.claudeApiKeyPlaceholder" })}
-              />
-            </div>
-
-            <Separator className="my-6" />
-
-            {/* Tax Profile Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-primary">
-                {intl.formatMessage({ id: "settings.taxProfile.title" })}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {intl.formatMessage({ id: "settings.taxProfile.description" })}
-              </p>
-
-              <div className="grid gap-4 md:grid-cols-2">
+        {/* General Settings Tab */}
+        <TabsContent value="general">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faGlobe} className="w-5 h-5 text-primary" />
+                {intl.formatMessage({ id: "settings.tabs.general" })}
+              </CardTitle>
+              <CardDescription>
+                {intl.formatMessage({ id: "settings.tabs.generalDescription" })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="birth_year">
-                    {intl.formatMessage({ id: "settings.taxProfile.birthYear" })}
-                  </Label>
-                  <Input
-                    id="birth_year"
-                    type="number"
-                    min={1940}
-                    max={new Date().getFullYear()}
-                    value={settings.birth_year ?? ""}
-                    onChange={(event) =>
-                      setSettings((prev) =>
-                        prev && {
-                          ...prev,
-                          birth_year: event.target.value ? Number(event.target.value) : null,
-                        },
-                      )
-                    }
-                    placeholder="np. 1990"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {intl.formatMessage({ id: "settings.taxProfile.birthYearHint" })}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="children_count">
-                    {intl.formatMessage({ id: "settings.taxProfile.childrenCount" })}
-                  </Label>
-                  <Input
-                    id="children_count"
-                    type="number"
-                    min={0}
-                    max={20}
-                    value={settings.children_count ?? 0}
-                    onChange={(event) =>
-                      setSettings((prev) =>
-                        prev && {
-                          ...prev,
-                          children_count: Number(event.target.value),
-                        },
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="employment_status">
-                    {intl.formatMessage({ id: "settings.taxProfile.employmentStatus" })}
+                  <Label htmlFor="language">
+                    {intl.formatMessage({ id: "settings.form.language" })}
                   </Label>
                   <Select
-                    value={settings.employment_status ?? ""}
-                    onValueChange={(value) =>
-                      setSettings((prev) => prev && { ...prev, employment_status: value || null })
-                    }
+                    value={settings.language}
+                    onValueChange={(value) => {
+                      setSettings((prev) => prev && { ...prev, language: value });
+                      void autoSaveSettings({ language: value });
+                    }}
                   >
-                    <SelectTrigger id="employment_status">
-                      <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectEmployment" })} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employmentStatuses.map((status) => (
-                        <SelectItem key={status.code} value={status.code}>
-                          {intl.formatMessage({ id: status.name })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="tax_form">
-                    {intl.formatMessage({ id: "settings.taxProfile.taxForm" })}
-                  </Label>
-                  <Select
-                    value={settings.tax_form ?? ""}
-                    onValueChange={(value) =>
-                      setSettings((prev) => prev && { ...prev, tax_form: value || null })
-                    }
-                  >
-                    <SelectTrigger id="tax_form">
-                      <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectTaxForm" })} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {taxForms.map((form) => (
-                        <SelectItem key={form.code} value={form.code}>
-                          {intl.formatMessage({ id: form.name })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-4 rounded-lg border border-default p-4 bg-muted/30">
-                <h4 className="font-medium text-primary">
-                  {intl.formatMessage({ id: "settings.taxProfile.ppkSection" })}
-                </h4>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="ppk_enrolled">
-                      {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolled" })}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolledHint" })}
-                    </p>
-                  </div>
-                  <Select
-                    value={settings.ppk_enrolled === true ? "yes" : settings.ppk_enrolled === false ? "no" : "unknown"}
-                    onValueChange={(value) =>
-                      setSettings((prev) => prev && {
-                        ...prev,
-                        ppk_enrolled: value === "yes" ? true : value === "no" ? false : null
-                      })
-                    }
-                  >
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger id="language">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="unknown">{intl.formatMessage({ id: "settings.taxProfile.ppkUnknown" })}</SelectItem>
-                      <SelectItem value="yes">{intl.formatMessage({ id: "settings.taxProfile.ppkYes" })}</SelectItem>
-                      <SelectItem value="no">{intl.formatMessage({ id: "settings.taxProfile.ppkNo" })}</SelectItem>
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.code} value={lang.code}>
+                          {intl.formatMessage({ id: lang.name })}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                </div>
-
-                {settings.ppk_enrolled === true && (
-                  <div className="grid gap-4 md:grid-cols-2 pt-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="ppk_employee_rate">
-                        {intl.formatMessage({ id: "settings.taxProfile.ppkEmployeeRate" })}
-                      </Label>
-                      <Input
-                        id="ppk_employee_rate"
-                        type="number"
-                        min={0.5}
-                        max={4}
-                        step={0.5}
-                        value={settings.ppk_employee_rate ?? 2}
-                        onChange={(event) =>
-                          setSettings((prev) =>
-                            prev && { ...prev, ppk_employee_rate: Number(event.target.value) }
-                          )
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground">0.5% - 4%</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ppk_employer_rate">
-                        {intl.formatMessage({ id: "settings.taxProfile.ppkEmployerRate" })}
-                      </Label>
-                      <Input
-                        id="ppk_employer_rate"
-                        type="number"
-                        min={1.5}
-                        max={4}
-                        step={0.5}
-                        value={settings.ppk_employer_rate ?? 1.5}
-                        onChange={(event) =>
-                          setSettings((prev) =>
-                            prev && { ...prev, ppk_employer_rate: Number(event.target.value) }
-                          )
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground">1.5% - 4%</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border border-default p-4 bg-muted/30">
-                <div>
-                  <Label htmlFor="use_authors_costs">
-                    {intl.formatMessage({ id: "settings.taxProfile.authorsCosts" })}
-                  </Label>
                   <p className="text-xs text-muted-foreground">
-                    {intl.formatMessage({ id: "settings.taxProfile.authorsCostsHint" })}
+                    {intl.formatMessage({ id: "settings.tooltips.language" })}
                   </p>
                 </div>
-                <input
-                  type="checkbox"
-                  id="use_authors_costs"
-                  checked={settings.use_authors_costs ?? false}
-                  onChange={(event) =>
-                    setSettings((prev) =>
-                      prev && { ...prev, use_authors_costs: event.target.checked }
-                    )
-                  }
-                  className="h-5 w-5 rounded border-gray-300"
-                />
-              </div>
-            </div>
 
-            <Button type="submit" className="mt-6">
-              {intl.formatMessage({ id: "settings.form.submit" })}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="import-export">
-            {intl.formatMessage({ id: "settings.tabs.importExport" })}
-          </TabsTrigger>
-          <TabsTrigger value="banking">
-            {intl.formatMessage({ id: "settings.tabs.banking" })}
-          </TabsTrigger>
-          <TabsTrigger value="billing">
-            <FontAwesomeIcon icon={faCrown} className="w-4 h-4 mr-2" />
-            {intl.formatMessage({ id: "billing.title" })}
-          </TabsTrigger>
-          <TabsTrigger value="account">
-            <FontAwesomeIcon icon={faUser} className="w-4 h-4 mr-2" />
-            {intl.formatMessage({ id: "settings.tabs.account" })}
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="import-export">
-          <Card>
-            <CardHeader>
-              <CardTitle>{intl.formatMessage({ id: "settings.export.title" })}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {intl.formatMessage({ id: "settings.export.description" })}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => void handleExport("json")}>{intl.formatMessage({ id: "settings.export.json" })}</Button>
-                <Button variant="outline" onClick={() => void handleExport("csv")}>{intl.formatMessage({ id: "settings.export.csv" })}</Button>
-                <Button variant="outline" onClick={() => void handleExport("xlsx")}>{intl.formatMessage({ id: "settings.export.xlsx" })}</Button>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="import_file">
-                    {intl.formatMessage({ id: "settings.import.title" })}
+                  <Label htmlFor="currency">
+                    {intl.formatMessage({ id: "settings.form.currency" })}
                   </Label>
-                  <Input
-                    id="import_file"
-                    ref={fileInputRef}
-                    type="file"
-                    accept="application/json"
-                    onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    {intl.formatMessage({ id: "settings.import.description" })}
-                  </p>
-                  <fieldset className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="import_clear_existing"
-                      checked={shouldClearBeforeImport}
-                      onChange={(event) => setShouldClearBeforeImport(event.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    <Label
-                      htmlFor="import_clear_existing"
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {intl.formatMessage({ id: "settings.import.clearExistingLabel" })}
-                    </Label>
-                  </fieldset>
-                </div>
-                <div className="flex gap-2">
-                  <Button disabled={!importFile} onClick={() => void handleImport()}>
-                    {intl.formatMessage({ id: "settings.import.upload" })}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setImportFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
+                  <Select
+                    value={settings.currency}
+                    onValueChange={(value) => {
+                      setSettings((prev) => prev && { ...prev, currency: value });
+                      void autoSaveSettings({ currency: value });
                     }}
                   >
-                    {intl.formatMessage({ id: "common.cancel" })}
-                  </Button>
+                    <SelectTrigger id="currency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.code} value={currency.code}>
+                          {`${currency.code} (${currency.symbol}) - ${intl.formatMessage({ id: currency.name })}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {intl.formatMessage({ id: "settings.tooltips.currency" })}
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="banking">
+
+        {/* Finance Settings Tab */}
+        <TabsContent value="finance">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faPiggyBank} className="w-5 h-5 text-primary" />
+                  {intl.formatMessage({ id: "settings.financialFreedom.title" })}
+                </CardTitle>
+                <CardDescription>
+                  {intl.formatMessage({ id: "settings.tabs.financeDescription" })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form className="space-y-6" onSubmit={handleSubmit}>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="emergency_fund_target">
+                        {intl.formatMessage({ id: "settings.financialFreedom.emergencyFundTarget" })}
+                      </Label>
+                      <Input
+                        id="emergency_fund_target"
+                        type="number"
+                        min={1000}
+                        step={50}
+                        value={settings.emergency_fund_target}
+                        onChange={(event) =>
+                          setSettings((prev) =>
+                            prev && {
+                              ...prev,
+                              emergency_fund_target: Number(event.target.value),
+                            },
+                          )
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.tooltips.emergencyFundTarget" })}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="emergency_fund_months">
+                        {intl.formatMessage({ id: "settings.financialFreedom.emergencyFundMonths" })}
+                      </Label>
+                      <Input
+                        id="emergency_fund_months"
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={settings.emergency_fund_months}
+                        onChange={(event) =>
+                          setSettings((prev) =>
+                            prev && {
+                              ...prev,
+                              emergency_fund_months: Number(event.target.value),
+                            },
+                          )
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.tooltips.emergencyFundMonths" })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-muted-foreground" />
+                      <h4 className="font-medium">{intl.formatMessage({ id: "settings.ai.title" })}</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ai_api_key">
+                        {intl.formatMessage({ id: "settings.form.claudeApiKey" })}
+                      </Label>
+                      <Input
+                        id="ai_api_key"
+                        type="password"
+                        value={settings.ai?.apiKey ?? ""}
+                        onChange={(event) =>
+                          setSettings((prev) =>
+                            prev && {
+                              ...prev,
+                              ai: {
+                                ...(prev.ai ?? {}),
+                                apiKey: event.target.value,
+                              },
+                            },
+                          )
+                        }
+                        placeholder={intl.formatMessage({ id: "settings.form.claudeApiKeyPlaceholder" })}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.tooltips.claudeApiKey" })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button type="submit">
+                    {intl.formatMessage({ id: "settings.form.submit" })}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Tax Profile Tab */}
+        <TabsContent value="tax">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faReceipt} className="w-5 h-5 text-primary" />
+                {intl.formatMessage({ id: "settings.taxProfile.title" })}
+              </CardTitle>
+              <CardDescription>
+                {intl.formatMessage({ id: "settings.taxProfile.description" })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-6" onSubmit={handleSubmit}>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="birth_year">
+                      {intl.formatMessage({ id: "settings.taxProfile.birthYear" })}
+                    </Label>
+                    <Input
+                      id="birth_year"
+                      type="number"
+                      min={1940}
+                      max={new Date().getFullYear()}
+                      value={settings.birth_year ?? ""}
+                      onChange={(event) =>
+                        setSettings((prev) =>
+                          prev && {
+                            ...prev,
+                            birth_year: event.target.value ? Number(event.target.value) : null,
+                          },
+                        )
+                      }
+                      placeholder="np. 1990"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.taxProfile.birthYearHint" })}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="children_count">
+                      {intl.formatMessage({ id: "settings.taxProfile.childrenCount" })}
+                    </Label>
+                    <Input
+                      id="children_count"
+                      type="number"
+                      min={0}
+                      max={20}
+                      value={settings.children_count ?? 0}
+                      onChange={(event) =>
+                        setSettings((prev) =>
+                          prev && {
+                            ...prev,
+                            children_count: Number(event.target.value),
+                          },
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="employment_status">
+                      {intl.formatMessage({ id: "settings.taxProfile.employmentStatus" })}
+                    </Label>
+                    <Select
+                      value={settings.employment_status ?? ""}
+                      onValueChange={(value) =>
+                        setSettings((prev) => prev && { ...prev, employment_status: value || null })
+                      }
+                    >
+                      <SelectTrigger id="employment_status">
+                        <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectEmployment" })} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employmentStatuses.map((status) => (
+                          <SelectItem key={status.code} value={status.code}>
+                            {intl.formatMessage({ id: status.name })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tax_form">
+                      {intl.formatMessage({ id: "settings.taxProfile.taxForm" })}
+                    </Label>
+                    <Select
+                      value={settings.tax_form ?? ""}
+                      onValueChange={(value) =>
+                        setSettings((prev) => prev && { ...prev, tax_form: value || null })
+                      }
+                    >
+                      <SelectTrigger id="tax_form">
+                        <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectTaxForm" })} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {taxForms.map((form) => (
+                          <SelectItem key={form.code} value={form.code}>
+                            {intl.formatMessage({ id: form.name })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* PPK Section */}
+                <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                  <h4 className="font-medium">
+                    {intl.formatMessage({ id: "settings.taxProfile.ppkSection" })}
+                  </h4>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="ppk_enrolled">
+                        {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolled" })}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolledHint" })}
+                      </p>
+                    </div>
+                    <Select
+                      value={settings.ppk_enrolled === true ? "yes" : settings.ppk_enrolled === false ? "no" : "unknown"}
+                      onValueChange={(value) =>
+                        setSettings((prev) => prev && {
+                          ...prev,
+                          ppk_enrolled: value === "yes" ? true : value === "no" ? false : null
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unknown">{intl.formatMessage({ id: "settings.taxProfile.ppkUnknown" })}</SelectItem>
+                        <SelectItem value="yes">{intl.formatMessage({ id: "settings.taxProfile.ppkYes" })}</SelectItem>
+                        <SelectItem value="no">{intl.formatMessage({ id: "settings.taxProfile.ppkNo" })}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {settings.ppk_enrolled === true && (
+                    <div className="grid gap-4 md:grid-cols-2 pt-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="ppk_employee_rate">
+                          {intl.formatMessage({ id: "settings.taxProfile.ppkEmployeeRate" })}
+                        </Label>
+                        <Input
+                          id="ppk_employee_rate"
+                          type="number"
+                          min={0.5}
+                          max={4}
+                          step={0.5}
+                          value={settings.ppk_employee_rate ?? 2}
+                          onChange={(event) =>
+                            setSettings((prev) =>
+                              prev && { ...prev, ppk_employee_rate: Number(event.target.value) }
+                            )
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">0.5% - 4%</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ppk_employer_rate">
+                          {intl.formatMessage({ id: "settings.taxProfile.ppkEmployerRate" })}
+                        </Label>
+                        <Input
+                          id="ppk_employer_rate"
+                          type="number"
+                          min={1.5}
+                          max={4}
+                          step={0.5}
+                          value={settings.ppk_employer_rate ?? 1.5}
+                          onChange={(event) =>
+                            setSettings((prev) =>
+                              prev && { ...prev, ppk_employer_rate: Number(event.target.value) }
+                            )
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">1.5% - 4%</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Author's Costs Section */}
+                <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="use_authors_costs">
+                      {intl.formatMessage({ id: "settings.taxProfile.authorsCosts" })}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.taxProfile.authorsCostsHint" })}
+                    </p>
+                  </div>
+                  <Switch
+                    id="use_authors_costs"
+                    checked={settings.use_authors_costs ?? false}
+                    onCheckedChange={(checked) =>
+                      setSettings((prev) =>
+                        prev && { ...prev, use_authors_costs: checked }
+                      )
+                    }
+                  />
+                </div>
+
+                <Button type="submit">
+                  {intl.formatMessage({ id: "settings.form.submit" })}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Integrations Tab (Banking) */}
+        <TabsContent value="integrations">
           <div className="space-y-6">
             {/* Tink Connections - Primary bank integration */}
             <Card>
               <CardHeader>
-                <CardTitle>Tink Bank Connection</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faBuilding} className="w-5 h-5 text-primary" />
+                  {intl.formatMessage({ id: "settings.tabs.integrations" })}
+                </CardTitle>
+                <CardDescription>
+                  {intl.formatMessage({ id: "settings.tabs.integrationsDescription" })}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">
@@ -1014,6 +1093,93 @@ export default function SettingsPage() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Data Tab (Import/Export) */}
+        <TabsContent value="data">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faDatabase} className="w-5 h-5 text-primary" />
+                {intl.formatMessage({ id: "settings.tabs.data" })}
+              </CardTitle>
+              <CardDescription>
+                {intl.formatMessage({ id: "settings.tabs.dataDescription" })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Export Section */}
+              <div className="space-y-4">
+                <h4 className="font-medium">{intl.formatMessage({ id: "settings.export.title" })}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {intl.formatMessage({ id: "settings.export.description" })}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => void handleExport("json")}>
+                    {intl.formatMessage({ id: "settings.export.json" })}
+                  </Button>
+                  <Button variant="outline" onClick={() => void handleExport("csv")}>
+                    {intl.formatMessage({ id: "settings.export.csv" })}
+                  </Button>
+                  <Button variant="outline" onClick={() => void handleExport("xlsx")}>
+                    {intl.formatMessage({ id: "settings.export.xlsx" })}
+                  </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Import Section */}
+              <div className="space-y-4">
+                <h4 className="font-medium">{intl.formatMessage({ id: "settings.import.title" })}</h4>
+                <p className="text-sm text-muted-foreground">
+                  {intl.formatMessage({ id: "settings.import.description" })}
+                </p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="import_file">
+                      {intl.formatMessage({ id: "settings.import.title" })}
+                    </Label>
+                    <Input
+                      id="import_file"
+                      ref={fileInputRef}
+                      type="file"
+                      accept="application/json"
+                      onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="import_clear_existing"
+                      checked={shouldClearBeforeImport}
+                      onCheckedChange={setShouldClearBeforeImport}
+                    />
+                    <Label
+                      htmlFor="import_clear_existing"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {intl.formatMessage({ id: "settings.import.clearExistingLabel" })}
+                    </Label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button disabled={!importFile} onClick={() => void handleImport()}>
+                      {intl.formatMessage({ id: "settings.import.upload" })}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setImportFile(null);
+                        if (fileInputRef.current) fileInputRef.current.value = "";
+                      }}
+                    >
+                      {intl.formatMessage({ id: "common.cancel" })}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <BillingTabContent />
         <AccountTabContent />
       </Tabs>
