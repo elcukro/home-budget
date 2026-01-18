@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 import {
   HomeIcon,
   CurrencyDollarIcon,
@@ -21,6 +22,9 @@ import {
 import { useIntl } from 'react-intl';
 import SproutlyFiLogo from './SproutlyFiLogo';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useSettings } from '@/contexts/SettingsContext';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const navigation = [
   { name: 'navigation.onboarding', href: '/onboarding', icon: UserPlusIcon },
@@ -74,6 +78,50 @@ export default function Sidebar() {
   const pathname = usePathname();
   const intl = useIntl();
   const { data: session } = useSession();
+  const { settings } = useSettings();
+  const [hideOnboarding, setHideOnboarding] = useState(false);
+
+  useEffect(() => {
+    const checkShouldHideOnboarding = async () => {
+      const userEmail = session?.user?.email;
+      if (!userEmail) return;
+
+      // Hide if onboarding already completed
+      if (settings?.onboarding_completed) {
+        setHideOnboarding(true);
+        return;
+      }
+
+      // Check if user has data in all main sections
+      try {
+        const [incomeRes, expensesRes, loansRes, savingsRes] = await Promise.all([
+          fetch('/api/income'),
+          fetch(`${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`),
+          fetch(`${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`),
+          fetch('/api/savings'),
+        ]);
+
+        const hasIncome = incomeRes.ok && (await incomeRes.json()).length > 0;
+        const hasExpenses = expensesRes.ok && (await expensesRes.json()).length > 0;
+        const hasLoans = loansRes.ok && (await loansRes.json()).length > 0;
+        const hasSavings = savingsRes.ok && (await savingsRes.json()).length > 0;
+
+        // Hide if user has data in ALL sections
+        if (hasIncome && hasExpenses && hasLoans && hasSavings) {
+          setHideOnboarding(true);
+        }
+      } catch {
+        // On error, don't hide - let user access onboarding
+      }
+    };
+
+    void checkShouldHideOnboarding();
+  }, [session?.user?.email, settings?.onboarding_completed]);
+
+  // Filter out onboarding from navigation if user has complete data
+  const filteredNavigation = hideOnboarding
+    ? navigation.filter((item) => item.href !== '/onboarding')
+    : navigation;
 
   return (
     <div className="sticky top-0 h-screen w-64 border-r border-default bg-muted z-40">
@@ -113,7 +161,7 @@ export default function Sidebar() {
           )}
 
           <nav className="flex-1 space-y-1">
-            {navigation.map((item) => {
+            {filteredNavigation.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link
