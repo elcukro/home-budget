@@ -42,8 +42,8 @@ describe('fetchWithAuth', () => {
     })
 
     // Import module fresh
-    const module = await import('./fetchWithAuth')
-    fetchWithAuth = module.fetchWithAuth
+    const fetchWithAuthModule = await import('./fetchWithAuth')
+    fetchWithAuth = fetchWithAuthModule.fetchWithAuth
   })
 
   afterEach(() => {
