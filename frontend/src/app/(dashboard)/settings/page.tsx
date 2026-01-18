@@ -50,17 +50,6 @@ import { signOut } from "next-auth/react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-interface BankingConnection {
-  id: number;
-  institution_id: string;
-  institution_name: string;
-  requisition_id: string;
-  created_at: string;
-  expires_at: string;
-  is_active: boolean;
-  accounts: string[] | null;
-}
-
 interface TinkAccount {
   id: string;
   name?: string;
@@ -87,9 +76,6 @@ interface UserSettings {
   };
   emergency_fund_target: number;
   emergency_fund_months: number;
-  banking?: {
-    connections?: BankingConnection[];
-  };
   // Polish tax profile
   employment_status?: string | null;
   tax_form?: string | null;
@@ -167,7 +153,6 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [bankingConnections, setBankingConnections] = useState<BankingConnection[]>([]);
   const [tinkConnections, setTinkConnections] = useState<TinkConnection[]>([]);
   const [tinkConnecting, setTinkConnecting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -196,7 +181,6 @@ export default function SettingsPage() {
 
       const data: UserSettings = await response.json();
       setSettings(data);
-      setBankingConnections(data.banking?.connections ?? []);
     } catch (err) {
       logger.error("[Settings] Failed to fetch settings", err);
       setError(intl.formatMessage({ id: "settings.messages.error" }));
@@ -458,34 +442,6 @@ export default function SettingsPage() {
       });
     }
   };
-
-  const handleDeleteConnection = async (connectionId: number) => {
-    if (!confirm(intl.formatMessage({ id: "settings.messages.confirmBankDelete" }))) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/banking/connections/${connectionId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      toast({
-        title: intl.formatMessage({ id: "settings.messages.bankDeleteSuccess" }),
-      });
-      setBankingConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
-    } catch (err) {
-      logger.error("[Settings] Failed to delete banking connection", err);
-      toast({
-        title: intl.formatMessage({ id: "settings.messages.bankDeleteError" }),
-        variant: "destructive",
-      });
-    }
-  };
-
   if (loading) {
     return <div className="py-8 text-sm text-muted-foreground">{intl.formatMessage({ id: "settings.messages.loading" })}</div>;
   }
@@ -1035,48 +991,6 @@ export default function SettingsPage() {
                         View API Data
                       </Button>
                     </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* GoCardless Connections - Legacy */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{intl.formatMessage({ id: "settings.banking.title" })} (GoCardless)</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {bankingConnections.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {intl.formatMessage({ id: "settings.banking.noConnections" })}
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {bankingConnections.map((connection) => (
-                      <div
-                        key={connection.id}
-                        className="flex flex-col gap-1 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div>
-                          <p className="font-medium text-primary">
-                            {connection.institution_name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {intl.formatMessage({ id: "settings.banking.requisition" })}: {connection.requisition_id}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {intl.formatMessage({ id: "settings.banking.expires" })}: {new Date(connection.expires_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => void handleDeleteConnection(connection.id)}
-                        >
-                          {intl.formatMessage({ id: "settings.banking.remove" })}
-                        </Button>
-                      </div>
-                    ))}
                   </div>
                 )}
               </CardContent>
