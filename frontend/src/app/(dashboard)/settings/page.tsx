@@ -150,8 +150,6 @@ export default function SettingsPage() {
       setActiveTab('general');
     } else if (tabFromUrl === 'finance') {
       setActiveTab('finance');
-    } else if (tabFromUrl === 'tax') {
-      setActiveTab('tax');
     } else if (tabFromUrl === 'integrations') {
       setActiveTab('integrations');
     } else if (tabFromUrl === 'data') {
@@ -160,9 +158,9 @@ export default function SettingsPage() {
       setActiveTab('billing');
     } else if (tabFromUrl === 'account') {
       setActiveTab('account');
-    } else if (tabFromUrl === 'banking') {
-      // Legacy support - redirect to integrations
-      setActiveTab('integrations');
+    } else if (tabFromUrl === 'banking' || tabFromUrl === 'tax') {
+      // Legacy support - redirect to appropriate tabs
+      setActiveTab(tabFromUrl === 'banking' ? 'integrations' : 'general');
     }
   }, [searchParams]);
 
@@ -524,10 +522,6 @@ export default function SettingsPage() {
             <FontAwesomeIcon icon={faPiggyBank} className="w-4 h-4" />
             <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.finance" })}</span>
           </TabsTrigger>
-          <TabsTrigger value="tax" className="gap-2">
-            <FontAwesomeIcon icon={faReceipt} className="w-4 h-4" />
-            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.tax" })}</span>
-          </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-2">
             <FontAwesomeIcon icon={faBuilding} className="w-4 h-4" />
             <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.integrations" })}</span>
@@ -558,62 +552,278 @@ export default function SettingsPage() {
                 {intl.formatMessage({ id: "settings.tabs.generalDescription" })}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="language">
-                    {intl.formatMessage({ id: "settings.form.language" })}
-                  </Label>
-                  <Select
-                    value={settings.language}
-                    onValueChange={(value) => {
-                      setSettings((prev) => prev && { ...prev, language: value });
-                      void autoSaveSettings({ language: value });
-                    }}
-                  >
-                    <SelectTrigger id="language">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {languages.map((lang) => (
-                        <SelectItem key={lang.code} value={lang.code}>
-                          {intl.formatMessage({ id: lang.name })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {intl.formatMessage({ id: "settings.tooltips.language" })}
-                  </p>
+            <CardContent>
+              <form className="space-y-6" onSubmit={handleSubmit}>
+                {/* Language & Currency - auto-save */}
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="language">
+                      {intl.formatMessage({ id: "settings.form.language" })}
+                    </Label>
+                    <Select
+                      value={settings.language}
+                      onValueChange={(value) => {
+                        setSettings((prev) => prev && { ...prev, language: value });
+                        void autoSaveSettings({ language: value });
+                      }}
+                    >
+                      <SelectTrigger id="language">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {languages.map((lang) => (
+                          <SelectItem key={lang.code} value={lang.code}>
+                            {intl.formatMessage({ id: lang.name })}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.tooltips.language" })}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">
+                      {intl.formatMessage({ id: "settings.form.currency" })}
+                    </Label>
+                    <Select
+                      value={settings.currency}
+                      onValueChange={(value) => {
+                        setSettings((prev) => prev && { ...prev, currency: value });
+                        void autoSaveSettings({ currency: value });
+                      }}
+                    >
+                      <SelectTrigger id="currency">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {`${currency.code} (${currency.symbol}) - ${intl.formatMessage({ id: currency.name })}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.tooltips.currency" })}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="currency">
-                    {intl.formatMessage({ id: "settings.form.currency" })}
-                  </Label>
-                  <Select
-                    value={settings.currency}
-                    onValueChange={(value) => {
-                      setSettings((prev) => prev && { ...prev, currency: value });
-                      void autoSaveSettings({ currency: value });
-                    }}
-                  >
-                    <SelectTrigger id="currency">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {currencies.map((currency) => (
-                        <SelectItem key={currency.code} value={currency.code}>
-                          {`${currency.code} (${currency.symbol}) - ${intl.formatMessage({ id: currency.name })}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    {intl.formatMessage({ id: "settings.tooltips.currency" })}
+                <Separator />
+
+                {/* Tax Profile Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <FontAwesomeIcon icon={faReceipt} className="w-4 h-4 text-muted-foreground" />
+                    <h4 className="font-medium">{intl.formatMessage({ id: "settings.taxProfile.title" })}</h4>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {intl.formatMessage({ id: "settings.taxProfile.description" })}
                   </p>
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="birth_year">
+                        {intl.formatMessage({ id: "settings.taxProfile.birthYear" })}
+                      </Label>
+                      <Input
+                        id="birth_year"
+                        type="number"
+                        min={1940}
+                        max={new Date().getFullYear()}
+                        value={settings.birth_year ?? ""}
+                        onChange={(event) =>
+                          setSettings((prev) =>
+                            prev && {
+                              ...prev,
+                              birth_year: event.target.value ? Number(event.target.value) : null,
+                            },
+                          )
+                        }
+                        placeholder="np. 1990"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.taxProfile.birthYearHint" })}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="children_count">
+                        {intl.formatMessage({ id: "settings.taxProfile.childrenCount" })}
+                      </Label>
+                      <Input
+                        id="children_count"
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={settings.children_count ?? 0}
+                        onChange={(event) =>
+                          setSettings((prev) =>
+                            prev && {
+                              ...prev,
+                              children_count: Number(event.target.value),
+                            },
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="employment_status">
+                        {intl.formatMessage({ id: "settings.taxProfile.employmentStatus" })}
+                      </Label>
+                      <Select
+                        value={settings.employment_status ?? ""}
+                        onValueChange={(value) =>
+                          setSettings((prev) => prev && { ...prev, employment_status: value || null })
+                        }
+                      >
+                        <SelectTrigger id="employment_status">
+                          <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectEmployment" })} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {employmentStatuses.map((status) => (
+                            <SelectItem key={status.code} value={status.code}>
+                              {intl.formatMessage({ id: status.name })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="tax_form">
+                        {intl.formatMessage({ id: "settings.taxProfile.taxForm" })}
+                      </Label>
+                      <Select
+                        value={settings.tax_form ?? ""}
+                        onValueChange={(value) =>
+                          setSettings((prev) => prev && { ...prev, tax_form: value || null })
+                        }
+                      >
+                        <SelectTrigger id="tax_form">
+                          <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectTaxForm" })} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {taxForms.map((form) => (
+                            <SelectItem key={form.code} value={form.code}>
+                              {intl.formatMessage({ id: form.name })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* PPK Section */}
+                  <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                    <h4 className="font-medium">
+                      {intl.formatMessage({ id: "settings.taxProfile.ppkSection" })}
+                    </h4>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="ppk_enrolled">
+                          {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolled" })}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolledHint" })}
+                        </p>
+                      </div>
+                      <Select
+                        value={settings.ppk_enrolled === true ? "yes" : settings.ppk_enrolled === false ? "no" : "unknown"}
+                        onValueChange={(value) =>
+                          setSettings((prev) => prev && {
+                            ...prev,
+                            ppk_enrolled: value === "yes" ? true : value === "no" ? false : null
+                          })
+                        }
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unknown">{intl.formatMessage({ id: "settings.taxProfile.ppkUnknown" })}</SelectItem>
+                          <SelectItem value="yes">{intl.formatMessage({ id: "settings.taxProfile.ppkYes" })}</SelectItem>
+                          <SelectItem value="no">{intl.formatMessage({ id: "settings.taxProfile.ppkNo" })}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {settings.ppk_enrolled === true && (
+                      <div className="grid gap-4 md:grid-cols-2 pt-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="ppk_employee_rate">
+                            {intl.formatMessage({ id: "settings.taxProfile.ppkEmployeeRate" })}
+                          </Label>
+                          <Input
+                            id="ppk_employee_rate"
+                            type="number"
+                            min={0.5}
+                            max={4}
+                            step={0.5}
+                            value={settings.ppk_employee_rate ?? 2}
+                            onChange={(event) =>
+                              setSettings((prev) =>
+                                prev && { ...prev, ppk_employee_rate: Number(event.target.value) }
+                              )
+                            }
+                          />
+                          <p className="text-xs text-muted-foreground">0.5% - 4%</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="ppk_employer_rate">
+                            {intl.formatMessage({ id: "settings.taxProfile.ppkEmployerRate" })}
+                          </Label>
+                          <Input
+                            id="ppk_employer_rate"
+                            type="number"
+                            min={1.5}
+                            max={4}
+                            step={0.5}
+                            value={settings.ppk_employer_rate ?? 1.5}
+                            onChange={(event) =>
+                              setSettings((prev) =>
+                                prev && { ...prev, ppk_employer_rate: Number(event.target.value) }
+                              )
+                            }
+                          />
+                          <p className="text-xs text-muted-foreground">1.5% - 4%</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Author's Costs Section */}
+                  <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="use_authors_costs">
+                        {intl.formatMessage({ id: "settings.taxProfile.authorsCosts" })}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.taxProfile.authorsCostsHint" })}
+                      </p>
+                    </div>
+                    <Switch
+                      id="use_authors_costs"
+                      checked={settings.use_authors_costs ?? false}
+                      onCheckedChange={(checked) =>
+                        setSettings((prev) =>
+                          prev && { ...prev, use_authors_costs: checked }
+                        )
+                      }
+                    />
+                  </div>
                 </div>
-              </div>
+
+                <Button type="submit">
+                  {intl.formatMessage({ id: "settings.form.submit" })}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -723,226 +933,6 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        {/* Tax Profile Tab */}
-        <TabsContent value="tax">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FontAwesomeIcon icon={faReceipt} className="w-5 h-5 text-primary" />
-                {intl.formatMessage({ id: "settings.taxProfile.title" })}
-              </CardTitle>
-              <CardDescription>
-                {intl.formatMessage({ id: "settings.taxProfile.description" })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-6" onSubmit={handleSubmit}>
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="birth_year">
-                      {intl.formatMessage({ id: "settings.taxProfile.birthYear" })}
-                    </Label>
-                    <Input
-                      id="birth_year"
-                      type="number"
-                      min={1940}
-                      max={new Date().getFullYear()}
-                      value={settings.birth_year ?? ""}
-                      onChange={(event) =>
-                        setSettings((prev) =>
-                          prev && {
-                            ...prev,
-                            birth_year: event.target.value ? Number(event.target.value) : null,
-                          },
-                        )
-                      }
-                      placeholder="np. 1990"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {intl.formatMessage({ id: "settings.taxProfile.birthYearHint" })}
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="children_count">
-                      {intl.formatMessage({ id: "settings.taxProfile.childrenCount" })}
-                    </Label>
-                    <Input
-                      id="children_count"
-                      type="number"
-                      min={0}
-                      max={20}
-                      value={settings.children_count ?? 0}
-                      onChange={(event) =>
-                        setSettings((prev) =>
-                          prev && {
-                            ...prev,
-                            children_count: Number(event.target.value),
-                          },
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="employment_status">
-                      {intl.formatMessage({ id: "settings.taxProfile.employmentStatus" })}
-                    </Label>
-                    <Select
-                      value={settings.employment_status ?? ""}
-                      onValueChange={(value) =>
-                        setSettings((prev) => prev && { ...prev, employment_status: value || null })
-                      }
-                    >
-                      <SelectTrigger id="employment_status">
-                        <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectEmployment" })} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {employmentStatuses.map((status) => (
-                          <SelectItem key={status.code} value={status.code}>
-                            {intl.formatMessage({ id: status.name })}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="tax_form">
-                      {intl.formatMessage({ id: "settings.taxProfile.taxForm" })}
-                    </Label>
-                    <Select
-                      value={settings.tax_form ?? ""}
-                      onValueChange={(value) =>
-                        setSettings((prev) => prev && { ...prev, tax_form: value || null })
-                      }
-                    >
-                      <SelectTrigger id="tax_form">
-                        <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectTaxForm" })} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {taxForms.map((form) => (
-                          <SelectItem key={form.code} value={form.code}>
-                            {intl.formatMessage({ id: form.name })}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* PPK Section */}
-                <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
-                  <h4 className="font-medium">
-                    {intl.formatMessage({ id: "settings.taxProfile.ppkSection" })}
-                  </h4>
-
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label htmlFor="ppk_enrolled">
-                        {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolled" })}
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolledHint" })}
-                      </p>
-                    </div>
-                    <Select
-                      value={settings.ppk_enrolled === true ? "yes" : settings.ppk_enrolled === false ? "no" : "unknown"}
-                      onValueChange={(value) =>
-                        setSettings((prev) => prev && {
-                          ...prev,
-                          ppk_enrolled: value === "yes" ? true : value === "no" ? false : null
-                        })
-                      }
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unknown">{intl.formatMessage({ id: "settings.taxProfile.ppkUnknown" })}</SelectItem>
-                        <SelectItem value="yes">{intl.formatMessage({ id: "settings.taxProfile.ppkYes" })}</SelectItem>
-                        <SelectItem value="no">{intl.formatMessage({ id: "settings.taxProfile.ppkNo" })}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {settings.ppk_enrolled === true && (
-                    <div className="grid gap-4 md:grid-cols-2 pt-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="ppk_employee_rate">
-                          {intl.formatMessage({ id: "settings.taxProfile.ppkEmployeeRate" })}
-                        </Label>
-                        <Input
-                          id="ppk_employee_rate"
-                          type="number"
-                          min={0.5}
-                          max={4}
-                          step={0.5}
-                          value={settings.ppk_employee_rate ?? 2}
-                          onChange={(event) =>
-                            setSettings((prev) =>
-                              prev && { ...prev, ppk_employee_rate: Number(event.target.value) }
-                            )
-                          }
-                        />
-                        <p className="text-xs text-muted-foreground">0.5% - 4%</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="ppk_employer_rate">
-                          {intl.formatMessage({ id: "settings.taxProfile.ppkEmployerRate" })}
-                        </Label>
-                        <Input
-                          id="ppk_employer_rate"
-                          type="number"
-                          min={1.5}
-                          max={4}
-                          step={0.5}
-                          value={settings.ppk_employer_rate ?? 1.5}
-                          onChange={(event) =>
-                            setSettings((prev) =>
-                              prev && { ...prev, ppk_employer_rate: Number(event.target.value) }
-                            )
-                          }
-                        />
-                        <p className="text-xs text-muted-foreground">1.5% - 4%</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Author's Costs Section */}
-                <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="use_authors_costs">
-                      {intl.formatMessage({ id: "settings.taxProfile.authorsCosts" })}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {intl.formatMessage({ id: "settings.taxProfile.authorsCostsHint" })}
-                    </p>
-                  </div>
-                  <Switch
-                    id="use_authors_costs"
-                    checked={settings.use_authors_costs ?? false}
-                    onCheckedChange={(checked) =>
-                      setSettings((prev) =>
-                        prev && { ...prev, use_authors_costs: checked }
-                      )
-                    }
-                  />
-                </div>
-
-                <Button type="submit">
-                  {intl.formatMessage({ id: "settings.form.submit" })}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Integrations Tab (Banking) */}
