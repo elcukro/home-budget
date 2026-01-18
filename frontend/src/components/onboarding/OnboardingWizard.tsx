@@ -61,6 +61,11 @@ import SummaryStep from './steps/SummaryStep';
 
 const LOCAL_STORAGE_KEY = 'sproutlyfi-onboarding';
 
+interface StoredOnboardingState {
+  data: OnboardingData;
+  currentStepIndex: number;
+}
+
 type StepId =
   | 'welcome'
   | 'life'
@@ -1507,14 +1512,26 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
 
         if (stored) {
-          const parsed = JSON.parse(stored) as OnboardingData;
+          const parsed = JSON.parse(stored) as StoredOnboardingState | OnboardingData;
+          // Handle both new format (with currentStepIndex) and legacy format (just data)
+          const storedData = 'data' in parsed && 'currentStepIndex' in parsed
+            ? (parsed as StoredOnboardingState).data
+            : parsed as OnboardingData;
+          const storedStepIndex = 'data' in parsed && 'currentStepIndex' in parsed
+            ? (parsed as StoredOnboardingState).currentStepIndex
+            : 0;
+
           workingData = mergeOnboardingData(
             createDefaultOnboardingData(intl),
-            parsed,
+            storedData,
             intl
           );
           if (isMounted) {
             setData(workingData);
+            // Restore step index, but ensure it's within valid bounds
+            if (storedStepIndex > 0) {
+              setCurrentStepIndex(storedStepIndex);
+            }
           }
         }
       } catch (error) {
@@ -1568,7 +1585,8 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
     setSaveStatus('saving');
     const timeout = window.setTimeout(() => {
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+        const stateToSave: StoredOnboardingState = { data, currentStepIndex };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(stateToSave));
         setSaveStatus('saved');
         setLastSavedAt(
           new Intl.DateTimeFormat('pl-PL', {
@@ -1582,7 +1600,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
     }, 400);
 
     return () => window.clearTimeout(timeout);
-  }, [data]);
+  }, [data, currentStepIndex]);
 
   useEffect(() => {
     setStepVisible(false);

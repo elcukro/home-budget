@@ -1957,6 +1957,40 @@
         }
       }
     },
+    "householdEstimator": {
+      "button": "Pomóż mi oszacować",
+      "title": "Kalkulator kosztów gospodarstwa",
+      "description": "Na podstawie danych statystycznych GUS oszacujemy typowe koszty życia dla Twojej sytuacji.",
+      "citySize": {
+        "label": "Wielkość miejscowości",
+        "placeholder": "Wybierz wielkość miejscowości",
+        "large": "Duże miasto (ponad 500 tys.)",
+        "medium": "Średnie miasto (100-500 tys.)",
+        "small": "Małe miasto (poniżej 100 tys.)",
+        "village": "Wieś / tereny wiejskie"
+      },
+      "housing": {
+        "label": "Sytuacja mieszkaniowa",
+        "placeholder": "Wybierz typ mieszkania",
+        "rent": "Wynajem",
+        "mortgage": "Kredyt hipoteczny",
+        "owned": "Własne (bez kredytu)"
+      },
+      "household": {
+        "label": "Skład gospodarstwa",
+        "adults": "Osoby dorosłe",
+        "children": "Dzieci"
+      },
+      "car": {
+        "label": "Posiadasz samochód?"
+      },
+      "result": {
+        "label": "Szacowany koszt miesięczny:",
+        "perMonth": "/ miesiąc",
+        "note": "To szacunek oparty na danych GUS. Rzeczywiste koszty mogą się różnić w zależności od stylu życia."
+      },
+      "apply": "Zastosuj oszacowanie"
+    },
     "income": {
       "intro": "Zobaczmy, z jakich źródeł pochodzą Twoje dochody – to pomoże oszacować potencjał oszczędności i inwestycji.",
       "subIntro": "Im dokładniej określisz wpływy, tym trafniejsze będą kolejne rekomendacje.",

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { Info } from 'lucide-react';
 import { useIntl } from 'react-intl';
 
@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import FieldGroup from '../common/FieldGroup';
 import FormFooter from '../common/FormFooter';
 import TooltipTrigger from '../common/TooltipTrigger';
+import HouseholdCostEstimator from '../HouseholdCostEstimator';
 
 import type { OnboardingData } from '../OnboardingWizard';
 
@@ -43,6 +44,13 @@ export default function LifeStep({
   const shouldAskPartnerBudget = useMemo(
     () => data.maritalStatus === 'relationship' || data.maritalStatus === 'married',
     [data.maritalStatus]
+  );
+
+  const handleEstimateApply = useCallback(
+    (estimate: number) => {
+      onChange({ householdCost: estimate });
+    },
+    [onChange]
   );
 
   return (
@@ -196,7 +204,7 @@ export default function LifeStep({
       >
         <Input
           type="number"
-          min={1940}
+          min={1920}
           max={new Date().getFullYear()}
           value={data.birthYear ?? ''}
           onChange={(event) =>
@@ -394,6 +402,12 @@ export default function LifeStep({
             { id: 'onboarding.placeholders.exampleAmount' },
             { value: '4 800' },
           )}
+        />
+        <HouseholdCostEstimator
+          currentHousingType={data.housingType}
+          currentChildrenCount={data.childrenCount}
+          currentIncludePartner={data.includePartnerFinances}
+          onEstimateApply={handleEstimateApply}
         />
       </FieldGroup>
 

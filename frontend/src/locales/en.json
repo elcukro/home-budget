@@ -2005,6 +2005,40 @@
         }
       }
     },
+    "householdEstimator": {
+      "button": "Help me estimate",
+      "title": "Household Cost Calculator",
+      "description": "Based on statistical data, we'll estimate typical living costs for your situation.",
+      "citySize": {
+        "label": "City size",
+        "placeholder": "Select city size",
+        "large": "Large city (500k+)",
+        "medium": "Medium city (100k-500k)",
+        "small": "Small city (under 100k)",
+        "village": "Village / rural area"
+      },
+      "housing": {
+        "label": "Housing situation",
+        "placeholder": "Select housing type",
+        "rent": "Renting",
+        "mortgage": "Mortgage",
+        "owned": "Owned (no mortgage)"
+      },
+      "household": {
+        "label": "Household composition",
+        "adults": "Adults",
+        "children": "Children"
+      },
+      "car": {
+        "label": "Do you own a car?"
+      },
+      "result": {
+        "label": "Estimated monthly cost:",
+        "perMonth": "/ month",
+        "note": "This is an estimate based on statistical data. Actual costs may vary depending on lifestyle."
+      },
+      "apply": "Apply estimate"
+    },
     "income": {
       "intro": "Let's see where your income comes from – it helps estimate saving potential.",
       "subIntro": "The more precise you are, the better the recommendations.",
