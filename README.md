@@ -472,3 +472,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 For support, please open an issue in the GitHub repository or contact the maintainers.
+
+[![codecov](https://codecov.io/gh/elcukro/home-budget/graph/badge.svg)](https://codecov.io/gh/elcukro/home-budget)
