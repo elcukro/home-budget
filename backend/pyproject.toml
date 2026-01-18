@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+minversion = "8.0"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = ["-v", "--strict-markers", "--tb=short"]
+markers = [
+    "unit: Unit tests (fast)",
+    "integration: Integration tests (DB required)",
+]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+omit = ["*/tests/*", "*/migrations/*", "*/env/*", "*/venv/*"]
+
+[tool.coverage.report]
+fail_under = 0
+show_missing = true
