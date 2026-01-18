@@ -27,6 +27,7 @@ import { useIntl, type IntlShape } from 'react-intl';
 import { useSession } from 'next-auth/react';
 import { logActivity } from '@/utils/activityLogger';
 import { logger } from '@/lib/logger';
+import { useAnalytics, AnalyticsEvents } from '@/hooks/useAnalytics';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -1424,6 +1425,7 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
   const router = useRouter();
   const intl = useIntl();
   const { data: session } = useSession();
+  const { track, trackOnboardingStep } = useAnalytics();
   const { formatCurrency: formatCurrencySetting } = useSettings();
   const formatMoney = useCallback(
     (amount: number) => formatCurrencySetting(amount || 0),
@@ -1603,11 +1605,13 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
         }
       }
       setErrors({});
+      // Track step completion
+      trackOnboardingStep(currentStepIndex + 1, step.id);
       setCurrentStepIndex((prev) =>
         Math.min(prev + 1, steps.length - 1)
       );
     },
-    [currentStepIndex, data]
+    [currentStepIndex, data, trackOnboardingStep, steps]
   );
 
   const handleBack = useCallback(() => {
@@ -1620,9 +1624,10 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
   }, [handleNext]);
 
   const handleSkipAll = useCallback(() => {
+    track(AnalyticsEvents.ONBOARDING_SKIPPED, { step_reached: currentStepIndex + 1 });
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     router.push('/');
-  }, [router]);
+  }, [router, track, currentStepIndex]);
 
   const handleReset = useCallback(() => {
     setData(createDefaultOnboardingData(intl));
@@ -2290,6 +2295,7 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
       setSaveStatus('saved');
       setShowSavingDialog(false);
       setSavingDetail(null);
+      track(AnalyticsEvents.ONBOARDING_COMPLETED, { steps_completed: steps.length });
       router.push('/');
     } catch (error) {
       logger.error(error);
@@ -2299,7 +2305,7 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
       setActiveSavingPhase('prepare');
       alert('Nie udało się zapisać danych. Spróbuj ponownie.');
     }
-  }, [data, router, syncFinancialData, t]);
+  }, [data, router, syncFinancialData, t, track, steps.length]);
 
   const setLife = (updates: Partial<OnboardingData['life']>) =>
     setData((prev) => {

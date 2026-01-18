@@ -52,6 +52,7 @@ import {
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/utils/activityLogger";
 import { logger } from "@/lib/logger";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import Tooltip from "@/components/Tooltip";
 
@@ -331,6 +332,7 @@ export default function ExpensesPage() {
   const intl = useIntl();
   const { toast } = useToast();
   const { formatCurrency } = useSettings();
+  const { trackExpense } = useAnalytics();
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -896,6 +898,8 @@ export default function ExpensesPage() {
           new_values: expenseToActivityValues(created),
         });
 
+        trackExpense('added', created.amount, created.category);
+
         toast({
           title: intl.formatMessage({ id: "expenses.toast.createSuccess" }),
         });
@@ -932,6 +936,8 @@ export default function ExpensesPage() {
           previous_values: expenseToActivityValues(activeExpense),
           new_values: expenseToActivityValues(updated),
         });
+
+        trackExpense('edited', updated.amount, updated.category);
 
         toast({
           title: intl.formatMessage({ id: "expenses.toast.updateSuccess" }),
@@ -978,6 +984,8 @@ export default function ExpensesPage() {
         entity_id: Number(pendingDelete.id),
         previous_values: expenseToActivityValues(pendingDelete),
       });
+
+      trackExpense('deleted', pendingDelete.amount, pendingDelete.category);
 
       toast({
         title: intl.formatMessage({ id: "expenses.toast.deleteSuccess" }),

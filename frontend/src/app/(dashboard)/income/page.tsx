@@ -47,6 +47,7 @@ import {
 import { logActivity } from "@/utils/activityLogger";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import Tooltip from "@/components/Tooltip";
 
@@ -289,6 +290,7 @@ export default function IncomePage() {
   const intl = useIntl();
   const { toast } = useToast();
   const { formatCurrency } = useSettings();
+  const { trackIncome } = useAnalytics();
 
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [loading, setLoading] = useState(true);
@@ -561,6 +563,8 @@ export default function IncomePage() {
           new_values: created,
         });
 
+        trackIncome('added', created.amount, created.category);
+
         toast({
           title: intl.formatMessage({ id: "income.toast.createSuccess" }),
         });
@@ -597,6 +601,8 @@ export default function IncomePage() {
           previous_values: activeIncome,
           new_values: updated,
         });
+
+        trackIncome('edited', updated.amount, updated.category);
 
         toast({
           title: intl.formatMessage({ id: "income.toast.updateSuccess" }),
@@ -643,6 +649,8 @@ export default function IncomePage() {
         entity_id: Number(pendingDelete.id),
         previous_values: pendingDelete,
       });
+
+      trackIncome('deleted', pendingDelete.amount, pendingDelete.category);
 
       toast({
         title: intl.formatMessage({ id: "income.toast.deleteSuccess" }),
