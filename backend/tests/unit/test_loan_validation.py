@@ -5,34 +5,7 @@ These tests verify the validation logic without requiring database access.
 """
 import pytest
 from datetime import date
-from pydantic import ValidationError
-
-# We need to import the models from main.py
-# Use importlib to avoid loading the full FastAPI app
-import sys
-from unittest.mock import MagicMock
-
-# Mock the database and models modules to avoid import errors
-sys.modules['app.database'] = MagicMock()
-sys.modules['app.models'] = MagicMock()
-sys.modules['app.routers'] = MagicMock()
-sys.modules['app.routers.users'] = MagicMock()
-sys.modules['app.routers.auth'] = MagicMock()
-sys.modules['app.routers.financial_freedom'] = MagicMock()
-sys.modules['app.routers.savings'] = MagicMock()
-sys.modules['app.routers.exchange_rates'] = MagicMock()
-sys.modules['app.routers.banking'] = MagicMock()
-sys.modules['app.routers.tink'] = MagicMock()
-sys.modules['app.routers.stripe_billing'] = MagicMock()
-sys.modules['app.routers.bank_transactions'] = MagicMock()
-sys.modules['app.logging_utils'] = MagicMock()
-sys.modules['app.logging_utils'].make_conditional_print = lambda x: print
-sys.modules['app.services'] = MagicMock()
-sys.modules['app.services.subscription_service'] = MagicMock()
-sys.modules['app.dependencies'] = MagicMock()
-
-# Now we can create the models directly using Pydantic
-from pydantic import BaseModel, Field, model_validator
+from pydantic import ValidationError, BaseModel, Field, model_validator
 
 
 # Recreate the loan models for testing (same as in main.py)

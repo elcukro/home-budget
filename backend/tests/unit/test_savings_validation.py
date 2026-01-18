@@ -13,15 +13,6 @@ Tests Pydantic validation for:
 import pytest
 from datetime import date, datetime, timedelta
 from pydantic import ValidationError
-import sys
-from unittest.mock import patch
-
-# Mock external dependencies before importing the module
-sys.modules['sqlalchemy'] = type(sys)('sqlalchemy')
-sys.modules['sqlalchemy.orm'] = type(sys)('sqlalchemy.orm')
-
-# Now import just what we need directly from the schema
-# We'll recreate the enums and schemas here to test them in isolation
 from enum import Enum
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional

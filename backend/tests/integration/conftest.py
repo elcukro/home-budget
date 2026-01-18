@@ -163,31 +163,21 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
         if not user:
             user = User(id=user_id, email=user_id, name=None)
             db.add(user)
-            try:
-                db.commit()
-                db.refresh(user)
-                # Create default settings
-                settings = Settings(user_id=user_id, language="en", currency="USD")
-                db.add(settings)
-                db.commit()
-            except Exception as e:
-                db.rollback()
-                raise HTTPException(status_code=500, detail=str(e))
+            db.flush()  # Flush user first to satisfy FK constraint
+            settings = Settings(user_id=user_id, language="en", currency="USD")
+            db.add(settings)
+            db.flush()
         return user
 
     @app.post("/users", response_model=UserResponse)
     def create_user(user_data: UserCreate, db=Depends(get_db)):
         user = User(id=user_data.email, email=user_data.email, name=user_data.name)
         db.add(user)
+        db.flush()  # Flush user first to satisfy FK constraint
         settings = Settings(user_id=user_data.email, language="en", currency="USD")
         db.add(settings)
-        try:
-            db.commit()
-            db.refresh(user)
-            return user
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.flush()
+        return user
 
     @app.get("/users/{email}/settings", response_model=SettingsResponse)
     def get_user_settings(email: str, db=Depends(get_db)):
@@ -203,13 +193,8 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
             raise HTTPException(status_code=404, detail="Settings not found")
         for key, value in settings_update.model_dump().items():
             setattr(settings, key, value)
-        try:
-            db.commit()
-            db.refresh(settings)
-            return settings
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.flush()
+        return settings
 
     @app.delete("/users/me/account", response_model=DeleteAccountResponse)
     def delete_user_account(request: DeleteAccountRequest, user_id: str = Query(...), db=Depends(get_db)):
@@ -222,13 +207,9 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        try:
-            db.delete(user)
-            db.commit()
-            return DeleteAccountResponse(success=True, message="Account deleted successfully")
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.delete(user)
+        db.flush()
+        return DeleteAccountResponse(success=True, message="Account deleted successfully")
 
     # ============ Onboarding Backup endpoints ============
 
@@ -241,15 +222,10 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
         user = db.query(User).filter(User.id == user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        try:
-            db_backup = OnboardingBackup(user_id=user_id, data=backup.data, reason=backup.reason)
-            db.add(db_backup)
-            db.commit()
-            db.refresh(db_backup)
-            return db_backup
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db_backup = OnboardingBackup(user_id=user_id, data=backup.data, reason=backup.reason)
+        db.add(db_backup)
+        db.flush()
+        return db_backup
 
     @app.get("/users/me/onboarding-backups", response_model=List[OnboardingBackupListItem])
     def list_onboarding_backups(user_id: str = Query(...), db=Depends(get_db)):
@@ -279,13 +255,9 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
         ).first()
         if not backup:
             raise HTTPException(status_code=404, detail="Backup not found")
-        try:
-            db.delete(backup)
-            db.commit()
-            return {"success": True, "message": "Backup deleted successfully"}
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.delete(backup)
+        db.flush()
+        return {"success": True, "message": "Backup deleted successfully"}
 
     # ============ Savings endpoints ============
 
@@ -298,13 +270,8 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
     def create_saving(saving: SavingCreate, user_id: str = Query(...), db=Depends(get_db)):
         db_saving = Saving(user_id=user_id, **saving.model_dump())
         db.add(db_saving)
-        try:
-            db.commit()
-            db.refresh(db_saving)
-            return db_saving
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.flush()
+        return db_saving
 
     @app.get("/savings/{saving_id}", response_model=SavingResponse)
     def get_saving(saving_id: int, user_id: str = Query(...), db=Depends(get_db)):
@@ -320,26 +287,17 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
             raise HTTPException(status_code=404, detail="Saving not found")
         for key, value in saving_update.model_dump().items():
             setattr(saving, key, value)
-        try:
-            db.commit()
-            db.refresh(saving)
-            return saving
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.flush()
+        return saving
 
     @app.delete("/savings/{saving_id}")
     def delete_saving(saving_id: int, user_id: str = Query(...), db=Depends(get_db)):
         saving = db.query(Saving).filter(Saving.id == saving_id, Saving.user_id == user_id).first()
         if not saving:
             raise HTTPException(status_code=404, detail="Saving not found")
-        try:
-            db.delete(saving)
-            db.commit()
-            return {"success": True, "message": "Saving deleted successfully"}
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.delete(saving)
+        db.flush()
+        return {"success": True, "message": "Saving deleted successfully"}
 
     # ============ Loans endpoints ============
 
@@ -352,13 +310,8 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
     def create_loan(loan: LoanCreate, user_id: str = Query(...), db=Depends(get_db)):
         db_loan = Loan(user_id=user_id, **loan.model_dump())
         db.add(db_loan)
-        try:
-            db.commit()
-            db.refresh(db_loan)
-            return db_loan
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.flush()
+        return db_loan
 
     @app.get("/loans/{loan_id}", response_model=LoanResponse)
     def get_loan(loan_id: int, user_id: str = Query(...), db=Depends(get_db)):
@@ -374,26 +327,17 @@ def create_test_app(db_session, User, Settings, Saving, Loan, OnboardingBackup):
             raise HTTPException(status_code=404, detail="Loan not found")
         for key, value in loan_update.model_dump().items():
             setattr(loan, key, value)
-        try:
-            db.commit()
-            db.refresh(loan)
-            return loan
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.flush()
+        return loan
 
     @app.delete("/loans/{loan_id}")
     def delete_loan(loan_id: int, user_id: str = Query(...), db=Depends(get_db)):
         loan = db.query(Loan).filter(Loan.id == loan_id, Loan.user_id == user_id).first()
         if not loan:
             raise HTTPException(status_code=404, detail="Loan not found")
-        try:
-            db.delete(loan)
-            db.commit()
-            return {"success": True, "message": "Loan deleted successfully"}
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=str(e))
+        db.delete(loan)
+        db.flush()
+        return {"success": True, "message": "Loan deleted successfully"}
 
     return app
 

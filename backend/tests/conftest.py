@@ -6,6 +6,7 @@ It sets up an in-memory SQLite database for tests to avoid needing a real Postgr
 """
 import os
 import sys
+import sqlite3  # Ensure sqlite3 is imported before SQLAlchemy
 from unittest.mock import patch, MagicMock
 
 # Set test environment BEFORE any app imports
@@ -44,6 +45,8 @@ class Settings(Base):
     user_id = Column(String, ForeignKey("users.id"), unique=True)
     language = Column(String, default="en")
     currency = Column(String, default="USD")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class Subscription(Base):
