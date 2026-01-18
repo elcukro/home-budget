@@ -33,6 +33,7 @@ class User(Base):
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     payment_history = relationship("PaymentHistory", back_populates="user", cascade="all, delete-orphan")
     onboarding_backups = relationship("OnboardingBackup", back_populates="user", cascade="all, delete-orphan")
+    data_export_backups = relationship("DataExportBackup", back_populates="user", cascade="all, delete-orphan")
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -574,4 +575,25 @@ class OnboardingBackup(Base):
     __table_args__ = (
         Index('idx_onboarding_backups_user_id', 'user_id'),
         Index('idx_onboarding_backups_created_at', 'created_at'),
+    )
+
+
+class DataExportBackup(Base):
+    """Stores user data export backups for later retrieval."""
+    __tablename__ = "data_export_backups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    data = Column(JSON, nullable=False)  # Full export data in JSON format
+    format = Column(String, nullable=False, default="json")  # "json", "csv", "xlsx" - original export format
+    filename = Column(String, nullable=False)  # Original filename
+    size_bytes = Column(Integer, nullable=True)  # Size of the export data
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="data_export_backups")
+
+    __table_args__ = (
+        Index('idx_data_export_backups_user_id', 'user_id'),
+        Index('idx_data_export_backups_created_at', 'created_at'),
     )

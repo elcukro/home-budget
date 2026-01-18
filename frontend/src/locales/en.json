@@ -1215,6 +1215,7 @@
       "notLoggedIn": "You must be logged in to access settings",
       "exportSuccess": "Data exported successfully",
       "exportError": "Failed to export data",
+      "downloadError": "Failed to download file",
       "claudeApiKeyRequired": "Anthropic API key is required for AI insights",
       "importSuccess": "Data imported successfully",
       "importError": "Failed to import data. Please check the file format and try again.",
@@ -1305,14 +1306,23 @@
     },
     "export": {
       "title": "Export Data",
-      "description": "Export all your data in JSON, CSV, or Excel format. You can use this export to backup your data or transfer it to another account.",
-      "jsonButton": "Export as JSON",
-      "csvButton": "Export as CSV",
-      "excelButton": "Export as Excel",
       "json": "JSON",
       "csv": "CSV",
       "xlsx": "Excel",
-      "history": "Export history"
+      "jsonPrimary": {
+        "title": "JSON Export (for import)",
+        "description": "JSON format allows you to import data back into the app later. You can save a copy on the server to access it even if you lose the file.",
+        "exportWithBackup": "Export & save backup",
+        "exportOnly": "Download only"
+      },
+      "secondary": {
+        "title": "Helper formats",
+        "description": "These formats are for manual analysis (e.g., in Excel). They cannot be imported back into the app."
+      },
+      "backups": {
+        "title": "Server backups",
+        "description": "Your previous JSON exports saved on the server. You can download or delete them."
+      }
     },
     "import": {
       "title": "Import Data",

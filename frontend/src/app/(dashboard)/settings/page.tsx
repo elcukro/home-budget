@@ -52,13 +52,13 @@ import { signOut } from "next-auth/react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-interface ExportHistoryEntry {
+interface ExportBackup {
+  id: number;
   format: "json" | "csv" | "xlsx";
-  timestamp: string;
   filename: string;
+  size_bytes: number | null;
+  created_at: string;
 }
-
-const EXPORT_HISTORY_KEY = "sproutlyfi-export-history";
 
 interface TinkAccount {
   id: string;
@@ -189,7 +189,8 @@ export default function SettingsPage() {
     created_at: string;
   }>>([]);
   const [hasCompleteData, setHasCompleteData] = useState(false);
-  const [exportHistory, setExportHistory] = useState<ExportHistoryEntry[]>([]);
+  const [exportBackups, setExportBackups] = useState<ExportBackup[]>([]);
+  const [deletingBackupId, setDeletingBackupId] = useState<number | null>(null);
 
   const userEmail = session?.user?.email ?? null;
 
@@ -394,19 +395,25 @@ export default function SettingsPage() {
     }
   }, [activeTab]);
 
-  // Load export history from localStorage
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
+  // Fetch export backups from server
+  const fetchExportBackups = useCallback(async () => {
+    if (!userEmail) return;
     try {
-      const stored = localStorage.getItem(EXPORT_HISTORY_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as ExportHistoryEntry[];
-        setExportHistory(parsed);
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/export-backups`
+      );
+      if (response.ok) {
+        const backups = await response.json() as ExportBackup[];
+        setExportBackups(backups);
       }
     } catch (err) {
-      logger.warn('[Settings] Failed to load export history', err);
+      logger.warn('[Settings] Failed to load export backups', err);
     }
-  }, []);
+  }, [userEmail]);
+
+  useEffect(() => {
+    void fetchExportBackups();
+  }, [fetchExportBackups]);
 
   // Auto-save function for simple settings (language, currency)
   const autoSaveSettings = useCallback(async (updates: Partial<UserSettings>) => {
@@ -485,7 +492,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleExport = async (format: "json" | "csv" | "xlsx") => {
+  const handleExport = async (format: "json" | "csv" | "xlsx", saveBackup: boolean = false) => {
     if (!userEmail) {
       toast({
         title: intl.formatMessage({ id: "settings.messages.notLoggedIn" }),
@@ -495,8 +502,10 @@ export default function SettingsPage() {
     }
 
     try {
+      // For JSON exports, also save a backup on the server
+      const saveParam = format === "json" && saveBackup ? "&save_backup=true" : "";
       const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/export/?format=${format}`,
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/export/?format=${format}${saveParam}`,
       );
 
       if (!response.ok) {
@@ -514,18 +523,9 @@ export default function SettingsPage() {
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      // Save export to history
-      const newEntry: ExportHistoryEntry = {
-        format,
-        timestamp: new Date().toISOString(),
-        filename,
-      };
-      const updatedHistory = [newEntry, ...exportHistory].slice(0, 10); // Keep last 10 exports
-      setExportHistory(updatedHistory);
-      try {
-        localStorage.setItem(EXPORT_HISTORY_KEY, JSON.stringify(updatedHistory));
-      } catch (storageErr) {
-        logger.warn('[Settings] Failed to save export history', storageErr);
+      // Refresh backups list if we saved a backup
+      if (format === "json" && saveBackup) {
+        void fetchExportBackups();
       }
 
       toast({
@@ -537,6 +537,66 @@ export default function SettingsPage() {
         title: intl.formatMessage({ id: "settings.messages.exportError" }),
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDownloadExportBackup = async (backupId: number, filename: string) => {
+    if (!userEmail) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/export-backups/${backupId}`
+      );
+
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      logger.error("[Settings] Download backup failed", err);
+      toast({
+        title: intl.formatMessage({ id: "settings.messages.downloadError" }),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteExportBackup = async (backupId: number) => {
+    if (!userEmail) return;
+
+    setDeletingBackupId(backupId);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/export-backups/${backupId}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+
+      // Refresh backups list
+      void fetchExportBackups();
+      toast({
+        title: intl.formatMessage({ id: "settings.backups.deleteSuccess" }),
+      });
+    } catch (err) {
+      logger.error("[Settings] Delete backup failed", err);
+      toast({
+        title: intl.formatMessage({ id: "settings.backups.deleteError" }),
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingBackupId(null);
     }
   };
 
@@ -1245,43 +1305,102 @@ export default function SettingsPage() {
               {/* Export Section */}
               <div className="space-y-4">
                 <h4 className="font-medium">{intl.formatMessage({ id: "settings.export.title" })}</h4>
-                <p className="text-sm text-muted-foreground">
-                  {intl.formatMessage({ id: "settings.export.description" })}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => void handleExport("json")}>
-                    {intl.formatMessage({ id: "settings.export.json" })}
-                  </Button>
-                  <Button variant="outline" onClick={() => void handleExport("csv")}>
-                    {intl.formatMessage({ id: "settings.export.csv" })}
-                  </Button>
-                  <Button variant="outline" onClick={() => void handleExport("xlsx")}>
-                    {intl.formatMessage({ id: "settings.export.xlsx" })}
-                  </Button>
+
+                {/* Primary Export - JSON with backup */}
+                <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-primary/10 p-2">
+                      <FontAwesomeIcon icon={faDatabase} className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <h5 className="font-medium text-primary">
+                        {intl.formatMessage({ id: "settings.export.jsonPrimary.title" })}
+                      </h5>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {intl.formatMessage({ id: "settings.export.jsonPrimary.description" })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 pl-11">
+                    <Button onClick={() => void handleExport("json", true)}>
+                      {intl.formatMessage({ id: "settings.export.jsonPrimary.exportWithBackup" })}
+                    </Button>
+                    <Button variant="outline" onClick={() => void handleExport("json", false)}>
+                      {intl.formatMessage({ id: "settings.export.jsonPrimary.exportOnly" })}
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Export History */}
-                {exportHistory.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <h5 className="text-sm font-medium text-muted-foreground">
-                      {intl.formatMessage({ id: "settings.export.history" })}
+                {/* Secondary Exports - CSV/XLSX */}
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                  <div>
+                    <h5 className="font-medium text-secondary">
+                      {intl.formatMessage({ id: "settings.export.secondary.title" })}
                     </h5>
-                    <div className="space-y-1">
-                      {exportHistory.slice(0, 5).map((entry, index) => (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {intl.formatMessage({ id: "settings.export.secondary.description" })}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => void handleExport("csv")}>
+                      {intl.formatMessage({ id: "settings.export.csv" })}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void handleExport("xlsx")}>
+                      {intl.formatMessage({ id: "settings.export.xlsx" })}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Server Backups */}
+                {exportBackups.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <h5 className="text-sm font-medium">
+                      {intl.formatMessage({ id: "settings.export.backups.title" })}
+                    </h5>
+                    <p className="text-xs text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.export.backups.description" })}
+                    </p>
+                    <div className="space-y-2">
+                      {exportBackups.map((backup) => (
                         <div
-                          key={`${entry.timestamp}-${index}`}
-                          className="flex items-center justify-between text-sm py-1 px-2 rounded bg-muted/50"
+                          key={backup.id}
+                          className="flex items-center justify-between text-sm py-2 px-3 rounded-lg border bg-background"
                         >
-                          <span className="font-medium uppercase">{entry.format}</span>
-                          <span className="text-muted-foreground">
-                            {new Date(entry.timestamp).toLocaleString(settings?.language === 'pl' ? 'pl-PL' : 'en-US', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium block truncate">{backup.filename}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(backup.created_at).toLocaleString(settings?.language === 'pl' ? 'pl-PL' : 'en-US', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                              {backup.size_bytes && (
+                                <> · {(backup.size_bytes / 1024).toFixed(1)} KB</>
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex gap-1 ml-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => void handleDownloadExportBackup(backup.id, backup.filename)}
+                            >
+                              {intl.formatMessage({ id: "settings.backups.download" })}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => void handleDeleteExportBackup(backup.id)}
+                              disabled={deletingBackupId === backup.id}
+                            >
+                              {deletingBackupId === backup.id
+                                ? "..."
+                                : intl.formatMessage({ id: "settings.backups.delete" })}
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>

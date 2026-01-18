@@ -1827,6 +1827,7 @@ def get_yearly_budget(
 async def export_user_data(
     user_id: str,
     format: str = Query(..., description="Export format: 'json', 'csv', or 'xlsx'"),
+    save_backup: bool = Query(False, description="Whether to save a backup on the server (JSON only)"),
     current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
@@ -1902,6 +1903,20 @@ async def export_user_data(
         }
 
         if format.lower() == 'json':
+            # Save backup to database if requested
+            if save_backup:
+                import json
+                data_json = json.dumps(data)
+                filename = f"home_budget_export_{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                backup = models.DataExportBackup(
+                    user_id=current_user.id,
+                    data=data,
+                    format="json",
+                    filename=filename,
+                    size_bytes=len(data_json.encode('utf-8'))
+                )
+                db.add(backup)
+                db.commit()
             return JSONResponse(content=data)
         elif format.lower() == 'csv':
             # Create CSV buffer
@@ -2098,6 +2113,82 @@ async def export_user_data(
     except Exception as e:
         print(f"[FastAPI] Error in export_user_data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/users/{user_id}/export-backups")
+async def list_export_backups(
+    user_id: str,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """List all export backups for the authenticated user."""
+    validate_user_access(user_id, current_user)
+
+    backups = db.query(models.DataExportBackup).filter(
+        models.DataExportBackup.user_id == current_user.id
+    ).order_by(models.DataExportBackup.created_at.desc()).all()
+
+    return [
+        {
+            "id": backup.id,
+            "filename": backup.filename,
+            "format": backup.format,
+            "size_bytes": backup.size_bytes,
+            "created_at": backup.created_at.isoformat() if backup.created_at else None
+        }
+        for backup in backups
+    ]
+
+
+@app.get("/users/{user_id}/export-backups/{backup_id}")
+async def download_export_backup(
+    user_id: str,
+    backup_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Download a specific export backup."""
+    validate_user_access(user_id, current_user)
+
+    backup = db.query(models.DataExportBackup).filter(
+        models.DataExportBackup.id == backup_id,
+        models.DataExportBackup.user_id == current_user.id
+    ).first()
+
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup not found")
+
+    return JSONResponse(
+        content=backup.data,
+        headers={
+            "Content-Disposition": f"attachment; filename={backup.filename}"
+        }
+    )
+
+
+@app.delete("/users/{user_id}/export-backups/{backup_id}")
+async def delete_export_backup(
+    user_id: str,
+    backup_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Delete a specific export backup."""
+    validate_user_access(user_id, current_user)
+
+    backup = db.query(models.DataExportBackup).filter(
+        models.DataExportBackup.id == backup_id,
+        models.DataExportBackup.user_id == current_user.id
+    ).first()
+
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup not found")
+
+    db.delete(backup)
+    db.commit()
+
+    return {"message": "Backup deleted successfully"}
+
 
 @app.post("/users/{user_id}/import")
 async def import_user_data(

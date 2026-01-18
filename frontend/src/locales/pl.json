@@ -1122,14 +1122,23 @@
     "noData": "Brak dostępnych ustawień",
     "export": {
       "title": "Eksport danych",
-      "description": "Eksportuj wszystkie swoje dane w formacie JSON, CSV lub Excel. Możesz użyć tego eksportu do utworzenia kopii zapasowej lub przeniesienia danych na inne konto.",
-      "jsonButton": "Eksportuj jako JSON",
-      "csvButton": "Eksportuj jako CSV",
-      "excelButton": "Eksportuj jako Excel",
       "json": "JSON",
       "csv": "CSV",
       "xlsx": "Excel",
-      "history": "Historia eksportów"
+      "jsonPrimary": {
+        "title": "Eksport JSON (do importu)",
+        "description": "Format JSON umożliwia późniejszy import danych do aplikacji. Możesz zapisać kopię na serwerze, aby mieć dostęp nawet gdy zgubisz plik.",
+        "exportWithBackup": "Eksportuj i zapisz kopię",
+        "exportOnly": "Tylko pobierz"
+      },
+      "secondary": {
+        "title": "Formaty pomocnicze",
+        "description": "Te formaty służą do ręcznej analizy danych (np. w Excelu). Nie można ich zaimportować do aplikacji."
+      },
+      "backups": {
+        "title": "Kopie zapasowe na serwerze",
+        "description": "Twoje poprzednie eksporty JSON zapisane na serwerze. Możesz je pobrać lub usunąć."
+      }
     },
     "import": {
       "title": "Import danych",
@@ -1169,6 +1178,7 @@
       "notLoggedIn": "Musisz być zalogowany, aby uzyskać dostęp do ustawień",
       "exportSuccess": "Dane zostały wyeksportowane",
       "exportError": "Nie udało się wyeksportować danych",
+      "downloadError": "Nie udało się pobrać pliku",
       "claudeApiKeyRequired": "Klucz API Anthropic jest wymagany do analiz AI",
       "importSuccess": "Dane zostały zaimportowane pomyślnie",
       "importError": "Nie udało się zaimportować danych. Sprawdź format pliku i spróbuj ponownie.",
