@@ -16,7 +16,7 @@ os.environ["POSTGRES_PORT"] = "5432"
 os.environ["POSTGRES_DB"] = "test_db"
 
 import pytest
-from sqlalchemy import create_engine, event, Column, Integer, String, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy import create_engine, event, Column, Integer, String, Float, Boolean, DateTime, Date, ForeignKey, JSON
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.sql import func
@@ -91,7 +91,12 @@ class Loan(Base):
     description = Column(String)
     principal_amount = Column(Float)
     remaining_balance = Column(Float)
+    interest_rate = Column(Float)
+    monthly_payment = Column(Float)
+    start_date = Column(Date)
+    term_months = Column(Integer)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class Saving(Base):
@@ -101,7 +106,22 @@ class Saving(Base):
     category = Column(String, nullable=False)
     description = Column(String, nullable=False)
     amount = Column(Float, nullable=False)
+    date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=True)
+    is_recurring = Column(Boolean, default=False)
+    target_amount = Column(Float, nullable=True)
     saving_type = Column(String, nullable=False)
+    account_type = Column(String, default='standard')
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class OnboardingBackup(Base):
+    __tablename__ = "onboarding_backups"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"))
+    data = Column(JSON, nullable=False)
+    reason = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
