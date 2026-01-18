@@ -1128,7 +1128,8 @@
       "excelButton": "Eksportuj jako Excel",
       "json": "JSON",
       "csv": "CSV",
-      "xlsx": "Excel"
+      "xlsx": "Excel",
+      "history": "Historia eksportów"
     },
     "import": {
       "title": "Import danych",

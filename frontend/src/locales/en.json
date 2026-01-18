@@ -1311,7 +1311,8 @@
       "excelButton": "Export as Excel",
       "json": "JSON",
       "csv": "CSV",
-      "xlsx": "Excel"
+      "xlsx": "Excel",
+      "history": "Export history"
     },
     "import": {
       "title": "Import Data",

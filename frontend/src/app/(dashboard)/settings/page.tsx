@@ -52,6 +52,14 @@ import { signOut } from "next-auth/react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+interface ExportHistoryEntry {
+  format: "json" | "csv" | "xlsx";
+  timestamp: string;
+  filename: string;
+}
+
+const EXPORT_HISTORY_KEY = "sproutlyfi-export-history";
+
 interface TinkAccount {
   id: string;
   name?: string;
@@ -181,6 +189,7 @@ export default function SettingsPage() {
     created_at: string;
   }>>([]);
   const [hasCompleteData, setHasCompleteData] = useState(false);
+  const [exportHistory, setExportHistory] = useState<ExportHistoryEntry[]>([]);
 
   const userEmail = session?.user?.email ?? null;
 
@@ -385,6 +394,20 @@ export default function SettingsPage() {
     }
   }, [activeTab]);
 
+  // Load export history from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem(EXPORT_HISTORY_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as ExportHistoryEntry[];
+        setExportHistory(parsed);
+      }
+    } catch (err) {
+      logger.warn('[Settings] Failed to load export history', err);
+    }
+  }, []);
+
   // Auto-save function for simple settings (language, currency)
   const autoSaveSettings = useCallback(async (updates: Partial<UserSettings>) => {
     if (!userEmail || !settings) return;
@@ -483,12 +506,27 @@ export default function SettingsPage() {
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
+      const filename = `home_budget_export_${userEmail}.${format}`;
       link.href = url;
-      link.download = `home_budget_export_${userEmail}.${format}`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+
+      // Save export to history
+      const newEntry: ExportHistoryEntry = {
+        format,
+        timestamp: new Date().toISOString(),
+        filename,
+      };
+      const updatedHistory = [newEntry, ...exportHistory].slice(0, 10); // Keep last 10 exports
+      setExportHistory(updatedHistory);
+      try {
+        localStorage.setItem(EXPORT_HISTORY_KEY, JSON.stringify(updatedHistory));
+      } catch (storageErr) {
+        logger.warn('[Settings] Failed to save export history', storageErr);
+      }
 
       toast({
         title: intl.formatMessage({ id: "settings.messages.exportSuccess" }),
@@ -1221,6 +1259,34 @@ export default function SettingsPage() {
                     {intl.formatMessage({ id: "settings.export.xlsx" })}
                   </Button>
                 </div>
+
+                {/* Export History */}
+                {exportHistory.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <h5 className="text-sm font-medium text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.export.history" })}
+                    </h5>
+                    <div className="space-y-1">
+                      {exportHistory.slice(0, 5).map((entry, index) => (
+                        <div
+                          key={`${entry.timestamp}-${index}`}
+                          className="flex items-center justify-between text-sm py-1 px-2 rounded bg-muted/50"
+                        >
+                          <span className="font-medium uppercase">{entry.format}</span>
+                          <span className="text-muted-foreground">
+                            {new Date(entry.timestamp).toLocaleString(settings?.language === 'pl' ? 'pl-PL' : 'en-US', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <Separator />
