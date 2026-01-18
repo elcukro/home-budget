@@ -26,6 +26,9 @@ interface Settings {
   ppk_employee_rate?: number; // PPK employee contribution (0.5% - 4%)
   ppk_employer_rate?: number; // PPK employer contribution (1.5% - 4%)
   children_count?: number; // For child tax relief calculation
+  // Onboarding status
+  onboarding_completed?: boolean;
+  onboarding_completed_at?: string; // ISO datetime string
 }
 
 export type { Settings };

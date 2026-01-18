@@ -1268,6 +1268,41 @@
         "deleting": "Deleting..."
       }
     },
+    "onboarding": {
+      "title": "Onboarding Wizard",
+      "description": "Run the setup wizard to update your financial profile, income, expenses, and savings goals.",
+      "runButton": "Run Onboarding",
+      "redirectMessage": "You already have data in the system. You can run the onboarding wizard from here to update your information.",
+      "modeDialog": {
+        "title": "Choose Onboarding Mode",
+        "description": "You already have financial data in the system. How would you like to proceed?",
+        "mergeMode": "Update existing data",
+        "mergeModeDescription": "Keep your current data and update values from the onboarding wizard. Existing entries will be modified.",
+        "freshStartMode": "Start fresh",
+        "freshStartModeDescription": "Create a backup of your current data and start with a clean slate. Your backup will be saved and can be restored later.",
+        "cancel": "Cancel",
+        "continue": "Continue"
+      },
+      "backup": {
+        "creating": "Creating backup...",
+        "success": "Backup created successfully",
+        "error": "Failed to create backup"
+      }
+    },
+    "backups": {
+      "title": "Data Backups",
+      "description": "Backups created before onboarding fresh starts. You can restore any backup by downloading and importing it.",
+      "noBackups": "No backups available.",
+      "download": "Download",
+      "delete": "Delete",
+      "confirmDelete": "Are you sure you want to delete this backup?",
+      "deleteSuccess": "Backup deleted successfully",
+      "deleteError": "Failed to delete backup",
+      "reason": {
+        "fresh_start": "Fresh Start",
+        "manual": "Manual"
+      }
+    },
     "export": {
       "title": "Export Data",
       "description": "Export all your data in JSON, CSV, or Excel format. You can use this export to backup your data or transfer it to another account.",

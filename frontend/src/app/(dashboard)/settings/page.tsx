@@ -45,7 +45,9 @@ import {
   faBuilding,
   faDatabase,
   faKey,
+  faPlay,
 } from "@fortawesome/free-solid-svg-icons";
+import { Info } from "lucide-react";
 import { signOut } from "next-auth/react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -132,6 +134,8 @@ export default function SettingsPage() {
   // Sync tab state with URL parameter (handles both initial load and navigation)
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
+    const onboardingRedirect = searchParams.get('onboarding');
+
     if (tabFromUrl === 'general') {
       setActiveTab('general');
     } else if (tabFromUrl === 'finance') {
@@ -148,6 +152,15 @@ export default function SettingsPage() {
       // Legacy support - redirect to appropriate tabs
       setActiveTab(tabFromUrl === 'banking' ? 'integrations' : 'general');
     }
+
+    // Show onboarding redirect message if coming from /onboarding
+    if (onboardingRedirect === 'redirect') {
+      setShowOnboardingRedirectMessage(true);
+      // Clear the URL parameter without refreshing the page
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('onboarding');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
   }, [searchParams]);
 
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -157,6 +170,13 @@ export default function SettingsPage() {
   const [tinkConnecting, setTinkConnecting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [shouldClearBeforeImport, setShouldClearBeforeImport] = useState<boolean>(false);
+  const [showOnboardingRedirectMessage, setShowOnboardingRedirectMessage] = useState(false);
+  const [onboardingModeDialogOpen, setOnboardingModeDialogOpen] = useState(false);
+  const [onboardingBackups, setOnboardingBackups] = useState<Array<{
+    id: number;
+    reason: string | null;
+    created_at: string;
+  }>>([]);
 
   const userEmail = session?.user?.email ?? null;
 
@@ -257,9 +277,77 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchOnboardingBackups = async () => {
+    if (!userEmail) return;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/me/onboarding-backups?user_id=${encodeURIComponent(userEmail)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setOnboardingBackups(data);
+      }
+    } catch (err) {
+      logger.error("[Settings] Failed to fetch onboarding backups", err);
+    }
+  };
+
+  const handleDownloadBackup = async (backupId: number) => {
+    if (!userEmail) return;
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/me/onboarding-backups/${backupId}?user_id=${encodeURIComponent(userEmail)}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch backup");
+
+      const backupData = await response.json();
+      const blob = new Blob([JSON.stringify(backupData.data, null, 2)], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `firedup_backup_${new Date(backupData.created_at).toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      logger.error("[Settings] Failed to download backup", err);
+      toast({
+        title: intl.formatMessage({ id: "settings.messages.exportError" }),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteBackup = async (backupId: number) => {
+    if (!userEmail) return;
+    if (!confirm(intl.formatMessage({ id: "settings.backups.confirmDelete" }))) return;
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/users/me/onboarding-backups/${backupId}?user_id=${encodeURIComponent(userEmail)}`,
+        { method: "DELETE" }
+      );
+
+      if (!response.ok) throw new Error("Failed to delete backup");
+
+      toast({
+        title: intl.formatMessage({ id: "settings.backups.deleteSuccess" }),
+      });
+      setOnboardingBackups((prev) => prev.filter((b) => b.id !== backupId));
+    } catch (err) {
+      logger.error("[Settings] Failed to delete backup", err);
+      toast({
+        title: intl.formatMessage({ id: "settings.backups.deleteError" }),
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     void fetchSettings();
     void fetchTinkConnections();
+    void fetchOnboardingBackups();
   }, [userEmail]);
 
   // Refetch Tink connections when integrations tab becomes active (e.g., after returning from callback)
@@ -780,6 +868,83 @@ export default function SettingsPage() {
                   {intl.formatMessage({ id: "settings.form.submit" })}
                 </Button>
               </form>
+
+              <Separator className="my-6" />
+
+              {/* Onboarding Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faPlay} className="w-4 h-4 text-muted-foreground" />
+                  <h4 className="font-medium">{intl.formatMessage({ id: "settings.onboarding.title" })}</h4>
+                </div>
+
+                {showOnboardingRedirectMessage && (
+                  <div className="flex items-start gap-3 rounded-lg border bg-muted/50 p-4">
+                    <Info className="h-4 w-4 mt-0.5 text-primary" />
+                    <p className="text-sm text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.onboarding.redirectMessage" })}
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-sm text-muted-foreground">
+                  {intl.formatMessage({ id: "settings.onboarding.description" })}
+                </p>
+
+                <AlertDialog open={onboardingModeDialogOpen} onOpenChange={setOnboardingModeDialogOpen}>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline">
+                      <FontAwesomeIcon icon={faPlay} className="w-4 h-4 mr-2" />
+                      {intl.formatMessage({ id: "settings.onboarding.runButton" })}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {intl.formatMessage({ id: "settings.onboarding.modeDialog.title" })}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {intl.formatMessage({ id: "settings.onboarding.modeDialog.description" })}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div
+                        className="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          setOnboardingModeDialogOpen(false);
+                          router.push('/onboarding?force=true&mode=merge');
+                        }}
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium">{intl.formatMessage({ id: "settings.onboarding.modeDialog.mergeMode" })}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {intl.formatMessage({ id: "settings.onboarding.modeDialog.mergeModeDescription" })}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          setOnboardingModeDialogOpen(false);
+                          router.push('/onboarding?force=true&mode=fresh');
+                        }}
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium">{intl.formatMessage({ id: "settings.onboarding.modeDialog.freshStartMode" })}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {intl.formatMessage({ id: "settings.onboarding.modeDialog.freshStartModeDescription" })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>
+                        {intl.formatMessage({ id: "settings.onboarding.modeDialog.cancel" })}
+                      </AlertDialogCancel>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1080,6 +1245,59 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+
+              {onboardingBackups.length > 0 && (
+                <>
+                  <Separator />
+
+                  {/* Backups Section */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium">{intl.formatMessage({ id: "settings.backups.title" })}</h4>
+                    <p className="text-sm text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.backups.description" })}
+                    </p>
+                    <div className="space-y-2">
+                      {onboardingBackups.map((backup) => (
+                        <div
+                          key={backup.id}
+                          className="flex items-center justify-between rounded-lg border p-3"
+                        >
+                          <div>
+                            <p className="font-medium text-sm">
+                              {new Date(backup.created_at).toLocaleDateString(settings?.language, {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {backup.reason && intl.formatMessage({ id: `settings.backups.reason.${backup.reason}` })}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void handleDownloadBackup(backup.id)}
+                            >
+                              {intl.formatMessage({ id: "settings.backups.download" })}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => void handleDeleteBackup(backup.id)}
+                            >
+                              {intl.formatMessage({ id: "settings.backups.delete" })}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

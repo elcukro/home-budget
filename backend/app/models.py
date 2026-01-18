@@ -32,6 +32,7 @@ class User(Base):
     bank_transactions = relationship("BankTransaction", back_populates="user", cascade="all, delete-orphan")
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     payment_history = relationship("PaymentHistory", back_populates="user", cascade="all, delete-orphan")
+    onboarding_backups = relationship("OnboardingBackup", back_populates="user", cascade="all, delete-orphan")
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -158,6 +159,10 @@ class Settings(Base):
     ppk_employee_rate = Column(Float, nullable=True)       # PPK employee contribution (0.5% - 4%)
     ppk_employer_rate = Column(Float, nullable=True)       # PPK employer contribution (1.5% - 4%)
     children_count = Column(Integer, default=0)            # For child tax relief calculation
+
+    # Onboarding status
+    onboarding_completed = Column(Boolean, default=False)
+    onboarding_completed_at = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -552,4 +557,21 @@ class PaymentHistory(Base):
     __table_args__ = (
         Index('idx_payment_history_user_id', 'user_id'),
         Index('idx_payment_history_created_at', 'created_at'),
+    )
+
+class OnboardingBackup(Base):
+    __tablename__ = "onboarding_backups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    data = Column(JSON, nullable=False)  # Full export data
+    reason = Column(String, nullable=True)  # "fresh_start", "manual", etc.
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="onboarding_backups")
+
+    __table_args__ = (
+        Index('idx_onboarding_backups_user_id', 'user_id'),
+        Index('idx_onboarding_backups_created_at', 'created_at'),
     )

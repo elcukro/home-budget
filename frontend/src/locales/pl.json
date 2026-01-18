@@ -1207,6 +1207,41 @@
         "deleting": "Usuwanie..."
       }
     },
+    "onboarding": {
+      "title": "Kreator konfiguracji",
+      "description": "Uruchom kreator konfiguracji, aby zaktualizować swój profil finansowy, przychody, wydatki i cele oszczędnościowe.",
+      "runButton": "Uruchom kreator",
+      "redirectMessage": "Masz już dane w systemie. Możesz uruchomić kreator konfiguracji stąd, aby zaktualizować swoje informacje.",
+      "modeDialog": {
+        "title": "Wybierz tryb konfiguracji",
+        "description": "Masz już dane finansowe w systemie. Jak chcesz kontynuować?",
+        "mergeMode": "Zaktualizuj istniejące dane",
+        "mergeModeDescription": "Zachowaj obecne dane i zaktualizuj wartości z kreatora konfiguracji. Istniejące wpisy zostaną zmodyfikowane.",
+        "freshStartMode": "Zacznij od nowa",
+        "freshStartModeDescription": "Utwórz kopię zapasową obecnych danych i zacznij od czystej karty. Kopia zapasowa zostanie zapisana i można ją przywrócić później.",
+        "cancel": "Anuluj",
+        "continue": "Kontynuuj"
+      },
+      "backup": {
+        "creating": "Tworzenie kopii zapasowej...",
+        "success": "Kopia zapasowa utworzona pomyślnie",
+        "error": "Nie udało się utworzyć kopii zapasowej"
+      }
+    },
+    "backups": {
+      "title": "Kopie zapasowe",
+      "description": "Kopie zapasowe utworzone przed konfiguracją od nowa. Możesz przywrócić dowolną kopię, pobierając ją i importując.",
+      "noBackups": "Brak dostępnych kopii zapasowych.",
+      "download": "Pobierz",
+      "delete": "Usuń",
+      "confirmDelete": "Czy na pewno chcesz usunąć tę kopię zapasową?",
+      "deleteSuccess": "Kopia zapasowa została usunięta",
+      "deleteError": "Nie udało się usunąć kopii zapasowej",
+      "reason": {
+        "fresh_start": "Nowy początek",
+        "manual": "Ręcznie"
+      }
+    },
     "financialFreedom": {
       "title": "Ustawienia Wolności Finansowej",
       "emergencyFundTarget": "Krok 1: Docelowy Fundusz Awaryjny",

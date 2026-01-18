@@ -1417,11 +1417,14 @@ const STEP_DEFINITIONS: StepDefinition[] = [
 
 type StepErrors = Record<string, string>;
 
+type OnboardingMode = 'fresh' | 'merge' | 'default';
+
 interface OnboardingWizardProps {
   fromPayment?: boolean;
+  mode?: OnboardingMode;
 }
 
-export default function OnboardingWizard({ fromPayment = false }: OnboardingWizardProps) {
+export default function OnboardingWizard({ fromPayment = false, mode = 'default' }: OnboardingWizardProps) {
   const router = useRouter();
   const intl = useIntl();
   const { data: session } = useSession();
@@ -1637,12 +1640,14 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
   }, [intl]);
 
   const syncFinancialData = useCallback(
-    async (reportProgress?: (update: SavingProgressUpdate) => void) => {
+    async (reportProgress?: (update: SavingProgressUpdate) => void, onboardingMode: OnboardingMode = 'default') => {
     const userEmail = session?.user?.email;
     if (!userEmail) {
       logger.warn('[Onboarding] No authenticated user – skipping financial sync');
       return;
     }
+
+    const shouldDeleteExistingData = onboardingMode !== 'merge';
 
     const notify = (phase: SavingPhase, detail?: string) => {
       reportProgress?.({ phase, detail });
@@ -1677,25 +1682,71 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
 
     notify('prepare', t('onboarding.savingProgress.detail.clearing'));
 
+    // For fresh mode, create a backup before deleting data
+    if (onboardingMode === 'fresh') {
+      try {
+        // Export current data
+        const exportResponse = await fetch(
+          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/export/?format=json`
+        );
+        if (exportResponse.ok) {
+          const exportData = await exportResponse.json();
+
+          // Create backup via API
+          const backupResponse = await fetch(
+            `${API_BASE_URL}/users/me/onboarding-backups?user_id=${encodeURIComponent(userEmail)}`,
+            {
+              method: 'POST',
+              headers: jsonHeaders,
+              body: JSON.stringify({
+                data: exportData,
+                reason: 'fresh_start',
+              }),
+            }
+          );
+
+          if (backupResponse.ok) {
+            logger.info('[Onboarding] Created backup before fresh start');
+
+            // Also download the backup for the user
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `firedup_backup_${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+          }
+        }
+      } catch (backupError) {
+        logger.warn('[Onboarding] Failed to create backup (non-fatal)', backupError);
+        // Continue with onboarding even if backup fails
+      }
+    }
+
     // --- Income sync ---
     try {
-      const existingIncomeRes = await fetch('/api/income');
-      if (existingIncomeRes.ok) {
-        const existingIncome: Array<Record<string, unknown>> =
-          (await existingIncomeRes.json()) ?? [];
-        for (const income of existingIncome) {
-          const incomeId = Number(income.id);
-          if (Number.isFinite(incomeId)) {
-            await logActivity({
-              entity_type: 'Income',
-              operation_type: 'delete',
-              entity_id: incomeId,
-              previous_values: income,
-            });
-            await assertOk(
-              await fetch(`/api/income/${incomeId}`, { method: 'DELETE' }),
-              `delete income ${incomeId}`
-            );
+      if (shouldDeleteExistingData) {
+        const existingIncomeRes = await fetch('/api/income');
+        if (existingIncomeRes.ok) {
+          const existingIncome: Array<Record<string, unknown>> =
+            (await existingIncomeRes.json()) ?? [];
+          for (const income of existingIncome) {
+            const incomeId = Number(income.id);
+            if (Number.isFinite(incomeId)) {
+              await logActivity({
+                entity_type: 'Income',
+                operation_type: 'delete',
+                entity_id: incomeId,
+                previous_values: income,
+              });
+              await assertOk(
+                await fetch(`/api/income/${incomeId}`, { method: 'DELETE' }),
+                `delete income ${incomeId}`
+              );
+            }
           }
         }
       }
@@ -1814,26 +1865,28 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
         userEmail
       )}/expenses`;
 
-      const existingExpensesRes = await fetch(expensesEndpoint);
-      if (existingExpensesRes.ok) {
-        const existingExpenses: Array<Record<string, unknown>> =
-          (await existingExpensesRes.json()) ?? [];
-        for (const expense of existingExpenses) {
-          const expenseId = Number(expense.id);
-          if (!Number.isFinite(expenseId)) continue;
-          await logActivity({
-            entity_type: 'Expense',
-            operation_type: 'delete',
-            entity_id: expenseId,
-            previous_values: expense,
-          });
-          await assertOk(
-            await fetch(`${expensesEndpoint}/${expenseId}`, {
-              method: 'DELETE',
-              headers: jsonHeaders,
-            }),
-            `delete expense ${expenseId}`
-          );
+      if (shouldDeleteExistingData) {
+        const existingExpensesRes = await fetch(expensesEndpoint);
+        if (existingExpensesRes.ok) {
+          const existingExpenses: Array<Record<string, unknown>> =
+            (await existingExpensesRes.json()) ?? [];
+          for (const expense of existingExpenses) {
+            const expenseId = Number(expense.id);
+            if (!Number.isFinite(expenseId)) continue;
+            await logActivity({
+              entity_type: 'Expense',
+              operation_type: 'delete',
+              entity_id: expenseId,
+              previous_values: expense,
+            });
+            await assertOk(
+              await fetch(`${expensesEndpoint}/${expenseId}`, {
+                method: 'DELETE',
+                headers: jsonHeaders,
+              }),
+              `delete expense ${expenseId}`
+            );
+          }
         }
       }
 
@@ -1963,34 +2016,36 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
 
     // --- Loans sync ---
     try {
-      const loansQuery = `${API_BASE_URL}/loans?user_id=${encodeURIComponent(
-        userEmail
-      )}`;
-      const existingLoansRes = await fetch(loansQuery);
-      if (existingLoansRes.ok) {
-        const existingLoans: Array<Record<string, unknown>> =
-          (await existingLoansRes.json()) ?? [];
-        for (const loan of existingLoans) {
-          const loanId = Number(loan.id);
-          if (!Number.isFinite(loanId)) continue;
-          await logActivity({
-            entity_type: 'Loan',
-            operation_type: 'delete',
-            entity_id: loanId,
-            previous_values: loan,
-          });
-          await assertOk(
-            await fetch(
-              `${API_BASE_URL}/users/${encodeURIComponent(
-                userEmail
-              )}/loans/${loanId}`,
-              {
-                method: 'DELETE',
-                headers: jsonHeaders,
-              }
-            ),
-            `delete loan ${loanId}`
-          );
+      if (shouldDeleteExistingData) {
+        const loansQuery = `${API_BASE_URL}/loans?user_id=${encodeURIComponent(
+          userEmail
+        )}`;
+        const existingLoansRes = await fetch(loansQuery);
+        if (existingLoansRes.ok) {
+          const existingLoans: Array<Record<string, unknown>> =
+            (await existingLoansRes.json()) ?? [];
+          for (const loan of existingLoans) {
+            const loanId = Number(loan.id);
+            if (!Number.isFinite(loanId)) continue;
+            await logActivity({
+              entity_type: 'Loan',
+              operation_type: 'delete',
+              entity_id: loanId,
+              previous_values: loan,
+            });
+            await assertOk(
+              await fetch(
+                `${API_BASE_URL}/users/${encodeURIComponent(
+                  userEmail
+                )}/loans/${loanId}`,
+                {
+                  method: 'DELETE',
+                  headers: jsonHeaders,
+                }
+              ),
+              `delete loan ${loanId}`
+            );
+          }
         }
       }
 
@@ -2099,23 +2154,25 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
 
     // --- Savings sync ---
     try {
-      const existingSavingsRes = await fetch('/api/savings');
-      if (existingSavingsRes.ok) {
-        const existingSavings: Array<Record<string, unknown>> =
-          (await existingSavingsRes.json()) ?? [];
-        for (const saving of existingSavings) {
-          const savingId = Number(saving.id);
-          if (!Number.isFinite(savingId)) continue;
-          await logActivity({
-            entity_type: 'Saving',
-            operation_type: 'delete',
-            entity_id: savingId,
-            previous_values: saving,
-          });
-          await assertOk(
-            await fetch(`/api/savings/${savingId}`, { method: 'DELETE' }),
-            `delete saving ${savingId}`
-          );
+      if (shouldDeleteExistingData) {
+        const existingSavingsRes = await fetch('/api/savings');
+        if (existingSavingsRes.ok) {
+          const existingSavings: Array<Record<string, unknown>> =
+            (await existingSavingsRes.json()) ?? [];
+          for (const saving of existingSavings) {
+            const savingId = Number(saving.id);
+            if (!Number.isFinite(savingId)) continue;
+            await logActivity({
+              entity_type: 'Saving',
+              operation_type: 'delete',
+              entity_id: savingId,
+              previous_values: saving,
+            });
+            await assertOk(
+              await fetch(`/api/savings/${savingId}`, { method: 'DELETE' }),
+              `delete saving ${savingId}`
+            );
+          }
         }
       }
 
@@ -2242,6 +2299,9 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
             ppk_employee_rate: data.life.ppkEmployeeRate ?? null,
             ppk_employer_rate: data.life.ppkEmployerRate ?? null,
             children_count: data.life.childrenCount ?? 0,
+            // Mark onboarding as completed
+            onboarding_completed: true,
+            onboarding_completed_at: new Date().toISOString(),
           };
 
           const updateResponse = await fetch(`/api/users/${encodeURIComponent(userEmail)}/settings`, {
@@ -2250,7 +2310,7 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
             body: JSON.stringify(updatedSettings),
           });
           await assertOk(updateResponse, 'sync tax settings');
-          logger.debug('[Onboarding] Synced tax settings to backend');
+          logger.debug('[Onboarding] Synced tax settings and onboarding status to backend');
         }
       } catch (settingsError) {
         logger.warn('[Onboarding] Failed to sync tax settings (non-fatal)', settingsError);
@@ -2273,7 +2333,7 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
       await syncFinancialData((update) => {
         setActiveSavingPhase(update.phase);
         setSavingDetail(update.detail ?? null);
-      });
+      }, mode);
 
       setActiveSavingPhase('finalize');
       setSavingDetail(t('onboarding.savingProgress.detail.finalize'));
@@ -2295,7 +2355,7 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
       setSaveStatus('saved');
       setShowSavingDialog(false);
       setSavingDetail(null);
-      track(AnalyticsEvents.ONBOARDING_COMPLETED, { steps_completed: steps.length });
+      track(AnalyticsEvents.ONBOARDING_COMPLETED, { steps_completed: steps.length, mode });
       router.push('/');
     } catch (error) {
       logger.error(error);
@@ -2305,7 +2365,7 @@ export default function OnboardingWizard({ fromPayment = false }: OnboardingWiza
       setActiveSavingPhase('prepare');
       alert('Nie udało się zapisać danych. Spróbuj ponownie.');
     }
-  }, [data, router, syncFinancialData, t, track, steps.length]);
+  }, [data, router, syncFinancialData, t, track, steps.length, mode]);
 
   const setLife = (updates: Partial<OnboardingData['life']>) =>
     setData((prev) => {

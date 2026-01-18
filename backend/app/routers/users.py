@@ -50,6 +50,9 @@ class SettingsBase(BaseModel):
     ppk_employee_rate: float | None = None    # PPK employee contribution (0.5% - 4%)
     ppk_employer_rate: float | None = None    # PPK employer contribution (1.5% - 4%)
     children_count: int | None = 0            # For child tax relief calculation
+    # Onboarding status
+    onboarding_completed: bool | None = False
+    onboarding_completed_at: datetime | None = None
 
 class Settings(SettingsBase):
     id: int
@@ -237,3 +240,126 @@ def delete_user_account(
         logger.error(f"Failed to delete account for user {user_id}: {e}")
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Failed to delete account: {str(e)}")
+
+
+# Onboarding Backup models and endpoints
+class OnboardingBackupCreate(BaseModel):
+    data: dict  # Full export data (income, expenses, loans, savings, etc.)
+    reason: str | None = None  # "fresh_start", "manual", etc.
+
+
+class OnboardingBackupResponse(BaseModel):
+    id: int
+    user_id: str
+    data: dict
+    reason: str | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OnboardingBackupListItem(BaseModel):
+    id: int
+    reason: str | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+@router.post("/me/onboarding-backups", response_model=OnboardingBackupResponse)
+def create_onboarding_backup(
+    backup: OnboardingBackupCreate,
+    user_id: str = Query(..., description="The ID of the user"),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Create a backup of user's data before onboarding fresh start.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        db_backup = models.OnboardingBackup(
+            user_id=user_id,
+            data=backup.data,
+            reason=backup.reason
+        )
+        db.add(db_backup)
+        db.commit()
+        db.refresh(db_backup)
+
+        logger.info(f"Created onboarding backup {db_backup.id} for user {user_id}")
+        return db_backup
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create onboarding backup for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create backup: {str(e)}")
+
+
+@router.get("/me/onboarding-backups", response_model=List[OnboardingBackupListItem])
+def list_onboarding_backups(
+    user_id: str = Query(..., description="The ID of the user"),
+    db: Session = Depends(database.get_db)
+):
+    """
+    List all onboarding backups for the user (without full data, for performance).
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    backups = db.query(models.OnboardingBackup).filter(
+        models.OnboardingBackup.user_id == user_id
+    ).order_by(models.OnboardingBackup.created_at.desc()).all()
+
+    return backups
+
+
+@router.get("/me/onboarding-backups/{backup_id}", response_model=OnboardingBackupResponse)
+def get_onboarding_backup(
+    backup_id: int,
+    user_id: str = Query(..., description="The ID of the user"),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Get a specific onboarding backup with full data.
+    """
+    backup = db.query(models.OnboardingBackup).filter(
+        models.OnboardingBackup.id == backup_id,
+        models.OnboardingBackup.user_id == user_id
+    ).first()
+
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup not found")
+
+    return backup
+
+
+@router.delete("/me/onboarding-backups/{backup_id}")
+def delete_onboarding_backup(
+    backup_id: int,
+    user_id: str = Query(..., description="The ID of the user"),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Delete a specific onboarding backup.
+    """
+    backup = db.query(models.OnboardingBackup).filter(
+        models.OnboardingBackup.id == backup_id,
+        models.OnboardingBackup.user_id == user_id
+    ).first()
+
+    if not backup:
+        raise HTTPException(status_code=404, detail="Backup not found")
+
+    try:
+        db.delete(backup)
+        db.commit()
+        return {"success": True, "message": "Backup deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete backup {backup_id} for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete backup: {str(e)}")
