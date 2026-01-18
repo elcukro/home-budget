@@ -80,47 +80,50 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const { settings, isLoading: settingsLoading } = useSettings();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingCheckDone, setOnboardingCheckDone] = useState(false);
 
   useEffect(() => {
     const checkShouldShowOnboarding = async () => {
       const userEmail = session?.user?.email;
-      if (!userEmail) return;
 
-      // If settings loaded and onboarding already completed, keep hidden
-      if (settings?.onboarding_completed) {
+      // Wait until we have user email and settings are loaded
+      if (!userEmail || settingsLoading) return;
+
+      // If onboarding already completed, definitely hide
+      if (settings?.onboarding_completed === true) {
         setShowOnboarding(false);
+        setOnboardingCheckDone(true);
         return;
       }
 
-      // If settings loaded but onboarding not completed, check if user has data
-      if (!settingsLoading && !settings?.onboarding_completed) {
-        try {
-          const [incomeRes, expensesRes, loansRes, savingsRes] = await Promise.all([
-            fetch('/api/income'),
-            fetch(`${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`),
-            fetch(`${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`),
-            fetch('/api/savings'),
-          ]);
+      // Settings loaded and onboarding_completed is false or undefined - check user data
+      try {
+        const [incomeRes, expensesRes, loansRes, savingsRes] = await Promise.all([
+          fetch('/api/income'),
+          fetch(`${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`),
+          fetch(`${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`),
+          fetch('/api/savings'),
+        ]);
 
-          const hasIncome = incomeRes.ok && (await incomeRes.json()).length > 0;
-          const hasExpenses = expensesRes.ok && (await expensesRes.json()).length > 0;
-          const hasLoans = loansRes.ok && (await loansRes.json()).length > 0;
-          const hasSavings = savingsRes.ok && (await savingsRes.json()).length > 0;
+        const hasIncome = incomeRes.ok && (await incomeRes.json()).length > 0;
+        const hasExpenses = expensesRes.ok && (await expensesRes.json()).length > 0;
+        const hasLoans = loansRes.ok && (await loansRes.json()).length > 0;
+        const hasSavings = savingsRes.ok && (await savingsRes.json()).length > 0;
 
-          // Only show onboarding if user is missing data in at least one section
-          const hasAllData = hasIncome && hasExpenses && hasLoans && hasSavings;
-          setShowOnboarding(!hasAllData);
-        } catch {
-          // On error, show onboarding to be safe
-          setShowOnboarding(true);
-        }
+        // Only show onboarding if user is missing data in at least one section
+        const hasAllData = hasIncome && hasExpenses && hasLoans && hasSavings;
+        setShowOnboarding(!hasAllData);
+      } catch {
+        // On error, keep hidden (safe default)
+        setShowOnboarding(false);
       }
+      setOnboardingCheckDone(true);
     };
 
     void checkShouldShowOnboarding();
   }, [session?.user?.email, settings?.onboarding_completed, settingsLoading]);
 
-  // Filter out onboarding from navigation - hidden by default, only shown if needed
+  // Filter out onboarding from navigation - hidden by default, only shown if explicitly needed
   const filteredNavigation = showOnboarding
     ? navigation
     : navigation.filter((item) => item.href !== '/onboarding');
