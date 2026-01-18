@@ -87,6 +87,9 @@ interface UserSettings {
   ppk_employee_rate?: number | null;
   ppk_employer_rate?: number | null;
   children_count?: number;
+  // Onboarding status
+  onboarding_completed?: boolean;
+  onboarding_completed_at?: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -177,6 +180,7 @@ export default function SettingsPage() {
     reason: string | null;
     created_at: string;
   }>>([]);
+  const [hasCompleteData, setHasCompleteData] = useState(false);
 
   const userEmail = session?.user?.email ?? null;
 
@@ -292,6 +296,29 @@ export default function SettingsPage() {
     }
   };
 
+  const checkUserHasCompleteData = async () => {
+    if (!userEmail) return;
+    try {
+      // Check all main data sections in parallel
+      const [incomeRes, expensesRes, loansRes, savingsRes] = await Promise.all([
+        fetch('/api/income'),
+        fetch(`${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`),
+        fetch(`${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`),
+        fetch('/api/savings'),
+      ]);
+
+      const hasIncome = incomeRes.ok && (await incomeRes.json()).length > 0;
+      const hasExpenses = expensesRes.ok && (await expensesRes.json()).length > 0;
+      const hasLoans = loansRes.ok && (await loansRes.json()).length > 0;
+      const hasSavings = savingsRes.ok && (await savingsRes.json()).length > 0;
+
+      // User has complete data if they have entries in ALL sections
+      setHasCompleteData(hasIncome && hasExpenses && hasLoans && hasSavings);
+    } catch (err) {
+      logger.error("[Settings] Failed to check user data completeness", err);
+    }
+  };
+
   const handleDownloadBackup = async (backupId: number) => {
     if (!userEmail) return;
     try {
@@ -348,6 +375,7 @@ export default function SettingsPage() {
     void fetchSettings();
     void fetchTinkConnections();
     void fetchOnboardingBackups();
+    void checkUserHasCompleteData();
   }, [userEmail]);
 
   // Refetch Tink connections when integrations tab becomes active (e.g., after returning from callback)
@@ -869,82 +897,86 @@ export default function SettingsPage() {
                 </Button>
               </form>
 
-              <Separator className="my-6" />
+              {/* Onboarding Section - hidden if user already completed onboarding or has complete data */}
+              {!settings?.onboarding_completed && !hasCompleteData && (
+                <>
+                  <Separator className="my-6" />
 
-              {/* Onboarding Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon icon={faPlay} className="w-4 h-4 text-muted-foreground" />
-                  <h4 className="font-medium">{intl.formatMessage({ id: "settings.onboarding.title" })}</h4>
-                </div>
-
-                {showOnboardingRedirectMessage && (
-                  <div className="flex items-start gap-3 rounded-lg border bg-muted/50 p-4">
-                    <Info className="h-4 w-4 mt-0.5 text-primary" />
-                    <p className="text-sm text-muted-foreground">
-                      {intl.formatMessage({ id: "settings.onboarding.redirectMessage" })}
-                    </p>
-                  </div>
-                )}
-
-                <p className="text-sm text-muted-foreground">
-                  {intl.formatMessage({ id: "settings.onboarding.description" })}
-                </p>
-
-                <AlertDialog open={onboardingModeDialogOpen} onOpenChange={setOnboardingModeDialogOpen}>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline">
-                      <FontAwesomeIcon icon={faPlay} className="w-4 h-4 mr-2" />
-                      {intl.formatMessage({ id: "settings.onboarding.runButton" })}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>
-                        {intl.formatMessage({ id: "settings.onboarding.modeDialog.title" })}
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {intl.formatMessage({ id: "settings.onboarding.modeDialog.description" })}
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div
-                        className="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => {
-                          setOnboardingModeDialogOpen(false);
-                          router.push('/onboarding?force=true&mode=merge');
-                        }}
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium">{intl.formatMessage({ id: "settings.onboarding.modeDialog.mergeMode" })}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {intl.formatMessage({ id: "settings.onboarding.modeDialog.mergeModeDescription" })}
-                          </p>
-                        </div>
-                      </div>
-                      <div
-                        className="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => {
-                          setOnboardingModeDialogOpen(false);
-                          router.push('/onboarding?force=true&mode=fresh');
-                        }}
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium">{intl.formatMessage({ id: "settings.onboarding.modeDialog.freshStartMode" })}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {intl.formatMessage({ id: "settings.onboarding.modeDialog.freshStartModeDescription" })}
-                          </p>
-                        </div>
-                      </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <FontAwesomeIcon icon={faPlay} className="w-4 h-4 text-muted-foreground" />
+                      <h4 className="font-medium">{intl.formatMessage({ id: "settings.onboarding.title" })}</h4>
                     </div>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>
-                        {intl.formatMessage({ id: "settings.onboarding.modeDialog.cancel" })}
-                      </AlertDialogCancel>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+
+                    {showOnboardingRedirectMessage && (
+                      <div className="flex items-start gap-3 rounded-lg border bg-muted/50 p-4">
+                        <Info className="h-4 w-4 mt-0.5 text-primary" />
+                        <p className="text-sm text-muted-foreground">
+                          {intl.formatMessage({ id: "settings.onboarding.redirectMessage" })}
+                        </p>
+                      </div>
+                    )}
+
+                    <p className="text-sm text-muted-foreground">
+                      {intl.formatMessage({ id: "settings.onboarding.description" })}
+                    </p>
+
+                    <AlertDialog open={onboardingModeDialogOpen} onOpenChange={setOnboardingModeDialogOpen}>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline">
+                          <FontAwesomeIcon icon={faPlay} className="w-4 h-4 mr-2" />
+                          {intl.formatMessage({ id: "settings.onboarding.runButton" })}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            {intl.formatMessage({ id: "settings.onboarding.modeDialog.title" })}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {intl.formatMessage({ id: "settings.onboarding.modeDialog.description" })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div
+                            className="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => {
+                              setOnboardingModeDialogOpen(false);
+                              router.push('/onboarding?force=true&mode=merge');
+                            }}
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium">{intl.formatMessage({ id: "settings.onboarding.modeDialog.mergeMode" })}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {intl.formatMessage({ id: "settings.onboarding.modeDialog.mergeModeDescription" })}
+                              </p>
+                            </div>
+                          </div>
+                          <div
+                            className="flex items-start gap-4 p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => {
+                              setOnboardingModeDialogOpen(false);
+                              router.push('/onboarding?force=true&mode=fresh');
+                            }}
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium">{intl.formatMessage({ id: "settings.onboarding.modeDialog.freshStartMode" })}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {intl.formatMessage({ id: "settings.onboarding.modeDialog.freshStartModeDescription" })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>
+                            {intl.formatMessage({ id: "settings.onboarding.modeDialog.cancel" })}
+                          </AlertDialogCancel>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
