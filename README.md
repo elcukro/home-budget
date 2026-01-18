@@ -2,6 +2,8 @@
 
 A modern, full-stack personal finance management application built with Next.js, FastAPI, and PostgreSQL. Track your income, expenses, and loans with an intuitive user interface and robust backend.
 
+[![codecov](https://codecov.io/gh/elcukro/home-budget/graph/badge.svg)](https://codecov.io/gh/elcukro/home-budget)
+
 ## 🌟 Features
 
 ### Core Functionality
@@ -472,5 +474,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 For support, please open an issue in the GitHub repository or contact the maintainers.
-
-[![codecov](https://codecov.io/gh/elcukro/home-budget/graph/badge.svg)](https://codecov.io/gh/elcukro/home-budget)
