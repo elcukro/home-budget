@@ -35,13 +35,30 @@ function PostHogPageViewInner() {
     }
   }, [pathname, searchParams]);
 
-  // Identify user when logged in
+  // Identify user when logged in and track signup for new users
   useEffect(() => {
     if (session?.user?.email && posthog) {
-      posthog.identify(session.user.email, {
-        email: session.user.email,
+      const email = session.user.email;
+      const signupKey = `posthog_signup_tracked_${email}`;
+
+      // Check if this is a new user (first time we've seen them)
+      const hasTrackedSignup = localStorage.getItem(signupKey);
+
+      posthog.identify(email, {
+        email: email,
         name: session.user.name,
       });
+
+      // Track signup_completed for new users
+      if (!hasTrackedSignup) {
+        posthog.capture('signup_completed', {
+          method: 'google', // Assuming Google OAuth
+        });
+        localStorage.setItem(signupKey, 'true');
+      } else {
+        // Track login for returning users
+        posthog.capture('login');
+      }
     }
   }, [session]);
 
