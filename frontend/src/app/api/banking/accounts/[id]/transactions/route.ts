@@ -9,7 +9,7 @@ const BACKEND_BASE_URL =
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const accountId = params.id;
+    const { id: accountId } = await params;
 
     // Forward request to backend
     const backendUrl = `${BACKEND_BASE_URL}/banking/accounts/${accountId}/transactions`;

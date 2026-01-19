@@ -7,11 +7,9 @@ import IntlProviderWrapper from "@/components/IntlProviderWrapper";
 import InactivityChecker from "@/components/InactivityChecker";
 import ChartInitializer from "@/components/ChartInitializer";
 import ChunkErrorHandler from "@/components/ChunkErrorHandler";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import CookieConsent from "@/components/CookieConsent";
-
-// Import Sentry for client-side error tracking
-import "../../sentry.client.config";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://firedup.app";
 
@@ -73,20 +71,22 @@ export default function RootLayout({
     <html lang="pl" suppressHydrationWarning>
       <body className="font-sans antialiased">
         <ChunkErrorHandler />
-        <AuthProvider>
-          <PostHogProvider>
-            <SettingsProvider>
-              <SubscriptionProvider>
-                <IntlProviderWrapper>
-                  <ChartInitializer />
-                  {children}
-                  <InactivityChecker />
-                  <CookieConsent />
-                </IntlProviderWrapper>
-              </SubscriptionProvider>
-            </SettingsProvider>
-          </PostHogProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>
+            <PostHogProvider>
+              <SettingsProvider>
+                <SubscriptionProvider>
+                  <IntlProviderWrapper>
+                    <ChartInitializer />
+                    {children}
+                    <InactivityChecker />
+                    <CookieConsent />
+                  </IntlProviderWrapper>
+                </SubscriptionProvider>
+              </SettingsProvider>
+            </PostHogProvider>
+          </AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

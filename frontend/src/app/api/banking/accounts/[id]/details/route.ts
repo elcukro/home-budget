@@ -9,20 +9,20 @@ const BACKEND_BASE_URL =
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user) {
       return NextResponse.json(
         { error: "Not authenticated" },
         { status: 401 }
       );
     }
-    
+
     // Get the account ID from the route parameters
-    const accountId = params.id;
+    const { id: accountId } = await params;
     
     if (!accountId) {
       return NextResponse.json(

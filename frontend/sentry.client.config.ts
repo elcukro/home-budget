@@ -3,10 +3,20 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: "https://c40ac91262b9394a5ca3741b80dc186a@o4510725745868800.ingest.de.sentry.io/4510725755699280",
 
+  integrations: [
+    Sentry.replayIntegration({
+      // Mask all text for privacy (shows as *** in replays)
+      maskAllText: true,
+      // Block media elements (images, videos) for privacy
+      blockAllMedia: true,
+    }),
+  ],
+
   // Performance Monitoring
   tracesSampleRate: 0.1, // 10% of transactions for performance monitoring
 
-  // Session Replay - capture 10% of sessions, 100% of sessions with errors
+  // Session Replay
+  // 10% of sessions recorded normally, 100% when errors occur
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
 

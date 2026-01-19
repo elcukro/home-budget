@@ -10,10 +10,11 @@ const API_BASE_URL =
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  logger.debug('DELETE request received for income ID:', params.id);
-  
+  const { id } = await params;
+  logger.debug('DELETE request received for income ID:', id);
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -23,7 +24,7 @@ export async function DELETE(
 
     logger.debug('User email from session:', session.user.email);
 
-    const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/income/${params.id}`, {
+    const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/income/${id}`, {
       method: 'DELETE',
       headers: {
         'Accept': 'application/json',

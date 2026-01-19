@@ -9,7 +9,7 @@ const BACKEND_BASE_URL =
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -18,12 +18,13 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let requisitionId = params.id;
-    
+    const { id } = await params;
+    let requisitionId = id;
+
     // Log the requisition ID and its type for debugging
     console.log('Received requisition ID:', requisitionId);
     console.log('Requisition ID type:', typeof requisitionId);
-    
+
     // Try to force to string if needed
     if (requisitionId && typeof requisitionId !== 'string') {
       try {
@@ -34,7 +35,7 @@ export async function GET(
         console.error('Failed to convert requisition ID to string:', e);
       }
     }
-    
+
     // Ensure we have a valid requisition ID before proceeding
     if (!requisitionId) {
       console.error('Missing requisition ID');
@@ -46,7 +47,7 @@ export async function GET(
 
     // Forward request to backend
     const backendUrl = `${BACKEND_BASE_URL}/banking/requisitions/${requisitionId}`;
-    
+
     const response = await fetch(backendUrl, {
       method: 'GET',
       headers: {
@@ -66,10 +67,10 @@ export async function GET(
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in banking/requisitions/[id] route:', error);
     return NextResponse.json(
-      { error: 'Internal server error', detail: error.message },
+      { error: 'Internal server error', detail: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

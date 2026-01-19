@@ -10,16 +10,17 @@ const API_BASE_URL =
 
 export async function GET(
   request: Request,
-  { params }: { params: { email: string } }
+  { params }: { params: Promise<{ email: string }> }
 ) {
+  const { email } = await params;
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email || session.user.email !== params.email) {
+  if (!session?.user?.email || session.user.email !== email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
     const response = await fetch(
-      `${API_BASE_URL}/users/${encodeURIComponent(params.email)}/settings`,
+      `${API_BASE_URL}/users/${encodeURIComponent(email)}/settings`,
       {
         method: 'GET',
         headers: {
@@ -46,10 +47,11 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { email: string } }
+  { params }: { params: Promise<{ email: string }> }
 ) {
+  const { email } = await params;
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email || session.user.email !== params.email) {
+  if (!session?.user?.email || session.user.email !== email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -57,7 +59,7 @@ export async function PUT(
     const body = await request.json();
 
     const response = await fetch(
-      `${API_BASE_URL}/users/${encodeURIComponent(params.email)}/settings`,
+      `${API_BASE_URL}/users/${encodeURIComponent(email)}/settings`,
       {
         method: 'PUT',
         headers: {

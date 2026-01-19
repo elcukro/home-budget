@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -12,7 +12,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const connectionId = params.id;
+    const { id: connectionId } = await params;
     const backendUrl = `${process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/banking/tink/connections/${connectionId}`;
 
     const response = await fetch(backendUrl, {

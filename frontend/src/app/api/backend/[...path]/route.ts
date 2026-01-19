@@ -92,22 +92,28 @@ const forwardRequest = async (request: NextRequest, params: { path?: string[] })
   }
 }
 
-export async function GET(request: NextRequest, context: { params: { path?: string[] } }) {
-  return forwardRequest(request, context.params)
+// Next.js 16+ requires params to be awaited as a Promise
+export async function GET(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  const params = await context.params
+  return forwardRequest(request, params)
 }
 
-export async function POST(request: NextRequest, context: { params: { path?: string[] } }) {
-  return forwardRequest(request, context.params)
+export async function POST(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  const params = await context.params
+  return forwardRequest(request, params)
 }
 
-export async function PUT(request: NextRequest, context: { params: { path?: string[] } }) {
-  return forwardRequest(request, context.params)
+export async function PUT(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  const params = await context.params
+  return forwardRequest(request, params)
 }
 
-export async function PATCH(request: NextRequest, context: { params: { path?: string[] } }) {
-  return forwardRequest(request, context.params)
+export async function PATCH(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  const params = await context.params
+  return forwardRequest(request, params)
 }
 
-export async function DELETE(request: NextRequest, context: { params: { path?: string[] } }) {
-  return forwardRequest(request, context.params)
+export async function DELETE(request: NextRequest, context: { params: Promise<{ path: string[] }> }) {
+  const params = await context.params
+  return forwardRequest(request, params)
 }

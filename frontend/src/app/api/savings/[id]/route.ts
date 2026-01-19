@@ -10,15 +10,16 @@ const API_BASE_URL =
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const response = await fetch(`${API_BASE_URL}/savings/${params.id}`, {
+    const response = await fetch(`${API_BASE_URL}/savings/${id}`, {
       headers: {
         'X-User-ID': session.user.email,
       },
@@ -41,18 +42,19 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
-    logger.debug('Updating saving:', params.id, body);
+    logger.debug('Updating saving:', id, body);
 
-    const response = await fetch(`${API_BASE_URL}/savings/${params.id}`, {
+    const response = await fetch(`${API_BASE_URL}/savings/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -80,15 +82,16 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const response = await fetch(`${API_BASE_URL}/savings/${params.id}`, {
+    const response = await fetch(`${API_BASE_URL}/savings/${id}`, {
       method: 'DELETE',
       headers: {
         'X-User-ID': session.user.email,
@@ -107,4 +110,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

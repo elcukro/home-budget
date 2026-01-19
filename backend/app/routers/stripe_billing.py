@@ -105,8 +105,42 @@ def get_or_create_stripe_customer(user: models.User, db: Session) -> str:
     return customer.id
 
 
+def ensure_user_exists(user_id: str, db: Session) -> models.User:
+    """Ensure user exists in database, create if not."""
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+
+    if not user:
+        # Create user with email as ID (standard pattern in this app)
+        user = models.User(
+            id=user_id,
+            email=user_id,  # user_id is the email in this system
+            name=user_id.split('@')[0]  # Use part before @ as name
+        )
+        db.add(user)
+
+        # Also create default settings for the new user
+        settings = models.Settings(
+            user_id=user_id,
+            language="pl",
+            currency="PLN",
+            ai={"apiKey": None},
+            emergency_fund_target=1000,
+            emergency_fund_months=3,
+            base_currency="PLN"
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(user)
+        logger.info(f"Created user record for {user_id}")
+
+    return user
+
+
 def ensure_subscription_exists(user_id: str, db: Session) -> models.Subscription:
     """Ensure user has a subscription record, create trial if not."""
+    # First ensure user exists (foreign key requirement)
+    ensure_user_exists(user_id, db)
+
     subscription = db.query(models.Subscription).filter(
         models.Subscription.user_id == user_id
     ).first()

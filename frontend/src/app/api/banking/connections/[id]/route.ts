@@ -9,7 +9,7 @@ const BACKEND_BASE_URL =
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -18,11 +18,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const connectionId = params.id;
+    const { id: connectionId } = await params;
 
     // Forward request to backend
     const backendUrl = `${BACKEND_BASE_URL}/banking/connections/${connectionId}`;
-    
+
     const response = await fetch(backendUrl, {
       method: 'DELETE',
       headers: {
@@ -42,10 +42,10 @@ export async function DELETE(
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in banking/connections/[id] route:', error);
     return NextResponse.json(
-      { error: 'Internal server error', detail: error.message },
+      { error: 'Internal server error', detail: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
