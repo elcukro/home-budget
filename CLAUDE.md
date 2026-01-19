@@ -7,11 +7,15 @@
 - `cd frontend && npm run build` - Build frontend for production
 - `cd frontend && npm run lint` - Run ESLint checks
 - `cd frontend && npx tsc` - Run TypeScript type checking
+- `cd frontend && npm run test` - Run Vitest tests in watch mode
+- `cd frontend && npm run test:coverage` - Run tests with coverage report
 
 ### Backend
 - `cd backend && uvicorn app.main:app --reload` - Start backend development server
-- `cd backend && python test_api.py` - Run API tests
-- `cd backend && python -m pytest tests/test_file.py` - Run a single test file
+- `cd backend && source venv/bin/activate && pytest` - Run all pytest tests
+- `cd backend && source venv/bin/activate && pytest --cov=app` - Run tests with coverage
+- `cd backend && source venv/bin/activate && pytest tests/unit/` - Run only unit tests
+- `cd backend && source venv/bin/activate && pytest tests/integration/` - Run only integration tests
 - `cd backend && python test_gocardless.py` - Test GoCardless bank data API connectivity
 
 ### Production Services (firedup.app)
