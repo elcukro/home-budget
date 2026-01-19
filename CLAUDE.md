@@ -18,6 +18,15 @@
 - `cd backend && source venv/bin/activate && pytest tests/integration/` - Run only integration tests
 - `cd backend && python test_gocardless.py` - Test GoCardless bank data API connectivity
 
+### Mobile (Expo/React Native)
+- `cd mobile && npm install` - Install mobile app dependencies
+- `cd mobile && npx expo start` - Start Expo development server
+- `cd mobile && npx expo start --ios` - Start and open iOS Simulator
+- `cd mobile && npx expo start --android` - Start and open Android Emulator
+- `cd mobile && npx expo-doctor` - Check Expo configuration
+- `cd mobile && npx tsc --noEmit` - Run TypeScript type checking
+- `cd mobile && npx expo export --platform web` - Test build for web
+
 ### Production Services (firedup.app)
 
 **Server access:** `ssh root@firedup.app`
@@ -87,6 +96,17 @@ journalctl -u home-budget-backend -f
 - Requisition IDs are stored and persist for 90 days (varies by bank)
 - Connection management is handled in user settings
 - Flow: get token → select bank → create requisition → get accounts → access data
+
+### Mobile App (FiredUp)
+- React Native with Expo SDK 52 and Expo Router
+- Located in `mobile/` directory (standalone, not monorepo)
+- Communicates with production API at https://firedup.app
+- Uses JWT authentication (separate from web's NextAuth)
+- Auth flow: Google Sign-In → exchange Google token for app JWT → Bearer token auth
+- State management: Zustand with expo-secure-store for token persistence
+- Screens: Dashboard, Transactions, Goals (Baby Steps), Settings
+- Backend endpoints for mobile auth: `/api/auth/mobile/google`, `/api/auth/mobile/me`
+- Requires JWT_SECRET and GOOGLE_CLIENT_ID in backend .env for production
 
 ## Skills
 
