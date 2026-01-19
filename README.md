@@ -2,6 +2,7 @@
 
 A modern, full-stack personal finance management application built with Next.js, FastAPI, and PostgreSQL. Track your income, expenses, and loans with an intuitive user interface and robust backend.
 
+[![Tests](https://github.com/elcukro/home-budget/actions/workflows/test.yml/badge.svg)](https://github.com/elcukro/home-budget/actions/workflows/test.yml)
 [![codecov](https://codecov.io/gh/elcukro/home-budget/graph/badge.svg)](https://codecov.io/gh/elcukro/home-budget)
 
 ## 🌟 Features
@@ -39,7 +40,7 @@ A modern, full-stack personal finance management application built with Next.js,
 ## 🛠️ Tech Stack
 
 ### Frontend
-- Next.js 14 with App Router
+- Next.js 16 with App Router
 - TypeScript for type safety
 - Tailwind CSS for styling
 - React Hook Form for form management
@@ -50,6 +51,8 @@ A modern, full-stack personal finance management application built with Next.js,
 - Chart.js and react-chartjs-2 for interactive charts
 - Zod for schema validation
 - React Hot Toast for notifications
+- Vitest for unit testing
+- Sentry for error monitoring & session replay
 
 ### Backend
 - FastAPI for high-performance API
@@ -61,9 +64,33 @@ A modern, full-stack personal finance management application built with Next.js,
 - JWT for authentication
 - CORS for secure cross-origin requests
 - Anthropic Claude integration for FIRE-aligned financial insights
-- GoCardless API integration for secure bank account access
+- Tink API integration for Polish bank connections (ING, PKO BP, mBank, etc.)
+- Sentry for error monitoring
+- pytest for unit and integration testing
 
 ## 📝 Changelog
+
+### 2026-01-19
+- 🧪 **Testing Infrastructure**:
+  - Added comprehensive unit testing with pytest (backend) and Vitest (frontend)
+  - 325 backend tests covering models, services, and API endpoints
+  - 396 frontend tests covering utilities, hooks, contexts, and API functions
+  - Integration tests using real FastAPI app with SQLite in-memory database
+  - CI/CD pipeline with GitHub Actions running tests on every push/PR
+  - Codecov integration for coverage visualization
+- 🛡️ **Security Fixes**:
+  - Updated Sentry SDK to v2.19+ (fixes env var exposure vulnerability)
+  - Updated Next.js to v16.1.3 (fixes glob CLI command injection - High severity)
+  - Updated Vitest to v4.0+ (fixes esbuild dev server vulnerability)
+  - Fixed Babel RegExp complexity vulnerability
+- 📊 **Sentry Improvements**:
+  - Added Session Replay integration with privacy settings (text masking, media blocking)
+  - Added ErrorBoundary component with automatic Sentry reporting
+  - Added error reporting to app error page
+- 🐛 **Bug Fixes**:
+  - Fixed foreign key violation when creating subscriptions for new users
+  - Fixed duplicate middleware blocking landing page access
+  - Updated all Next.js 16 route handlers to use async params pattern
 
 ### 2026-01-17
 - 🗑️ **Account Deletion Feature**:
@@ -183,12 +210,14 @@ A modern, full-stack personal finance management application built with Next.js,
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- Python 3.8+
-- Docker and Docker Compose
+- Node.js 20+
+- Python 3.11+
+- Docker and Docker Compose (optional)
 - PostgreSQL
 - Google OAuth credentials (for authentication)
-- OpenAI API key (for AI insights feature)
+- Anthropic API key (for AI insights feature)
+- Stripe API keys (for subscription management)
+- Tink API credentials (for banking integration, optional)
 
 ### Installation
 
@@ -443,6 +472,39 @@ Connect securely to your bank accounts and access your financial data using the 
 - `POST /api/banking/connections` - Save a bank connection to user settings
 - `GET /api/banking/connections` - List user's bank connections
 - `DELETE /api/banking/connections/{id}` - Remove a bank connection
+
+## 🧪 Testing
+
+The project includes comprehensive test suites for both backend and frontend.
+
+### Running Tests
+
+**Backend (pytest):**
+```bash
+cd backend
+source venv/bin/activate  # or: .\venv\Scripts\activate on Windows
+pip install -r requirements-test.txt
+pytest                    # Run all tests
+pytest --cov=app          # Run with coverage
+pytest tests/unit/        # Run only unit tests
+pytest tests/integration/ # Run only integration tests
+```
+
+**Frontend (Vitest):**
+```bash
+cd frontend
+npm install
+npm run test              # Run tests in watch mode
+npm run test:coverage     # Run with coverage report
+```
+
+### Test Coverage
+- **Backend**: 325 tests covering models, services, API endpoints, and validation
+- **Frontend**: 396 tests covering utilities, hooks, contexts, and API functions
+
+### CI/CD
+Tests run automatically on every push to `main` and on pull requests via GitHub Actions.
+Coverage reports are uploaded to [Codecov](https://codecov.io/gh/elcukro/home-budget).
 
 ## 🤝 Contributing
 
