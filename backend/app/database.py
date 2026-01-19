@@ -1,7 +1,7 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import QueuePool
+from sqlalchemy.pool import QueuePool, StaticPool
 import os
 import logging
 
@@ -11,34 +11,56 @@ from .logging_utils import configure_logging
 configure_logging()
 logger = logging.getLogger(__name__)
 
-# Get database configuration from environment variables
-POSTGRES_USER = os.getenv("POSTGRES_USER", "homebudget")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
-if not POSTGRES_PASSWORD:
-    raise ValueError("POSTGRES_PASSWORD environment variable is required")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-POSTGRES_DB = os.getenv("POSTGRES_DB", "homebudget")
+# Check if running in test mode
+ENVIRONMENT = os.getenv("ENVIRONMENT", "production")
+IS_TEST_MODE = ENVIRONMENT == "test"
 
-SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+if IS_TEST_MODE:
+    # Test mode: use in-memory SQLite
+    SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+    logger.debug("Running in test mode with in-memory SQLite")
 
-logger.debug("Connecting to database at %s:%s/%s", POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB)
-try:
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
-        poolclass=QueuePool,
-        pool_size=20,  # Maximum number of connections to keep in the pool
-        max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
-        pool_timeout=30,  # Timeout for getting a connection from the pool
-        pool_pre_ping=True  # Enable connection health checks
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
     )
-    # Test the connection
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-    logger.debug("Successfully connected to database")
-except Exception as e:
-    logger.error(f"Failed to connect to database: {str(e)}")
-    raise
+
+    # Enable foreign key support for SQLite
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+else:
+    # Production mode: use PostgreSQL
+    POSTGRES_USER = os.getenv("POSTGRES_USER", "homebudget")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+    if not POSTGRES_PASSWORD:
+        raise ValueError("POSTGRES_PASSWORD environment variable is required")
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
+    POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "homebudget")
+
+    SQLALCHEMY_DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
+    logger.debug("Connecting to database at %s:%s/%s", POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB)
+    try:
+        engine = create_engine(
+            SQLALCHEMY_DATABASE_URL,
+            poolclass=QueuePool,
+            pool_size=20,  # Maximum number of connections to keep in the pool
+            max_overflow=10,  # Maximum number of connections that can be created beyond pool_size
+            pool_timeout=30,  # Timeout for getting a connection from the pool
+            pool_pre_ping=True  # Enable connection health checks
+        )
+        # Test the connection
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        logger.debug("Successfully connected to database")
+    except Exception as e:
+        logger.error(f"Failed to connect to database: {str(e)}")
+        raise
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

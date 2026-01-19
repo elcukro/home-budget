@@ -1,9 +1,14 @@
 from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey, DateTime, Boolean, JSON, UniqueConstraint, Table, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from .database import Base
+from .database import Base, IS_TEST_MODE
 from datetime import datetime
-from sqlalchemy.dialects.postgresql import JSONB
+
+# Use JSON for SQLite (test mode), JSONB for PostgreSQL (production)
+if IS_TEST_MODE:
+    JSONB = JSON
+else:
+    from sqlalchemy.dialects.postgresql import JSONB
 
 class User(Base):
     __tablename__ = "users"
