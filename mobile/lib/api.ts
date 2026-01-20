@@ -465,19 +465,20 @@ export class ApiClient {
   };
 
   // ============== Loans ==============
+  // Note: Uses /internal-api/ prefix to avoid conflict with web page route
 
   loans = {
     /**
      * Get all loans for user.
      */
     list: () =>
-      this.request<LoanDetail[]>('/loans'),
+      this.request<LoanDetail[]>('/internal-api/loans'),
 
     /**
      * Get a specific loan by ID.
      */
     get: (loanId: number) =>
-      this.request<LoanDetail>(`/loans/${loanId}`),
+      this.request<LoanDetail>(`/internal-api/loans/${loanId}`),
 
     /**
      * Get all payments for a loan.
@@ -508,7 +509,7 @@ export class ApiClient {
      * Only works for loans with zero remaining balance.
      */
     archive: (loanId: number) =>
-      this.request<{ success: boolean; message: string }>(`/loans/${loanId}/archive`, {
+      this.request<{ success: boolean; message: string }>(`/internal-api/loans/${loanId}/archive`, {
         method: 'POST',
       }),
   };
