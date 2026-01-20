@@ -13,6 +13,18 @@ import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/hooks/useApi';
 import MetricCard from '@/components/MetricCard';
 import LoanCard from '@/components/LoanCard';
+import StreakCounter from '@/components/StreakCounter';
+import { LevelProgressBar } from '@/components/LevelProgress';
+import { BadgeRow, ProgressBadge } from '@/components/AchievementBadge';
+import CelebrationModal from '@/components/CelebrationModal';
+import {
+  useGamificationStore,
+  usePendingCelebration,
+  useStreak,
+  useLevel,
+  useRecentBadges,
+  useNearestBadges,
+} from '@/stores/gamification';
 import type { DashboardSummary } from '@/lib/api';
 
 // Mock data for dev mode
@@ -72,6 +84,14 @@ export default function DashboardScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Gamification state
+  const { fetchOverview, checkIn, dismissCelebration } = useGamificationStore();
+  const pendingCelebration = usePendingCelebration();
+  const streak = useStreak();
+  const level = useLevel();
+  const recentBadges = useRecentBadges(4);
+  const nearestBadges = useNearestBadges(2);
+
   // Check if we're in dev mode
   const isDevMode = token === 'dev-token-for-testing';
 
@@ -94,6 +114,9 @@ export default function DashboardScreen() {
       const data = await api.dashboard.getSummary(user.email);
 
       setSummary(data);
+
+      // Fetch gamification data
+      await fetchOverview();
     } catch (err) {
       console.error('Failed to fetch dashboard:', err);
       setError('Nie udało się załadować danych');
@@ -101,7 +124,18 @@ export default function DashboardScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.email, api, isDevMode]);
+  }, [user?.email, api, isDevMode, fetchOverview]);
+
+  // Perform daily check-in when app opens
+  useEffect(() => {
+    if (!isLoading && !isDevMode && api) {
+      // Delay check-in slightly to not block initial render
+      const timer = setTimeout(() => {
+        checkIn();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, isDevMode, api, checkIn]);
 
   useEffect(() => {
     fetchDashboard();
@@ -189,24 +223,42 @@ export default function DashboardScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Welcome */}
-      <View style={styles.welcomeSection}>
-        <Text style={styles.greeting}>Cześć, {user?.name || 'User'}!</Text>
-        <Text style={styles.date}>
-          {new Date().toLocaleDateString('pl-PL', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}
-        </Text>
-      </View>
+    <>
+      {/* Celebration Modal */}
+      <CelebrationModal
+        celebration={pendingCelebration}
+        onDismiss={dismissCelebration}
+      />
+
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
+      >
+        {/* Welcome with Streak */}
+        <View style={styles.welcomeSection}>
+          <View style={styles.welcomeRow}>
+            <View style={styles.welcomeText}>
+              <Text style={styles.greeting}>Cześć, {user?.name || 'User'}!</Text>
+              <Text style={styles.date}>
+                {new Date().toLocaleDateString('pl-PL', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'long',
+                })}
+              </Text>
+            </View>
+            {!isDevMode && (
+              <StreakCounter
+                currentStreak={streak.current}
+                longestStreak={streak.longest}
+                compact
+              />
+            )}
+          </View>
+        </View>
 
       {error ? (
         <View style={styles.errorContainer}>
@@ -358,6 +410,60 @@ export default function DashboardScreen() {
             </View>
           )}
 
+          {/* Gamification Section - Level & XP */}
+          {!isDevMode && level.totalXp > 0 && (
+            <View style={styles.gamificationSection}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name="trophy" size={20} color="#f97316" />
+                  <Text style={styles.sectionTitle}>Twój postęp</Text>
+                </View>
+              </View>
+              <LevelProgressBar
+                level={level.level}
+                levelName={level.name}
+                totalXp={level.totalXp}
+                xpForNext={level.xpForNext}
+                xpProgress={level.xpProgress}
+              />
+            </View>
+          )}
+
+          {/* Recent Achievements */}
+          {!isDevMode && recentBadges.length > 0 && (
+            <View style={styles.achievementsSection}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name="medal" size={20} color="#f97316" />
+                  <Text style={styles.sectionTitle}>Odznaki</Text>
+                </View>
+                <Text style={styles.sectionSubtitle}>
+                  {recentBadges.length} zdobyte
+                </Text>
+              </View>
+              <View style={styles.badgesContainer}>
+                <BadgeRow badges={recentBadges} maxVisible={4} />
+              </View>
+            </View>
+          )}
+
+          {/* Nearest Badges (Progress) */}
+          {!isDevMode && nearestBadges.length > 0 && (
+            <View style={styles.progressSection}>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <Ionicons name="flag" size={20} color="#3b82f6" />
+                  <Text style={styles.sectionTitle}>Do zdobycia</Text>
+                </View>
+              </View>
+              <View style={styles.progressBadges}>
+                {nearestBadges.map((progress) => (
+                  <ProgressBadge key={progress.badge_id} progress={progress} />
+                ))}
+              </View>
+            </View>
+          )}
+
           {/* Quick Actions */}
           <View style={styles.quickActions}>
             <Text style={styles.sectionTitle}>Szybkie akcje</Text>
@@ -374,7 +480,8 @@ export default function DashboardScreen() {
           </View>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 
@@ -394,6 +501,14 @@ const styles = StyleSheet.create({
   },
   welcomeSection: {
     marginBottom: 24,
+  },
+  welcomeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  welcomeText: {
+    flex: 1,
   },
   greeting: {
     fontSize: 28,
@@ -521,5 +636,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#374151',
+  },
+  // Gamification styles
+  gamificationSection: {
+    marginBottom: 24,
+  },
+  achievementsSection: {
+    marginBottom: 24,
+  },
+  badgesContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  progressSection: {
+    marginBottom: 24,
+  },
+  progressBadges: {
+    gap: 12,
   },
 });

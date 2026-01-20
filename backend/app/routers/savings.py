@@ -14,6 +14,7 @@ from ..schemas.savings import (
     SavingsGoalWithSavings, GoalStatus
 )
 from ..dependencies import get_current_user
+from ..services.gamification_service import GamificationService
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -73,6 +74,19 @@ async def create_saving(
         db.add(db_saving)
         db.commit()
         db.refresh(db_saving)
+
+        # Trigger gamification for deposits (not withdrawals)
+        if saving.saving_type == "deposit":
+            try:
+                GamificationService.on_saving_deposit(
+                    current_user.id,
+                    db_saving.id,
+                    saving.category,
+                    db
+                )
+            except Exception as gam_error:
+                logger.warning(f"Gamification error (non-blocking): {gam_error}")
+
         logger.info(f"Created saving with ID: {db_saving.id}")
         return db_saving
     except Exception as e:

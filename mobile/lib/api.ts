@@ -85,6 +85,76 @@ export interface FinancialFreedomUpdate {
   startDate?: string;
 }
 
+// ============== Gamification Types ==============
+
+export interface GamificationStats {
+  current_streak: number;
+  longest_streak: number;
+  last_activity_date: string | null;
+  total_xp: number;
+  level: number;
+  level_name: string;
+  level_name_en: string;
+  xp_for_next_level: number;
+  xp_progress_in_level: number;
+  total_expenses_logged: number;
+  total_savings_deposits: number;
+  total_loan_payments: number;
+  total_checkins: number;
+  total_debt_paid: number;
+  months_with_savings: number;
+}
+
+export interface UnlockedBadge {
+  badge_id: string;
+  name: string;
+  name_en: string;
+  description: string;
+  description_en: string;
+  icon: string;
+  category: string;
+  xp_awarded: number;
+  unlocked_at: string;
+  unlock_data: Record<string, unknown> | null;
+}
+
+export interface BadgeProgress {
+  badge_id: string;
+  name: string;
+  name_en: string;
+  description: string;
+  description_en: string;
+  icon: string;
+  category: string;
+  xp_reward: number;
+  current_value: number;
+  target_value: number;
+  progress_percent: number;
+}
+
+export interface GamificationOverview {
+  stats: GamificationStats;
+  unlocked_badges: UnlockedBadge[];
+  badge_progress: BadgeProgress[];
+  recent_events: Array<{
+    type: string;
+    data: Record<string, unknown>;
+    xp_change: number;
+    created_at: string;
+  }>;
+}
+
+export interface CheckinResponse {
+  success: boolean;
+  xp_earned: number;
+  new_streak: number;
+  streak_continued: boolean;
+  new_badges: UnlockedBadge[];
+  level_up: boolean;
+  new_level: number | null;
+  message: string;
+}
+
 // For local development, you can switch to:
 // const API_BASE_URL = 'http://localhost:8000';
 
@@ -365,6 +435,52 @@ export class ApiClient {
         cancel_at_period_end: boolean;
         is_lifetime: boolean;
       }>(`/internal-api/billing/status`, { params: { user_id: userId } }),
+  };
+
+  // ============== Gamification ==============
+  // Note: Uses /internal-api/ prefix for mobile direct access
+
+  gamification = {
+    /**
+     * Get user's gamification statistics (streaks, XP, level).
+     */
+    getStats: () =>
+      this.request<GamificationStats>('/internal-api/gamification/stats'),
+
+    /**
+     * Get complete gamification overview including badges and progress.
+     */
+    getOverview: () =>
+      this.request<GamificationOverview>('/internal-api/gamification/overview'),
+
+    /**
+     * Register daily check-in. Updates streak and awards XP.
+     */
+    checkin: () =>
+      this.request<CheckinResponse>('/internal-api/gamification/checkin', {
+        method: 'POST',
+      }),
+
+    /**
+     * Get all unlocked achievements/badges.
+     */
+    getAchievements: () =>
+      this.request<UnlockedBadge[]>('/internal-api/gamification/achievements'),
+
+    /**
+     * Get progress toward locked badges.
+     */
+    getBadgeProgress: () =>
+      this.request<BadgeProgress[]>('/internal-api/gamification/progress'),
+
+    /**
+     * Trigger recalculation of all achievements.
+     */
+    calculateAchievements: () =>
+      this.request<{ success: boolean; new_badges_count: number; new_badges: string[] }>(
+        '/internal-api/gamification/calculate',
+        { method: 'POST' }
+      ),
   };
 }
 

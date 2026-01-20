@@ -39,6 +39,11 @@ class User(Base):
     payment_history = relationship("PaymentHistory", back_populates="user", cascade="all, delete-orphan")
     onboarding_backups = relationship("OnboardingBackup", back_populates="user", cascade="all, delete-orphan")
     data_export_backups = relationship("DataExportBackup", back_populates="user", cascade="all, delete-orphan")
+    # Gamification relationships
+    gamification_stats = relationship("UserGamificationStats", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    achievements = relationship("Achievement", back_populates="user", cascade="all, delete-orphan")
+    streak_history = relationship("StreakHistory", back_populates="user", cascade="all, delete-orphan")
+    gamification_events = relationship("GamificationEvent", back_populates="user", cascade="all, delete-orphan")
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -601,4 +606,134 @@ class DataExportBackup(Base):
     __table_args__ = (
         Index('idx_data_export_backups_user_id', 'user_id'),
         Index('idx_data_export_backups_created_at', 'created_at'),
+    )
+
+
+# ==========================================
+# GAMIFICATION MODELS
+# ==========================================
+
+class UserGamificationStats(Base):
+    """Tracks user's gamification progress: streaks, XP, level."""
+    __tablename__ = "user_gamification_stats"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+
+    # Streak tracking
+    current_streak = Column(Integer, default=0)  # Current consecutive days
+    longest_streak = Column(Integer, default=0)  # Best streak ever
+    last_activity_date = Column(Date, nullable=True)  # Last day user was active
+
+    # XP and Level system
+    total_xp = Column(Integer, default=0)
+    level = Column(Integer, default=1)
+
+    # Activity counts (for stats display)
+    total_expenses_logged = Column(Integer, default=0)
+    total_savings_deposits = Column(Integer, default=0)
+    total_loan_payments = Column(Integer, default=0)
+    total_checkins = Column(Integer, default=0)
+
+    # Savings milestones
+    total_debt_paid = Column(Float, default=0)  # Cumulative debt paid off
+    months_with_savings = Column(Integer, default=0)  # Consecutive months saving
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="gamification_stats")
+
+    __table_args__ = (
+        Index('idx_user_gamification_stats_user_id', 'user_id'),
+    )
+
+
+class Achievement(Base):
+    """Stores unlocked achievements/badges for users."""
+    __tablename__ = "achievements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+
+    # Achievement identification
+    badge_id = Column(String, nullable=False)  # e.g., "first_thousand", "week_control"
+    badge_category = Column(String, nullable=False)  # "emergency_fund", "debt", "savings", "consistency", "fire"
+
+    # When unlocked
+    unlocked_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # XP awarded for this achievement
+    xp_awarded = Column(Integer, default=0)
+
+    # Optional: data at time of unlock (for celebration display)
+    unlock_data = Column(JSON, nullable=True)  # e.g., {"amount": 1000, "days": 7}
+
+    # Relationship
+    user = relationship("User", back_populates="achievements")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'badge_id', name='unique_user_badge'),
+        Index('idx_achievements_user_id', 'user_id'),
+        Index('idx_achievements_badge_id', 'badge_id'),
+        Index('idx_achievements_unlocked_at', 'unlocked_at'),
+    )
+
+
+class StreakHistory(Base):
+    """Historical record of daily activity for streak calculation."""
+    __tablename__ = "streak_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+
+    # Activity tracking
+    date = Column(Date, nullable=False)
+    streak_type = Column(String, nullable=False)  # "daily_checkin", "expense_logging", "savings"
+
+    # What triggered the streak for this day
+    activity_count = Column(Integer, default=1)  # Number of activities on this day
+    streak_count = Column(Integer, default=1)  # Streak count as of this day
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="streak_history")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'date', 'streak_type', name='unique_user_date_streak'),
+        Index('idx_streak_history_user_id', 'user_id'),
+        Index('idx_streak_history_date', 'date'),
+        Index('idx_streak_history_type', 'streak_type'),
+    )
+
+
+class GamificationEvent(Base):
+    """Log of all gamification events for analytics and debugging."""
+    __tablename__ = "gamification_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+
+    # Event details
+    event_type = Column(String, nullable=False)  # "xp_earned", "badge_unlocked", "level_up", "streak_milestone"
+    event_data = Column(JSON, nullable=True)  # Event-specific data
+
+    # XP changes
+    xp_change = Column(Integer, default=0)  # Positive for gain, negative for loss
+
+    # Trigger info
+    trigger_entity = Column(String, nullable=True)  # "expense", "saving", "checkin", etc.
+    trigger_entity_id = Column(Integer, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="gamification_events")
+
+    __table_args__ = (
+        Index('idx_gamification_events_user_id', 'user_id'),
+        Index('idx_gamification_events_type', 'event_type'),
+        Index('idx_gamification_events_created_at', 'created_at'),
     )

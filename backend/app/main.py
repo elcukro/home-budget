@@ -15,7 +15,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification
 from .database import engine, Base
 from .routers.users import User, UserBase, Settings, SettingsBase  # Import User, UserBase, Settings, and SettingsBase models from users router
 import json
@@ -23,6 +23,7 @@ import re
 import httpx
 from .logging_utils import make_conditional_print
 from .services.subscription_service import SubscriptionService
+from .services.gamification_service import GamificationService
 from .dependencies import get_current_user as get_authenticated_user
 
 # Rate limiting
@@ -133,6 +134,9 @@ app.include_router(bank_transactions.router)
 app.include_router(stripe_billing.router)
 # Mobile billing access (direct backend, bypasses Next.js routing)
 app.include_router(stripe_billing.router, prefix="/internal-api")
+# Gamification system
+app.include_router(gamification.router)
+app.include_router(gamification.router, prefix="/internal-api")
 
 # Loan models
 VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]
@@ -670,6 +674,14 @@ def create_loan_payment(
 
     db.commit()
     db.refresh(db_payment)
+
+    # Trigger gamification - award XP for loan payment
+    try:
+        is_overpayment = payment.payment_type == "overpayment"
+        GamificationService.on_loan_payment(current_user.id, db_payment.id, is_overpayment, db)
+    except Exception as gam_error:
+        print(f"[FastAPI] Gamification error (non-blocking): {gam_error}")
+
     return db_payment
 
 
@@ -752,6 +764,13 @@ def create_expense(
         db.add(db_expense)
         db.commit()
         db.refresh(db_expense)
+
+        # Trigger gamification - award XP for logging expense
+        try:
+            GamificationService.on_expense_logged(current_user.id, db_expense.id, db)
+        except Exception as gam_error:
+            print(f"[FastAPI] Gamification error (non-blocking): {gam_error}")
+
         print(f"[FastAPI] Created expense: {db_expense}")
         return db_expense
     except HTTPException:
@@ -917,6 +936,13 @@ def create_income(
         db.add(db_income)
         db.commit()
         db.refresh(db_income)
+
+        # Trigger gamification - award XP for logging income
+        try:
+            GamificationService.on_income_logged(current_user.id, db_income.id, db)
+        except Exception as gam_error:
+            print(f"[FastAPI] Gamification error (non-blocking): {gam_error}")
+
         print(f"[FastAPI] Created income: {db_income}")
         return db_income
     except HTTPException:

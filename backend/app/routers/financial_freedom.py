@@ -10,6 +10,7 @@ from ..models import User, FinancialFreedom, Settings, Saving, Loan, Expense
 from ..schemas.savings import SavingCategory
 from ..schemas.financial_freedom import FinancialFreedomCreate, FinancialFreedomResponse, FinancialFreedomUpdate
 from ..dependencies import get_current_user
+from ..services.gamification_service import GamificationService
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -447,7 +448,13 @@ async def update_financial_freedom(
             db.commit()
             db.refresh(financial_freedom)
             logger.info(f"Successfully updated data for user {current_user.id}")
-            
+
+            # Check for FIRE-related achievements
+            try:
+                GamificationService.check_fire_badges(current_user.id, db)
+            except Exception as gam_error:
+                logger.warning(f"Gamification error (non-blocking): {gam_error}")
+
             return financial_freedom
         else:
             # If no existing record, create a new one (should be rare since GET creates a default)
