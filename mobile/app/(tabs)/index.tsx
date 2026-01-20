@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -144,6 +145,15 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
+
+  // Refetch data when screen comes into focus (e.g., returning from loan details)
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoading) {
+        fetchDashboard();
+      }
+    }, [fetchDashboard, isLoading])
+  );
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
