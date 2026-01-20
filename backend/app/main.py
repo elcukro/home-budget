@@ -224,6 +224,15 @@ class LoanPayment(LoanPaymentBase):
         }
 
 
+class LoanPaymentResponse(BaseModel):
+    """Extended response for loan payment that includes celebration data."""
+    payment: LoanPayment
+    new_balance: float
+    loan_paid_off: bool = False
+    celebration: dict | None = None
+    xp_earned: int = 0
+
+
 # Expense models
 class ExpenseBase(BaseModel):
     category: str
@@ -628,7 +637,7 @@ def get_loan_payments(
     return payments
 
 
-@app.post("/users/{user_id}/loans/{loan_id}/payments", response_model=LoanPayment)
+@app.post("/users/{user_id}/loans/{loan_id}/payments", response_model=LoanPaymentResponse)
 def create_loan_payment(
     user_id: str,
     loan_id: int,
@@ -674,15 +683,27 @@ def create_loan_payment(
 
     db.commit()
     db.refresh(db_payment)
+    db.refresh(db_loan)
 
     # Trigger gamification - award XP for loan payment
+    xp_earned = 0
+    celebration = None
     try:
         is_overpayment = payment.payment_type == "overpayment"
-        GamificationService.on_loan_payment(current_user.id, db_payment.id, is_overpayment, db)
+        xp_earned, _, celebration = GamificationService.on_loan_payment(
+            current_user.id, db_payment.id, loan_id, is_overpayment, db
+        )
     except Exception as gam_error:
         print(f"[FastAPI] Gamification error (non-blocking): {gam_error}")
 
-    return db_payment
+    # Return extended response with celebration data
+    return LoanPaymentResponse(
+        payment=LoanPayment.model_validate(db_payment),
+        new_balance=db_loan.remaining_balance,
+        loan_paid_off=db_loan.remaining_balance <= 0,
+        celebration=celebration,
+        xp_earned=xp_earned,
+    )
 
 
 @app.delete("/users/{user_id}/loans/{loan_id}/payments/{payment_id}")

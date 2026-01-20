@@ -192,6 +192,53 @@ export interface MortgageCelebrationResponse {
   celebration: MortgageCelebrationData;
 }
 
+// ============== Loan Payment Types ==============
+
+export interface LoanDetail {
+  id: number;
+  loan_type: string;
+  description: string;
+  principal_amount: number;
+  remaining_balance: number;
+  interest_rate: number;
+  monthly_payment: number;
+  start_date: string;
+  term_months: number;
+  due_day: number | null;
+  overpayment_fee_percent: number | null;
+  overpayment_fee_waived_until: string | null;
+}
+
+export interface LoanPayment {
+  id: number;
+  loan_id: number;
+  user_id: string;
+  amount: number;
+  payment_date: string;
+  payment_type: 'regular' | 'overpayment';
+  covers_month: number | null;
+  covers_year: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface LoanPaymentCreate {
+  amount: number;
+  payment_date: string;
+  payment_type: 'regular' | 'overpayment';
+  covers_month?: number;
+  covers_year?: number;
+  notes?: string;
+}
+
+export interface LoanPaymentResponse {
+  payment: LoanPayment;
+  new_balance: number;
+  loan_paid_off: boolean;
+  celebration: MortgageCelebrationData | null;
+  xp_earned: number;
+}
+
 // For local development, you can switch to:
 // const API_BASE_URL = 'http://localhost:8000';
 
@@ -415,6 +462,46 @@ export class ApiClient {
         type: 'income' | 'expense';
         budget_limit: number | null;
       }>>(`/users/${userId}/categories`, { params }),
+  };
+
+  // ============== Loans ==============
+
+  loans = {
+    /**
+     * Get all loans for user.
+     */
+    list: () =>
+      this.request<LoanDetail[]>('/loans'),
+
+    /**
+     * Get a specific loan by ID.
+     */
+    get: (loanId: number) =>
+      this.request<LoanDetail>(`/loans/${loanId}`),
+
+    /**
+     * Get all payments for a loan.
+     */
+    getPayments: (userId: string, loanId: number) =>
+      this.request<LoanPayment[]>(`/users/${userId}/loans/${loanId}/payments`),
+
+    /**
+     * Create a loan payment (regular or overpayment).
+     * Returns celebration data if loan was fully paid off.
+     */
+    createPayment: (userId: string, loanId: number, data: LoanPaymentCreate) =>
+      this.request<LoanPaymentResponse>(`/users/${userId}/loans/${loanId}/payments`, {
+        method: 'POST',
+        body: data,
+      }),
+
+    /**
+     * Delete a loan payment.
+     */
+    deletePayment: (userId: string, loanId: number, paymentId: number) =>
+      this.request<void>(`/users/${userId}/loans/${loanId}/payments/${paymentId}`, {
+        method: 'DELETE',
+      }),
   };
 
   // ============== Settings ==============

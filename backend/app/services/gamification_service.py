@@ -621,10 +621,15 @@ class GamificationService:
     def on_loan_payment(
         user_id: str,
         payment_id: int,
+        loan_id: int,
         is_overpayment: bool,
         db: Session,
-    ) -> Tuple[int, List[UnlockedBadge]]:
-        """Called when user makes a loan payment."""
+    ) -> Tuple[int, List[UnlockedBadge], Optional[Dict[str, Any]]]:
+        """
+        Called when user makes a loan payment.
+        Returns (xp_earned, new_badges, celebration_data).
+        celebration_data is set if loan was fully paid off.
+        """
         stats = GamificationService.get_or_create_stats(user_id, db)
         stats.total_loan_payments += 1
 
@@ -638,8 +643,13 @@ class GamificationService:
         # Check debt badges
         new_badges = GamificationService.check_debt_badges(user_id, db)
 
+        # Check if loan is now fully paid off
+        celebration = None
+        if is_overpayment:
+            celebration = GamificationService.check_loan_payoff(user_id, loan_id, db)
+
         db.commit()
-        return xp_earned, new_badges
+        return xp_earned, new_badges, celebration
 
     @staticmethod
     def on_baby_step_completed(
@@ -953,8 +963,8 @@ class GamificationService:
         if not loan:
             return None
 
-        # Check if loan is paid off (balance <= 0 or marked as paid)
-        is_paid_off = loan.balance <= 0 or getattr(loan, 'is_paid_off', False)
+        # Check if loan is paid off (remaining_balance <= 0)
+        is_paid_off = loan.remaining_balance <= 0
 
         if not is_paid_off:
             return None

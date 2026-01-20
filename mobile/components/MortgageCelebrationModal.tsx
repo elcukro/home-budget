@@ -18,7 +18,13 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+// LinearGradient doesn't work in Expo Go, so we use a fallback
+let LinearGradient: any = null;
+try {
+  LinearGradient = require('expo-linear-gradient').LinearGradient;
+} catch (e) {
+  // LinearGradient not available
+}
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -61,11 +67,20 @@ export default function MortgageCelebrationModal({
   const houseAnim = useRef(new Animated.Value(0)).current;
   const statsAnim = useRef(new Animated.Value(0)).current;
   const confettiAnims = useRef(
-    Array.from({ length: 30 }, () => ({
-      translateY: new Animated.Value(-100),
+    Array.from({ length: 40 }, (_, i) => ({
+      translateY: new Animated.Value(0),
       translateX: new Animated.Value(0),
       rotate: new Animated.Value(0),
-      opacity: new Animated.Value(1),
+      opacity: new Animated.Value(0),
+      // Pre-compute random values
+      left: Math.random() * SCREEN_WIDTH,
+      startY: Math.random() * SCREEN_HEIGHT * 0.3, // Start from top 30% of screen
+      size: 10 + Math.random() * 10,
+      isRound: Math.random() > 0.5,
+      colorIndex: i % 7,
+      delay: Math.random() * 500,
+      duration: 3000 + Math.random() * 2000,
+      xDrift: (Math.random() - 0.5) * 150,
     }))
   ).current;
 
@@ -76,6 +91,14 @@ export default function MortgageCelebrationModal({
       opacityAnim.setValue(0);
       houseAnim.setValue(0);
       statsAnim.setValue(0);
+
+      // Reset confetti animations
+      confettiAnims.forEach((anim) => {
+        anim.translateY.setValue(anim.startY);
+        anim.translateX.setValue(0);
+        anim.rotate.setValue(0);
+        anim.opacity.setValue(0);
+      });
 
       // Start animations sequence
       Animated.sequence([
@@ -109,36 +132,34 @@ export default function MortgageCelebrationModal({
       ]).start();
 
       // Start confetti animations
-      confettiAnims.forEach((anim, index) => {
-        const delay = Math.random() * 1000;
-        const duration = 2000 + Math.random() * 1000;
-
+      confettiAnims.forEach((anim) => {
         Animated.sequence([
-          Animated.delay(delay),
+          Animated.delay(anim.delay),
           Animated.parallel([
+            // Fade in quickly
+            Animated.timing(anim.opacity, {
+              toValue: 1,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            // Fall down slowly
             Animated.timing(anim.translateY, {
               toValue: SCREEN_HEIGHT + 100,
-              duration,
+              duration: anim.duration,
               useNativeDriver: true,
             }),
+            // Drift sideways
             Animated.timing(anim.translateX, {
-              toValue: (Math.random() - 0.5) * 200,
-              duration,
+              toValue: anim.xDrift,
+              duration: anim.duration,
               useNativeDriver: true,
             }),
+            // Rotate
             Animated.timing(anim.rotate, {
-              toValue: 360 * (2 + Math.random() * 2),
-              duration,
+              toValue: 360 * 3,
+              duration: anim.duration,
               useNativeDriver: true,
             }),
-            Animated.sequence([
-              Animated.delay(duration * 0.7),
-              Animated.timing(anim.opacity, {
-                toValue: 0,
-                duration: duration * 0.3,
-                useNativeDriver: true,
-              }),
-            ]),
           ]),
         ]).start();
       });
@@ -192,40 +213,35 @@ export default function MortgageCelebrationModal({
     <Modal transparent visible={!!celebration} animationType="none">
       <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
         {/* Confetti */}
-        {confettiAnims.map((anim, index) => (
-          <Animated.View
-            key={index}
-            style={[
-              styles.confetti,
-              {
-                left: Math.random() * SCREEN_WIDTH,
-                backgroundColor: [
-                  '#FFD700', // Gold
-                  '#FF6B6B', // Red
-                  '#4ECDC4', // Teal
-                  '#45B7D1', // Blue
-                  '#96CEB4', // Green
-                  '#FFEAA7', // Yellow
-                  '#DDA0DD', // Plum
-                ][index % 7],
-                width: 8 + Math.random() * 8,
-                height: 8 + Math.random() * 8,
-                borderRadius: Math.random() > 0.5 ? 100 : 2,
-                transform: [
-                  { translateY: anim.translateY },
-                  { translateX: anim.translateX },
-                  {
-                    rotate: anim.rotate.interpolate({
-                      inputRange: [0, 360],
-                      outputRange: ['0deg', '360deg'],
-                    }),
-                  },
-                ],
-                opacity: anim.opacity,
-              },
-            ]}
-          />
-        ))}
+        {confettiAnims.map((anim, index) => {
+          const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD'];
+          return (
+            <Animated.View
+              key={index}
+              style={[
+                styles.confetti,
+                {
+                  left: anim.left,
+                  backgroundColor: colors[anim.colorIndex],
+                  width: anim.size,
+                  height: anim.size,
+                  borderRadius: anim.isRound ? 100 : 2,
+                  transform: [
+                    { translateY: anim.translateY },
+                    { translateX: anim.translateX },
+                    {
+                      rotate: anim.rotate.interpolate({
+                        inputRange: [0, 360],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    },
+                  ],
+                  opacity: anim.opacity,
+                },
+              ]}
+            />
+          );
+        })}
 
         {/* Main Content */}
         <Animated.View
@@ -237,13 +253,9 @@ export default function MortgageCelebrationModal({
             },
           ]}
         >
-          <LinearGradient
-            colors={['#FFD700', '#FFA500', '#FF8C00']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradient}
-          >
-            {/* House Icon */}
+          {/* Header with gradient or fallback */}
+          <View style={styles.gradientFallback}>
+            {/* Trophy Icon */}
             <Animated.View
               style={[
                 styles.houseContainer,
@@ -259,20 +271,20 @@ export default function MortgageCelebrationModal({
                 },
               ]}
             >
-              <Text style={styles.houseIcon}>🏠</Text>
+              <Text style={styles.houseIcon}>🏆</Text>
               <View style={styles.trophyBadge}>
-                <Text style={styles.trophyIcon}>🏆</Text>
+                <Text style={styles.trophyIcon}>✨</Text>
               </View>
             </Animated.View>
 
             {/* Title */}
             <Text style={styles.title}>GRATULACJE!</Text>
-            <Text style={styles.subtitle}>JESTEŚ WOLNY OD HIPOTEKI!</Text>
+            <Text style={styles.subtitle}>KREDYT HIPOTECZNY SPŁACONY!</Text>
 
             {celebration.loan_description && (
               <Text style={styles.loanName}>{celebration.loan_description}</Text>
             )}
-          </LinearGradient>
+          </View>
 
           {/* Stats Section */}
           <Animated.View
@@ -298,7 +310,7 @@ export default function MortgageCelebrationModal({
                   <Text style={styles.statValue}>
                     {stats.years_to_payoff} lat
                   </Text>
-                  <Text style={styles.statLabel}>do spłaty</Text>
+                  <Text style={styles.statLabel}>czas spłaty</Text>
                 </View>
               </View>
             )}
@@ -374,7 +386,9 @@ const styles = StyleSheet.create({
   },
   confetti: {
     position: 'absolute',
-    top: -50,
+    top: 0,
+    zIndex: 1000,
+    pointerEvents: 'none',
   },
   content: {
     width: SCREEN_WIDTH - 40,
@@ -391,6 +405,13 @@ const styles = StyleSheet.create({
   gradient: {
     padding: 32,
     alignItems: 'center',
+  },
+  gradientFallback: {
+    padding: 32,
+    alignItems: 'center',
+    backgroundColor: '#FFA500', // Orange/gold fallback for Expo Go
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   houseContainer: {
     position: 'relative',

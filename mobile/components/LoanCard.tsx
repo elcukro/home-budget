@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import type { Loan } from '@/lib/api';
 
 interface LoanCardProps {
@@ -8,6 +9,7 @@ interface LoanCardProps {
 }
 
 export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
+  const router = useRouter();
   const progress = Math.min(Math.max(loan.progress ?? 0, 0), 100);
   const interestRate = loan.interestRate ?? 0;
   const balance = loan.balance ?? 0;
@@ -26,8 +28,18 @@ export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
     return '#dbeafe';
   };
 
+  const handlePress = () => {
+    router.push(`/loans/${loan.id}`);
+  };
+
   return (
-    <View style={styles.container}>
+    <Pressable
+      style={({ pressed }) => [
+        styles.container,
+        pressed && styles.containerPressed,
+      ]}
+      onPress={handlePress}
+    >
       <View style={styles.header}>
         <View style={[styles.iconContainer, { backgroundColor: getProgressBgColor() }]}>
           <Ionicons name="business-outline" size={18} color={getProgressColor()} />
@@ -40,6 +52,7 @@ export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
             {interestRate.toFixed(2)}% oprocentowanie
           </Text>
         </View>
+        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
       </View>
 
       {/* Progress Bar */}
@@ -81,7 +94,7 @@ export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
           </Text>
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }
 
@@ -96,6 +109,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  containerPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
   },
   header: {
     flexDirection: 'row',

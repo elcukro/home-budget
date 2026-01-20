@@ -330,6 +330,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    paddingBottom: 120, // Extra space for floating tab bar
   },
   loadingContainer: {
     flex: 1,
