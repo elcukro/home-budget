@@ -247,13 +247,14 @@ export class ApiClient {
   };
 
   // ============== Financial Freedom ==============
+  // Note: Uses /internal-api/ prefix to avoid conflict with web page route
 
   financialFreedom = {
     get: () =>
-      this.request<FinancialFreedomResponse>('/financial-freedom'),
+      this.request<FinancialFreedomResponse>('/internal-api/financial-freedom'),
 
     update: (data: FinancialFreedomUpdate) =>
-      this.request<FinancialFreedomResponse>('/financial-freedom', {
+      this.request<FinancialFreedomResponse>('/internal-api/financial-freedom', {
         method: 'PUT',
         body: data,
       }),
