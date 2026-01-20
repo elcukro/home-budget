@@ -7,7 +7,7 @@ import logging
 
 from ..database import get_db
 from ..models import User, FinancialFreedom, Settings, Saving, Loan, Expense
-from ..models import SavingCategory
+from ..schemas.savings import SavingCategory
 from ..schemas.financial_freedom import FinancialFreedomCreate, FinancialFreedomResponse, FinancialFreedomUpdate
 from ..dependencies import get_current_user
 
