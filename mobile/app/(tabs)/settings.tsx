@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
   Image,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -163,6 +164,35 @@ function PickerModal({
   onSelect,
   onClose,
 }: PickerModalProps) {
+  // Find initial index to scroll to selected item
+  const selectedIndex = options.findIndex((o) => o.code === selectedValue);
+  const initialIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
+  const renderItem = ({ item }: { item: { code: string; label: string } }) => (
+    <TouchableOpacity
+      style={[
+        styles.modalOption,
+        selectedValue === item.code && styles.modalOptionSelected,
+      ]}
+      onPress={() => {
+        onSelect(item.code);
+        onClose();
+      }}
+    >
+      <Text
+        style={[
+          styles.modalOptionText,
+          selectedValue === item.code && styles.modalOptionTextSelected,
+        ]}
+      >
+        {item.label}
+      </Text>
+      {selectedValue === item.code && (
+        <Ionicons name="checkmark" size={20} color="#f97316" />
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <Modal
       visible={visible}
@@ -178,33 +208,19 @@ function PickerModal({
               <Ionicons name="close" size={24} color="#6b7280" />
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.modalOptions} bounces={false}>
-            {options.map((option) => (
-              <TouchableOpacity
-                key={option.code}
-                style={[
-                  styles.modalOption,
-                  selectedValue === option.code && styles.modalOptionSelected,
-                ]}
-                onPress={() => {
-                  onSelect(option.code);
-                  onClose();
-                }}
-              >
-                <Text
-                  style={[
-                    styles.modalOptionText,
-                    selectedValue === option.code && styles.modalOptionTextSelected,
-                  ]}
-                >
-                  {option.label}
-                </Text>
-                {selectedValue === option.code && (
-                  <Ionicons name="checkmark" size={20} color="#f97316" />
-                )}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <FlatList
+            data={options}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.code}
+            style={styles.modalOptions}
+            initialScrollIndex={initialIndex}
+            getItemLayout={(_, index) => ({
+              length: 56, // Height of each item (padding 16 * 2 + text ~24)
+              offset: 56 * index,
+              index,
+            })}
+            bounces={false}
+          />
         </Pressable>
       </Pressable>
     </Modal>
@@ -289,12 +305,26 @@ export default function SettingsScreen() {
       return;
     }
 
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
     setIsSaving(true);
+
     try {
-      await api.settings.update(user.email, { [key]: value });
-      setSettings((prev) => (prev ? { ...prev, [key]: value } : null));
+      // Backend requires full settings object (language and currency are required)
+      await api.settings.update(user.email, {
+        language: newSettings.language,
+        currency: newSettings.currency,
+        emergency_fund_target: newSettings.emergency_fund_target,
+        emergency_fund_months: newSettings.emergency_fund_months,
+        employment_status: newSettings.employment_status,
+        tax_form: newSettings.tax_form,
+        birth_year: newSettings.birth_year,
+        children_count: newSettings.children_count,
+      });
     } catch (err) {
       console.error('Failed to update setting:', err);
+      // Revert on error
+      setSettings(settings);
       Alert.alert('Błąd', 'Nie udało się zapisać ustawienia');
     } finally {
       setIsSaving(false);
@@ -879,6 +909,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
     borderRadius: 12,
+    height: 56, // Fixed height for FlatList getItemLayout
   },
   modalOptionSelected: {
     backgroundColor: '#fff7ed',
