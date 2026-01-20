@@ -5,6 +5,7 @@
  * - Unlocks a new badge
  * - Levels up
  * - Hits a streak milestone
+ * - Pays off mortgage (renders special MortgageCelebrationModal)
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -19,6 +20,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { CelebrationData } from '../stores/gamification';
+import MortgageCelebrationModal from './MortgageCelebrationModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -31,6 +33,15 @@ export default function CelebrationModal({
   celebration,
   onDismiss,
 }: CelebrationModalProps) {
+  // For mortgage payoff, use the special celebration modal
+  if (celebration?.type === 'mortgage_paid_off' && celebration.mortgageData) {
+    return (
+      <MortgageCelebrationModal
+        celebration={celebration.mortgageData}
+        onDismiss={onDismiss}
+      />
+    );
+  }
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const confettiAnim = useRef(new Animated.Value(0)).current;

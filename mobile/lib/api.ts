@@ -155,6 +155,43 @@ export interface CheckinResponse {
   message: string;
 }
 
+// Mortgage Celebration Types
+export interface MortgageStats {
+  total_paid?: number;
+  total_payments?: number;
+  months_to_payoff?: number;
+  years_to_payoff?: number;
+  overpayments_total?: number;
+  overpayment_count?: number;
+  first_payment_date?: string;
+  last_payment_date?: string;
+}
+
+export interface MortgageCelebrationData {
+  type: 'mortgage_paid_off';
+  title: string;
+  title_en: string;
+  subtitle: string;
+  subtitle_en: string;
+  loan_description?: string;
+  stats?: MortgageStats;
+  xp_earned?: number;
+  badge?: {
+    name: string;
+    icon: string;
+    xp_awarded: number;
+  };
+  level_up?: boolean;
+  new_level?: number | null;
+}
+
+export interface MortgageCelebrationResponse {
+  success: boolean;
+  xp_earned: number;
+  new_badges: UnlockedBadge[];
+  celebration: MortgageCelebrationData;
+}
+
 // For local development, you can switch to:
 // const API_BASE_URL = 'http://localhost:8000';
 
@@ -479,6 +516,25 @@ export class ApiClient {
     calculateAchievements: () =>
       this.request<{ success: boolean; new_badges_count: number; new_badges: string[] }>(
         '/internal-api/gamification/calculate',
+        { method: 'POST' }
+      ),
+
+    /**
+     * Trigger mortgage payoff celebration.
+     * Call this when a mortgage is marked as paid off.
+     */
+    triggerMortgageCelebration: (loanId: number) =>
+      this.request<MortgageCelebrationResponse>(
+        `/internal-api/gamification/trigger-mortgage-celebration/${loanId}`,
+        { method: 'POST' }
+      ),
+
+    /**
+     * Check if a loan payoff should trigger celebration.
+     */
+    checkLoanPayoff: (loanId: number) =>
+      this.request<{ success: boolean; celebration: MortgageCelebrationData | null }>(
+        `/internal-api/gamification/check-loan-payoff/${loanId}`,
         { method: 'POST' }
       ),
   };

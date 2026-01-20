@@ -216,3 +216,71 @@ async def get_gamification_events(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get gamification events",
         )
+
+
+@router.post("/check-loan-payoff/{loan_id}")
+async def check_loan_payoff(
+    loan_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Check if a loan is paid off and trigger celebration if applicable.
+
+    This endpoint should be called when a loan is marked as paid off.
+    Returns celebration data for the mobile app to display.
+    """
+    try:
+        celebration = GamificationService.check_loan_payoff(
+            current_user.id, loan_id, db
+        )
+
+        if celebration:
+            logger.info(f"User {current_user.id} paid off loan {loan_id}! Celebration triggered.")
+            return {
+                "success": True,
+                "celebration": celebration,
+            }
+        else:
+            return {
+                "success": True,
+                "celebration": None,
+                "message": "Loan not eligible for celebration or already celebrated",
+            }
+    except Exception as e:
+        logger.error(f"Error checking loan payoff for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to check loan payoff",
+        )
+
+
+@router.post("/trigger-mortgage-celebration/{loan_id}")
+async def trigger_mortgage_celebration(
+    loan_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Manually trigger mortgage payoff celebration.
+
+    Use this when marking a mortgage as paid off.
+    Returns full celebration data including stats and badge.
+    """
+    try:
+        xp_earned, new_badges, celebration_data = GamificationService.on_mortgage_paid_off(
+            current_user.id, loan_id, db
+        )
+
+        return {
+            "success": True,
+            "xp_earned": xp_earned,
+            "new_badges": [b.model_dump() for b in new_badges],
+            "celebration": celebration_data,
+        }
+    except Exception as e:
+        logger.error(f"Error triggering mortgage celebration for user {current_user.id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to trigger mortgage celebration",
+        )

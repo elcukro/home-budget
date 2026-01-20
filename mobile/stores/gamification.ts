@@ -17,6 +17,7 @@ import {
   UnlockedBadge,
   BadgeProgress,
   CheckinResponse,
+  MortgageCelebrationData,
 } from '../lib/api';
 
 // ==========================================
@@ -24,12 +25,14 @@ import {
 // ==========================================
 
 export interface CelebrationData {
-  type: 'badge' | 'level_up' | 'streak_milestone' | 'checkin';
+  type: 'badge' | 'level_up' | 'streak_milestone' | 'checkin' | 'mortgage_paid_off';
   badge?: UnlockedBadge;
   newLevel?: number;
   newStreak?: number;
   xpEarned?: number;
   message?: string;
+  // Mortgage celebration specific data
+  mortgageData?: MortgageCelebrationData;
 }
 
 interface GamificationState {
@@ -57,6 +60,7 @@ interface GamificationState {
   fetchStats: () => Promise<void>;
   checkIn: () => Promise<CheckinResponse | null>;
   refreshAchievements: () => Promise<void>;
+  triggerMortgageCelebration: (loanId: number) => Promise<void>;
 
   // Celebration management
   addCelebration: (celebration: CelebrationData) => void;
@@ -227,6 +231,33 @@ export const useGamificationStore = create<GamificationState>((set, get) => ({
       }
     } catch (err) {
       console.error('Error refreshing achievements:', err);
+    }
+  },
+
+  /**
+   * Trigger mortgage payoff celebration.
+   * Call this when marking a mortgage as paid off.
+   */
+  triggerMortgageCelebration: async (loanId: number) => {
+    const api = getApiClient();
+    if (!api) return;
+
+    try {
+      const response = await api.gamification.triggerMortgageCelebration(loanId);
+
+      if (response.success && response.celebration) {
+        // Add the mortgage celebration to the queue
+        get().addCelebration({
+          type: 'mortgage_paid_off',
+          xpEarned: response.xp_earned,
+          mortgageData: response.celebration,
+        });
+
+        // Refresh gamification data
+        await get().fetchOverview();
+      }
+    } catch (err) {
+      console.error('Error triggering mortgage celebration:', err);
     }
   },
 

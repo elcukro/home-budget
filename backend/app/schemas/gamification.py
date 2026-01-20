@@ -131,13 +131,14 @@ BADGE_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "xp_reward": 500,
     },
     BadgeId.MORTGAGE_SLAYER: {
-        "name": "Mortgage Slayer",
+        "name": "Dom Opłacony!",
         "name_en": "Mortgage Slayer",
-        "description": "Spłaciłeś kredyt hipoteczny!",
-        "description_en": "Paid off your mortgage!",
-        "icon": "🏆",
+        "description": "Spłaciłeś kredyt hipoteczny! Jesteś właścicielem swojego domu!",
+        "description_en": "Paid off your mortgage! You own your home!",
+        "icon": "🏠🏆",
         "category": BadgeCategory.DEBT,
         "xp_reward": 1000,
+        "is_premium": True,  # Special milestone badge
     },
 
     # Savings badges

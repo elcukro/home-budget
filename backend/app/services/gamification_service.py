@@ -809,3 +809,177 @@ class GamificationService:
             return 0
 
         return sum(1 for step in ff.steps if step.get("status") == "completed")
+
+    # ==========================================
+    # MORTGAGE PAYOFF CELEBRATION
+    # ==========================================
+
+    @staticmethod
+    def on_mortgage_paid_off(
+        user_id: str,
+        loan_id: int,
+        db: Session,
+    ) -> Tuple[int, List[UnlockedBadge], Dict[str, Any]]:
+        """
+        Called when user pays off their mortgage.
+        Returns: (xp_earned, new_badges, celebration_data)
+        """
+        # Get the loan details
+        loan = db.query(Loan).filter(Loan.id == loan_id).first()
+        if not loan:
+            return 0, [], {}
+
+        # Calculate mortgage stats for celebration
+        mortgage_stats = GamificationService._calculate_mortgage_stats(loan, user_id, db)
+
+        # Award XP (significant amount for this milestone!)
+        xp_earned, level_up, new_level = GamificationService.award_xp(
+            user_id, 500, "mortgage_paid_off", db,
+            trigger_entity="loan", trigger_entity_id=loan_id,
+        )
+
+        # Unlock the Mortgage Slayer badge
+        new_badges = []
+        badge = GamificationService.unlock_badge(
+            user_id, BadgeId.MORTGAGE_SLAYER, db,
+            unlock_data={
+                "loan_id": loan_id,
+                "loan_description": loan.description,
+                "original_amount": loan.original_amount if hasattr(loan, 'original_amount') else None,
+                "total_paid": mortgage_stats.get("total_paid"),
+                "payoff_date": date.today().isoformat(),
+                "months_to_payoff": mortgage_stats.get("months_to_payoff"),
+            },
+        )
+        if badge:
+            new_badges.append(badge)
+
+        # Check if this completes Baby Step 6
+        ff = db.query(FinancialFreedom).filter(
+            FinancialFreedom.userId == user_id
+        ).first()
+
+        if ff and ff.steps:
+            steps = ff.steps
+            # Step 6 is "Pay off your home early"
+            if len(steps) >= 6 and steps[5].get("status") != "completed":
+                steps[5]["status"] = "completed"
+                steps[5]["completionDate"] = date.today().isoformat()
+                ff.steps = steps
+                db.add(ff)
+
+                # Award Baby Step completion XP
+                step_xp, step_badges = GamificationService.on_baby_step_completed(user_id, 6, db)
+                xp_earned += step_xp
+                new_badges.extend(step_badges)
+
+        # Build celebration data
+        celebration_data = {
+            "type": "mortgage_paid_off",
+            "title": "GRATULACJE! 🏠🏆",
+            "title_en": "CONGRATULATIONS! 🏠🏆",
+            "subtitle": "JESTEŚ WOLNY OD HIPOTEKI!",
+            "subtitle_en": "YOU'RE MORTGAGE FREE!",
+            "loan_description": loan.description,
+            "stats": mortgage_stats,
+            "xp_earned": xp_earned,
+            "badge": badge.model_dump() if badge else None,
+            "level_up": level_up,
+            "new_level": new_level,
+        }
+
+        db.commit()
+        logger.info(f"User {user_id} paid off mortgage! Loan ID: {loan_id}")
+
+        return xp_earned, new_badges, celebration_data
+
+    @staticmethod
+    def _calculate_mortgage_stats(loan: Loan, user_id: str, db: Session) -> Dict[str, Any]:
+        """Calculate statistics for mortgage payoff celebration."""
+        # Get all payments for this loan
+        payments = db.query(LoanPayment).filter(
+            LoanPayment.loan_id == loan.id,
+            LoanPayment.user_id == user_id,
+        ).order_by(LoanPayment.date).all()
+
+        if not payments:
+            return {
+                "total_paid": 0,
+                "total_payments": 0,
+                "first_payment_date": None,
+                "last_payment_date": None,
+                "months_to_payoff": 0,
+            }
+
+        total_paid = sum(p.amount for p in payments)
+        first_payment = payments[0].date if payments else None
+        last_payment = payments[-1].date if payments else None
+
+        # Calculate months between first and last payment
+        months_to_payoff = 0
+        if first_payment and last_payment:
+            diff = last_payment - first_payment
+            months_to_payoff = max(1, diff.days // 30)
+
+        # Calculate overpayments
+        overpayments = sum(p.amount for p in payments if p.payment_type == "overpayment")
+
+        return {
+            "total_paid": total_paid,
+            "total_payments": len(payments),
+            "first_payment_date": first_payment.isoformat() if first_payment else None,
+            "last_payment_date": last_payment.isoformat() if last_payment else None,
+            "months_to_payoff": months_to_payoff,
+            "years_to_payoff": round(months_to_payoff / 12, 1),
+            "overpayments_total": overpayments,
+            "overpayment_count": sum(1 for p in payments if p.payment_type == "overpayment"),
+        }
+
+    @staticmethod
+    def check_loan_payoff(
+        user_id: str,
+        loan_id: int,
+        db: Session,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Check if a loan is fully paid off and trigger celebration if so.
+        Returns celebration data if loan was just paid off, None otherwise.
+        """
+        loan = db.query(Loan).filter(
+            Loan.id == loan_id,
+            Loan.user_id == user_id,
+        ).first()
+
+        if not loan:
+            return None
+
+        # Check if loan is paid off (balance <= 0 or marked as paid)
+        is_paid_off = loan.balance <= 0 or getattr(loan, 'is_paid_off', False)
+
+        if not is_paid_off:
+            return None
+
+        # Check if already celebrated (has mortgage_slayer badge with this loan_id)
+        existing_badge = db.query(Achievement).filter(
+            Achievement.user_id == user_id,
+            Achievement.badge_id == BadgeId.MORTGAGE_SLAYER,
+        ).first()
+
+        if existing_badge:
+            # Check if this specific loan was already celebrated
+            unlock_data = existing_badge.unlock_data or {}
+            if unlock_data.get("loan_id") == loan_id:
+                return None
+
+        # Check if this is a mortgage (by description or type)
+        is_mortgage = any(kw in (loan.description or "").lower() for kw in [
+            "hipoteczny", "hipoteka", "mortgage", "dom", "mieszkanie", "house", "home"
+        ])
+
+        if is_mortgage:
+            xp, badges, celebration = GamificationService.on_mortgage_paid_off(
+                user_id, loan_id, db
+            )
+            return celebration
+
+        return None
