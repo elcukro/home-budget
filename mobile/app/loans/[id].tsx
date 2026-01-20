@@ -2,7 +2,7 @@
  * LoanDetailScreen - Detailed view of a loan with overpayment functionality
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth';
@@ -36,6 +37,9 @@ export default function LoanDetailScreen() {
   // Overpayment modal state
   const [showOverpaymentModal, setShowOverpaymentModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Schedule expansion state: -1 = initial (6 months), 0 = until Dec this year, 1 = until Dec next year, etc.
+  const [targetDecemberYear, setTargetDecemberYear] = useState(-1);
 
   // Celebration state
   const addCelebration = useGamificationStore((s) => s.addCelebration);
@@ -81,6 +85,19 @@ export default function LoanDetailScreen() {
     setIsRefreshing(true);
     fetchLoanData();
   }, [fetchLoanData]);
+
+  const handleExpandSchedule = () => {
+    const currentYear = new Date().getFullYear();
+    setTargetDecemberYear((prev) => {
+      if (prev === -1) {
+        // First expansion: show until December of current year
+        return currentYear;
+      } else {
+        // Next expansions: show until December of next year
+        return prev + 1;
+      }
+    });
+  };
 
   const handleOverpayment = async (amount: number) => {
     if (!api || !user?.email || !loan) return;
@@ -145,6 +162,105 @@ export default function LoanDetailScreen() {
 
   const formatPercent = (value: number) => `${value.toFixed(2)}%`;
 
+  const formatMonthShort = (month: number, year: number) => {
+    const monthNames = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+    return `${monthNames[month - 1]} ${year}`;
+  };
+
+  // Calculate loan end date
+  const loanEndDate = useMemo(() => {
+    if (!loan) return null;
+    const startDate = new Date(loan.start_date);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + loan.term_months);
+    return { month: endDate.getMonth() + 1, year: endDate.getFullYear() };
+  }, [loan]);
+
+  // Calculate remaining months for interest savings calculation
+  const remainingMonths = useMemo(() => {
+    if (!loan) return 0;
+    const startDate = new Date(loan.start_date);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + loan.term_months);
+    const now = new Date();
+    const monthsRemaining = (endDate.getFullYear() - now.getFullYear()) * 12 + (endDate.getMonth() - now.getMonth());
+    return Math.max(0, monthsRemaining);
+  }, [loan]);
+
+  // Generate payment schedule: 1 month back + months until December of target year
+  const paymentSchedule = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const schedule: Array<{
+      month: number;
+      year: number;
+      isPaid: boolean;
+      isCurrent: boolean;
+      isPast: boolean;
+    }> = [];
+
+    // Calculate end offset based on targetDecemberYear
+    let endOffset: number;
+    if (targetDecemberYear === -1) {
+      // Initial state: just show 4 months ahead
+      endOffset = 4;
+    } else {
+      // Show until December of targetDecemberYear
+      // Example: if current is Jan 2026 (month 1) and target Dec year is 2026:
+      // months until Dec 2026 = (2026 - 2026) * 12 + (12 - 1) = 11
+      const yearsAhead = targetDecemberYear - currentYear;
+      endOffset = (yearsAhead * 12) + (12 - currentMonth);
+    }
+
+    for (let offset = -1; offset <= endOffset; offset++) {
+      let month = currentMonth + offset;
+      let year = currentYear;
+
+      // Handle year boundaries
+      while (month < 1) {
+        month += 12;
+        year -= 1;
+      }
+      while (month > 12) {
+        month -= 12;
+        year += 1;
+      }
+
+      // Stop if we've passed the loan end date
+      if (loanEndDate) {
+        if (year > loanEndDate.year ||
+            (year === loanEndDate.year && month > loanEndDate.month)) {
+          break;
+        }
+      }
+
+      // Check if this month is paid
+      const isPaid = payments.some(
+        (p) => p.covers_month === month && p.covers_year === year
+      );
+
+      schedule.push({
+        month,
+        year,
+        isPaid,
+        isCurrent: offset === 0,
+        isPast: offset < 0,
+      });
+    }
+
+    return schedule;
+  }, [payments, targetDecemberYear, loanEndDate]);
+
+  // Check if we've reached the end of the loan
+  const hasMoreMonths = useMemo(() => {
+    if (!loanEndDate || paymentSchedule.length === 0) return false;
+    const lastMonth = paymentSchedule[paymentSchedule.length - 1];
+    return lastMonth.year < loanEndDate.year ||
+           (lastMonth.year === loanEndDate.year && lastMonth.month < loanEndDate.month);
+  }, [paymentSchedule, loanEndDate]);
+
   const calculateProgress = () => {
     if (!loan) return 0;
     const paid = loan.principal_amount - loan.remaining_balance;
@@ -176,13 +292,25 @@ export default function LoanDetailScreen() {
   const regularPayments = payments.filter((p) => p.payment_type === 'regular');
 
   return (
-    <>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <Stack.Screen
         options={{
           title: loan.description,
           headerBackTitle: 'Wróć',
+          headerShown: false,
         }}
       />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable style={styles.headerBackButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={24} color="#f97316" />
+        </Pressable>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {loan.description}
+        </Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
       {/* Celebration Modal */}
       <CelebrationModal
@@ -196,13 +324,15 @@ export default function LoanDetailScreen() {
         loanId={loanId}
         loanDescription={loan.description}
         remainingBalance={loan.remaining_balance}
+        interestRate={loan.interest_rate}
+        remainingMonths={remainingMonths}
         onClose={() => setShowOverpaymentModal(false)}
         onSubmit={handleOverpayment}
         isLoading={isSubmitting}
       />
 
       <ScrollView
-        style={styles.container}
+        style={styles.scrollView}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
@@ -236,14 +366,16 @@ export default function LoanDetailScreen() {
             <Text style={styles.progressText}>{progress.toFixed(0)}% spłacone</Text>
           </View>
 
-          {/* Overpay Button */}
-          <Pressable
-            style={styles.overpayButton}
-            onPress={() => setShowOverpaymentModal(true)}
-          >
-            <Ionicons name="flash" size={20} color="#fff" />
-            <Text style={styles.overpayButtonText}>Nadpłać kredyt</Text>
-          </Pressable>
+          {/* Overpay Button - only show if loan has remaining balance */}
+          {loan.remaining_balance > 0 && (
+            <Pressable
+              style={styles.overpayButton}
+              onPress={() => setShowOverpaymentModal(true)}
+            >
+              <Ionicons name="flash" size={20} color="#fff" />
+              <Text style={styles.overpayButtonText}>Nadpłać kredyt</Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Loan Details */}
@@ -326,33 +458,86 @@ export default function LoanDetailScreen() {
           </View>
         )}
 
-        {/* Regular Payments */}
-        {regularPayments.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              Ostatnie raty ({regularPayments.length})
-            </Text>
-            <View style={styles.paymentsList}>
-              {regularPayments.slice(0, 5).map((payment) => (
-                <View key={payment.id} style={styles.paymentItem}>
-                  <View style={[styles.paymentIcon, styles.regularIcon]}>
-                    <Ionicons name="checkmark" size={16} color="#22c55e" />
+        {/* Payment Schedule */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Harmonogram rat</Text>
+          <View style={styles.scheduleCard}>
+            {paymentSchedule.map((item) => (
+              <View
+                key={`${item.month}-${item.year}`}
+                style={[
+                  styles.scheduleListItem,
+                  item.isCurrent && styles.scheduleListItemCurrent,
+                  item.isPast && !item.isPaid && styles.scheduleListItemPast,
+                ]}
+              >
+                <View style={styles.scheduleListLeft}>
+                  <View
+                    style={[
+                      styles.scheduleStatusIcon,
+                      item.isPaid && styles.scheduleStatusPaid,
+                      item.isCurrent && !item.isPaid && styles.scheduleStatusCurrent,
+                      item.isPast && !item.isPaid && styles.scheduleStatusPast,
+                      !item.isPaid && !item.isCurrent && !item.isPast && styles.scheduleStatusFuture,
+                    ]}
+                  >
+                    {item.isPaid ? (
+                      <Ionicons name="checkmark" size={14} color="#fff" />
+                    ) : item.isCurrent ? (
+                      <Ionicons name="time" size={14} color="#f97316" />
+                    ) : item.isPast ? (
+                      <Ionicons name="help" size={14} color="#9ca3af" />
+                    ) : (
+                      <Ionicons name="ellipse-outline" size={14} color="#9ca3af" />
+                    )}
                   </View>
-                  <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentAmount}>
-                      {formatCurrency(payment.amount)}
+                  <View>
+                    <Text
+                      style={[
+                        styles.scheduleListMonth,
+                        item.isCurrent && styles.scheduleListMonthCurrent,
+                        item.isPaid && styles.scheduleListMonthPaid,
+                        item.isPast && !item.isPaid && styles.scheduleListMonthPast,
+                      ]}
+                    >
+                      {formatMonthShort(item.month, item.year)}
                     </Text>
-                    <Text style={styles.paymentDate}>
-                      {payment.covers_month}/{payment.covers_year}
+                    <Text style={styles.scheduleListStatus}>
+                      {item.isPaid
+                        ? 'Spłacone'
+                        : item.isCurrent
+                        ? 'Do zapłaty'
+                        : item.isPast
+                        ? 'Brak danych'
+                        : 'Nadchodzi'}
                     </Text>
                   </View>
                 </View>
-              ))}
-            </View>
+                <Text
+                  style={[
+                    styles.scheduleListAmount,
+                    item.isPaid && styles.scheduleListAmountPaid,
+                  ]}
+                >
+                  {loan ? formatCurrency(loan.monthly_payment) : ''}
+                </Text>
+              </View>
+            ))}
+
+            {/* Show more button */}
+            {hasMoreMonths && (
+              <Pressable
+                style={styles.showMoreButton}
+                onPress={handleExpandSchedule}
+              >
+                <Text style={styles.showMoreText}>Pokaż więcej miesięcy</Text>
+                <Ionicons name="chevron-down" size={16} color="#f97316" />
+              </Pressable>
+            )}
           </View>
-        )}
+        </View>
       </ScrollView>
-    </>
+    </SafeAreaView>
   );
 }
 
@@ -378,12 +563,39 @@ function DetailRow({
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#f9fafb',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f9fafb',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerBackButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1f2937',
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  headerSpacer: {
+    width: 32,
+  },
+  scrollView: {
+    flex: 1,
+  },
   content: {
     padding: 16,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   loadingContainer: {
@@ -596,5 +808,95 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6b7280',
     marginTop: 2,
+  },
+
+  // Payment Schedule (List)
+  scheduleCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  scheduleListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  scheduleListItemCurrent: {
+    backgroundColor: '#fff7ed',
+  },
+  scheduleListItemPast: {
+    backgroundColor: '#f9fafb',
+  },
+  scheduleListLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  scheduleStatusIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scheduleStatusPaid: {
+    backgroundColor: '#22c55e',
+  },
+  scheduleStatusCurrent: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#f97316',
+  },
+  scheduleStatusPast: {
+    backgroundColor: '#e5e7eb',
+  },
+  scheduleStatusFuture: {
+    backgroundColor: '#f3f4f6',
+  },
+  scheduleListMonth: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  scheduleListMonthCurrent: {
+    fontWeight: '600',
+    color: '#f97316',
+  },
+  scheduleListMonthPaid: {
+    color: '#22c55e',
+  },
+  scheduleListMonthPast: {
+    color: '#6b7280',
+  },
+  scheduleListStatus: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 2,
+  },
+  scheduleListAmount: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  scheduleListAmountPaid: {
+    color: '#22c55e',
+  },
+  showMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  showMoreText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#f97316',
   },
 });

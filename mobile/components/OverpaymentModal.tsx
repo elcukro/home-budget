@@ -27,6 +27,8 @@ interface OverpaymentModalProps {
   loanId: number;
   loanDescription: string;
   remainingBalance: number;
+  interestRate: number; // Annual interest rate in %
+  remainingMonths: number; // Remaining months of the loan
   onClose: () => void;
   onSubmit: (amount: number) => Promise<void>;
   isLoading?: boolean;
@@ -37,6 +39,8 @@ export default function OverpaymentModal({
   loanId,
   loanDescription,
   remainingBalance,
+  interestRate,
+  remainingMonths,
   onClose,
   onSubmit,
   isLoading = false,
@@ -54,6 +58,20 @@ export default function OverpaymentModal({
 
   const parsedAmount = parseFloat(amount.replace(',', '.')) || 0;
   const willCloseTheLoan = parsedAmount >= remainingBalance;
+
+  // Calculate estimated interest savings
+  // When you overpay, you reduce principal - this means no interest is charged
+  // on that amount for the remaining loan period
+  // Formula: Savings = Overpayment × Monthly Rate × Remaining Months
+  const calculateSavings = (overpaymentAmount: number): number => {
+    if (overpaymentAmount <= 0 || remainingMonths <= 0) return 0;
+    const monthlyRate = interestRate / 100 / 12;
+    const estimatedSavings = overpaymentAmount * monthlyRate * remainingMonths;
+    return Math.round(estimatedSavings);
+  };
+
+  const estimatedSavings = calculateSavings(parsedAmount);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pl-PL', {
@@ -74,9 +92,8 @@ export default function OverpaymentModal({
       return;
     }
 
-    if (parsedAmount > remainingBalance * 1.1) {
-      // Allow 10% over (for fees, interest adjustments)
-      setError('Kwota przekracza pozostały dług');
+    if (parsedAmount > remainingBalance) {
+      setError('Kwota nie może przekraczać pozostałego salda');
       return;
     }
 
@@ -118,6 +135,30 @@ export default function OverpaymentModal({
             </Text>
           </View>
 
+          {/* Info Tooltip */}
+          <Pressable
+            style={styles.infoRow}
+            onPress={() => setShowTooltip(!showTooltip)}
+          >
+            <Ionicons name="information-circle-outline" size={18} color="#3b82f6" />
+            <Text style={styles.infoText}>Dlaczego warto nadpłacać kredyt?</Text>
+            <Ionicons
+              name={showTooltip ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color="#3b82f6"
+            />
+          </Pressable>
+
+          {showTooltip && (
+            <View style={styles.tooltipBox}>
+              <Text style={styles.tooltipText}>
+                Nadpłaty zmniejszają kapitał kredytu, co skutkuje mniejszymi odsetkami
+                przez cały pozostały okres spłaty. Nawet niewielka nadpłata może
+                przynieść znaczące oszczędności w długim terminie.
+              </Text>
+            </View>
+          )}
+
           {/* Amount Input */}
           <View style={styles.inputSection}>
             <Text style={styles.inputLabel}>Kwota nadpłaty</Text>
@@ -134,6 +175,17 @@ export default function OverpaymentModal({
             </View>
             {error && <Text style={styles.errorText}>{error}</Text>}
           </View>
+
+          {/* Savings Estimate */}
+          {parsedAmount > 0 && estimatedSavings > 0 && !willCloseTheLoan && (
+            <View style={styles.savingsBox}>
+              <Ionicons name="trending-down" size={20} color="#22c55e" />
+              <View style={styles.savingsTextContainer}>
+                <Text style={styles.savingsLabel}>Szacowane oszczędności na odsetkach</Text>
+                <Text style={styles.savingsValue}>~{formatCurrency(estimatedSavings)}</Text>
+              </View>
+            </View>
+          )}
 
           {/* Quick Action */}
           <Pressable
@@ -339,5 +391,54 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#6b7280',
     fontWeight: '500',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#3b82f6',
+    fontWeight: '500',
+  },
+  tooltipBox: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  tooltipText: {
+    fontSize: 13,
+    color: '#1e40af',
+    lineHeight: 20,
+  },
+  savingsBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  savingsTextContainer: {
+    flex: 1,
+  },
+  savingsLabel: {
+    fontSize: 12,
+    color: '#166534',
+    marginBottom: 2,
+  },
+  savingsValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#15803d',
   },
 });

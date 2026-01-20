@@ -981,9 +981,9 @@ class GamificationService:
             if unlock_data.get("loan_id") == loan_id:
                 return None
 
-        # Check if this is a mortgage (by description or type)
-        is_mortgage = any(kw in (loan.description or "").lower() for kw in [
-            "hipoteczny", "hipoteka", "mortgage", "dom", "mieszkanie", "house", "home"
+        # Check if this is a mortgage (by loan_type or description keywords)
+        is_mortgage = loan.loan_type == "mortgage" or any(kw in (loan.description or "").lower() for kw in [
+            "hipoteczny", "hipoteka", "mortgage", "dom", "mieszkanie", "house", "home", "działka"
         ])
 
         if is_mortgage:
