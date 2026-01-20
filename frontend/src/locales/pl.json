@@ -1219,15 +1219,15 @@
       }
     },
     "onboarding": {
-      "title": "Kreator konfiguracji",
-      "description": "Uruchom kreator konfiguracji, aby zaktualizować swój profil finansowy, przychody, wydatki i cele oszczędnościowe.",
+      "title": "Zebranie podstawowych danych",
+      "description": "Uruchom kreator, aby zaktualizować swój profil finansowy, przychody, wydatki i cele oszczędnościowe.",
       "runButton": "Uruchom kreator",
-      "redirectMessage": "Masz już dane w systemie. Możesz uruchomić kreator konfiguracji stąd, aby zaktualizować swoje informacje.",
+      "redirectMessage": "Masz już dane w systemie. Możesz uruchomić kreator stąd, aby zaktualizować swoje informacje.",
       "modeDialog": {
         "title": "Wybierz tryb konfiguracji",
         "description": "Masz już dane finansowe w systemie. Jak chcesz kontynuować?",
         "mergeMode": "Zaktualizuj istniejące dane",
-        "mergeModeDescription": "Zachowaj obecne dane i zaktualizuj wartości z kreatora konfiguracji. Istniejące wpisy zostaną zmodyfikowane.",
+        "mergeModeDescription": "Zachowaj obecne dane i zaktualizuj wartości z kreatora. Istniejące wpisy zostaną zmodyfikowane.",
         "freshStartMode": "Zacznij od nowa",
         "freshStartModeDescription": "Utwórz kopię zapasową obecnych danych i zacznij od czystej karty. Kopia zapasowa zostanie zapisana i można ją przywrócić później.",
         "cancel": "Anuluj",
@@ -1237,6 +1237,12 @@
         "creating": "Tworzenie kopii zapasowej...",
         "success": "Kopia zapasowa utworzona pomyślnie",
         "error": "Nie udało się utworzyć kopii zapasowej"
+      },
+      "skipConfirm": {
+        "title": "Pominąć konfigurację?",
+        "message": "Zawsze możesz wrócić do zebrania podstawowych danych przechodząc do Ustawienia → Ogólne → Zebranie podstawowych danych.",
+        "cancel": "Anuluj",
+        "confirm": "OK, pomiń"
       }
     },
     "backups": {

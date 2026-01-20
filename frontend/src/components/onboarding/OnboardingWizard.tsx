@@ -1476,6 +1476,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
   const hasHydrated = useRef(false);
   const [stepVisible, setStepVisible] = useState(true);
   const [showSavingDialog, setShowSavingDialog] = useState(false);
+  const [showSkipConfirmDialog, setShowSkipConfirmDialog] = useState(false);
   const [activeSavingPhase, setActiveSavingPhase] =
     useState<SavingPhase>('prepare');
   const [savingDetail, setSavingDetail] = useState<string | null>(null);
@@ -1645,10 +1646,30 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
   }, [handleNext]);
 
   const handleSkipAll = useCallback(() => {
+    setShowSkipConfirmDialog(true);
+  }, []);
+
+  const handleConfirmSkip = useCallback(async () => {
     track(AnalyticsEvents.ONBOARDING_SKIPPED, { step_reached: currentStepIndex + 1 });
     localStorage.removeItem(LOCAL_STORAGE_KEY);
+
+    // Mark onboarding as completed so sidebar doesn't show it anymore
+    const userEmail = session?.user?.email;
+    if (userEmail) {
+      try {
+        await fetch(`/api/backend/users/${encodeURIComponent(userEmail)}/settings`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ onboarding_completed: true }),
+        });
+      } catch (error) {
+        logger.error('[Onboarding] Failed to mark onboarding as completed:', error);
+      }
+    }
+
+    setShowSkipConfirmDialog(false);
     router.push('/');
-  }, [router, track, currentStepIndex]);
+  }, [router, track, currentStepIndex, session?.user?.email]);
 
   const handleReset = useCallback(() => {
     setData(createDefaultOnboardingData(intl));
@@ -2905,6 +2926,37 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
               {savingDetail && (
                 <p className="text-xs text-secondary">{savingDetail}</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSkipConfirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl border border-default bg-card p-6 shadow-lg">
+            <div className="flex flex-col gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
+                <Info className="h-6 w-6 text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-primary">
+                  {t('onboarding.skipConfirm.title')}
+                </h2>
+                <p className="mt-2 text-sm text-secondary">
+                  {t('onboarding.skipConfirm.message')}
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSkipConfirmDialog(false)}
+                >
+                  {t('onboarding.skipConfirm.cancel')}
+                </Button>
+                <Button onClick={handleConfirmSkip}>
+                  {t('onboarding.skipConfirm.confirm')}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

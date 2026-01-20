@@ -1270,15 +1270,15 @@
       }
     },
     "onboarding": {
-      "title": "Onboarding Wizard",
-      "description": "Run the setup wizard to update your financial profile, income, expenses, and savings goals.",
-      "runButton": "Run Onboarding",
-      "redirectMessage": "You already have data in the system. You can run the onboarding wizard from here to update your information.",
+      "title": "Data Collection",
+      "description": "Run the wizard to update your financial profile, income, expenses, and savings goals.",
+      "runButton": "Run Wizard",
+      "redirectMessage": "You already have data in the system. You can run the wizard from here to update your information.",
       "modeDialog": {
-        "title": "Choose Onboarding Mode",
+        "title": "Choose Mode",
         "description": "You already have financial data in the system. How would you like to proceed?",
         "mergeMode": "Update existing data",
-        "mergeModeDescription": "Keep your current data and update values from the onboarding wizard. Existing entries will be modified.",
+        "mergeModeDescription": "Keep your current data and update values from the wizard. Existing entries will be modified.",
         "freshStartMode": "Start fresh",
         "freshStartModeDescription": "Create a backup of your current data and start with a clean slate. Your backup will be saved and can be restored later.",
         "cancel": "Cancel",
@@ -1288,6 +1288,12 @@
         "creating": "Creating backup...",
         "success": "Backup created successfully",
         "error": "Failed to create backup"
+      },
+      "skipConfirm": {
+        "title": "Skip setup?",
+        "message": "You can always return to data collection by going to Settings → General → Data Collection.",
+        "cancel": "Cancel",
+        "confirm": "OK, skip"
       }
     },
     "backups": {
