@@ -121,9 +121,9 @@ export default function GoalsScreen() {
     try {
       setError(null);
 
-      // Fetch financial freedom data and dashboard data in parallel
+      // Fetch financial freedom data (with calculated values) and dashboard data in parallel
       const [ffData, summaryData] = await Promise.all([
-        api.financialFreedom.get().catch(() => null),
+        api.financialFreedom.getCalculated().catch(() => null),
         user?.email ? api.dashboard.getSummary(user.email).catch(() => null) : Promise.resolve(null),
       ]);
 
@@ -232,14 +232,10 @@ export default function GoalsScreen() {
             </Text>
           </View>
 
-          {/* Horizontal Progress Tracker */}
+          {/* Progress Tracker - Static (no swipe) */}
           <View style={styles.progressTracker}>
             <Text style={styles.trackerTitle}>Śledzenie Postępu 7 Kroków</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.trackerContent}
-            >
+            <View style={styles.trackerContent}>
               {STEPS.map((stepDef, index) => {
                 const step = financialFreedom?.steps.find((s) => s.id === stepDef.id);
                 const status = step ? getStepStatus(step) : 'not_started';
@@ -292,7 +288,7 @@ export default function GoalsScreen() {
                   </View>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
 
           {/* Current Step Banner */}
@@ -679,11 +675,11 @@ const styles = StyleSheet.create({
   trackerContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingRight: 16,
+    justifyContent: 'space-between',
   },
   trackerStep: {
     alignItems: 'center',
-    width: 48,
+    flex: 1,
     position: 'relative',
   },
   trackerCircle: {
@@ -731,8 +727,8 @@ const styles = StyleSheet.create({
   trackerLine: {
     position: 'absolute',
     top: 14,
-    left: 38,
-    width: 20,
+    right: -10,
+    width: '50%',
     height: 2,
     backgroundColor: '#e5e7eb',
   },

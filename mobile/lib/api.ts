@@ -253,6 +253,13 @@ export class ApiClient {
     get: () =>
       this.request<FinancialFreedomResponse>('/internal-api/financial-freedom'),
 
+    /**
+     * Get financial freedom data with auto-calculated values for steps 1-3 and 6.
+     * This endpoint calculates progress based on actual financial data (savings, loans, expenses).
+     */
+    getCalculated: () =>
+      this.request<FinancialFreedomResponse>('/internal-api/financial-freedom/calculated'),
+
     update: (data: FinancialFreedomUpdate) =>
       this.request<FinancialFreedomResponse>('/internal-api/financial-freedom', {
         method: 'PUT',

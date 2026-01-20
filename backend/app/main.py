@@ -120,7 +120,11 @@ async def health_check(db: Session = Depends(database.get_db)):
 # Include routers
 app.include_router(auth.router)
 app.include_router(users.router)
+# Financial freedom with two prefixes:
+# - /financial-freedom for web (goes through Next.js API proxy)
+# - /internal-api/financial-freedom for mobile (direct backend access)
 app.include_router(financial_freedom.router)
+app.include_router(financial_freedom.router, prefix="/internal-api")
 app.include_router(savings.router)
 app.include_router(exchange_rates.router)
 app.include_router(banking.router)
