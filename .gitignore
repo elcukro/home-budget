@@ -28,6 +28,10 @@ var/
 !frontend/src/lib/
 !frontend/src/lib/**
 
+# Allow mobile utility modules under mobile/lib
+!mobile/lib/
+!mobile/lib/**
+
 # Node
 node_modules/
 npm-debug.log*

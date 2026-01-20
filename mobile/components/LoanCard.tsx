@@ -8,7 +8,10 @@ interface LoanCardProps {
 }
 
 export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
-  const progress = Math.min(Math.max(loan.progress, 0), 100);
+  const progress = Math.min(Math.max(loan.progress ?? 0, 0), 100);
+  const interestRate = loan.interestRate ?? 0;
+  const balance = loan.balance ?? 0;
+  const monthlyPayment = loan.monthlyPayment ?? 0;
 
   // Determine color based on progress
   const getProgressColor = () => {
@@ -34,7 +37,7 @@ export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
             {loan.description}
           </Text>
           <Text style={styles.interestRate}>
-            {loan.interest_rate.toFixed(2)}% oprocentowanie
+            {interestRate.toFixed(2)}% oprocentowanie
           </Text>
         </View>
       </View>
@@ -61,11 +64,11 @@ export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
       <View style={styles.details}>
         <View style={styles.detailItem}>
           <Text style={styles.detailLabel}>Pozostało</Text>
-          <Text style={styles.detailValue}>{formatCurrency(loan.balance)}</Text>
+          <Text style={styles.detailValue}>{formatCurrency(balance)}</Text>
         </View>
         <View style={styles.detailItem}>
           <Text style={styles.detailLabel}>Rata miesięczna</Text>
-          <Text style={styles.detailValue}>{formatCurrency(loan.monthly_payment)}</Text>
+          <Text style={styles.detailValue}>{formatCurrency(monthlyPayment)}</Text>
         </View>
       </View>
 

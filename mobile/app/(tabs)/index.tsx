@@ -13,7 +13,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/hooks/useApi';
 import MetricCard from '@/components/MetricCard';
 import LoanCard from '@/components/LoanCard';
-import type { DashboardSummary, Loan, CashFlowEntry } from '@/lib/api';
+import type { DashboardSummary } from '@/lib/api';
 
 // Mock data for dev mode
 const MOCK_SUMMARY: DashboardSummary = {
@@ -34,19 +34,19 @@ const MOCK_SUMMARY: DashboardSummary = {
       id: '1',
       description: 'Kredyt hipoteczny',
       balance: 180000,
-      monthly_payment: 1800,
-      interest_rate: 7.5,
+      monthlyPayment: 1800,
+      interestRate: 7.5,
       progress: 45,
-      total_amount: 327273,
+      totalAmount: 327273,
     },
     {
       id: '2',
       description: 'Kredyt samochodowy',
       balance: 12000,
-      monthly_payment: 300,
-      interest_rate: 9.9,
+      monthlyPayment: 300,
+      interestRate: 9.9,
       progress: 80,
-      total_amount: 60000,
+      totalAmount: 60000,
     },
   ],
   activities: [],
@@ -88,7 +88,11 @@ export default function DashboardScreen() {
 
     try {
       setError(null);
-      const data = await api.dashboard.getFullSummary(user.email);
+
+      // Use the centralized summary endpoint - all calculations are done server-side
+      // This handles recurring items, active date ranges, loan payments, etc. correctly
+      const data = await api.dashboard.getSummary(user.email);
+
       setSummary(data);
     } catch (err) {
       console.error('Failed to fetch dashboard:', err);
