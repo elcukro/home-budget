@@ -665,6 +665,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+    overflow: 'visible',
   },
   trackerTitle: {
     fontSize: 14,
@@ -676,11 +677,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    overflow: 'visible',
   },
   trackerStep: {
     alignItems: 'center',
     flex: 1,
     position: 'relative',
+    overflow: 'visible',
   },
   trackerCircle: {
     width: 28,
@@ -726,11 +729,12 @@ const styles = StyleSheet.create({
   },
   trackerLine: {
     position: 'absolute',
-    top: 14,
-    right: -10,
-    width: '50%',
+    top: 13,
+    left: 14,
+    right: -14,
     height: 2,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#d1d5db',
+    zIndex: -1,
   },
   trackerLineCompleted: {
     backgroundColor: '#22c55e',
