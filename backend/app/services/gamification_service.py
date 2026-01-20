@@ -925,10 +925,10 @@ class GamificationService:
         first_payment = payments[0].payment_date if payments else None
         last_payment = payments[-1].payment_date if payments else None
 
-        # Calculate months between first and last payment
+        # Calculate months from loan start to payoff (more meaningful than first-to-last payment)
         months_to_payoff = 0
-        if first_payment and last_payment:
-            diff = last_payment - first_payment
+        if loan.start_date and last_payment:
+            diff = last_payment - loan.start_date
             months_to_payoff = max(1, diff.days // 30)
 
         # Calculate overpayments

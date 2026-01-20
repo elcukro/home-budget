@@ -705,15 +705,11 @@ def create_loan_payment(
     celebration = None
     try:
         is_overpayment = payment.payment_type == "overpayment"
-        print(f"[FastAPI] Calling on_loan_payment: user_id={current_user.id}, payment_id={db_payment.id}, loan_id={loan_id}, is_overpayment={is_overpayment}")
         xp_earned, _, celebration = GamificationService.on_loan_payment(
             current_user.id, db_payment.id, loan_id, is_overpayment, db
         )
-        print(f"[FastAPI] on_loan_payment result: xp_earned={xp_earned}, celebration={celebration is not None}")
     except Exception as gam_error:
-        import traceback
         print(f"[FastAPI] Gamification error (non-blocking): {gam_error}")
-        print(f"[FastAPI] Traceback: {traceback.format_exc()}")
 
     # Return extended response with celebration data
     return LoanPaymentResponse(
