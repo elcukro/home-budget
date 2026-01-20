@@ -38,6 +38,7 @@ interface SettingsContextType {
   isLoading: boolean;
   error: Error | null;
   updateSettings: (newSettings: Settings) => Promise<void>;
+  refetchSettings: () => Promise<void>;
   formatCurrency: (amount: number) => string;
 }
 
@@ -72,6 +73,7 @@ const SettingsContext = createContext<SettingsContextType>({
   isLoading: true,
   error: null,
   updateSettings: async () => {},
+  refetchSettings: async () => {},
   formatCurrency: (amount: number) => amount.toString(),
 });
 
@@ -232,7 +234,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <SettingsContext.Provider value={{ settings, isLoading, error, updateSettings, formatCurrency }}>
+    <SettingsContext.Provider value={{ settings, isLoading, error, updateSettings, refetchSettings: fetchSettings, formatCurrency }}>
       {children}
     </SettingsContext.Provider>
   );

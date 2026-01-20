@@ -1434,7 +1434,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
   const intl = useIntl();
   const { data: session } = useSession();
   const { track, trackOnboardingStep } = useAnalytics();
-  const { formatCurrency: formatCurrencySetting } = useSettings();
+  const { formatCurrency: formatCurrencySetting, refetchSettings } = useSettings();
   const formatMoney = useCallback(
     (amount: number) => formatCurrencySetting(amount || 0),
     [formatCurrencySetting]
@@ -1662,6 +1662,8 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ onboarding_completed: true }),
         });
+        // Refresh settings context so sidebar updates immediately
+        await refetchSettings();
       } catch (error) {
         logger.error('[Onboarding] Failed to mark onboarding as completed:', error);
       }
@@ -1669,7 +1671,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
 
     setShowSkipConfirmDialog(false);
     router.push('/');
-  }, [router, track, currentStepIndex, session?.user?.email]);
+  }, [router, track, currentStepIndex, session?.user?.email, refetchSettings]);
 
   const handleReset = useCallback(() => {
     setData(createDefaultOnboardingData(intl));
