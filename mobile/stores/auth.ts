@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { initializeApiClient, getApiClient } from '@/lib/api';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
@@ -9,6 +10,7 @@ interface User {
   id: string;
   email: string;
   name: string | null;
+  photoUrl: string | null;
 }
 
 interface AuthState {
@@ -19,7 +21,7 @@ interface AuthState {
 
   // Actions
   initialize: () => Promise<void>;
-  signInWithGoogle: (idToken: string) => Promise<void>;
+  signInWithGoogle: (idToken: string, photoUrl?: string | null) => Promise<void>;
   devLogin: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -37,7 +39,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const userJson = await SecureStore.getItemAsync(USER_KEY);
 
       if (token && userJson) {
-        const user = JSON.parse(userJson) as User;
+        let user = JSON.parse(userJson) as User;
+
+        // Migration: if photoUrl is missing, try to get it from Google
+        if (!user.photoUrl && token !== 'dev-token-for-testing') {
+          try {
+            const googleUser = await GoogleSignin.getCurrentUser();
+            if (googleUser?.user?.photo) {
+              user = { ...user, photoUrl: googleUser.user.photo };
+              // Save updated user data
+              await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+              console.log('Migrated user photo URL from Google');
+            }
+          } catch (err) {
+            console.log('Could not get Google user photo:', err);
+          }
+        }
 
         // Initialize API client
         initializeApiClient(
@@ -66,7 +83,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithGoogle: async (idToken: string) => {
+  signInWithGoogle: async (idToken: string, photoUrl?: string | null) => {
     try {
       set({ isLoading: true });
 
@@ -83,6 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         id: response.user.id,
         email: response.user.email,
         name: response.user.name,
+        photoUrl: photoUrl || null,
       };
 
       // Store credentials
@@ -118,6 +136,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         id: 'dev-user-1',
         email: 'dev@firedup.app',
         name: 'Dev User',
+        photoUrl: null,
       };
 
       const devToken = 'dev-token-for-testing';

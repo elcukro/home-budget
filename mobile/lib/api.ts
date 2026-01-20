@@ -267,29 +267,30 @@ export class ApiClient {
       }),
   };
 
-  // ============== Transactions ==============
+  // ============== Expenses ==============
 
-  transactions = {
-    list: (userId: string, params?: { month?: string; year?: number }) =>
+  expenses = {
+    list: (userId: string) =>
       this.request<Array<{
         id: number;
+        category: string;
+        description: string;
         amount: number;
-        currency: string;
-        category_id: number | null;
+        is_recurring: boolean;
         date: string;
-        description: string | null;
-        type: 'income' | 'expense';
-      }>>(`/users/${userId}/transactions`, { params }),
+        end_date: string | null;
+        source: string;
+      }>>(`/users/${userId}/expenses`),
 
     create: (userId: string, data: {
+      category: string;
+      description: string;
       amount: number;
-      currency: string;
-      category_id?: number;
+      is_recurring?: boolean;
       date: string;
-      description?: string;
-      type: 'income' | 'expense';
+      end_date?: string;
     }) =>
-      this.request(`/users/${userId}/transactions`, {
+      this.request(`/users/${userId}/expenses`, {
         method: 'POST',
         body: data,
       }),
@@ -314,15 +315,56 @@ export class ApiClient {
   settings = {
     get: (userId: string) =>
       this.request<{
-        base_currency: string;
+        id: number;
+        user_id: string;
         language: string;
+        currency: string;
+        base_currency: string;
+        emergency_fund_target: number;
+        emergency_fund_months: number;
+        // Polish tax profile
+        employment_status: string | null;
+        tax_form: string | null;
+        birth_year: number | null;
+        children_count: number;
+        // Timestamps
+        created_at: string;
+        updated_at: string | null;
       }>(`/users/${userId}/settings`),
 
-    update: (userId: string, data: { base_currency?: string; language?: string }) =>
+    update: (userId: string, data: {
+      language?: string;
+      currency?: string;
+      base_currency?: string;
+      emergency_fund_target?: number;
+      emergency_fund_months?: number;
+      employment_status?: string | null;
+      tax_form?: string | null;
+      birth_year?: number | null;
+      children_count?: number;
+    }) =>
       this.request(`/users/${userId}/settings`, {
         method: 'PUT',
         body: data,
       }),
+  };
+
+  // ============== Subscription ==============
+  // Note: Uses /internal-api/ prefix to bypass Next.js routing in production
+
+  subscription = {
+    getStatus: (userId: string) =>
+      this.request<{
+        status: string; // trialing, active, past_due, canceled, incomplete, free
+        plan_type: string; // free, trial, monthly, annual, lifetime
+        is_premium: boolean;
+        is_trial: boolean;
+        trial_ends_at: string | null;
+        trial_days_left: number | null;
+        current_period_end: string | null;
+        cancel_at_period_end: boolean;
+        is_lifetime: boolean;
+      }>(`/internal-api/billing/status`, { params: { user_id: userId } }),
   };
 }
 

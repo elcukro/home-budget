@@ -85,7 +85,7 @@ export default function SignInScreen() {
       const response = await GoogleSignin.signIn();
 
       if (isSuccessResponse(response)) {
-        const { idToken } = response.data;
+        const { idToken, user } = response.data;
 
         if (!idToken) {
           throw new Error('Nie otrzymano tokenu ID od Google');
@@ -94,7 +94,8 @@ export default function SignInScreen() {
         console.log('Google Sign-In successful, exchanging token...');
 
         // Exchange Google token for app token via backend
-        await signInWithGoogle(idToken);
+        // Pass photo URL from Google user info
+        await signInWithGoogle(idToken, user?.photo || null);
 
         console.log('Backend auth successful, navigating to app...');
         router.replace('/(tabs)');

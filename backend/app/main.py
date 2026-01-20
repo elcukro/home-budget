@@ -131,6 +131,8 @@ app.include_router(banking.router)
 app.include_router(tink.router)
 app.include_router(bank_transactions.router)
 app.include_router(stripe_billing.router)
+# Mobile billing access (direct backend, bypasses Next.js routing)
+app.include_router(stripe_billing.router, prefix="/internal-api")
 
 # Loan models
 VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]

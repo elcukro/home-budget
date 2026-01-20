@@ -2,67 +2,106 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/hooks/useApi';
-import FilterChips, { TransactionFilter } from '@/components/FilterChips';
-import AddTransactionSheet from '@/components/AddTransactionSheet';
 
-interface Transaction {
-  id: number;
-  amount: number;
-  currency: string;
-  category_id: number | null;
-  date: string;
-  description: string | null;
-  type: 'income' | 'expense';
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Mock data for dev mode
-const MOCK_TRANSACTIONS: Transaction[] = [
-  { id: 1, amount: 12500, currency: 'PLN', category_id: 1, date: '2026-01-15', description: 'Wypłata', type: 'income' },
-  { id: 2, amount: 2500, currency: 'PLN', category_id: 2, date: '2026-01-14', description: 'Czynsz', type: 'expense' },
-  { id: 3, amount: 450, currency: 'PLN', category_id: 3, date: '2026-01-13', description: 'Zakupy spożywcze', type: 'expense' },
-  { id: 4, amount: 200, currency: 'PLN', category_id: 4, date: '2026-01-12', description: 'Paliwo', type: 'expense' },
-  { id: 5, amount: 150, currency: 'PLN', category_id: 5, date: '2026-01-11', description: 'Netflix + Spotify', type: 'expense' },
-  { id: 6, amount: 500, currency: 'PLN', category_id: 1, date: '2026-01-10', description: 'Freelance projekt', type: 'income' },
-  { id: 7, amount: 89, currency: 'PLN', category_id: 6, date: '2026-01-09', description: 'Restauracja', type: 'expense' },
-  { id: 8, amount: 3500, currency: 'PLN', category_id: 1, date: '2026-01-05', description: 'Premia', type: 'income' },
-  { id: 9, amount: 120, currency: 'PLN', category_id: 7, date: '2026-01-04', description: 'Apteka', type: 'expense' },
-  { id: 10, amount: 350, currency: 'PLN', category_id: 8, date: '2026-01-03', description: 'Ubrania', type: 'expense' },
-];
+interface Expense {
+  id: number;
+  category: string;
+  description: string;
+  amount: number;
+  is_recurring: boolean;
+  date: string;
+  end_date: string | null;
+  source: string;
+}
 
-const FILTER_OPTIONS = [
-  { value: 'all' as TransactionFilter, label: 'Wszystkie' },
-  { value: 'income' as TransactionFilter, label: 'Przychody' },
-  { value: 'expense' as TransactionFilter, label: 'Wydatki' },
+interface CategoryGroup {
+  categoryKey: string;  // Original key from backend
+  category: string;     // Display label (Polish)
+  total: number;
+  expenses: Expense[];
+  icon: string;
+  color: string;
+}
+
+// Category icons and colors mapping (English keys from backend, Polish labels for display)
+const CATEGORY_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
+  // English category names (from backend)
+  'housing': { icon: 'home', color: '#8b5cf6', label: 'Mieszkanie' },
+  'food': { icon: 'restaurant', color: '#f97316', label: 'Żywność' },
+  'entertainment': { icon: 'game-controller', color: '#ec4899', label: 'Rozrywka' },
+  'healthcare': { icon: 'heart', color: '#ef4444', label: 'Opieka Zdrowotna' },
+  'transport': { icon: 'car', color: '#3b82f6', label: 'Transport' },
+  'media': { icon: 'tv', color: '#06b6d4', label: 'Media' },
+  'education': { icon: 'school', color: '#10b981', label: 'Edukacja' },
+  'clothing': { icon: 'shirt', color: '#a855f7', label: 'Ubrania' },
+  'other': { icon: 'ellipsis-horizontal-circle', color: '#6b7280', label: 'Inne' },
+  'savings': { icon: 'wallet', color: '#22c55e', label: 'Oszczędności' },
+  'utilities': { icon: 'flash', color: '#eab308', label: 'Media / Rachunki' },
+  'insurance': { icon: 'shield-checkmark', color: '#0ea5e9', label: 'Ubezpieczenia' },
+  'subscriptions': { icon: 'repeat', color: '#f43f5e', label: 'Subskrypcje' },
+  'pets': { icon: 'paw', color: '#fb923c', label: 'Zwierzęta' },
+  'kids': { icon: 'people', color: '#a78bfa', label: 'Dzieci' },
+  'personal': { icon: 'person', color: '#64748b', label: 'Osobiste' },
+  // Polish category names (fallback)
+  'Rozrywka': { icon: 'game-controller', color: '#ec4899', label: 'Rozrywka' },
+  'Żywność': { icon: 'restaurant', color: '#f97316', label: 'Żywność' },
+  'Mieszkanie': { icon: 'home', color: '#8b5cf6', label: 'Mieszkanie' },
+  'Transport': { icon: 'car', color: '#3b82f6', label: 'Transport' },
+  'Inne': { icon: 'ellipsis-horizontal-circle', color: '#6b7280', label: 'Inne' },
+  // Default
+  'default': { icon: 'pricetag', color: '#6b7280', label: 'Inne' },
+};
+
+// Mock data for dev mode
+const MOCK_EXPENSES: Expense[] = [
+  { id: 1, category: 'Mieszkanie', description: 'Czynsz za mieszkanie', amount: 1950, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 2, category: 'Mieszkanie', description: 'Media (prąd, gaz, woda)', amount: 380, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 3, category: 'Mieszkanie', description: 'Internet', amount: 100, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 4, category: 'Żywność', description: 'Zakupy spożywcze', amount: 1250, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 5, category: 'Żywność', description: 'Obiady / jedzenie na mieście', amount: 300, is_recurring: false, date: '2026-01-15', end_date: null, source: 'manual' },
+  { id: 6, category: 'Rozrywka', description: 'Kino / restauracje / wyjazdy', amount: 250, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 7, category: 'Rozrywka', description: 'Inne drobne wydatki', amount: 150, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 8, category: 'Media', description: 'Netflix / Spotify / YouTube', amount: 200, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 9, category: 'Transport', description: 'Bilety komunikacja', amount: 100, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 10, category: 'Opieka Zdrowotna', description: 'Siłownia / fitness', amount: 100, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 11, category: 'Opieka Zdrowotna', description: 'Kosmetyki / fryzjer', amount: 100, is_recurring: false, date: '2026-01-10', end_date: null, source: 'manual' },
+  { id: 12, category: 'Inne', description: 'Zwierzęta domowe', amount: 150, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
+  { id: 13, category: 'Inne', description: 'Zajęcia dodatkowe', amount: 250, is_recurring: true, date: '2026-01-01', end_date: null, source: 'manual' },
 ];
 
 export default function TransactionsScreen() {
   const { user, token } = useAuthStore();
   const api = useApi();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<TransactionFilter>('all');
-  const [showAddSheet, setShowAddSheet] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  // Check if we're in dev mode
   const isDevMode = token === 'dev-token-for-testing';
 
-  const fetchTransactions = useCallback(async () => {
+  const fetchExpenses = useCallback(async () => {
     if (!user?.email || !api) return;
 
-    // Use mock data in dev mode
     if (isDevMode) {
-      setTransactions(MOCK_TRANSACTIONS);
+      setExpenses(MOCK_EXPENSES);
       setIsLoading(false);
       setIsRefreshing(false);
       return;
@@ -70,11 +109,13 @@ export default function TransactionsScreen() {
 
     try {
       setError(null);
-      const data = await api.transactions.list(user.email);
-      setTransactions(data);
+      const data = await api.expenses.list(user.email);
+      setExpenses(data);
     } catch (err) {
-      console.error('Failed to fetch transactions:', err);
-      setError('Nie udało się załadować transakcji');
+      console.error('Failed to fetch expenses:', err);
+      setError('Nie udało się załadować wydatków');
+      // Fallback to mock data on error
+      setExpenses(MOCK_EXPENSES);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -82,87 +123,71 @@ export default function TransactionsScreen() {
   }, [user?.email, api, isDevMode]);
 
   useEffect(() => {
-    fetchTransactions();
-  }, [fetchTransactions]);
+    fetchExpenses();
+  }, [fetchExpenses]);
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchTransactions();
-  }, [fetchTransactions]);
+    fetchExpenses();
+  }, [fetchExpenses]);
 
-  const handleAddSuccess = useCallback(() => {
-    // Refresh transactions list after adding
-    fetchTransactions();
-  }, [fetchTransactions]);
+  // Group expenses by category
+  const groupedExpenses = useMemo((): CategoryGroup[] => {
+    const groups: Record<string, CategoryGroup> = {};
 
-  // Filter transactions based on selected filter
-  const filteredTransactions = useMemo(() => {
-    if (filter === 'all') return transactions;
-    return transactions.filter((t) => t.type === filter);
-  }, [transactions, filter]);
+    expenses.forEach((expense) => {
+      const categoryKey = expense.category || 'other';
+      const config = CATEGORY_CONFIG[categoryKey] || CATEGORY_CONFIG['default'];
+      const displayLabel = config.label;
 
-  // Calculate summary for current filter
-  const summary = useMemo(() => {
-    const income = transactions
-      .filter((t) => t.type === 'income')
-      .reduce((sum, t) => sum + t.amount, 0);
-    const expenses = transactions
-      .filter((t) => t.type === 'expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-    return { income, expenses, balance: income - expenses };
-  }, [transactions]);
+      if (!groups[categoryKey]) {
+        groups[categoryKey] = {
+          categoryKey,              // Original key for React key prop
+          category: displayLabel,   // Polish label for display
+          total: 0,
+          expenses: [],
+          icon: config.icon,
+          color: config.color,
+        };
+      }
+      groups[categoryKey].total += expense.amount;
+      groups[categoryKey].expenses.push(expense);
+    });
 
-  const formatCurrency = (amount: number, currency: string = 'PLN') => {
-    return new Intl.NumberFormat('pl-PL', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+    // Sort by total amount descending
+    return Object.values(groups).sort((a, b) => b.total - a.total);
+  }, [expenses]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pl-PL', {
-      day: 'numeric',
-      month: 'short',
+  // Calculate total expenses
+  const totalExpenses = useMemo(() => {
+    return expenses.reduce((sum, e) => sum + e.amount, 0);
+  }, [expenses]);
+
+  // Calculate recurring vs one-time
+  const recurringTotal = useMemo(() => {
+    return expenses.filter(e => e.is_recurring).reduce((sum, e) => sum + e.amount, 0);
+  }, [expenses]);
+
+  const toggleCategory = (category: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(category)) {
+        newSet.delete(category);
+      } else {
+        newSet.add(category);
+      }
+      return newSet;
     });
   };
 
-  const renderTransaction = ({ item }: { item: Transaction }) => {
-    const isExpense = item.type === 'expense';
-
-    return (
-      <TouchableOpacity style={styles.transactionItem}>
-        <View
-          style={[
-            styles.transactionIcon,
-            { backgroundColor: isExpense ? '#fef2f2' : '#f0fdf4' },
-          ]}
-        >
-          <Ionicons
-            name={isExpense ? 'arrow-down' : 'arrow-up'}
-            size={20}
-            color={isExpense ? '#ef4444' : '#22c55e'}
-          />
-        </View>
-        <View style={styles.transactionDetails}>
-          <Text style={styles.transactionDescription} numberOfLines={1}>
-            {item.description || 'Brak opisu'}
-          </Text>
-          <Text style={styles.transactionDate}>{formatDate(item.date)}</Text>
-        </View>
-        <Text
-          style={[
-            styles.transactionAmount,
-            { color: isExpense ? '#ef4444' : '#22c55e' },
-          ]}
-        >
-          {isExpense ? '-' : '+'}
-          {formatCurrency(item.amount, item.currency)}
-        </Text>
-      </TouchableOpacity>
-    );
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('pl-PL', {
+      style: 'currency',
+      currency: 'PLN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
   };
 
   if (isLoading) {
@@ -174,91 +199,127 @@ export default function TransactionsScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Summary Bar */}
-      <View style={styles.summaryBar}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Przychody</Text>
-          <Text style={[styles.summaryValue, { color: '#22c55e' }]}>
-            +{formatCurrency(summary.income)}
-          </Text>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+      }
+    >
+      {/* Month Summary */}
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>Podsumowanie miesiąca</Text>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Suma wydatków</Text>
+            <Text style={styles.summaryValueLarge}>{formatCurrency(totalExpenses)}</Text>
+          </View>
         </View>
-        <View style={[styles.summaryItem, styles.summaryItemCenter]}>
-          <Text style={styles.summaryLabel}>Bilans</Text>
-          <Text
-            style={[
-              styles.summaryValue,
-              { color: summary.balance >= 0 ? '#22c55e' : '#ef4444' },
-            ]}
-          >
-            {formatCurrency(summary.balance)}
-          </Text>
-        </View>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Wydatki</Text>
-          <Text style={[styles.summaryValue, { color: '#ef4444' }]}>
-            -{formatCurrency(summary.expenses)}
-          </Text>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItemHalf}>
+            <Text style={styles.summaryLabel}>Cykliczne</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(recurringTotal)}</Text>
+          </View>
+          <View style={styles.summaryItemHalf}>
+            <Text style={styles.summaryLabel}>Jednorazowe</Text>
+            <Text style={styles.summaryValue}>{formatCurrency(totalExpenses - recurringTotal)}</Text>
+          </View>
         </View>
       </View>
 
-      {/* Filter Chips */}
-      <FilterChips
-        options={FILTER_OPTIONS}
-        selected={filter}
-        onSelect={setFilter}
-      />
-
-      {error ? (
+      {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
-      ) : (
-        <FlatList
-          data={filteredTransactions}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderTransaction}
-          refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="receipt-outline" size={64} color="#d1d5db" />
-              <Text style={styles.emptyTitle}>
-                {filter === 'all'
-                  ? 'Brak transakcji'
-                  : filter === 'income'
-                    ? 'Brak przychodów'
-                    : 'Brak wydatków'}
-              </Text>
-              <Text style={styles.emptyText}>
-                Dodaj pierwszą transakcję, aby zacząć śledzić finanse
-              </Text>
-            </View>
-          }
-          contentContainerStyle={
-            filteredTransactions.length === 0 ? styles.emptyList : styles.list
-          }
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
       )}
 
-      {/* FAB */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowAddSheet(true)}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+      {/* Category Groups */}
+      <Text style={styles.sectionTitle}>Lista wydatków</Text>
 
-      {/* Add Transaction Sheet */}
-      <AddTransactionSheet
-        visible={showAddSheet}
-        onClose={() => setShowAddSheet(false)}
-        onSuccess={handleAddSuccess}
-      />
-    </View>
+      {groupedExpenses.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="receipt-outline" size={64} color="#d1d5db" />
+          <Text style={styles.emptyTitle}>Brak wydatków</Text>
+          <Text style={styles.emptyText}>
+            Dodaj pierwszy wydatek, aby zacząć śledzić finanse
+          </Text>
+        </View>
+      ) : (
+        groupedExpenses.map((group) => {
+          const isExpanded = expandedCategories.has(group.categoryKey);
+
+          return (
+            <View key={group.categoryKey} style={styles.categoryCard}>
+              {/* Category Header */}
+              <TouchableOpacity
+                style={styles.categoryHeader}
+                onPress={() => toggleCategory(group.categoryKey)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.categoryHeaderLeft}>
+                  <View style={[styles.categoryIcon, { backgroundColor: group.color + '20' }]}>
+                    <Ionicons name={group.icon as any} size={20} color={group.color} />
+                  </View>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryName}>{group.category}</Text>
+                    <Text style={styles.categoryCount}>
+                      {group.expenses.length} {group.expenses.length === 1 ? 'wydatek' : 'wydatków'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.categoryHeaderRight}>
+                  <Text style={[styles.categoryTotal, { color: group.color }]}>
+                    {formatCurrency(group.total)}
+                  </Text>
+                  <Ionicons
+                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color="#9ca3af"
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {/* Expanded Expenses */}
+              {isExpanded && (
+                <View style={styles.expensesList}>
+                  {group.expenses.map((expense, index) => (
+                    <View
+                      key={`${expense.id}-${index}`}
+                      style={[
+                        styles.expenseItem,
+                        index < group.expenses.length - 1 && styles.expenseItemBorder,
+                      ]}
+                    >
+                      <View style={styles.expenseInfo}>
+                        <Text style={styles.expenseDescription}>{expense.description}</Text>
+                        <View style={styles.expenseMeta}>
+                          {expense.is_recurring && (
+                            <View style={styles.recurringBadge}>
+                              <Ionicons name="repeat" size={12} color="#f97316" />
+                              <Text style={styles.recurringText}>Cykliczny</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                      <Text style={styles.expenseAmount}>{formatCurrency(expense.amount)}</Text>
+                    </View>
+                  ))}
+                  {/* Category Total Row */}
+                  <View style={styles.categoryTotalRow}>
+                    <Text style={styles.categoryTotalLabel}>Razem</Text>
+                    <Text style={styles.categoryTotalValue}>{formatCurrency(group.total)}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          );
+        })
+      )}
+
+      {/* FAB Placeholder Space */}
+      <View style={{ height: 80 }} />
+    </ScrollView>
   );
 }
 
@@ -267,93 +328,90 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9fafb',
   },
+  content: {
+    padding: 16,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  summaryBar: {
-    flexDirection: 'row',
+
+  // Summary Card
+  summaryCard: {
     backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  summaryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
   },
   summaryItem: {
     flex: 1,
     alignItems: 'center',
   },
-  summaryItemCenter: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: '#f3f4f6',
+  summaryItemHalf: {
+    flex: 1,
+    alignItems: 'center',
   },
   summaryLabel: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6b7280',
     marginBottom: 4,
   },
   summaryValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+    color: '#1f2937',
   },
+  summaryValueLarge: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#ef4444',
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: '#f3f4f6',
+    marginVertical: 16,
+  },
+
+  // Error
   errorContainer: {
-    margin: 16,
-    backgroundColor: '#fee2e2',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#fef2f2',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
   },
   errorText: {
     color: '#dc2626',
     textAlign: 'center',
+    fontSize: 14,
   },
-  list: {
-    padding: 16,
-  },
-  transactionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-  },
-  transactionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  transactionDetails: {
-    flex: 1,
-  },
-  transactionDescription: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  transactionDate: {
-    fontSize: 13,
-    color: '#6b7280',
-  },
-  transactionAmount: {
-    fontSize: 16,
+
+  // Section Title
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 12,
   },
-  separator: {
-    height: 8,
-  },
+
+  // Empty State
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     padding: 48,
-  },
-  emptyList: {
-    flexGrow: 1,
   },
   emptyTitle: {
     fontSize: 18,
@@ -367,20 +425,129 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
   },
-  fab: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#f97316',
+
+  // Category Card
+  categoryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
+  categoryHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#f97316',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    marginRight: 12,
+  },
+  categoryInfo: {
+    flex: 1,
+  },
+  categoryName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  categoryCount: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  categoryHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  categoryTotal: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  // Expenses List
+  expensesList: {
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  expenseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fafafa',
+  },
+  expenseItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  expenseInfo: {
+    flex: 1,
+  },
+  expenseDescription: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  expenseMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  recurringBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff7ed',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 4,
+  },
+  recurringText: {
+    fontSize: 11,
+    color: '#f97316',
+    fontWeight: '500',
+  },
+  expenseAmount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+
+  // Category Total Row
+  categoryTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#f9fafb',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+  },
+  categoryTotalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  categoryTotalValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1f2937',
   },
 });
