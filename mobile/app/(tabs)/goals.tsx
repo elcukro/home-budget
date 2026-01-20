@@ -175,11 +175,11 @@ export default function GoalsScreen() {
 
   const currentStep = getCurrentStep();
 
-  // Get step status
-  const getStepStatus = (stepId: number, step: FinancialFreedomResponse['steps'][0]): 'completed' | 'active' | 'pending' => {
+  // Get step status based on completion and progress
+  const getStepStatus = (step: FinancialFreedomResponse['steps'][0]): 'completed' | 'in_progress' | 'not_started' => {
     if (step.isCompleted) return 'completed';
-    if (stepId === currentStep) return 'active';
-    return 'pending';
+    if (step.progress > 0) return 'in_progress';
+    return 'not_started';
   };
 
   // Get mortgage data from dashboard for step 6
@@ -242,9 +242,10 @@ export default function GoalsScreen() {
             >
               {STEPS.map((stepDef, index) => {
                 const step = financialFreedom?.steps.find((s) => s.id === stepDef.id);
-                const status = step ? getStepStatus(stepDef.id, step) : 'pending';
+                const status = step ? getStepStatus(step) : 'not_started';
                 const isCompleted = status === 'completed';
-                const isActive = status === 'active';
+                const isInProgress = status === 'in_progress';
+                const isNotStarted = status === 'not_started';
 
                 return (
                   <View key={stepDef.id} style={styles.trackerStep}>
@@ -252,16 +253,17 @@ export default function GoalsScreen() {
                       style={[
                         styles.trackerCircle,
                         isCompleted && styles.trackerCircleCompleted,
-                        isActive && styles.trackerCircleActive,
+                        isInProgress && styles.trackerCircleInProgress,
+                        isNotStarted && styles.trackerCircleNotStarted,
                       ]}
                     >
                       {isCompleted ? (
-                        <Ionicons name="checkmark" size={16} color="#fff" />
+                        <Ionicons name="checkmark" size={14} color="#fff" />
                       ) : (
                         <Text
                           style={[
                             styles.trackerNumber,
-                            isActive && styles.trackerNumberActive,
+                            (isInProgress || isNotStarted) && styles.trackerNumberWhite,
                           ]}
                         >
                           {stepDef.id}
@@ -272,7 +274,8 @@ export default function GoalsScreen() {
                       style={[
                         styles.trackerLabel,
                         isCompleted && styles.trackerLabelCompleted,
-                        isActive && styles.trackerLabelActive,
+                        isInProgress && styles.trackerLabelInProgress,
+                        isNotStarted && styles.trackerLabelNotStarted,
                       ]}
                       numberOfLines={2}
                     >
@@ -315,9 +318,10 @@ export default function GoalsScreen() {
 
             {financialFreedom?.steps.map((step) => {
               const stepDef = STEPS[step.id - 1];
-              const status = getStepStatus(step.id, step);
+              const status = getStepStatus(step);
               const isCompleted = status === 'completed';
-              const isActive = status === 'active';
+              const isInProgress = status === 'in_progress';
+              const isNotStarted = status === 'not_started';
 
               // Special handling for step 6 (mortgage) - use real loan data
               const isMortgageStep = step.id === 6;
@@ -331,7 +335,8 @@ export default function GoalsScreen() {
                   style={[
                     styles.stepCard,
                     isCompleted && styles.stepCardCompleted,
-                    isActive && styles.stepCardActive,
+                    isInProgress && styles.stepCardInProgress,
+                    isNotStarted && styles.stepCardNotStarted,
                   ]}
                 >
                   <View style={styles.stepCardHeader}>
@@ -340,13 +345,14 @@ export default function GoalsScreen() {
                         style={[
                           styles.stepIcon,
                           isCompleted && styles.stepIconCompleted,
-                          isActive && styles.stepIconActive,
+                          isInProgress && styles.stepIconInProgress,
+                          isNotStarted && styles.stepIconNotStarted,
                         ]}
                       >
                         <Ionicons
                           name={stepDef.icon}
                           size={20}
-                          color={isCompleted ? '#fff' : isActive ? '#fff' : '#6b7280'}
+                          color={isCompleted ? '#fff' : isInProgress ? '#fff' : isNotStarted ? '#fff' : '#6b7280'}
                         />
                       </View>
                       <View style={styles.stepCardTitleContent}>
@@ -360,11 +366,18 @@ export default function GoalsScreen() {
                     </View>
 
                     {/* Progress indicator */}
-                    {(step.progress > 0 || isActive) && !isCompleted && (
+                    {isInProgress && (
                       <View style={styles.progressBadge}>
                         <Text style={styles.progressBadgeText}>
                           {isMortgageStep && mortgage ? Math.round(mortgageProgress) : Math.round(step.progress)}%
                         </Text>
+                      </View>
+                    )}
+
+                    {/* Not started indicator */}
+                    {isNotStarted && (
+                      <View style={styles.notStartedBadge}>
+                        <Text style={styles.notStartedBadgeText}>0%</Text>
                       </View>
                     )}
 
@@ -422,7 +435,7 @@ export default function GoalsScreen() {
                     </View>
                   )}
 
-                  {step.id === 4 && isActive && (
+                  {step.id === 4 && !isCompleted && (
                     <View style={styles.stepDetails}>
                       <View style={styles.stepDetailRow}>
                         <Text style={styles.stepDetailLabel}>Cel:</Text>
@@ -430,7 +443,7 @@ export default function GoalsScreen() {
                       </View>
                       <View style={styles.stepDetailRow}>
                         <Text style={styles.stepDetailLabel}>Aktualnie:</Text>
-                        <Text style={styles.stepDetailValue}>0% dochodu</Text>
+                        <Text style={styles.stepDetailValue}>{step.progress || 0}% dochodu</Text>
                       </View>
                     </View>
                   )}
@@ -441,7 +454,7 @@ export default function GoalsScreen() {
                     </TouchableOpacity>
                   )}
 
-                  {step.id === 6 && (isMortgageStep && mortgage || step.progress > 0) && (
+                  {step.id === 6 && !isCompleted && (isMortgageStep && mortgage || step.progress > 0) && (
                     <View style={styles.stepDetails}>
                       {/* Circular progress for mortgage */}
                       <View style={styles.mortgageProgress}>
@@ -466,7 +479,7 @@ export default function GoalsScreen() {
                     </View>
                   )}
 
-                  {step.id === 7 && isActive && (
+                  {step.id === 7 && !isCompleted && (
                     <View style={styles.stepDetails}>
                       <Text style={styles.stepHint}>
                         Postęp do FIRE Number
@@ -474,8 +487,8 @@ export default function GoalsScreen() {
                     </View>
                   )}
 
-                  {/* Progress bar for active step with progress */}
-                  {isActive && step.progress > 0 && step.progress < 100 && (
+                  {/* Progress bar for in-progress steps */}
+                  {isInProgress && step.progress > 0 && step.progress < 100 && (
                     <View style={styles.progressBarContainer}>
                       <View style={styles.progressBar}>
                         <View
@@ -683,17 +696,20 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   trackerCircleCompleted: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#22c55e', // Green - completed
   },
-  trackerCircleActive: {
-    backgroundColor: '#f97316',
+  trackerCircleInProgress: {
+    backgroundColor: '#f97316', // Orange - in progress
+  },
+  trackerCircleNotStarted: {
+    backgroundColor: '#9ca3af', // Gray - not started
   },
   trackerNumber: {
     fontSize: 12,
     fontWeight: '600',
     color: '#6b7280',
   },
-  trackerNumberActive: {
+  trackerNumberWhite: {
     color: '#fff',
   },
   trackerLabel: {
@@ -703,10 +719,14 @@ const styles = StyleSheet.create({
   },
   trackerLabelCompleted: {
     color: '#22c55e',
+    fontWeight: '600',
   },
-  trackerLabelActive: {
+  trackerLabelInProgress: {
     color: '#f97316',
     fontWeight: '600',
+  },
+  trackerLabelNotStarted: {
+    color: '#9ca3af',
   },
   trackerLine: {
     position: 'absolute',
@@ -781,14 +801,19 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   stepCardCompleted: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#f0fdf4', // Light green
     borderWidth: 1,
     borderColor: '#bbf7d0',
   },
-  stepCardActive: {
-    backgroundColor: '#fff7ed',
+  stepCardInProgress: {
+    backgroundColor: '#fff7ed', // Light orange
     borderWidth: 1,
     borderColor: '#fed7aa',
+  },
+  stepCardNotStarted: {
+    backgroundColor: '#f9fafb', // Light gray
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   stepCardHeader: {
     flexDirection: 'row',
@@ -808,10 +833,13 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   stepIconCompleted: {
-    backgroundColor: '#22c55e',
+    backgroundColor: '#22c55e', // Green
   },
-  stepIconActive: {
-    backgroundColor: '#f97316',
+  stepIconInProgress: {
+    backgroundColor: '#f97316', // Orange
+  },
+  stepIconNotStarted: {
+    backgroundColor: '#9ca3af', // Gray
   },
   stepCardTitleContent: {
     flex: 1,
@@ -828,12 +856,23 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   progressBadge: {
-    backgroundColor: '#f97316',
+    backgroundColor: '#f97316', // Orange for in progress
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
   },
   progressBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  notStartedBadge: {
+    backgroundColor: '#9ca3af', // Gray for not started
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  notStartedBadgeText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#fff',
