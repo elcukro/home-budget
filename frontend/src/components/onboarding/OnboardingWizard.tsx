@@ -1434,7 +1434,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
   const intl = useIntl();
   const { data: session } = useSession();
   const { track, trackOnboardingStep } = useAnalytics();
-  const { formatCurrency: formatCurrencySetting, refetchSettings } = useSettings();
+  const { settings: currentSettings, formatCurrency: formatCurrencySetting, updateSettings } = useSettings();
   const formatMoney = useCallback(
     (amount: number) => formatCurrencySetting(amount || 0),
     [formatCurrencySetting]
@@ -1654,16 +1654,9 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
     localStorage.removeItem(LOCAL_STORAGE_KEY);
 
     // Mark onboarding as completed so sidebar doesn't show it anymore
-    const userEmail = session?.user?.email;
-    if (userEmail) {
+    if (currentSettings) {
       try {
-        await fetch(`/api/backend/users/${encodeURIComponent(userEmail)}/settings`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ onboarding_completed: true }),
-        });
-        // Refresh settings context so sidebar updates immediately
-        await refetchSettings();
+        await updateSettings({ ...currentSettings, onboarding_completed: true });
       } catch (error) {
         logger.error('[Onboarding] Failed to mark onboarding as completed:', error);
       }
@@ -1671,7 +1664,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
 
     setShowSkipConfirmDialog(false);
     router.push('/');
-  }, [router, track, currentStepIndex, session?.user?.email, refetchSettings]);
+  }, [router, track, currentStepIndex, currentSettings, updateSettings]);
 
   const handleReset = useCallback(() => {
     setData(createDefaultOnboardingData(intl));
