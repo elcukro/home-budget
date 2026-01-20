@@ -670,17 +670,17 @@ const styles = StyleSheet.create({
   },
   trackerStep: {
     alignItems: 'center',
-    width: 60,
+    width: 48,
     position: 'relative',
   },
   trackerCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#e5e7eb',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   trackerCircleCompleted: {
     backgroundColor: '#22c55e',
@@ -689,7 +689,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f97316',
   },
   trackerNumber: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#6b7280',
   },
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   trackerLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#9ca3af',
     textAlign: 'center',
   },
@@ -710,9 +710,9 @@ const styles = StyleSheet.create({
   },
   trackerLine: {
     position: 'absolute',
-    top: 16,
-    left: 46,
-    width: 28,
+    top: 14,
+    left: 38,
+    width: 20,
     height: 2,
     backgroundColor: '#e5e7eb',
   },

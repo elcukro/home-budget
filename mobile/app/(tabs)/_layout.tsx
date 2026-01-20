@@ -51,9 +51,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="goals"
         options={{
-          title: 'Cele',
+          title: 'Fire',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="flag-outline" size={size} color={color} />
+            <Ionicons name="flame-outline" size={size} color={color} />
           ),
         }}
       />
