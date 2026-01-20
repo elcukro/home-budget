@@ -538,6 +538,21 @@ def get_loans(
     loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
     return loans
 
+@app.get("/loans/{loan_id}", response_model=Loan)
+def get_loan(
+    loan_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get a specific loan by ID for the authenticated user."""
+    loan = db.query(models.Loan).filter(
+        models.Loan.id == loan_id,
+        models.Loan.user_id == current_user.id
+    ).first()
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    return loan
+
 @app.post("/loans", response_model=Loan)
 def create_loan(
     loan: LoanCreate,
