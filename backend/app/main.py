@@ -1252,10 +1252,10 @@ async def get_user_summary(
         # Format loans for the frontend
         loans_data = []
         for loan in active_loans:
-            # Calculate progress (paid amount / total amount)
+            # Calculate progress as percentage (0-100)
             total_amount = loan.principal_amount
             paid_amount = total_amount - loan.remaining_balance
-            progress = paid_amount / total_amount if total_amount > 0 else 0
+            progress = (paid_amount / total_amount * 100) if total_amount > 0 else 0
 
             loans_data.append({
                 "id": str(loan.id),
