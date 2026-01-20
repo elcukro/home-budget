@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { initializeApiClient, getApiClient } from '@/lib/api';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
+// Dynamically import GoogleSignin to avoid crash in Expo Go
+let GoogleSignin: any = null;
+try {
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch (e) {
+  console.log('GoogleSignin not available (Expo Go mode)');
+}
 
 const TOKEN_KEY = 'auth_token';
 const USER_KEY = 'auth_user';
@@ -42,7 +49,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         let user = JSON.parse(userJson) as User;
 
         // Migration: if photoUrl is missing, try to get it from Google
-        if (!user.photoUrl && token !== 'dev-token-for-testing') {
+        if (!user.photoUrl && token !== 'dev-token-for-testing' && GoogleSignin) {
           try {
             const googleUser = await GoogleSignin.getCurrentUser();
             if (googleUser?.user?.photo) {

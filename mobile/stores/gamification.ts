@@ -9,6 +9,7 @@
  */
 
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import {
   getApiClient,
   GamificationStats,
@@ -275,43 +276,51 @@ export function usePendingCelebration(): CelebrationData | null {
 
 /**
  * Get current streak info.
+ * Uses useShallow to prevent unnecessary re-renders when object values haven't changed.
  */
 export function useStreak() {
-  return useGamificationStore((state) => ({
-    current: state.stats?.current_streak ?? 0,
-    longest: state.stats?.longest_streak ?? 0,
-    lastActivity: state.stats?.last_activity_date,
-  }));
+  return useGamificationStore(
+    useShallow((state) => ({
+      current: state.stats?.current_streak ?? 0,
+      longest: state.stats?.longest_streak ?? 0,
+      lastActivity: state.stats?.last_activity_date,
+    }))
+  );
 }
 
 /**
  * Get level info.
+ * Uses useShallow to prevent unnecessary re-renders when object values haven't changed.
  */
 export function useLevel() {
-  return useGamificationStore((state) => ({
-    level: state.stats?.level ?? 1,
-    name: state.stats?.level_name ?? 'Początkujący',
-    nameEn: state.stats?.level_name_en ?? 'Beginner',
-    totalXp: state.stats?.total_xp ?? 0,
-    xpForNext: state.stats?.xp_for_next_level ?? 100,
-    xpProgress: state.stats?.xp_progress_in_level ?? 0,
-  }));
+  return useGamificationStore(
+    useShallow((state) => ({
+      level: state.stats?.level ?? 1,
+      name: state.stats?.level_name ?? 'Początkujący',
+      nameEn: state.stats?.level_name_en ?? 'Beginner',
+      totalXp: state.stats?.total_xp ?? 0,
+      xpForNext: state.stats?.xp_for_next_level ?? 100,
+      xpProgress: state.stats?.xp_progress_in_level ?? 0,
+    }))
+  );
 }
 
 /**
- * Get recent badges (last 3).
+ * Get recent badges (last N).
+ * Uses useShallow for array comparison.
  */
 export function useRecentBadges(count = 3) {
-  return useGamificationStore((state) =>
-    state.unlockedBadges.slice(0, count)
+  return useGamificationStore(
+    useShallow((state) => state.unlockedBadges.slice(0, count))
   );
 }
 
 /**
  * Get badges closest to completion.
+ * Uses useShallow for array comparison.
  */
 export function useNearestBadges(count = 3) {
-  return useGamificationStore((state) =>
-    state.badgeProgress.slice(0, count)
+  return useGamificationStore(
+    useShallow((state) => state.badgeProgress.slice(0, count))
   );
 }

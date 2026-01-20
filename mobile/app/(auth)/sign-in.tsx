@@ -10,16 +10,28 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth';
-import {
-  GoogleSignin,
-  statusCodes,
-  isSuccessResponse,
-  isErrorWithCode,
-} from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
 
-// DEV MODE - set to false when using native build with Google Sign-In
-const DEV_MODE = false;
+// Dynamically import GoogleSignin to avoid crash in Expo Go
+let GoogleSignin: any = null;
+let statusCodes: any = {};
+let isSuccessResponse: any = () => false;
+let isErrorWithCode: any = () => false;
+let googleSignInAvailable = false;
+
+try {
+  const googleSignInModule = require('@react-native-google-signin/google-signin');
+  GoogleSignin = googleSignInModule.GoogleSignin;
+  statusCodes = googleSignInModule.statusCodes;
+  isSuccessResponse = googleSignInModule.isSuccessResponse;
+  isErrorWithCode = googleSignInModule.isErrorWithCode;
+  googleSignInAvailable = true;
+} catch (e) {
+  console.log('GoogleSignin not available (Expo Go mode) - using dev login');
+}
+
+// DEV MODE - auto-enable when GoogleSignin is not available (Expo Go)
+const DEV_MODE = !googleSignInAvailable;
 
 // Get client IDs from app.json extra config
 const googleAuthConfig = Constants.expoConfig?.extra?.googleAuth;

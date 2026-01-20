@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -84,8 +84,10 @@ export default function DashboardScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Gamification state
-  const { fetchOverview, checkIn, dismissCelebration } = useGamificationStore();
+  // Gamification state - use stable selectors
+  const fetchOverview = useGamificationStore((s) => s.fetchOverview);
+  const checkIn = useGamificationStore((s) => s.checkIn);
+  const dismissCelebration = useGamificationStore((s) => s.dismissCelebration);
   const pendingCelebration = usePendingCelebration();
   const streak = useStreak();
   const level = useLevel();
@@ -126,9 +128,11 @@ export default function DashboardScreen() {
     }
   }, [user?.email, api, isDevMode, fetchOverview]);
 
-  // Perform daily check-in when app opens
+  // Perform daily check-in when app opens - use ref to avoid dependency issues
+  const hasCheckedIn = useRef(false);
   useEffect(() => {
-    if (!isLoading && !isDevMode && api) {
+    if (!isLoading && !isDevMode && api && !hasCheckedIn.current) {
+      hasCheckedIn.current = true;
       // Delay check-in slightly to not block initial render
       const timer = setTimeout(() => {
         checkIn();
