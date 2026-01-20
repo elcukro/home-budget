@@ -1288,12 +1288,6 @@
         "creating": "Creating backup...",
         "success": "Backup created successfully",
         "error": "Failed to create backup"
-      },
-      "skipConfirm": {
-        "title": "Skip setup?",
-        "message": "You can always return to data collection by going to Settings → General → Data Collection.",
-        "cancel": "Cancel",
-        "confirm": "OK, skip"
       }
     },
     "backups": {
@@ -1774,6 +1768,12 @@
       "finish": "Finish",
       "nextDefault": "Next",
       "nextWithStep": "Next → {step}"
+    },
+    "skipConfirm": {
+      "title": "Skip setup?",
+      "message": "You can always return to the data collection wizard by going to Settings → General → Data Collection Wizard.",
+      "cancel": "Cancel",
+      "confirm": "OK, skip"
     },
     "savingProgress": {
       "title": "We're setting things up",

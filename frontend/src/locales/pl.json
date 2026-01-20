@@ -1237,12 +1237,6 @@
         "creating": "Tworzenie kopii zapasowej...",
         "success": "Kopia zapasowa utworzona pomyślnie",
         "error": "Nie udało się utworzyć kopii zapasowej"
-      },
-      "skipConfirm": {
-        "title": "Pominąć konfigurację?",
-        "message": "Zawsze możesz wrócić do zebrania podstawowych danych przechodząc do Ustawienia → Ogólne → Zebranie podstawowych danych.",
-        "cancel": "Anuluj",
-        "confirm": "OK, pomiń"
       }
     },
     "backups": {
@@ -1726,6 +1720,12 @@
       "finish": "Zakończ",
       "nextDefault": "Dalej",
       "nextWithStep": "Dalej → {step}"
+    },
+    "skipConfirm": {
+      "title": "Pominąć konfigurację?",
+      "message": "Zawsze możesz wrócić do zebrania podstawowych danych przechodząc do Ustawienia → Ogólne → Zebranie podstawowych danych.",
+      "cancel": "Anuluj",
+      "confirm": "OK, pomiń"
     },
     "savingProgress": {
       "title": "Przygotowujemy dane",
