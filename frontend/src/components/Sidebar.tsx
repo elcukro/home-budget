@@ -126,7 +126,7 @@ export default function Sidebar() {
   // Filter out onboarding from navigation - hidden by default, only shown if explicitly needed
   const filteredNavigation = showOnboarding
     ? navigation
-    : navigation.filter((item) => item.href !== '/onboarding');
+    : navigation.filter((item) => !item.href.startsWith('/onboarding'));
 
   return (
     <div className="sticky top-0 h-screen w-64 border-r border-default bg-muted z-40">
