@@ -11,74 +11,104 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/hooks/useApi';
-import type { FinancialFreedomStep, FinancialFreedomResponse } from '@/lib/api';
+import type { FinancialFreedomResponse, DashboardSummary } from '@/lib/api';
 
-// Step names in Polish
-const STEP_NAMES: Record<number, { name: string; description: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  1: {
-    name: 'Fundusz awaryjny 1000 zł',
-    description: 'Odłóż 1000 zł na nagłe wydatki',
-    icon: 'shield-checkmark',
+// Step definitions for Polish FIRE journey
+const STEPS = [
+  {
+    id: 1,
+    name: 'Fundusz Awaryjny',
+    shortName: 'Fundusz',
+    title: 'Fundusz Awaryjny 3 000 zł',
+    description: 'Zaoszczędź 3 000 zł jako początkowy fundusz awaryjny, aby pokryć nieoczekiwane wydatki bez zadłużania się.',
+    icon: 'shield-checkmark' as const,
+    hasAmount: true,
   },
-  2: {
-    name: 'Spłata długów (kula śnieżna)',
-    description: 'Spłać wszystkie długi poza hipoteką',
-    icon: 'trending-down',
+  {
+    id: 2,
+    name: 'Spłata Długów',
+    shortName: 'Długi',
+    title: 'Spłać Wszystkie Długi',
+    description: 'Spłać wszystkie długi (oprócz kredytu hipotecznego) metodą kuli śnieżnej, płacąc od najmniejszego do największego.',
+    icon: 'trending-down' as const,
+    hasAmount: false,
   },
-  3: {
-    name: 'Pełny fundusz awaryjny',
-    description: '3-6 miesięcy wydatków w rezerwie',
-    icon: 'wallet',
+  {
+    id: 3,
+    name: 'Pełny Fundusz',
+    shortName: 'Rezerwa',
+    title: '6 Miesięcy Wydatków',
+    description: 'Zaoszczędź 6 miesięcy wydatków w pełnym funduszu awaryjnym.',
+    icon: 'wallet' as const,
+    hasAmount: true,
   },
-  4: {
-    name: 'Inwestuj 15% na emeryturę',
-    description: 'IKE, IKZE, PPK lub inne konta emerytalne',
-    icon: 'trending-up',
+  {
+    id: 4,
+    name: 'IKE/IKZE/PPK',
+    shortName: 'Emerytura',
+    title: '15% na Przyszłość',
+    description: 'Inwestuj 15% dochodu w długoterminowe oszczędności: PPK (dopłata pracodawcy), IKE (limit 2026: 28 260 PLN, brak podatku Belki), IKZE (limit: 11 304 PLN lub 16 956 PLN dla JDG, odliczenie od podatku).',
+    icon: 'trending-up' as const,
+    hasAmount: false,
   },
-  5: {
-    name: 'Oszczędzaj na studia dzieci',
-    description: 'Fundusz edukacyjny dla dzieci',
-    icon: 'school',
+  {
+    id: 5,
+    name: 'Przyszłość Dziecka',
+    shortName: 'Dziecko',
+    title: 'Start Dziecka w Dorosłość',
+    description: 'W Polsce studia są darmowe, ale młody człowiek potrzebuje: wkładu własnego na mieszkanie (30-50 tys. PLN), prawa jazdy, pierwszego samochodu, zabezpieczenia na start.',
+    icon: 'school' as const,
+    hasAmount: false,
+    canSkip: true,
   },
-  6: {
-    name: 'Spłać kredyt hipoteczny',
-    description: 'Nadpłacaj i spłać mieszkanie',
-    icon: 'home',
+  {
+    id: 6,
+    name: 'Spłata Hipoteki',
+    shortName: 'Hipoteka',
+    title: 'Wcześniejsza Spłata Hipoteki',
+    description: 'Spłać wcześniej kredyt hipoteczny. Każda nadpłata skraca okres kredytowania i zmniejsza całkowity koszt odsetek.',
+    icon: 'home' as const,
+    hasAmount: true,
   },
-  7: {
-    name: 'Buduj majątek i dawaj',
-    description: 'Inwestuj i wspieraj innych',
-    icon: 'gift',
+  {
+    id: 7,
+    name: 'FIRE Number',
+    shortName: 'FIRE',
+    title: 'Osiągnij FIRE Number',
+    description: 'Zbuduj majątek pozwalający na niezależność finansową. FIRE Number = roczne wydatki × 25 (zasada 4%). Gdy osiągniesz tę kwotę, możesz żyć z odsetek.',
+    icon: 'flame' as const,
+    hasAmount: false,
   },
-};
+];
 
 // Mock data for dev mode
 const MOCK_FINANCIAL_FREEDOM: FinancialFreedomResponse = {
   userId: 'dev-user',
   steps: [
-    { id: 1, titleKey: '', descriptionKey: '', isCompleted: true, progress: 100, targetAmount: 1000, currentAmount: 1000, completionDate: '2025-06-15', notes: '' },
-    { id: 2, titleKey: '', descriptionKey: '', isCompleted: false, progress: 65, targetAmount: 25000, currentAmount: 16250, completionDate: null, notes: '' },
-    { id: 3, titleKey: '', descriptionKey: '', isCompleted: false, progress: 0, targetAmount: 18000, currentAmount: 0, completionDate: null, notes: '' },
+    { id: 1, titleKey: '', descriptionKey: '', isCompleted: true, progress: 100, targetAmount: 3000, currentAmount: 3000, completionDate: '2025-06-15', notes: '' },
+    { id: 2, titleKey: '', descriptionKey: '', isCompleted: true, progress: 100, targetAmount: null, currentAmount: null, completionDate: '2025-09-01', notes: '' },
+    { id: 3, titleKey: '', descriptionKey: '', isCompleted: true, progress: 100, targetAmount: 9000, currentAmount: 53000, completionDate: '2025-12-01', notes: '' },
     { id: 4, titleKey: '', descriptionKey: '', isCompleted: false, progress: 0, targetAmount: null, currentAmount: null, completionDate: null, notes: '' },
     { id: 5, titleKey: '', descriptionKey: '', isCompleted: false, progress: 0, targetAmount: null, currentAmount: null, completionDate: null, notes: '' },
-    { id: 6, titleKey: '', descriptionKey: '', isCompleted: false, progress: 0, targetAmount: null, currentAmount: null, completionDate: null, notes: '' },
+    { id: 6, titleKey: '', descriptionKey: '', isCompleted: false, progress: 95, targetAmount: 980000, currentAmount: 927690, completionDate: null, notes: '' },
     { id: 7, titleKey: '', descriptionKey: '', isCompleted: false, progress: 0, targetAmount: null, currentAmount: null, completionDate: null, notes: '' },
   ],
   startDate: '2025-01-01',
-  lastUpdated: '2026-01-19',
+  lastUpdated: '2026-01-20',
 };
 
 export default function GoalsScreen() {
   const { user, token } = useAuthStore();
   const api = useApi();
   const [financialFreedom, setFinancialFreedom] = useState<FinancialFreedomResponse | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isDevMode = token === 'dev-token-for-testing';
 
-  const fetchFinancialFreedom = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!api) return;
 
     if (isDevMode) {
@@ -90,26 +120,39 @@ export default function GoalsScreen() {
 
     try {
       setError(null);
-      const data = await api.financialFreedom.get();
-      setFinancialFreedom(data);
+
+      // Fetch financial freedom data and dashboard data in parallel
+      const [ffData, summaryData] = await Promise.all([
+        api.financialFreedom.get().catch(() => null),
+        user?.email ? api.dashboard.getSummary(user.email).catch(() => null) : Promise.resolve(null),
+      ]);
+
+      if (ffData) {
+        setFinancialFreedom(ffData);
+      } else {
+        setFinancialFreedom(MOCK_FINANCIAL_FREEDOM);
+      }
+
+      if (summaryData) {
+        setDashboardData(summaryData);
+      }
     } catch (err) {
-      console.error('Failed to fetch financial freedom:', err);
-      // Use mock data as fallback
+      console.error('Failed to fetch data:', err);
       setFinancialFreedom(MOCK_FINANCIAL_FREEDOM);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [api, isDevMode]);
+  }, [api, isDevMode, user?.email]);
 
   useEffect(() => {
-    fetchFinancialFreedom();
-  }, [fetchFinancialFreedom]);
+    fetchData();
+  }, [fetchData]);
 
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
-    fetchFinancialFreedom();
-  }, [fetchFinancialFreedom]);
+    fetchData();
+  }, [fetchData]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('pl-PL', {
@@ -120,7 +163,10 @@ export default function GoalsScreen() {
     }).format(amount);
   };
 
-  // Find current active step (first non-completed step)
+  // Calculate completed steps count
+  const completedCount = financialFreedom?.steps.filter((s) => s.isCompleted).length || 0;
+
+  // Find current active step
   const getCurrentStep = (): number => {
     if (!financialFreedom) return 1;
     const firstIncomplete = financialFreedom.steps.find((s) => !s.isCompleted);
@@ -130,10 +176,22 @@ export default function GoalsScreen() {
   const currentStep = getCurrentStep();
 
   // Get step status
-  const getStepStatus = (step: FinancialFreedomStep): 'completed' | 'active' | 'locked' => {
+  const getStepStatus = (stepId: number, step: FinancialFreedomResponse['steps'][0]): 'completed' | 'active' | 'pending' => {
     if (step.isCompleted) return 'completed';
-    if (step.id === currentStep) return 'active';
-    return 'locked';
+    if (stepId === currentStep) return 'active';
+    return 'pending';
+  };
+
+  // Get mortgage data from dashboard for step 6
+  const getMortgageData = () => {
+    if (!dashboardData?.loans) return null;
+    // Find mortgage (usually the largest loan or one with "hipoteka" or "dom" in description)
+    const mortgage = dashboardData.loans.find(l =>
+      l.description.toLowerCase().includes('hipote') ||
+      l.description.toLowerCase().includes('dom') ||
+      l.description.toLowerCase().includes('mieszka')
+    ) || dashboardData.loans[0];
+    return mortgage;
   };
 
   if (isLoading) {
@@ -143,6 +201,8 @@ export default function GoalsScreen() {
       </View>
     );
   }
+
+  const mortgage = getMortgageData();
 
   return (
     <ScrollView
@@ -160,163 +220,369 @@ export default function GoalsScreen() {
         <>
           {/* Header */}
           <View style={styles.headerSection}>
-            <Text style={styles.headerTitle}>Baby Steps Dave'a Ramseya</Text>
-            <Text style={styles.headerSubtitle}>
-              7 kroków do finansowej wolności
-            </Text>
-            <View style={styles.progressOverview}>
-              <Text style={styles.progressLabel}>Twój postęp</Text>
-              <Text style={styles.progressValue}>
-                Krok {currentStep} z 7
-              </Text>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.fireEmoji}>🔥</Text>
+              <Text style={styles.headerTitle}>Fire</Text>
             </View>
+            <Text style={styles.headerSubtitle}>
+              Droga do Wolności Finansowej
+            </Text>
+            <Text style={styles.headerDescription}>
+              Plan FIRE dostosowany do polskich realiów: IKE, IKZE, PPK, ulgi podatkowe.
+            </Text>
           </View>
 
+          {/* Horizontal Progress Tracker */}
+          <View style={styles.progressTracker}>
+            <Text style={styles.trackerTitle}>Śledzenie Postępu 7 Kroków</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.trackerContent}
+            >
+              {STEPS.map((stepDef, index) => {
+                const step = financialFreedom?.steps.find((s) => s.id === stepDef.id);
+                const status = step ? getStepStatus(stepDef.id, step) : 'pending';
+                const isCompleted = status === 'completed';
+                const isActive = status === 'active';
+
+                return (
+                  <View key={stepDef.id} style={styles.trackerStep}>
+                    <View
+                      style={[
+                        styles.trackerCircle,
+                        isCompleted && styles.trackerCircleCompleted,
+                        isActive && styles.trackerCircleActive,
+                      ]}
+                    >
+                      {isCompleted ? (
+                        <Ionicons name="checkmark" size={16} color="#fff" />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.trackerNumber,
+                            isActive && styles.trackerNumberActive,
+                          ]}
+                        >
+                          {stepDef.id}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.trackerLabel,
+                        isCompleted && styles.trackerLabelCompleted,
+                        isActive && styles.trackerLabelActive,
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {stepDef.shortName}
+                    </Text>
+                    {index < STEPS.length - 1 && (
+                      <View
+                        style={[
+                          styles.trackerLine,
+                          isCompleted && styles.trackerLineCompleted,
+                        ]}
+                      />
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {/* Current Step Banner */}
+          {currentStep <= 7 && (
+            <View style={styles.currentStepBanner}>
+              <View style={styles.currentStepNumber}>
+                <Text style={styles.currentStepNumberText}>{currentStep}</Text>
+              </View>
+              <View style={styles.currentStepContent}>
+                <Text style={styles.currentStepTitle}>
+                  Krok {currentStep}: {STEPS[currentStep - 1].title}
+                </Text>
+                <Text style={styles.currentStepDescription} numberOfLines={2}>
+                  {STEPS[currentStep - 1].description}
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Steps List */}
-          <View style={styles.stepsContainer}>
+          <View style={styles.stepsSection}>
+            <Text style={styles.sectionTitle}>Twój Postęp</Text>
+
             {financialFreedom?.steps.map((step) => {
-              const status = getStepStatus(step);
-              const stepInfo = STEP_NAMES[step.id];
-              const isActive = status === 'active';
+              const stepDef = STEPS[step.id - 1];
+              const status = getStepStatus(step.id, step);
               const isCompleted = status === 'completed';
-              const isLocked = status === 'locked';
+              const isActive = status === 'active';
+
+              // Special handling for step 6 (mortgage) - use real loan data
+              const isMortgageStep = step.id === 6;
+              const mortgageProgress = isMortgageStep && mortgage ? mortgage.progress : step.progress;
+              const mortgageRemaining = isMortgageStep && mortgage ? mortgage.balance : null;
+              const mortgageTotal = isMortgageStep && mortgage ? mortgage.totalAmount : step.targetAmount;
 
               return (
-                <TouchableOpacity
+                <View
                   key={step.id}
                   style={[
                     styles.stepCard,
-                    isActive && styles.stepCardActive,
                     isCompleted && styles.stepCardCompleted,
-                    isLocked && styles.stepCardLocked,
+                    isActive && styles.stepCardActive,
                   ]}
-                  activeOpacity={0.8}
                 >
-                  {/* Step Number */}
-                  <View
-                    style={[
-                      styles.stepNumber,
-                      isActive && styles.stepNumberActive,
-                      isCompleted && styles.stepNumberCompleted,
-                    ]}
-                  >
-                    {isCompleted ? (
-                      <Ionicons name="checkmark" size={18} color="#fff" />
-                    ) : (
-                      <Text
+                  <View style={styles.stepCardHeader}>
+                    <View style={styles.stepCardTitleRow}>
+                      <View
                         style={[
-                          styles.stepNumberText,
-                          isActive && styles.stepNumberTextActive,
+                          styles.stepIcon,
+                          isCompleted && styles.stepIconCompleted,
+                          isActive && styles.stepIconActive,
                         ]}
                       >
-                        {step.id}
-                      </Text>
-                    )}
-                  </View>
-
-                  {/* Step Content */}
-                  <View style={styles.stepContent}>
-                    <View style={styles.stepHeader}>
-                      <Ionicons
-                        name={stepInfo.icon}
-                        size={18}
-                        color={
-                          isCompleted
-                            ? '#22c55e'
-                            : isActive
-                              ? '#f97316'
-                              : '#9ca3af'
-                        }
-                      />
-                      <Text
-                        style={[
-                          styles.stepName,
-                          isActive && styles.stepNameActive,
-                          isCompleted && styles.stepNameCompleted,
-                          isLocked && styles.stepNameLocked,
-                        ]}
-                      >
-                        {stepInfo.name}
-                      </Text>
+                        <Ionicons
+                          name={stepDef.icon}
+                          size={20}
+                          color={isCompleted ? '#fff' : isActive ? '#fff' : '#6b7280'}
+                        />
+                      </View>
+                      <View style={styles.stepCardTitleContent}>
+                        <Text style={styles.stepCardTitle}>
+                          Krok {step.id}: {stepDef.title}
+                        </Text>
+                        <Text style={styles.stepCardDescription}>
+                          {stepDef.description}
+                        </Text>
+                      </View>
                     </View>
 
-                    <Text
-                      style={[
-                        styles.stepDescription,
-                        isLocked && styles.stepDescriptionLocked,
-                      ]}
-                    >
-                      {stepInfo.description}
-                    </Text>
-
-                    {/* Progress Bar for active step */}
-                    {isActive && step.targetAmount && (
-                      <View style={styles.progressSection}>
-                        <View style={styles.progressBar}>
-                          <View
-                            style={[
-                              styles.progressFill,
-                              { width: `${Math.min(step.progress, 100)}%` },
-                            ]}
-                          />
-                        </View>
-                        <View style={styles.progressDetails}>
-                          <Text style={styles.progressAmount}>
-                            {formatCurrency(step.currentAmount || 0)}
-                          </Text>
-                          <Text style={styles.progressTarget}>
-                            z {formatCurrency(step.targetAmount)}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* Completion date for completed steps */}
-                    {isCompleted && step.completionDate && (
-                      <View style={styles.completionInfo}>
-                        <Ionicons name="checkmark-circle" size={14} color="#22c55e" />
-                        <Text style={styles.completionText}>
-                          Ukończono{' '}
-                          {new Date(step.completionDate).toLocaleDateString('pl-PL', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric',
-                          })}
+                    {/* Progress indicator */}
+                    {(step.progress > 0 || isActive) && !isCompleted && (
+                      <View style={styles.progressBadge}>
+                        <Text style={styles.progressBadgeText}>
+                          {isMortgageStep && mortgage ? Math.round(mortgageProgress) : Math.round(step.progress)}%
                         </Text>
                       </View>
                     )}
+
+                    {isCompleted && (
+                      <View style={styles.completedBadge}>
+                        <Ionicons name="checkmark-circle" size={28} color="#22c55e" />
+                      </View>
+                    )}
                   </View>
 
-                  {/* Status Indicator */}
-                  <Ionicons
-                    name={
-                      isCompleted
-                        ? 'checkmark-circle'
-                        : isActive
-                          ? 'radio-button-on'
-                          : 'lock-closed'
-                    }
-                    size={24}
-                    color={
-                      isCompleted
-                        ? '#22c55e'
-                        : isActive
-                          ? '#f97316'
-                          : '#d1d5db'
-                    }
-                  />
-                </TouchableOpacity>
+                  {/* Step-specific content */}
+                  {step.id === 1 && (
+                    <View style={styles.stepDetails}>
+                      <View style={styles.stepDetailRow}>
+                        <Text style={styles.stepDetailLabel}>Cel:</Text>
+                        <Text style={styles.stepDetailValue}>
+                          {formatCurrency(step.targetAmount || 3000)}
+                        </Text>
+                      </View>
+                      <View style={styles.stepDetailRow}>
+                        <Text style={styles.stepDetailLabel}>Aktualnie:</Text>
+                        <Text style={[styles.stepDetailValue, isCompleted && styles.stepDetailValueSuccess]}>
+                          {formatCurrency(step.currentAmount || 0)}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {step.id === 2 && isCompleted && (
+                    <View style={styles.debtFreeMessage}>
+                      <Ionicons name="checkmark-circle" size={18} color="#22c55e" />
+                      <Text style={styles.debtFreeText}>Jesteś wolny od długów!</Text>
+                    </View>
+                  )}
+
+                  {step.id === 3 && (
+                    <View style={styles.stepDetails}>
+                      <View style={styles.stepDetailRow}>
+                        <Text style={styles.stepDetailLabel}>Cel:</Text>
+                        <Text style={styles.stepDetailValue}>
+                          {formatCurrency(step.targetAmount || 9000)}
+                        </Text>
+                      </View>
+                      <View style={styles.stepDetailRow}>
+                        <Text style={styles.stepDetailLabel}>Aktualnie:</Text>
+                        <Text style={[styles.stepDetailValue, (step.currentAmount || 0) >= (step.targetAmount || 9000) && styles.stepDetailValueSuccess]}>
+                          {formatCurrency(step.currentAmount || 0)}
+                        </Text>
+                      </View>
+                      {!isCompleted && (
+                        <Text style={styles.stepHint}>
+                          Oblicz swoje miesięczne wydatki i pomnóż przez 6.
+                        </Text>
+                      )}
+                    </View>
+                  )}
+
+                  {step.id === 4 && isActive && (
+                    <View style={styles.stepDetails}>
+                      <View style={styles.stepDetailRow}>
+                        <Text style={styles.stepDetailLabel}>Cel:</Text>
+                        <Text style={styles.stepDetailValue}>15% dochodu</Text>
+                      </View>
+                      <View style={styles.stepDetailRow}>
+                        <Text style={styles.stepDetailLabel}>Aktualnie:</Text>
+                        <Text style={styles.stepDetailValue}>0% dochodu</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {step.id === 5 && stepDef.canSkip && !isCompleted && (
+                    <TouchableOpacity style={styles.skipButton}>
+                      <Text style={styles.skipButtonText}>Nie dotyczy</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {step.id === 6 && (isMortgageStep && mortgage || step.progress > 0) && (
+                    <View style={styles.stepDetails}>
+                      {/* Circular progress for mortgage */}
+                      <View style={styles.mortgageProgress}>
+                        <View style={styles.mortgageInfo}>
+                          <View style={styles.stepDetailRow}>
+                            <Text style={styles.stepDetailLabel}>Pozostały Kredyt:</Text>
+                            <Text style={styles.stepDetailValue}>
+                              {formatCurrency(mortgageRemaining || (mortgageTotal || 0) - (step.currentAmount || 0))}
+                            </Text>
+                          </View>
+                          <View style={styles.stepDetailRow}>
+                            <Text style={styles.stepDetailLabel}>Pierwotny Kredyt:</Text>
+                            <Text style={styles.stepDetailValue}>
+                              {formatCurrency(mortgageTotal || 0)}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                      <Text style={styles.stepHint}>
+                        Nadpłata 500 PLN/mies. przy kredycie 400 tys. PLN skraca spłatę o 7 lat i oszczędza ~87 tys. PLN odsetek.
+                      </Text>
+                    </View>
+                  )}
+
+                  {step.id === 7 && isActive && (
+                    <View style={styles.stepDetails}>
+                      <Text style={styles.stepHint}>
+                        Postęp do FIRE Number
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Progress bar for active step with progress */}
+                  {isActive && step.progress > 0 && step.progress < 100 && (
+                    <View style={styles.progressBarContainer}>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[styles.progressFill, { width: `${Math.min(step.progress, 100)}%` }]}
+                        />
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Completion date */}
+                  {isCompleted && step.completionDate && (
+                    <View style={styles.completionInfo}>
+                      <Text style={styles.completionText}>
+                        Ukończono {new Date(step.completionDate).toLocaleDateString('pl-PL', {
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric',
+                        })}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               );
             })}
           </View>
 
-          {/* Info Card */}
-          <View style={styles.infoCard}>
-            <Ionicons name="information-circle" size={20} color="#6b7280" />
-            <Text style={styles.infoText}>
-              Baby Steps to sprawdzona metoda budowania finansowej stabilności. Skup się na
-              jednym kroku na raz, od funduszu awaryjnego po budowanie majątku.
-            </Text>
+          {/* Summary Section */}
+          <View style={styles.summarySection}>
+            <Text style={styles.sectionTitle}>Podsumowanie Podróży</Text>
+
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Ogólny Postęp</Text>
+                <Text style={styles.summaryValue}>
+                  {completedCount} / 7 ({Math.round((completedCount / 7) * 100)}%)
+                </Text>
+              </View>
+
+              <View style={styles.summaryProgressBar}>
+                <View
+                  style={[
+                    styles.summaryProgressFill,
+                    { width: `${(completedCount / 7) * 100}%` },
+                  ]}
+                />
+              </View>
+
+              <View style={styles.summaryDates}>
+                <View style={styles.summaryDateItem}>
+                  <Text style={styles.summaryDateLabel}>Rozpoczęto</Text>
+                  <Text style={styles.summaryDateValue}>
+                    {financialFreedom?.startDate
+                      ? new Date(financialFreedom.startDate).toLocaleDateString('pl-PL')
+                      : '-'}
+                  </Text>
+                </View>
+                <View style={styles.summaryDateItem}>
+                  <Text style={styles.summaryDateLabel}>Ostatnia aktualizacja</Text>
+                  <Text style={styles.summaryDateValue}>
+                    {financialFreedom?.lastUpdated
+                      ? new Date(financialFreedom.lastUpdated).toLocaleDateString('pl-PL')
+                      : '-'}
+                  </Text>
+                </View>
+              </View>
+
+              {currentStep <= 7 && (
+                <View style={styles.currentFocus}>
+                  <Text style={styles.currentFocusLabel}>Aktualny Fokus</Text>
+                  <Text style={styles.currentFocusValue}>
+                    Krok {currentStep}: {STEPS[currentStep - 1].title}
+                  </Text>
+                  <View style={styles.focusProgressBar}>
+                    <View
+                      style={[
+                        styles.focusProgressFill,
+                        { width: `${financialFreedom?.steps[currentStep - 1]?.progress || 0}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.focusProgressText}>
+                    {financialFreedom?.steps[currentStep - 1]?.progress || 0}%
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Insights */}
+          <View style={styles.insightsSection}>
+            <Text style={styles.sectionTitle}>Spostrzeżenia Finansowe</Text>
+            <View style={styles.insightCard}>
+              <View style={styles.insightItem}>
+                <Ionicons name="flag" size={16} color="#f97316" />
+                <Text style={styles.insightText}>
+                  Następny kamień milowy: Krok {currentStep}: {STEPS[currentStep - 1]?.title}
+                </Text>
+              </View>
+              {currentStep === 4 && (
+                <View style={styles.insightItem}>
+                  <Ionicons name="bulb" size={16} color="#eab308" />
+                  <Text style={styles.insightText}>
+                    Sugestia: Kolejność - najpierw maksymalizuj PPK (darmowe pieniądze od pracodawcy!), potem IKE, na końcu IKZE.
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </>
       )}
@@ -348,172 +614,434 @@ const styles = StyleSheet.create({
     color: '#dc2626',
     textAlign: 'center',
   },
+
+  // Header
   headerSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
-  progressOverview: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff7ed',
-    padding: 12,
-    borderRadius: 12,
-  },
-  progressLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  progressValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#f97316',
-  },
-  stepsContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    marginBottom: 16,
-  },
-  stepCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  stepCardActive: {
-    backgroundColor: '#fff7ed',
-  },
-  stepCardCompleted: {
-    backgroundColor: '#f0fdf4',
-  },
-  stepCardLocked: {
-    opacity: 0.6,
-  },
-  stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  stepNumberActive: {
-    backgroundColor: '#f97316',
-  },
-  stepNumberCompleted: {
-    backgroundColor: '#22c55e',
-  },
-  stepNumberText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  stepNumberTextActive: {
-    color: '#fff',
-  },
-  stepContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  stepHeader: {
+  headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     marginBottom: 4,
   },
-  stepName: {
-    fontSize: 15,
-    fontWeight: '500',
+  fireEmoji: {
+    fontSize: 32,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#1f2937',
-    flex: 1,
   },
-  stepNameActive: {
-    color: '#ea580c',
+  headerSubtitle: {
+    fontSize: 16,
     fontWeight: '600',
-  },
-  stepNameCompleted: {
-    color: '#15803d',
-  },
-  stepNameLocked: {
-    color: '#9ca3af',
-  },
-  stepDescription: {
-    fontSize: 13,
-    color: '#6b7280',
+    color: '#4b5563',
     marginBottom: 8,
   },
-  stepDescriptionLocked: {
-    color: '#d1d5db',
+  headerDescription: {
+    fontSize: 13,
+    color: '#6b7280',
+    lineHeight: 18,
   },
-  progressSection: {
+
+  // Progress Tracker
+  progressTracker: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  trackerTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 16,
+  },
+  trackerContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingRight: 16,
+  },
+  trackerStep: {
+    alignItems: 'center',
+    width: 60,
+    position: 'relative',
+  },
+  trackerCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  trackerCircleCompleted: {
+    backgroundColor: '#22c55e',
+  },
+  trackerCircleActive: {
+    backgroundColor: '#f97316',
+  },
+  trackerNumber: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  trackerNumberActive: {
+    color: '#fff',
+  },
+  trackerLabel: {
+    fontSize: 10,
+    color: '#9ca3af',
+    textAlign: 'center',
+  },
+  trackerLabelCompleted: {
+    color: '#22c55e',
+  },
+  trackerLabelActive: {
+    color: '#f97316',
+    fontWeight: '600',
+  },
+  trackerLine: {
+    position: 'absolute',
+    top: 16,
+    left: 46,
+    width: 28,
+    height: 2,
+    backgroundColor: '#e5e7eb',
+  },
+  trackerLineCompleted: {
+    backgroundColor: '#22c55e',
+  },
+
+  // Current Step Banner
+  currentStepBanner: {
+    flexDirection: 'row',
+    backgroundColor: '#fff7ed',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f97316',
+  },
+  currentStepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#f97316',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  currentStepNumberText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  currentStepContent: {
+    flex: 1,
+  },
+  currentStepTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#c2410c',
+    marginBottom: 2,
+  },
+  currentStepDescription: {
+    fontSize: 12,
+    color: '#9a3412',
+    lineHeight: 16,
+  },
+
+  // Steps Section
+  stepsSection: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 12,
+  },
+  stepCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  stepCardCompleted: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  stepCardActive: {
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  stepCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  stepCardTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  stepIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  stepIconCompleted: {
+    backgroundColor: '#22c55e',
+  },
+  stepIconActive: {
+    backgroundColor: '#f97316',
+  },
+  stepCardTitleContent: {
+    flex: 1,
+  },
+  stepCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  stepCardDescription: {
+    fontSize: 12,
+    color: '#6b7280',
+    lineHeight: 16,
+  },
+  progressBadge: {
+    backgroundColor: '#f97316',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  progressBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  completedBadge: {
+    marginLeft: 8,
+  },
+
+  // Step Details
+  stepDetails: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+  },
+  stepDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  stepDetailLabel: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  stepDetailValue: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  stepDetailValueSuccess: {
+    color: '#22c55e',
+  },
+  stepHint: {
+    fontSize: 11,
+    color: '#9ca3af',
     marginTop: 8,
+    fontStyle: 'italic',
+  },
+  debtFreeMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#bbf7d0',
+  },
+  debtFreeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#22c55e',
+  },
+  skipButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  skipButtonText: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  mortgageProgress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mortgageInfo: {
+    flex: 1,
+  },
+
+  // Progress Bar
+  progressBarContainer: {
+    marginTop: 12,
   },
   progressBar: {
     height: 8,
     backgroundColor: '#fed7aa',
     borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 8,
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#f97316',
     borderRadius: 4,
   },
-  progressDetails: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  progressAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#f97316',
-  },
-  progressTarget: {
-    fontSize: 13,
-    color: '#6b7280',
-  },
   completionInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
+    marginTop: 8,
   },
   completionText: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#22c55e',
   },
-  infoCard: {
+
+  // Summary Section
+  summarySection: {
+    marginBottom: 20,
+  },
+  summaryCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  summaryProgressBar: {
+    height: 10,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  summaryProgressFill: {
+    height: '100%',
+    backgroundColor: '#22c55e',
+    borderRadius: 5,
+  },
+  summaryDates: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  summaryDateItem: {},
+  summaryDateLabel: {
+    fontSize: 11,
+    color: '#9ca3af',
+    marginBottom: 2,
+  },
+  summaryDateValue: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#374151',
+  },
+  currentFocus: {
+    backgroundColor: '#fff7ed',
+    borderRadius: 12,
+    padding: 12,
+  },
+  currentFocusLabel: {
+    fontSize: 11,
+    color: '#9a3412',
+    marginBottom: 4,
+  },
+  currentFocusValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#c2410c',
+    marginBottom: 8,
+  },
+  focusProgressBar: {
+    height: 6,
+    backgroundColor: '#fed7aa',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  focusProgressFill: {
+    height: '100%',
+    backgroundColor: '#f97316',
+    borderRadius: 3,
+  },
+  focusProgressText: {
+    fontSize: 12,
+    color: '#ea580c',
+    textAlign: 'right',
+  },
+
+  // Insights Section
+  insightsSection: {
+    marginBottom: 20,
+  },
+  insightCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+  },
+  insightItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
+    gap: 10,
+    marginBottom: 12,
   },
-  infoText: {
+  insightText: {
     flex: 1,
     fontSize: 13,
-    color: '#6b7280',
-    lineHeight: 20,
+    color: '#4b5563',
+    lineHeight: 18,
   },
 });
