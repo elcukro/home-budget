@@ -62,6 +62,7 @@ class Loan(Base):
     # Polish prepayment regulations (since 2022, banks cannot charge fees for first 3 years)
     overpayment_fee_percent = Column(Float, nullable=True, default=0)  # Fee percentage for prepayment (0-3%)
     overpayment_fee_waived_until = Column(Date, nullable=True)  # Date until prepayment fees are waived
+    is_archived = Column(Boolean, default=False)  # Archived loans are hidden from active list
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

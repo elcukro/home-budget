@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth';
@@ -159,6 +160,24 @@ export default function DashboardScreen() {
     setIsRefreshing(true);
     fetchDashboard();
   }, [fetchDashboard]);
+
+  // Handle loan archive
+  const handleArchiveLoan = useCallback(async (loanId: number) => {
+    if (!api) return;
+
+    try {
+      await api.loans.archive(loanId);
+      // Refresh dashboard to remove archived loan from list
+      fetchDashboard();
+    } catch (err) {
+      console.error('Failed to archive loan:', err);
+      Alert.alert(
+        'Błąd',
+        'Nie udało się zarchiwizować kredytu. Spróbuj ponownie.',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [api, fetchDashboard]);
 
   // Calculate deltas from cash flow data
   const deltas = useMemo((): DeltaValues => {
@@ -382,7 +401,12 @@ export default function DashboardScreen() {
                 </Text>
               </View>
               {summary.loans.map((loan) => (
-                <LoanCard key={loan.id} loan={loan} formatCurrency={formatCurrency} />
+                <LoanCard
+                  key={loan.id}
+                  loan={loan}
+                  formatCurrency={formatCurrency}
+                  onArchive={handleArchiveLoan}
+                />
               ))}
             </View>
           )}

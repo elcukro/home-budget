@@ -502,6 +502,15 @@ export class ApiClient {
       this.request<void>(`/users/${userId}/loans/${loanId}/payments/${paymentId}`, {
         method: 'DELETE',
       }),
+
+    /**
+     * Archive a paid-off loan.
+     * Only works for loans with zero remaining balance.
+     */
+    archive: (loanId: number) =>
+      this.request<{ success: boolean; message: string }>(`/loans/${loanId}/archive`, {
+        method: 'POST',
+      }),
   };
 
   // ============== Settings ==============

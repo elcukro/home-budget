@@ -531,12 +531,41 @@ def update_user_settings(
 # Loan endpoints
 @app.get("/loans", response_model=List[Loan])
 def get_loans(
+    include_archived: bool = False,
     current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
-    """Get all loans for the authenticated user."""
-    loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
+    """Get all loans for the authenticated user. Excludes archived loans by default."""
+    query = db.query(models.Loan).filter(models.Loan.user_id == current_user.id)
+    if not include_archived:
+        query = query.filter(
+            (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
+        )
+    loans = query.all()
     return loans
+
+
+@app.post("/loans/{loan_id}/archive")
+def archive_loan(
+    loan_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Archive a paid-off loan."""
+    loan = db.query(models.Loan).filter(
+        models.Loan.id == loan_id,
+        models.Loan.user_id == current_user.id
+    ).first()
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+
+    # Only allow archiving paid-off loans
+    if loan.remaining_balance > 0:
+        raise HTTPException(status_code=400, detail="Only paid-off loans can be archived")
+
+    loan.is_archived = True
+    db.commit()
+    return {"success": True, "message": "Loan archived successfully"}
 
 @app.get("/loans/{loan_id}", response_model=Loan)
 def get_loan(
@@ -1115,15 +1144,17 @@ async def get_user_summary(
         # Total monthly expenses
         monthly_expenses = monthly_expenses_non_recurring + monthly_expenses_recurring
 
-        # Fetch monthly loan payments
+        # Fetch monthly loan payments (exclude archived loans)
         monthly_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
             models.Loan.user_id == user_id,
-            models.Loan.start_date <= month_end
+            models.Loan.start_date <= month_end,
+            (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
         ).scalar() or 0
 
-        # Fetch total loan balance
+        # Fetch total loan balance (exclude archived loans)
         total_loan_balance = db.query(func.sum(models.Loan.remaining_balance)).filter(
-            models.Loan.user_id == user_id
+            models.Loan.user_id == user_id,
+            (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
         ).scalar() or 0
 
         # Calculate monthly balance
@@ -1284,20 +1315,22 @@ async def get_user_summary(
                 # Include recurring expenses for this specific month
                 month_expenses = month_expenses_non_recurring + month_expenses_recurring
 
-                # Loan payments for this month
+                # Loan payments for this month (exclude archived)
                 month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
                     models.Loan.user_id == user_id,
-                    models.Loan.start_date <= month_end_date
+                    models.Loan.start_date <= month_end_date,
+                    (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
                 ).scalar() or 0
             else:
                 # For future months, use projections based on recurring data for this specific month
                 month_income = month_income_recurring
                 month_expenses = month_expenses_recurring
 
-                # Loan payments for future months (assuming all current loans continue)
+                # Loan payments for future months (assuming all current loans continue, exclude archived)
                 month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
                     models.Loan.user_id == user_id,
-                    models.Loan.start_date <= today
+                    models.Loan.start_date <= today,
+                    (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
                 ).scalar() or 0
             
             # Calculate net flow
@@ -1312,9 +1345,10 @@ async def get_user_summary(
                 "year": current_year
             })
 
-        # Fetch active loans for the user
+        # Fetch active loans for the user (exclude archived)
         active_loans = db.query(models.Loan).filter(
-            models.Loan.user_id == user_id
+            models.Loan.user_id == user_id,
+            (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
         ).all()
         
         # Format loans for the frontend

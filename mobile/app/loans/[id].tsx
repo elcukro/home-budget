@@ -46,6 +46,17 @@ export default function LoanDetailScreen() {
   const pendingCelebration = useGamificationStore((s) => s.pendingCelebrations[0] || null);
   const dismissCelebration = useGamificationStore((s) => s.dismissCelebration);
 
+  // Handle celebration dismiss - go back to home if loan was paid off
+  const handleCelebrationDismiss = useCallback(() => {
+    // Check type before dismissing since dismissCelebration clears the celebration
+    const wasMortgagePayoff = pendingCelebration?.type === 'mortgage_paid_off';
+    dismissCelebration();
+    // If this was a mortgage payoff celebration, go back to home
+    if (wasMortgagePayoff) {
+      router.back();
+    }
+  }, [dismissCelebration, pendingCelebration, router]);
+
   const loanId = parseInt(id || '0', 10);
 
   const fetchLoanData = useCallback(async () => {
@@ -315,7 +326,7 @@ export default function LoanDetailScreen() {
       {/* Celebration Modal */}
       <CelebrationModal
         celebration={pendingCelebration}
-        onDismiss={dismissCelebration}
+        onDismiss={handleCelebrationDismiss}
       />
 
       {/* Overpayment Modal */}

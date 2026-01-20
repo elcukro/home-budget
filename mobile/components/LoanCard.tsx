@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import type { Loan } from '@/lib/api';
@@ -6,9 +6,10 @@ import type { Loan } from '@/lib/api';
 interface LoanCardProps {
   loan: Loan;
   formatCurrency: (amount: number) => string;
+  onArchive?: (loanId: number) => void;
 }
 
-export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
+export default function LoanCard({ loan, formatCurrency, onArchive }: LoanCardProps) {
   const router = useRouter();
   const progress = Math.min(Math.max(loan.progress ?? 0, 0), 100);
   const interestRate = loan.interestRate ?? 0;
@@ -31,6 +32,23 @@ export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
   const handlePress = () => {
     router.push(`/loans/${loan.id}`);
   };
+
+  const handleArchive = () => {
+    Alert.alert(
+      'Archiwizuj kredyt',
+      `Czy na pewno chcesz zarchiwizować kredyt "${loan.description}"? Kredyt zostanie usunięty z listy aktywnych kredytów.`,
+      [
+        { text: 'Anuluj', style: 'cancel' },
+        {
+          text: 'Archiwizuj',
+          style: 'destructive',
+          onPress: () => onArchive?.(Number(loan.id)),
+        },
+      ]
+    );
+  };
+
+  const isPaidOff = balance === 0;
 
   return (
     <Pressable
@@ -86,13 +104,21 @@ export default function LoanCard({ loan, formatCurrency }: LoanCardProps) {
       </View>
 
       {/* Additional info if available */}
-      {loan.next_payment_date && (
+      {loan.next_payment_date && !isPaidOff && (
         <View style={styles.nextPayment}>
           <Ionicons name="calendar-outline" size={14} color="#9ca3af" />
           <Text style={styles.nextPaymentText}>
             Następna rata: {new Date(loan.next_payment_date).toLocaleDateString('pl-PL')}
           </Text>
         </View>
+      )}
+
+      {/* Archive button for paid-off loans */}
+      {isPaidOff && onArchive && (
+        <Pressable style={styles.archiveButton} onPress={handleArchive}>
+          <Ionicons name="archive-outline" size={16} color="#22c55e" />
+          <Text style={styles.archiveButtonText}>Archiwizuj spłacony kredyt</Text>
+        </Pressable>
       )}
     </Pressable>
   );
@@ -195,5 +221,27 @@ const styles = StyleSheet.create({
   nextPaymentText: {
     fontSize: 13,
     color: '#6b7280',
+  },
+  archiveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#dcfce7',
+    backgroundColor: '#f0fdf4',
+    marginHorizontal: -16,
+    marginBottom: -16,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  archiveButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#22c55e',
   },
 });
