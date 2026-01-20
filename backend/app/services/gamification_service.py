@@ -910,7 +910,7 @@ class GamificationService:
         payments = db.query(LoanPayment).filter(
             LoanPayment.loan_id == loan.id,
             LoanPayment.user_id == user_id,
-        ).order_by(LoanPayment.date).all()
+        ).order_by(LoanPayment.payment_date).all()
 
         if not payments:
             return {
@@ -922,8 +922,8 @@ class GamificationService:
             }
 
         total_paid = sum(p.amount for p in payments)
-        first_payment = payments[0].date if payments else None
-        last_payment = payments[-1].date if payments else None
+        first_payment = payments[0].payment_date if payments else None
+        last_payment = payments[-1].payment_date if payments else None
 
         # Calculate months between first and last payment
         months_to_payoff = 0

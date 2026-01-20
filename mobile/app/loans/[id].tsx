@@ -11,6 +11,7 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
@@ -114,6 +115,13 @@ export default function LoanDetailScreen() {
           payment_type: 'overpayment',
           notes: 'Nadpłata z aplikacji mobilnej',
         }
+      );
+
+      // Debug: show alert with response
+      Alert.alert(
+        'DEBUG Response',
+        `loan_paid_off: ${response.loan_paid_off}\ncelebration: ${response.celebration ? 'YES' : 'NULL'}\nxp_earned: ${response.xp_earned}`,
+        [{ text: 'OK' }]
       );
 
       // Update local state
