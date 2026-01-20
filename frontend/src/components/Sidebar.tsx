@@ -27,7 +27,7 @@ import { useSettings } from '@/contexts/SettingsContext';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const navigation = [
-  { name: 'navigation.onboarding', href: '/onboarding', icon: UserPlusIcon },
+  { name: 'navigation.onboarding', href: '/onboarding?force=true', icon: UserPlusIcon },
   { name: 'navigation.dashboard', href: '/dashboard', icon: HomeIcon },
   { name: 'navigation.financialFreedom', href: '/financial-freedom', icon: StarIcon },
   { name: 'navigation.income', href: '/income', icon: BanknotesIcon },
