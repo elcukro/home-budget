@@ -560,6 +560,19 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Help Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Pomoc</Text>
+        <View style={styles.sectionContent}>
+          <SettingRow
+            icon="school-outline"
+            label="Tutorial - Jak działa FiredUp"
+            onPress={() => router.push('/(onboarding)/tutorial')}
+            showChevron
+          />
+        </View>
+      </View>
+
       {/* Legal Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Informacje prawne</Text>

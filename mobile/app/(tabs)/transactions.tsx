@@ -10,10 +10,16 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Image,
 } from 'react-native';
+
+// Empty state illustration
+const emptyTransactionsImage = require('@/assets/illustrations/empty-states/empty-transactions.png');
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/hooks/useApi';
+import { CategoryHeader } from '@/components/CategoryRow';
+import { getCategoryConfig } from '@/constants/categories';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -40,34 +46,7 @@ interface CategoryGroup {
   color: string;
 }
 
-// Category icons and colors mapping (English keys from backend, Polish labels for display)
-const CATEGORY_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
-  // English category names (from backend)
-  'housing': { icon: 'home', color: '#8b5cf6', label: 'Mieszkanie' },
-  'food': { icon: 'restaurant', color: '#f97316', label: 'Żywność' },
-  'entertainment': { icon: 'game-controller', color: '#ec4899', label: 'Rozrywka' },
-  'healthcare': { icon: 'heart', color: '#ef4444', label: 'Opieka Zdrowotna' },
-  'transport': { icon: 'car', color: '#3b82f6', label: 'Transport' },
-  'media': { icon: 'tv', color: '#06b6d4', label: 'Media' },
-  'education': { icon: 'school', color: '#10b981', label: 'Edukacja' },
-  'clothing': { icon: 'shirt', color: '#a855f7', label: 'Ubrania' },
-  'other': { icon: 'ellipsis-horizontal-circle', color: '#6b7280', label: 'Inne' },
-  'savings': { icon: 'wallet', color: '#22c55e', label: 'Oszczędności' },
-  'utilities': { icon: 'flash', color: '#eab308', label: 'Media / Rachunki' },
-  'insurance': { icon: 'shield-checkmark', color: '#0ea5e9', label: 'Ubezpieczenia' },
-  'subscriptions': { icon: 'repeat', color: '#f43f5e', label: 'Subskrypcje' },
-  'pets': { icon: 'paw', color: '#fb923c', label: 'Zwierzęta' },
-  'kids': { icon: 'people', color: '#a78bfa', label: 'Dzieci' },
-  'personal': { icon: 'person', color: '#64748b', label: 'Osobiste' },
-  // Polish category names (fallback)
-  'Rozrywka': { icon: 'game-controller', color: '#ec4899', label: 'Rozrywka' },
-  'Żywność': { icon: 'restaurant', color: '#f97316', label: 'Żywność' },
-  'Mieszkanie': { icon: 'home', color: '#8b5cf6', label: 'Mieszkanie' },
-  'Transport': { icon: 'car', color: '#3b82f6', label: 'Transport' },
-  'Inne': { icon: 'ellipsis-horizontal-circle', color: '#6b7280', label: 'Inne' },
-  // Default
-  'default': { icon: 'pricetag', color: '#6b7280', label: 'Inne' },
-};
+// Note: Category configuration is now imported from @/constants/categories
 
 // Mock data for dev mode
 const MOCK_EXPENSES: Expense[] = [
@@ -137,17 +116,16 @@ export default function TransactionsScreen() {
 
     expenses.forEach((expense) => {
       const categoryKey = expense.category || 'other';
-      const config = CATEGORY_CONFIG[categoryKey] || CATEGORY_CONFIG['default'];
-      const displayLabel = config.label;
+      const config = getCategoryConfig(categoryKey);
 
       if (!groups[categoryKey]) {
         groups[categoryKey] = {
           categoryKey,              // Original key for React key prop
-          category: displayLabel,   // Polish label for display
+          category: config.label,   // Polish label for display
           total: 0,
           expenses: [],
           icon: config.icon,
-          color: config.color,
+          color: config.textColor,
         };
       }
       groups[categoryKey].total += expense.amount;
@@ -239,7 +217,11 @@ export default function TransactionsScreen() {
 
       {groupedExpenses.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="receipt-outline" size={64} color="#d1d5db" />
+          <Image
+            source={emptyTransactionsImage}
+            style={styles.emptyImage}
+            resizeMode="contain"
+          />
           <Text style={styles.emptyTitle}>Brak wydatków</Text>
           <Text style={styles.emptyText}>
             Dodaj pierwszy wydatek, aby zacząć śledzić finanse
@@ -251,34 +233,15 @@ export default function TransactionsScreen() {
 
           return (
             <View key={group.categoryKey} style={styles.categoryCard}>
-              {/* Category Header */}
-              <TouchableOpacity
-                style={styles.categoryHeader}
-                onPress={() => toggleCategory(group.categoryKey)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.categoryHeaderLeft}>
-                  <View style={[styles.categoryIcon, { backgroundColor: group.color + '20' }]}>
-                    <Ionicons name={group.icon as any} size={20} color={group.color} />
-                  </View>
-                  <View style={styles.categoryInfo}>
-                    <Text style={styles.categoryName}>{group.category}</Text>
-                    <Text style={styles.categoryCount}>
-                      {group.expenses.length} {group.expenses.length === 1 ? 'wydatek' : 'wydatków'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.categoryHeaderRight}>
-                  <Text style={[styles.categoryTotal, { color: group.color }]}>
-                    {formatCurrency(group.total)}
-                  </Text>
-                  <Ionicons
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={20}
-                    color="#9ca3af"
-                  />
-                </View>
-              </TouchableOpacity>
+              {/* Category Header with Emoji */}
+              <CategoryHeader
+                category={group.categoryKey}
+                total={group.total}
+                itemCount={group.expenses.length}
+                isExpanded={isExpanded}
+                onToggle={() => toggleCategory(group.categoryKey)}
+                formatCurrency={formatCurrency}
+              />
 
               {/* Expanded Expenses */}
               {isExpanded && (
@@ -413,6 +376,11 @@ const styles = StyleSheet.create({
   emptyContainer: {
     alignItems: 'center',
     padding: 48,
+  },
+  emptyImage: {
+    width: 200,
+    height: 150,
+    marginBottom: 8,
   },
   emptyTitle: {
     fontSize: 18,

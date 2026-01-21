@@ -19,6 +19,7 @@ A modern, full-stack personal finance management application built with Next.js,
 - 🏦 **Banking Integration**: Securely connect to bank accounts and access transaction data using Tink API (supports Polish banks: ING, PKO BP, mBank, etc.)
 - 🏠 **Landing Page**: Beautiful public landing page with storytelling about financial freedom journey
 - 💳 **Subscription Management**: Stripe-powered subscription system with free and premium tiers
+- 📱 **Mobile App (FiredUp)**: Native iOS/Android app with Expo for on-the-go financial management
 
 ### User Experience
 - 🌓 **Dark Mode Support**: Comfortable viewing experience with automatic theme switching
@@ -69,6 +70,28 @@ A modern, full-stack personal finance management application built with Next.js,
 - pytest for unit and integration testing
 
 ## 📝 Changelog
+
+### 2026-01-21
+- 📱 **Mobile App - Loans Tab**:
+  - Added 5th tab "Kredyty" (Loans) to mobile navigation between Transactions and Fire tabs
+  - New loans list screen with summary card showing total balance and monthly payments
+  - Add loan form via Bottom Sheet with 10 loan types (mortgage, car, personal, student, credit card, cash loan, installment, leasing, overdraft, other)
+  - Date picker for loan start date using @react-native-community/datetimepicker
+  - Due day field now properly saves to database
+  - Loan type icons displayed on loan cards (car icon for car loans, house for mortgage, etc.)
+- 🎮 **Mobile Gamification Improvements**:
+  - Added XP rewards for loan overpayments (+20 XP per overpayment)
+  - New `xp_reward` celebration type for partial overpayments
+  - Celebration modal now shows dynamic loan type names (e.g., "KREDYT SAMOCHODOWY SPŁACONY!" for car loans)
+  - Share message updated to use loan name instead of hardcoded "hipoteka"
+  - Gamification stats refresh after overpayments
+- 🔧 **Backend API Changes**:
+  - Added `/internal-api/loans` endpoints for mobile app (bypasses Next.js routing):
+    - `GET /internal-api/loans` - list all user loans
+    - `POST /internal-api/loans` - create new loan
+    - `GET /internal-api/loans/{loan_id}` - get single loan
+    - `POST /internal-api/loans/{loan_id}/archive` - archive paid-off loan
+  - Fixed `due_day` field not being saved when creating loans
 
 ### 2026-01-19
 - 🧪 **Testing Infrastructure**:
@@ -391,6 +414,40 @@ Track your progress through Dave Ramsey's 7 Baby Steps methodology to achieve fi
 - **Loan Integration**: Direct connection with mortgage data from loans section
 - **Internationalization**: Fully localized in all supported languages
 - **Persistent Storage**: Progress data is stored in the database for long-term tracking
+
+## 📱 Mobile App (FiredUp)
+
+Native mobile application for iOS and Android built with React Native and Expo.
+
+### Key Features
+- **Dashboard**: Overview of financial health with income, expenses, and savings summaries
+- **Transactions**: Track and categorize expenses on the go
+- **Loans**: Full loan management with overpayment support and payment schedules
+- **Goals**: Track progress through Dave Ramsey's 7 Baby Steps
+- **Gamification**: Earn XP for financial actions, unlock badges, maintain streaks
+- **Offline Support**: View cached data without internet connection
+
+### Loan Management
+- View all active loans with progress indicators
+- Add new loans with 10 different loan types
+- Track interest rates, monthly payments, and remaining balance
+- Make overpayments and see updated payoff schedules
+- Celebrate loan payoffs with animated modals and XP rewards
+- Archive paid-off loans
+
+### Gamification System
+- **XP Rewards**: Earn points for daily check-ins, logging expenses, making loan payments
+- **Overpayment Bonus**: +20 XP for each loan overpayment (vs +10 for regular payments)
+- **Badges**: Unlock achievements for streaks, savings milestones, debt payoff
+- **Levels**: Progress through financial literacy levels
+- **Celebrations**: Animated modals for milestones and achievements
+
+### Technical Details
+- Built with Expo SDK 52 and Expo Router
+- State management with Zustand
+- Secure token storage with expo-secure-store
+- Google Sign-In authentication
+- Communicates with backend via JWT-authenticated REST API
 
 ## 🏦 Banking Integration
 

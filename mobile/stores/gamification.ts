@@ -25,12 +25,13 @@ import {
 // ==========================================
 
 export interface CelebrationData {
-  type: 'badge' | 'level_up' | 'streak_milestone' | 'checkin' | 'mortgage_paid_off';
+  type: 'badge' | 'level_up' | 'streak_milestone' | 'checkin' | 'mortgage_paid_off' | 'xp_reward';
   badge?: UnlockedBadge;
   newLevel?: number;
   newStreak?: number;
   xpEarned?: number;
   message?: string;
+  title?: string; // For xp_reward type
   // Mortgage celebration specific data
   mortgageData?: MortgageCelebrationData;
 }

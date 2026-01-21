@@ -104,9 +104,18 @@ journalctl -u home-budget-backend -f
 - Uses JWT authentication (separate from web's NextAuth)
 - Auth flow: Google Sign-In → exchange Google token for app JWT → Bearer token auth
 - State management: Zustand with expo-secure-store for token persistence
-- Screens: Dashboard, Transactions, Goals (Baby Steps), Settings
+- Screens: Dashboard, Transactions, Loans, Goals (Baby Steps), Settings
 - Backend endpoints for mobile auth: `/api/auth/mobile/google`, `/api/auth/mobile/me`
+- Mobile-specific API endpoints use `/internal-api/` prefix to bypass Next.js routing
 - Requires JWT_SECRET and GOOGLE_CLIENT_ID in backend .env for production
+
+### Mobile Loans Feature
+- 5th tab "Kredyty" between Wydatki and Fire
+- List view with summary card (total balance, monthly payments)
+- Add loan form via Bottom Sheet with 10 loan types
+- Loan detail screen with payment schedule and overpayment support
+- Gamification: +20 XP for overpayments, celebration modal on loan payoff
+- Backend endpoints: `/internal-api/loans` (list, create, get, archive)
 
 ## Skills
 

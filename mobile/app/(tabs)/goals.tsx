@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/hooks/useApi';
 import type { FinancialFreedomResponse, DashboardSummary } from '@/lib/api';
+import FireRoadmap, { MilestoneCard } from '@/components/FireRoadmap';
 
 // Step definitions for Polish FIRE journey
 const STEPS = [
@@ -22,6 +23,7 @@ const STEPS = [
     title: 'Fundusz Awaryjny 3 000 zł',
     description: 'Zaoszczędź 3 000 zł jako początkowy fundusz awaryjny, aby pokryć nieoczekiwane wydatki bez zadłużania się.',
     icon: 'shield-checkmark' as const,
+    emoji: '🛡️',
     hasAmount: true,
   },
   {
@@ -31,6 +33,7 @@ const STEPS = [
     title: 'Spłać Wszystkie Długi',
     description: 'Spłać wszystkie długi (oprócz kredytu hipotecznego) metodą kuli śnieżnej, płacąc od najmniejszego do największego.',
     icon: 'trending-down' as const,
+    emoji: '💳',
     hasAmount: false,
   },
   {
@@ -40,6 +43,7 @@ const STEPS = [
     title: '6 Miesięcy Wydatków',
     description: 'Zaoszczędź 6 miesięcy wydatków w pełnym funduszu awaryjnym.',
     icon: 'wallet' as const,
+    emoji: '💰',
     hasAmount: true,
   },
   {
@@ -49,6 +53,7 @@ const STEPS = [
     title: '15% na Przyszłość',
     description: 'Inwestuj 15% dochodu w długoterminowe oszczędności: PPK (dopłata pracodawcy), IKE (limit 2026: 28 260 PLN, brak podatku Belki), IKZE (limit: 11 304 PLN lub 16 956 PLN dla JDG, odliczenie od podatku).',
     icon: 'trending-up' as const,
+    emoji: '📈',
     hasAmount: false,
   },
   {
@@ -58,6 +63,7 @@ const STEPS = [
     title: 'Start Dziecka w Dorosłość',
     description: 'W Polsce studia są darmowe, ale młody człowiek potrzebuje: wkładu własnego na mieszkanie (30-50 tys. PLN), prawa jazdy, pierwszego samochodu, zabezpieczenia na start.',
     icon: 'school' as const,
+    emoji: '👶',
     hasAmount: false,
     canSkip: true,
   },
@@ -68,6 +74,7 @@ const STEPS = [
     title: 'Wcześniejsza Spłata Hipoteki',
     description: 'Spłać wcześniej kredyt hipoteczny. Każda nadpłata skraca okres kredytowania i zmniejsza całkowity koszt odsetek.',
     icon: 'home' as const,
+    emoji: '🏠',
     hasAmount: true,
   },
   {
@@ -77,6 +84,7 @@ const STEPS = [
     title: 'Osiągnij FIRE Number',
     description: 'Zbuduj majątek pozwalający na niezależność finansową. FIRE Number = roczne wydatki × 25 (zasada 4%). Gdy osiągniesz tę kwotę, możesz żyć z odsetek.',
     icon: 'flame' as const,
+    emoji: '🔥',
     hasAmount: false,
   },
 ];
@@ -232,64 +240,27 @@ export default function GoalsScreen() {
             </Text>
           </View>
 
-          {/* Progress Tracker - Static (no swipe) */}
-          <View style={styles.progressTracker}>
-            <Text style={styles.trackerTitle}>Śledzenie Postępu 7 Kroków</Text>
-            <View style={styles.trackerContent}>
-              {STEPS.map((stepDef, index) => {
-                const step = financialFreedom?.steps.find((s) => s.id === stepDef.id);
-                const status = step ? getStepStatus(step) : 'not_started';
-                const isCompleted = status === 'completed';
-                const isInProgress = status === 'in_progress';
-                const isNotStarted = status === 'not_started';
-
-                return (
-                  <View key={stepDef.id} style={styles.trackerStep}>
-                    <View
-                      style={[
-                        styles.trackerCircle,
-                        isCompleted && styles.trackerCircleCompleted,
-                        isInProgress && styles.trackerCircleInProgress,
-                        isNotStarted && styles.trackerCircleNotStarted,
-                      ]}
-                    >
-                      {isCompleted ? (
-                        <Ionicons name="checkmark" size={14} color="#fff" />
-                      ) : (
-                        <Text
-                          style={[
-                            styles.trackerNumber,
-                            (isInProgress || isNotStarted) && styles.trackerNumberWhite,
-                          ]}
-                        >
-                          {stepDef.id}
-                        </Text>
-                      )}
-                    </View>
-                    <Text
-                      style={[
-                        styles.trackerLabel,
-                        isCompleted && styles.trackerLabelCompleted,
-                        isInProgress && styles.trackerLabelInProgress,
-                        isNotStarted && styles.trackerLabelNotStarted,
-                      ]}
-                      numberOfLines={2}
-                    >
-                      {stepDef.shortName}
-                    </Text>
-                    {index < STEPS.length - 1 && (
-                      <View
-                        style={[
-                          styles.trackerLine,
-                          isCompleted && styles.trackerLineCompleted,
-                        ]}
-                      />
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          </View>
+          {/* Fire Roadmap - New Visual Timeline */}
+          <FireRoadmap
+            steps={STEPS.map((stepDef) => {
+              const step = financialFreedom?.steps.find((s) => s.id === stepDef.id);
+              const status = step ? getStepStatus(step) : 'not_started';
+              return {
+                id: stepDef.id,
+                name: stepDef.name,
+                shortName: stepDef.shortName,
+                emoji: stepDef.emoji,
+                isCompleted: status === 'completed',
+                isInProgress: status === 'in_progress',
+                progress: step?.progress || 0,
+              };
+            })}
+            currentStepIndex={currentStep - 1}
+            currentNetWorth={dashboardData?.total_savings_balance || 0}
+            projectedFireNumber={1500000} // Example target - could be calculated
+            monthlyContribution={dashboardData?.monthly_savings || 0}
+            formatCurrency={formatCurrency}
+          />
 
           {/* Current Step Banner */}
           {currentStep <= 7 && (

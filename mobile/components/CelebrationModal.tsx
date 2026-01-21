@@ -245,6 +245,14 @@ function getCelebrationContent(celebration: CelebrationData): CelebrationContent
         color: '#22c55e',
       };
 
+    case 'xp_reward':
+      return {
+        icon: '⚡',
+        title: celebration.title || 'Świetna robota!',
+        subtitle: celebration.message || 'Zdobyłeś punkty doświadczenia!',
+        color: '#f97316',
+      };
+
     default:
       return {
         icon: '🎉',

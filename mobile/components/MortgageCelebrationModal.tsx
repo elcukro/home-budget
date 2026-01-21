@@ -168,11 +168,12 @@ export default function MortgageCelebrationModal({
 
   const handleShare = async () => {
     try {
-      const message = `Spłaciłem kredyt hipoteczny! 🏠🏆\n\nJestem teraz właścicielem swojego domu bez żadnych długów!\n\n#MortgageFree #FinancialFreedom #FiredUp`;
+      const loanName = celebration?.loan_description || 'kredyt';
+      const message = `Spłaciłem ${loanName}! 🏆🎉\n\nKolejny dług mniej! Krok bliżej do wolności finansowej!\n\n#DebtFree #FinancialFreedom #FiredUp`;
 
       await Share.share({
         message,
-        title: 'Spłaciłem hipotekę!',
+        title: `Spłaciłem ${loanName}!`,
       });
     } catch (error) {
       console.log('Share error:', error);
@@ -279,7 +280,9 @@ export default function MortgageCelebrationModal({
 
             {/* Title */}
             <Text style={styles.title}>GRATULACJE!</Text>
-            <Text style={styles.subtitle}>KREDYT HIPOTECZNY SPŁACONY!</Text>
+            <Text style={styles.subtitle}>
+              {celebration.title || 'KREDYT SPŁACONY!'}
+            </Text>
 
             {celebration.loan_description && (
               <Text style={styles.loanName}>{celebration.loan_description}</Text>

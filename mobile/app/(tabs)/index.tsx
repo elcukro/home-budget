@@ -19,6 +19,7 @@ import StreakCounter from '@/components/StreakCounter';
 import { LevelProgressBar } from '@/components/LevelProgress';
 import { BadgeRow, ProgressBadge } from '@/components/AchievementBadge';
 import CelebrationModal from '@/components/CelebrationModal';
+import ForYouSection from '@/components/ForYouSection';
 import {
   useGamificationStore,
   usePendingCelebration,
@@ -28,6 +29,7 @@ import {
   useNearestBadges,
 } from '@/stores/gamification';
 import type { DashboardSummary } from '@/lib/api';
+import Mascot, { type MascotMood } from '@/components/Mascot';
 
 // Mock data for dev mode
 const MOCK_SUMMARY: DashboardSummary = {
@@ -247,6 +249,43 @@ export default function DashboardScreen() {
     return `${(value * 100).toFixed(1)}%`;
   };
 
+  // Determine mascot mood based on user progress
+  const mascotMood: MascotMood = useMemo(() => {
+    // Celebrating - when there's a pending celebration
+    if (pendingCelebration) {
+      return 'celebrating';
+    }
+    // Determined - on a good streak (7+ days)
+    if (streak.current >= 7) {
+      return 'determined';
+    }
+    // Happy - good savings rate (20%+) or positive cash flow
+    if ((summary?.savings_rate || 0) >= 0.2 || (summary?.monthly_balance || 0) > 0) {
+      return 'happy';
+    }
+    // Sleepy - no streak activity
+    if (streak.current === 0) {
+      return 'sleepy';
+    }
+    // Default to happy
+    return 'happy';
+  }, [pendingCelebration, streak.current, summary?.savings_rate, summary?.monthly_balance]);
+
+  // Mascot greeting message
+  const mascotMessage = useMemo(() => {
+    switch (mascotMood) {
+      case 'celebrating':
+        return 'Gratulacje! 🎉';
+      case 'determined':
+        return `${streak.current} dni z rzędu! 💪`;
+      case 'sleepy':
+        return 'Tęskniłem!';
+      case 'happy':
+      default:
+        return 'Świetnie Ci idzie!';
+    }
+  }, [mascotMood, streak.current]);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -270,11 +309,22 @@ export default function DashboardScreen() {
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Welcome with Streak */}
+        {/* Welcome with Mascot */}
         <View style={styles.welcomeSection}>
           <View style={styles.welcomeRow}>
+            <Mascot mood={mascotMood} size={70} style={styles.mascot} />
             <View style={styles.welcomeText}>
-              <Text style={styles.greeting}>Cześć, {user?.name || 'User'}!</Text>
+              <View style={styles.greetingRow}>
+                <Text style={styles.greeting}>Cześć, {user?.name?.split(' ')[0] || 'User'}!</Text>
+                {!isDevMode && (
+                  <StreakCounter
+                    currentStreak={streak.current}
+                    longestStreak={streak.longest}
+                    compact
+                  />
+                )}
+              </View>
+              <Text style={styles.mascotMessage}>{mascotMessage}</Text>
               <Text style={styles.date}>
                 {new Date().toLocaleDateString('pl-PL', {
                   weekday: 'long',
@@ -283,13 +333,6 @@ export default function DashboardScreen() {
                 })}
               </Text>
             </View>
-            {!isDevMode && (
-              <StreakCounter
-                currentStreak={streak.current}
-                longestStreak={streak.longest}
-                compact
-              />
-            )}
           </View>
         </View>
 
@@ -448,6 +491,23 @@ export default function DashboardScreen() {
             </View>
           )}
 
+          {/* For You Section - Educational Content */}
+          {!isDevMode && (
+            <ForYouSection maxCards={4} showSeeAll />
+          )}
+
+          {/* Streak Expanded View */}
+          {!isDevMode && streak.current > 0 && (
+            <View style={styles.streakExpandedSection}>
+              <StreakCounter
+                currentStreak={streak.current}
+                longestStreak={streak.longest}
+                lastActivityDate={streak.lastActivity ?? undefined}
+                variant="expanded"
+              />
+            </View>
+          )}
+
           {/* Gamification Section - Level & XP */}
           {!isDevMode && level.totalXp > 0 && (
             <View style={styles.gamificationSection}>
@@ -545,17 +605,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  mascot: {
+    marginRight: 12,
+    marginTop: 4,
+  },
   welcomeText: {
     flex: 1,
   },
+  greetingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   greeting: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1f2937',
+  },
+  mascotMessage: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#f97316',
+    marginTop: 2,
     marginBottom: 4,
   },
   date: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
     textTransform: 'capitalize',
   },
@@ -674,6 +749,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#374151',
+  },
+  // Streak expanded section
+  streakExpandedSection: {
+    marginBottom: 24,
+    marginHorizontal: 0,
   },
   // Gamification styles
   gamificationSection: {

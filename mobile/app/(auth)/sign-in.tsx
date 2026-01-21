@@ -7,10 +7,25 @@ import {
   ActivityIndicator,
   Platform,
   Alert,
+  Image,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth';
 import Constants from 'expo-constants';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Hero illustration - journey to FIRE
+const heroImage = require('@/assets/illustrations/signin-hero.png');
+const mascot = require('@/assets/illustrations/mascot/flame-happy.png');
+
+// Feature icons
+const iconControl = require('@/assets/illustrations/icons/dashboard-control.png');
+const iconHabits = require('@/assets/illustrations/icons/habit-streak.png');
+const iconFire = require('@/assets/illustrations/icons/freedom-mountain.png');
+
+// Detect Expo Go properly
+const isExpoGo = Constants.appOwnership === 'expo';
 
 // Dynamically import GoogleSignin to avoid crash in Expo Go
 let GoogleSignin: any = null;
@@ -31,13 +46,16 @@ try {
 }
 
 // DEV MODE - auto-enable when GoogleSignin is not available (Expo Go)
-const DEV_MODE = !googleSignInAvailable;
+const DEV_MODE = !googleSignInAvailable || isExpoGo;
 
 // Get client IDs from app.json extra config
 const googleAuthConfig = Constants.expoConfig?.extra?.googleAuth;
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default function SignInScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { signInWithGoogle, devLogin, isLoading: authLoading } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +85,8 @@ export default function SignInScreen() {
       setIsLoading(true);
       setError(null);
       await devLogin();
-      router.replace('/(tabs)');
+      // Redirect to root - index.tsx will check onboarding status
+      router.replace('/');
     } catch (err) {
       console.error('Dev login error:', err);
       setError('Wystąpił błąd podczas logowania');
@@ -110,7 +129,8 @@ export default function SignInScreen() {
         await signInWithGoogle(idToken, user?.photo || null);
 
         console.log('Backend auth successful, navigating to app...');
-        router.replace('/(tabs)');
+        // Redirect to root - index.tsx will check onboarding status
+        router.replace('/');
       } else {
         // User cancelled the sign-in
         console.log('Sign-in cancelled by user');
@@ -151,111 +171,86 @@ export default function SignInScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        {/* Branding */}
-        <View style={styles.branding}>
-          <Text style={styles.logo}>🔥</Text>
-          <Text style={styles.title}>FiredUp</Text>
-          <Text style={styles.subtitle}>Twoje finanse pod kontrolą</Text>
+      {/* Content */}
+      <View style={[styles.content, { paddingTop: insets.top }]}>
+        {/* Hero Illustration - Full Width */}
+        <View style={styles.heroContainer}>
+          <Image
+            source={heroImage}
+            style={styles.heroImage}
+            resizeMode="contain"
+          />
+
+          {/* Feature cards - directly under illustration */}
+          <View style={styles.features}>
+            <View style={styles.featureCard}>
+              <Image source={iconControl} style={styles.featureIconImg} resizeMode="contain" />
+              <Text style={styles.featureText}>Pełna{'\n'}kontrola</Text>
+            </View>
+            <View style={styles.featureCard}>
+              <Image source={iconHabits} style={styles.featureIconImg} resizeMode="contain" />
+              <Text style={styles.featureText}>Buduj{'\n'}nawyki</Text>
+            </View>
+            <View style={styles.featureCard}>
+              <Image source={iconFire} style={styles.featureIconImg} resizeMode="contain" />
+              <Text style={styles.featureText}>Osiągnij{'\n'}FIRE</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Features */}
-        <View style={styles.features}>
-          <FeatureItem
-            icon="📊"
-            title="Śledź wydatki"
-            description="Monitoruj przychody i wydatki"
-          />
-          <FeatureItem
-            icon="🎯"
-            title="Cele finansowe"
-            description="Baby Steps Dave'a Ramseya"
-          />
-          <FeatureItem
-            icon="🏦"
-            title="Połącz bank"
-            description="Automatyczny import transakcji"
-          />
+        {/* Title Section */}
+        <View style={styles.titleSection}>
+          <View style={styles.logoRow}>
+            <Image source={mascot} style={styles.mascotIcon} resizeMode="contain" />
+            <Text style={styles.title}>FiredUp</Text>
+          </View>
+          <Text style={styles.subtitle}>Twoja droga do wolności finansowej</Text>
         </View>
 
-        {/* Dev mode indicator */}
-        {DEV_MODE && (
-          <View style={styles.devModeContainer}>
-            <Text style={styles.devModeText}>
-              🔧 DEV MODE - logowanie testowe
-            </Text>
-          </View>
-        )}
-
-        {/* Error */}
-        {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {/* Sign in button */}
-        <TouchableOpacity
-          style={[styles.signInButton, loading && styles.signInButtonDisabled]}
-          onPress={handleGoogleSignIn}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Text style={styles.googleIcon}>G</Text>
-              <Text style={styles.signInButtonText}>
-                {DEV_MODE ? 'Zaloguj (DEV)' : 'Zaloguj przez Google'}
-              </Text>
-            </>
+        {/* Bottom Section */}
+        <View style={[styles.bottomSection, { paddingBottom: insets.bottom + 24 }]}>
+          {/* Error */}
+          {error && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
           )}
-        </TouchableOpacity>
 
-        {/* Dev login button when not in DEV_MODE but for testing */}
-        {__DEV__ && !DEV_MODE && (
+          {/* Main CTA Button - Game Style */}
           <TouchableOpacity
-            style={styles.devButton}
-            onPress={handleDevLogin}
+            style={[styles.playButton, loading && styles.playButtonDisabled]}
+            onPress={handleGoogleSignIn}
             disabled={loading}
+            activeOpacity={0.8}
           >
-            <Text style={styles.devButtonText}>
-              🔧 Dev Login (skip OAuth)
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.playButtonText}>🚀 Rozpocznij podróż</Text>
+            )}
           </TouchableOpacity>
-        )}
 
-        {/* Terms */}
-        <Text style={styles.terms}>
-          Logując się, akceptujesz Regulamin i Politykę Prywatności
-        </Text>
-
-        {/* Debug info in development */}
-        {__DEV__ && (
-          <Text style={styles.debugText}>
-            Platform: {Platform.OS} | DEV_MODE: {DEV_MODE ? 'ON' : 'OFF'} | Configured: {isConfigured ? 'YES' : 'NO'}
+          {/* Google subtitle */}
+          <Text style={styles.googleHint}>
+            Zaloguj się przez Google
           </Text>
-        )}
-      </View>
-    </View>
-  );
-}
 
-function FeatureItem({
-  icon,
-  title,
-  description,
-}: {
-  icon: string;
-  title: string;
-  description: string;
-}) {
-  return (
-    <View style={styles.featureItem}>
-      <Text style={styles.featureIcon}>{icon}</Text>
-      <View style={styles.featureText}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureDescription}>{description}</Text>
+
+          {/* Terms */}
+          <Text style={styles.terms}>
+            Kontynuując, akceptujesz{' '}
+            <Text style={styles.termsLink}>Regulamin</Text>
+            {' '}i{' '}
+            <Text style={styles.termsLink}>Politykę Prywatności</Text>
+          </Text>
+
+          {/* Debug info in development */}
+          {__DEV__ && (
+            <Text style={styles.debugText}>
+              {Platform.OS} | {DEV_MODE ? 'DEV' : 'PROD'} | {isConfigured ? '✓' : '✗'} | {isExpoGo ? 'ExpoGo' : 'Build'}
+            </Text>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -264,119 +259,158 @@ function FeatureItem({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff7ed', // Warm orange tint
   },
   content: {
     flex: 1,
-    padding: 24,
-    justifyContent: 'center',
   },
-  branding: {
+
+  // Hero - takes up most of the screen
+  heroContainer: {
+    flex: 1,
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    marginBottom: 48,
+    paddingTop: 20,
   },
-  logo: {
-    fontSize: 64,
+  heroImage: {
+    width: SCREEN_WIDTH * 1.1,
+    height: SCREEN_WIDTH * 0.85,
+  },
+
+  // Title
+  titleSection: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
     marginBottom: 16,
   },
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mascotIcon: {
+    width: 56,
+    height: 56,
+  },
   title: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 8,
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#ea580c',
+    letterSpacing: -2,
+    textShadowColor: 'rgba(234, 88, 12, 0.3)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#666',
+    color: '#78350f',
+    textAlign: 'center',
+    marginTop: 4,
+    fontWeight: '500',
   },
   features: {
-    marginBottom: 48,
-  },
-  featureItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 8,
+    paddingHorizontal: 24,
   },
-  featureIcon: {
-    fontSize: 32,
-    marginRight: 16,
+  featureCard: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingTop: 4,
+    paddingBottom: 8,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    flex: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  featureIconImg: {
+    width: 72,
+    height: 72,
+    marginBottom: -4,
   },
   featureText: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1a1a1a',
-    marginBottom: 4,
-  },
-  featureDescription: {
-    fontSize: 14,
-    color: '#666',
-  },
-  devModeContainer: {
-    backgroundColor: '#fef3c7',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  devModeText: {
-    color: '#92400e',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#78350f',
     textAlign: 'center',
-    fontSize: 14,
+    lineHeight: 15,
+  },
+
+  // Bottom Section
+  bottomSection: {
+    paddingHorizontal: 24,
   },
   errorContainer: {
     backgroundColor: '#fee2e2',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 16,
   },
   errorText: {
     color: '#dc2626',
     textAlign: 'center',
+    fontSize: 14,
   },
-  signInButton: {
-    flexDirection: 'row',
+
+  // Game-style Play Button - Green
+  playButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4285f4',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
+    backgroundColor: '#22c55e',
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    borderRadius: 20,
+    marginBottom: 8,
+    // Multiple shadows for depth
+    shadowColor: '#16a34a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 0,
+    elevation: 8,
+    // Border for 3D effect
+    borderBottomWidth: 4,
+    borderBottomColor: '#16a34a',
   },
-  signInButtonDisabled: {
+  playButtonDisabled: {
     opacity: 0.7,
   },
-  googleIcon: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  playButtonText: {
+    fontSize: 22,
+    fontWeight: '800',
     color: '#fff',
-    marginRight: 12,
+    letterSpacing: 0.5,
   },
-  signInButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  devButton: {
-    alignItems: 'center',
-    padding: 12,
-    marginBottom: 16,
-  },
-  devButtonText: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  terms: {
-    fontSize: 12,
-    color: '#999',
+
+  googleHint: {
+    fontSize: 13,
+    color: '#9a3412',
     textAlign: 'center',
-    lineHeight: 18,
+    marginBottom: 16,
+    opacity: 0.7,
+  },
+
+  terms: {
+    fontSize: 11,
+    color: '#9a3412',
+    textAlign: 'center',
+    lineHeight: 16,
+    opacity: 0.6,
+  },
+  termsLink: {
+    color: '#ea580c',
+    fontWeight: '600',
   },
   debugText: {
     fontSize: 10,
-    color: '#999',
+    color: '#9a3412',
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: 12,
+    opacity: 0.4,
   },
 });

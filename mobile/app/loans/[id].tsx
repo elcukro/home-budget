@@ -45,15 +45,16 @@ export default function LoanDetailScreen() {
   const addCelebration = useGamificationStore((s) => s.addCelebration);
   const pendingCelebration = useGamificationStore((s) => s.pendingCelebrations[0] || null);
   const dismissCelebration = useGamificationStore((s) => s.dismissCelebration);
+  const fetchGamificationStats = useGamificationStore((s) => s.fetchStats);
 
-  // Handle celebration dismiss - go back to home if loan was paid off
+  // Handle celebration dismiss - go to loans tab if loan was paid off
   const handleCelebrationDismiss = useCallback(() => {
     // Check type before dismissing since dismissCelebration clears the celebration
     const wasMortgagePayoff = pendingCelebration?.type === 'mortgage_paid_off';
     dismissCelebration();
-    // If this was a mortgage payoff celebration, go back to home
+    // If this was a mortgage payoff celebration, go to loans tab
     if (wasMortgagePayoff) {
-      router.back();
+      router.replace('/(tabs)/loans');
     }
   }, [dismissCelebration, pendingCelebration, router]);
 
@@ -136,16 +137,51 @@ export default function LoanDetailScreen() {
       setShowOverpaymentModal(false);
 
       // Show celebration if loan was paid off
-      if (response.loan_paid_off && response.celebration) {
+      if (response.loan_paid_off) {
+        // Get loan type name for celebration title
+        const loanTypeNames: Record<string, string> = {
+          mortgage: 'KREDYT HIPOTECZNY',
+          car: 'KREDYT SAMOCHODOWY',
+          personal: 'KREDYT GOTÓWKOWY',
+          student: 'KREDYT STUDENCKI',
+          credit_card: 'KARTA KREDYTOWA',
+          cash_loan: 'POŻYCZKA',
+          installment: 'RATY',
+          leasing: 'LEASING',
+          overdraft: 'DEBET',
+          other: 'KREDYT',
+        };
+        const loanTypeName = loanTypeNames[loan.loan_type] || 'KREDYT';
+
+        // Use celebration data from server, or create fallback data for the modal
+        const celebrationData = response.celebration || {
+          type: 'mortgage_paid_off' as const,
+          title: `${loanTypeName} SPŁACONY!`,
+          title_en: 'Loan Paid Off!',
+          subtitle: `Gratulacje! Spłaciłeś kredyt "${loan.description}"!`,
+          subtitle_en: `Congratulations! You paid off "${loan.description}"!`,
+          loan_description: loan.description,
+          xp_earned: response.xp_earned,
+        };
+
         addCelebration({
           type: 'mortgage_paid_off',
           xpEarned: response.xp_earned,
-          mortgageData: response.celebration,
+          mortgageData: celebrationData,
+        });
+      } else if (response.xp_earned > 0) {
+        // Show XP reward celebration for partial overpayment
+        addCelebration({
+          type: 'xp_reward',
+          xpEarned: response.xp_earned,
+          title: 'Nadpłata zarejestrowana!',
+          message: 'Świetna decyzja! Każda nadpłata przybliża Cię do wolności finansowej.',
         });
       }
 
-      // Refresh data
+      // Refresh loan data and gamification stats
       fetchLoanData();
+      fetchGamificationStats();
     } catch (err) {
       console.error('Error creating overpayment:', err);
       // Error is handled in the modal
@@ -198,7 +234,14 @@ export default function LoanDetailScreen() {
     return Math.max(0, monthsRemaining);
   }, [loan]);
 
-  // Generate payment schedule: 1 month back + months until December of target year
+  // Calculate loan start month/year for filtering schedule
+  const loanStartDate = useMemo(() => {
+    if (!loan) return null;
+    const startDate = new Date(loan.start_date);
+    return { month: startDate.getMonth() + 1, year: startDate.getFullYear() };
+  }, [loan]);
+
+  // Generate payment schedule: from loan start date (or 1 month back if after start) until target
   const paymentSchedule = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
@@ -239,6 +282,14 @@ export default function LoanDetailScreen() {
         year += 1;
       }
 
+      // Skip if this month is BEFORE the loan start date
+      if (loanStartDate) {
+        if (year < loanStartDate.year ||
+            (year === loanStartDate.year && month < loanStartDate.month)) {
+          continue;
+        }
+      }
+
       // Stop if we've passed the loan end date
       if (loanEndDate) {
         if (year > loanEndDate.year ||
@@ -262,7 +313,7 @@ export default function LoanDetailScreen() {
     }
 
     return schedule;
-  }, [payments, targetDecemberYear, loanEndDate]);
+  }, [payments, targetDecemberYear, loanEndDate, loanStartDate]);
 
   // Check if we've reached the end of the loan
   const hasMoreMonths = useMemo(() => {

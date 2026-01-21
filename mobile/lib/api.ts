@@ -9,6 +9,7 @@ const API_BASE_URL = 'https://firedup.app';
 
 export interface Loan {
   id: string;
+  loan_type?: string;
   description: string;
   balance: number;
   monthlyPayment: number;
@@ -302,36 +303,49 @@ export class ApiClient {
       (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
-    // Make request
-    const response = await fetch(url, {
-      ...fetchOptions,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    // Make request with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-    // Handle errors
-    if (!response.ok) {
-      if (response.status === 401) {
-        this.onUnauthorized?.();
+    try {
+      const response = await fetch(url, {
+        ...fetchOptions,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      // Handle errors
+      if (!response.ok) {
+        if (response.status === 401) {
+          this.onUnauthorized?.();
+        }
+
+        let errorDetail: string;
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.detail || response.statusText;
+        } catch {
+          errorDetail = response.statusText;
+        }
+
+        throw new ApiError(response.status, errorDetail);
       }
 
-      let errorDetail: string;
-      try {
-        const errorData = await response.json();
-        errorDetail = errorData.detail || response.statusText;
-      } catch {
-        errorDetail = response.statusText;
+      // Handle empty responses
+      if (response.status === 204) {
+        return undefined as T;
       }
 
-      throw new ApiError(response.status, errorDetail);
+      return response.json();
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new ApiError(408, 'Request timeout - please try again');
+      }
+      throw error;
     }
-
-    // Handle empty responses
-    if (response.status === 204) {
-      return undefined as T;
-    }
-
-    return response.json();
   }
 
   // ============== Auth ==============
@@ -450,6 +464,65 @@ export class ApiClient {
       }),
   };
 
+  // ============== Income ==============
+
+  income = {
+    list: (userId: string) =>
+      this.request<Array<{
+        id: number;
+        category: string;
+        description: string;
+        amount: number;
+        is_recurring: boolean;
+        date: string;
+        end_date: string | null;
+        source: string;
+      }>>(`/users/${userId}/income`),
+
+    create: (userId: string, data: {
+      category: string;
+      description: string;
+      amount: number;
+      is_recurring?: boolean;
+      date: string;
+      end_date?: string;
+    }) =>
+      this.request(`/users/${userId}/income`, {
+        method: 'POST',
+        body: data,
+      }),
+  };
+
+  // ============== Savings ==============
+
+  savings = {
+    list: () =>
+      this.request<Array<{
+        id: number;
+        category: string;
+        description: string;
+        amount: number;
+        is_recurring: boolean;
+        date: string;
+        end_date: string | null;
+        saving_type: string;
+      }>>('/savings'),
+
+    create: (data: {
+      category: string;          // emergency_fund, six_month_fund, retirement, college, general, investment, real_estate, other
+      description: string;
+      amount: number;
+      is_recurring?: boolean;
+      date: string;
+      saving_type: string;       // deposit or withdrawal
+      account_type?: string;     // standard, ike, ikze, ppk, oipe
+    }) =>
+      this.request('/savings', {
+        method: 'POST',
+        body: data,
+      }),
+  };
+
   // ============== Categories ==============
 
   categories = {
@@ -512,6 +585,25 @@ export class ApiClient {
       this.request<{ success: boolean; message: string }>(`/internal-api/loans/${loanId}/archive`, {
         method: 'POST',
       }),
+
+    /**
+     * Create a new loan.
+     */
+    create: (data: {
+      loan_type: string;
+      description: string;
+      principal_amount: number;
+      remaining_balance: number;
+      interest_rate: number;
+      monthly_payment: number;
+      start_date: string;
+      term_months: number;
+      due_day?: number;
+    }) =>
+      this.request<LoanDetail>('/internal-api/loans', {
+        method: 'POST',
+        body: data,
+      }),
   };
 
   // ============== Settings ==============
@@ -531,6 +623,10 @@ export class ApiClient {
         tax_form: string | null;
         birth_year: number | null;
         children_count: number;
+        use_authors_costs: boolean; // 50% KUP for creators
+        // Onboarding
+        onboarding_completed: boolean;
+        onboarding_completed_at: string | null;
         // Timestamps
         created_at: string;
         updated_at: string | null;
@@ -546,6 +642,8 @@ export class ApiClient {
       tax_form?: string | null;
       birth_year?: number | null;
       children_count?: number;
+      use_authors_costs?: boolean; // 50% KUP for creators
+      onboarding_completed?: boolean;
     }) =>
       this.request(`/users/${userId}/settings`, {
         method: 'PUT',

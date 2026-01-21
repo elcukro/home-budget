@@ -129,6 +129,23 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="loans"
+        options={{
+          title: 'Kredyty',
+          headerShown: false,
+          tabBarButton: (props) => (
+            <TabButton
+              icon="card-outline"
+              iconFocused="card"
+              label="Kredyty"
+              focused={isTabActive('loans')}
+              onPress={props.onPress}
+              onLongPress={props.onLongPress}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="goals"
         options={{
           title: 'Fire',

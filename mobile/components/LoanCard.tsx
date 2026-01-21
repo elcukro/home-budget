@@ -3,6 +3,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import type { Loan } from '@/lib/api';
 
+// Loan type icons mapping
+const LOAN_TYPE_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  mortgage: 'home-outline',
+  car: 'car-outline',
+  personal: 'cash-outline',
+  student: 'school-outline',
+  credit_card: 'card-outline',
+  cash_loan: 'hand-left-outline',
+  installment: 'cart-outline',
+  leasing: 'document-text-outline',
+  overdraft: 'wallet-outline',
+  other: 'ellipse-outline',
+};
+
 interface LoanCardProps {
   loan: Loan;
   formatCurrency: (amount: number) => string;
@@ -15,6 +29,14 @@ export default function LoanCard({ loan, formatCurrency, onArchive }: LoanCardPr
   const interestRate = loan.interestRate ?? 0;
   const balance = loan.balance ?? 0;
   const monthlyPayment = loan.monthlyPayment ?? 0;
+
+  // Get icon based on loan type
+  const getLoanIcon = (): keyof typeof Ionicons.glyphMap => {
+    if (loan.loan_type && LOAN_TYPE_ICONS[loan.loan_type]) {
+      return LOAN_TYPE_ICONS[loan.loan_type];
+    }
+    return 'business-outline'; // default
+  };
 
   // Determine color based on progress
   const getProgressColor = () => {
@@ -60,7 +82,7 @@ export default function LoanCard({ loan, formatCurrency, onArchive }: LoanCardPr
     >
       <View style={styles.header}>
         <View style={[styles.iconContainer, { backgroundColor: getProgressBgColor() }]}>
-          <Ionicons name="business-outline" size={18} color={getProgressColor()} />
+          <Ionicons name={getLoanIcon()} size={18} color={getProgressColor()} />
         </View>
         <View style={styles.headerText}>
           <Text style={styles.title} numberOfLines={1}>
