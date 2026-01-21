@@ -521,6 +521,7 @@ export class ApiClient {
   };
 
   // ============== Savings ==============
+  // Note: Uses /internal-api/ prefix to avoid conflict with web page route
 
   savings = {
     list: () =>
@@ -533,7 +534,7 @@ export class ApiClient {
         date: string;
         end_date: string | null;
         saving_type: string;
-      }>>('/savings'),
+      }>>('/internal-api/savings'),
 
     create: (data: {
       category: string;          // emergency_fund, six_month_fund, retirement, college, general, investment, real_estate, other
@@ -544,7 +545,7 @@ export class ApiClient {
       saving_type: string;       // deposit or withdrawal
       account_type?: string;     // standard, ike, ikze, ppk, oipe
     }) =>
-      this.request('/savings', {
+      this.request('/internal-api/savings', {
         method: 'POST',
         body: data,
       }),
