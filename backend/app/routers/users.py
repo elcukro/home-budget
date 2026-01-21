@@ -35,8 +35,8 @@ class User(UserBase):
         from_attributes = True
 
 class SettingsBase(BaseModel):
-    language: str
-    currency: str
+    language: str | None = "en"  # Default to English if not set
+    currency: str | None = "USD"  # Default to USD if not set
     ai: dict | None = None
     emergency_fund_target: int | None = 1000  # Default to $1000 for Baby Step 1
     emergency_fund_months: int | None = 3     # Default to 3 months for Baby Step 3
