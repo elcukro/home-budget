@@ -603,7 +603,8 @@ def create_loan(
         interest_rate=loan.interest_rate,
         monthly_payment=loan.monthly_payment,
         start_date=loan.start_date,
-        term_months=loan.term_months
+        term_months=loan.term_months,
+        due_day=loan.due_day
     )
     db.add(db_loan)
     db.commit()
@@ -825,7 +826,7 @@ def create_loan_internal(
         monthly_payment=loan.monthly_payment,
         start_date=loan.start_date,
         term_months=loan.term_months,
-        due_day=loan.due_day if hasattr(loan, 'due_day') else 1
+        due_day=loan.due_day
     )
     db.add(db_loan)
     db.commit()
