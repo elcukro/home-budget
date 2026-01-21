@@ -98,24 +98,285 @@ journalctl -u home-budget-backend -f
 - Flow: get token → select bank → create requisition → get accounts → access data
 
 ### Mobile App (FiredUp)
+
+#### Overview
 - React Native with Expo SDK 52 and Expo Router
 - Located in `mobile/` directory (standalone, not monorepo)
 - Communicates with production API at https://firedup.app
 - Uses JWT authentication (separate from web's NextAuth)
-- Auth flow: Google Sign-In → exchange Google token for app JWT → Bearer token auth
-- State management: Zustand with expo-secure-store for token persistence
-- Screens: Dashboard, Transactions, Loans, Goals (Baby Steps), Settings
-- Backend endpoints for mobile auth: `/api/auth/mobile/google`, `/api/auth/mobile/me`
-- Mobile-specific API endpoints use `/internal-api/` prefix to bypass Next.js routing
-- Requires JWT_SECRET and GOOGLE_CLIENT_ID in backend .env for production
+
+#### Project Structure
+```
+mobile/
+├── app/                    # Expo Router screens
+│   ├── (auth)/            # Auth screens (sign-in)
+│   ├── (onboarding)/      # Onboarding flow screens
+│   ├── (tabs)/            # Main tab navigation
+│   │   ├── _layout.tsx    # Tab bar configuration
+│   │   ├── index.tsx      # Dashboard (Home)
+│   │   ├── transactions.tsx # Wydatki
+│   │   ├── loans.tsx      # Kredyty
+│   │   ├── goals.tsx      # Fire (Baby Steps)
+│   │   └── settings.tsx   # Profil
+│   ├── loans/
+│   │   └── [id].tsx       # Loan detail screen
+│   ├── _layout.tsx        # Root layout
+│   └── index.tsx          # Entry point (routing logic)
+├── components/            # Reusable components
+├── hooks/                 # Custom React hooks
+├── lib/
+│   └── api.ts            # API client (all endpoints)
+├── stores/               # Zustand stores
+│   ├── auth.ts           # Authentication state
+│   ├── gamification.ts   # XP, badges, celebrations
+│   └── onboarding.ts     # Onboarding state
+├── constants/            # App constants
+├── utils/                # Utility functions
+└── assets/               # Images, fonts, icons
+```
+
+#### Development Workflow
+
+**Starting the app:**
+```bash
+cd mobile
+npm install              # First time only
+npx expo start           # Start dev server
+# Press 'i' for iOS Simulator
+# Press 'a' for Android Emulator
+# Scan QR with Expo Go app for physical device
+```
+
+**Type checking:**
+```bash
+npx tsc --noEmit         # Check for TypeScript errors
+```
+
+**Expo Doctor:**
+```bash
+npx expo-doctor          # Check for configuration issues
+```
+
+#### API Integration
+
+**Base URL:** Production API at `https://firedup.app`
+
+**Authentication:**
+- Google Sign-In → exchange Google token for app JWT
+- JWT stored in expo-secure-store
+- All API requests include `Authorization: Bearer <token>` header
+
+**API Client Location:** `mobile/lib/api.ts`
+
+**Endpoint Prefixes:**
+- `/api/auth/mobile/*` - Mobile authentication
+- `/internal-api/*` - Mobile-specific endpoints (bypasses Next.js)
+- `/users/{email}/*` - User data (shared with web)
+
+**Why `/internal-api/` prefix?**
+Next.js intercepts routes like `/loans` for web pages. Mobile uses `/internal-api/loans` to reach FastAPI directly.
+
+**Key API Methods:**
+```typescript
+api.auth.me()                          // Get current user
+api.dashboard.get()                    // Dashboard data
+api.transactions.list()                // List expenses
+api.loans.list()                       // List loans
+api.loans.create(data)                 // Create loan
+api.loans.createPayment(userId, loanId, data)  // Make payment
+api.gamification.getOverview()         // Gamification stats
+api.gamification.checkin()             // Daily check-in
+```
+
+#### State Management (Zustand)
+
+**Auth Store (`stores/auth.ts`):**
+- `user` - Current user data
+- `token` - JWT token
+- `isAuthenticated` - Auth status
+- `login()` / `logout()` - Auth actions
+
+**Gamification Store (`stores/gamification.ts`):**
+- `stats` - XP, level, streaks
+- `unlockedBadges` - User's badges
+- `pendingCelebrations` - Queue of modals to show
+- `addCelebration()` - Add celebration to queue
+- `dismissCelebration()` - Remove first celebration
+- `checkIn()` - Daily check-in
+
+**Celebration Types:**
+- `badge` - New badge unlocked
+- `level_up` - Level increased
+- `streak_milestone` - 7, 30, 90, 365 day streaks
+- `mortgage_paid_off` - Loan fully paid
+- `xp_reward` - XP earned (e.g., overpayment)
+
+#### Navigation Structure (5 Tabs)
+
+| Tab | Route | Icon | Description |
+|-----|-------|------|-------------|
+| 1. Home | `index` | `home` | Dashboard with overview |
+| 2. Wydatki | `transactions` | `list` | Expense tracking |
+| 3. Kredyty | `loans` | `card` | Loan management |
+| 4. Fire | `goals` | `flame` | Baby Steps progress |
+| 5. Profil | `settings` | `person` | User settings |
+
+#### Component Conventions
+
+**File naming:**
+- Components: PascalCase (`LoanCard.tsx`)
+- Screens: lowercase (`loans.tsx`)
+- Stores: camelCase (`gamification.ts`)
+
+**Component structure:**
+```typescript
+// 1. Imports
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+
+// 2. Types/Interfaces
+interface MyComponentProps {
+  title: string;
+}
+
+// 3. Component
+export default function MyComponent({ title }: MyComponentProps) {
+  return (
+    <View style={styles.container}>
+      <Text>{title}</Text>
+    </View>
+  );
+}
+
+// 4. Styles at bottom
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+});
+```
+
+**Common patterns:**
+- Use `Pressable` instead of `TouchableOpacity` for buttons
+- Use `Ionicons` from `@expo/vector-icons` for icons
+- Use `useCallback` for functions passed to children
+- Use `useMemo` for expensive calculations
+- Bottom sheets: Use `Modal` with custom slide animation
+
+#### Adding New API Endpoints
+
+1. **Backend:** Add endpoint to `backend/app/main.py`
+   - For mobile-only: use `/internal-api/` prefix
+   - For shared: use existing patterns
+
+2. **Mobile API client:** Update `mobile/lib/api.ts`
+   - Add types for request/response
+   - Add method to appropriate namespace
+
+3. **Example:**
+```typescript
+// In api.ts
+interface NewFeatureData { /* ... */ }
+
+// In the Api class:
+newFeature = {
+  list: () => this.request<NewFeatureData[]>('/internal-api/new-feature'),
+  create: (data: CreateInput) =>
+    this.request<NewFeatureData>('/internal-api/new-feature', {
+      method: 'POST',
+      body: data,
+    }),
+};
+```
+
+#### Gamification Integration
+
+**Awarding XP:**
+Backend automatically awards XP for actions:
+- `expense_logged`: 5 XP
+- `income_logged`: 5 XP
+- `saving_deposit`: 10 XP
+- `loan_payment`: 10 XP
+- `loan_overpayment`: 20 XP
+- `daily_checkin`: 10 XP
+- `streak_continued`: 5 XP bonus
+
+**Showing celebrations:**
+```typescript
+import { useGamificationStore } from '@/stores/gamification';
+
+// In component:
+const addCelebration = useGamificationStore(s => s.addCelebration);
+
+// After action:
+addCelebration({
+  type: 'xp_reward',
+  xpEarned: 20,
+  title: 'Świetna robota!',
+  message: 'Zdobyłeś punkty!',
+});
+```
+
+#### Building & Deployment
+
+**Development build:**
+```bash
+npx expo run:ios        # Native iOS build
+npx expo run:android    # Native Android build
+```
+
+**Production build (EAS):**
+```bash
+npx eas build --platform ios
+npx eas build --platform android
+```
+
+**Preview/Testing:**
+- Use Expo Go app for quick testing
+- Use development builds for native features
+- Test on both iOS and Android
+
+#### Troubleshooting
+
+**"JSON Parse error: Unexpected character: <"**
+- API returning HTML instead of JSON
+- Check endpoint prefix (`/internal-api/` vs `/`)
+- Verify backend has the endpoint
+
+**Authentication issues:**
+- Check token in expo-secure-store
+- Verify JWT_SECRET matches between mobile config and backend
+- Check token expiration
+
+**Metro bundler issues:**
+```bash
+npx expo start --clear   # Clear cache and restart
+```
 
 ### Mobile Loans Feature
-- 5th tab "Kredyty" between Wydatki and Fire
-- List view with summary card (total balance, monthly payments)
-- Add loan form via Bottom Sheet with 10 loan types
-- Loan detail screen with payment schedule and overpayment support
-- Gamification: +20 XP for overpayments, celebration modal on loan payoff
-- Backend endpoints: `/internal-api/loans` (list, create, get, archive)
+
+#### Screens
+- **List (`loans.tsx`):** Summary card + loan cards with progress
+- **Detail (`loans/[id].tsx`):** Full details, payment schedule, overpayment
+
+#### Loan Types (10)
+| Type | Label | Icon |
+|------|-------|------|
+| `mortgage` | Kredyt hipoteczny | `home-outline` |
+| `car` | Kredyt samochodowy | `car-outline` |
+| `personal` | Kredyt gotówkowy | `cash-outline` |
+| `student` | Kredyt studencki | `school-outline` |
+| `credit_card` | Karta kredytowa | `card-outline` |
+| `cash_loan` | Pożyczka | `hand-left-outline` |
+| `installment` | Raty 0% | `cart-outline` |
+| `leasing` | Leasing | `document-text-outline` |
+| `overdraft` | Debet | `wallet-outline` |
+| `other` | Inny | `ellipse-outline` |
+
+#### Backend Endpoints
+- `GET /internal-api/loans` - List all loans
+- `POST /internal-api/loans` - Create new loan
+- `GET /internal-api/loans/{id}` - Get single loan
+- `POST /internal-api/loans/{id}/archive` - Archive paid-off loan
+- `POST /users/{email}/loans/{id}/payments` - Create payment (shared)
 
 ## Skills
 
