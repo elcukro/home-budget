@@ -10,9 +10,10 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
-  Image,
+  Pressable,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/hooks/useApi';
@@ -164,15 +165,20 @@ export default function IncomeListScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer} edges={['top']}>
         <Stack.Screen
           options={{
+            headerShown: true,
             title: 'Przychody',
-            headerRight: () => null,
+            headerLeft: () => (
+              <Pressable onPress={() => router.back()} style={styles.headerButton}>
+                <Ionicons name="arrow-back" size={24} color="#1f2937" />
+              </Pressable>
+            ),
           }}
         />
         <ActivityIndicator size="large" color="#22c55e" />
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -180,7 +186,13 @@ export default function IncomeListScreen() {
     <>
       <Stack.Screen
         options={{
+          headerShown: true,
           title: 'Przychody',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} style={styles.headerButton}>
+              <Ionicons name="arrow-back" size={24} color="#1f2937" />
+            </Pressable>
+          ),
           headerRight: () => (
             <TouchableOpacity
               onPress={() => setShowAddSheet(true)}
