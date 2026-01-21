@@ -787,6 +787,90 @@ def delete_loan_payment(
     return {"message": "Payment deleted and balance restored"}
 
 
+# Mobile API - Loan endpoints with /internal-api prefix (bypasses Next.js routing)
+@app.get("/internal-api/loans", response_model=List[Loan])
+def get_loans_internal(
+    include_archived: bool = False,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get all loans for the authenticated user (mobile API)."""
+    query = db.query(models.Loan).filter(models.Loan.user_id == current_user.id)
+    if not include_archived:
+        query = query.filter(
+            (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
+        )
+    loans = query.all()
+    return loans
+
+
+@app.post("/internal-api/loans", response_model=Loan)
+def create_loan_internal(
+    loan: LoanCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Create a new loan for the authenticated user (mobile API)."""
+    can_add, message = SubscriptionService.can_add_loan(current_user.id, db)
+    if not can_add:
+        raise HTTPException(status_code=403, detail=message)
+
+    db_loan = models.Loan(
+        user_id=current_user.id,
+        loan_type=loan.loan_type,
+        description=loan.description,
+        principal_amount=loan.principal_amount,
+        remaining_balance=loan.remaining_balance,
+        interest_rate=loan.interest_rate,
+        monthly_payment=loan.monthly_payment,
+        start_date=loan.start_date,
+        term_months=loan.term_months,
+        due_day=loan.due_day if hasattr(loan, 'due_day') else 1
+    )
+    db.add(db_loan)
+    db.commit()
+    db.refresh(db_loan)
+    return db_loan
+
+
+@app.get("/internal-api/loans/{loan_id}", response_model=Loan)
+def get_loan_internal(
+    loan_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Get a specific loan by ID (mobile API)."""
+    loan = db.query(models.Loan).filter(
+        models.Loan.id == loan_id,
+        models.Loan.user_id == current_user.id
+    ).first()
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    return loan
+
+
+@app.post("/internal-api/loans/{loan_id}/archive")
+def archive_loan_internal(
+    loan_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """Archive a paid-off loan (mobile API)."""
+    loan = db.query(models.Loan).filter(
+        models.Loan.id == loan_id,
+        models.Loan.user_id == current_user.id
+    ).first()
+    if not loan:
+        raise HTTPException(status_code=404, detail="Loan not found")
+
+    if loan.remaining_balance > 0:
+        raise HTTPException(status_code=400, detail="Only paid-off loans can be archived")
+
+    loan.is_archived = True
+    db.commit()
+    return {"success": True, "message": "Loan archived successfully"}
+
+
 # Expense endpoints
 @app.get("/users/{user_id}/expenses", response_model=List[Expense])
 def get_user_expenses(
