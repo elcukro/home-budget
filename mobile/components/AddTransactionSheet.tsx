@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,13 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useApi } from '@/hooks/useApi';
 import { useAuthStore } from '@/stores/auth';
+import { INCOME_CATEGORIES, CATEGORIES, type CategoryConfig } from '@/constants/categories';
 
-interface Category {
-  id: number;
-  name: string;
-  icon: string | null;
-  color: string | null;
-  type: 'income' | 'expense';
+interface CategoryOption {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+  backgroundColor: string;
 }
 
 interface AddTransactionSheetProps {
@@ -29,6 +30,39 @@ interface AddTransactionSheetProps {
   onClose: () => void;
   onSuccess: () => void;
   initialType?: 'income' | 'expense';
+}
+
+// Build category options from constants
+function buildCategoryOptions(type: 'income' | 'expense'): CategoryOption[] {
+  if (type === 'income') {
+    return Object.entries(INCOME_CATEGORIES).map(([key, config]) => ({
+      key,
+      label: config.label,
+      icon: config.icon,
+      color: config.textColor,
+      backgroundColor: config.backgroundColor,
+    }));
+  }
+
+  // For expenses, use main expense categories
+  const expenseKeys = [
+    'housing', 'utilities', 'groceries', 'food', 'transport',
+    'entertainment', 'subscriptions', 'healthcare', 'education',
+    'clothing', 'personal', 'kids', 'pets', 'insurance', 'other'
+  ];
+
+  return expenseKeys
+    .filter(key => CATEGORIES[key])
+    .map(key => {
+      const config = CATEGORIES[key];
+      return {
+        key,
+        label: config.label,
+        icon: config.icon,
+        color: config.textColor,
+        backgroundColor: config.backgroundColor,
+      };
+    });
 }
 
 export default function AddTransactionSheet({
@@ -43,71 +77,38 @@ export default function AddTransactionSheet({
 
   const [type, setType] = useState<'income' | 'expense'>(initialType);
   const [amount, setAmount] = useState('');
-  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [date, setDate] = useState(new Date());
   const [description, setDescription] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock categories for dev mode
-  const MOCK_CATEGORIES: Category[] = [
-    { id: 1, name: 'Wynagrodzenie', icon: 'cash', color: '#22c55e', type: 'income' },
-    { id: 2, name: 'Freelance', icon: 'laptop', color: '#3b82f6', type: 'income' },
-    { id: 3, name: 'Inwestycje', icon: 'trending-up', color: '#8b5cf6', type: 'income' },
-    { id: 4, name: 'Mieszkanie', icon: 'home', color: '#f97316', type: 'expense' },
-    { id: 5, name: 'Jedzenie', icon: 'restaurant', color: '#ef4444', type: 'expense' },
-    { id: 6, name: 'Transport', icon: 'car', color: '#06b6d4', type: 'expense' },
-    { id: 7, name: 'Rozrywka', icon: 'film', color: '#ec4899', type: 'expense' },
-    { id: 8, name: 'Zakupy', icon: 'cart', color: '#f59e0b', type: 'expense' },
-    { id: 9, name: 'Zdrowie', icon: 'medkit', color: '#10b981', type: 'expense' },
-    { id: 10, name: 'Inne', icon: 'ellipsis-horizontal', color: '#6b7280', type: 'expense' },
-  ];
-
-  const fetchCategories = useCallback(async () => {
-    if (!user?.email || !api) return;
-
-    if (isDevMode) {
-      setCategories(MOCK_CATEGORIES);
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      const data = await api.categories.list(user.email);
-      setCategories(data);
-    } catch (err) {
-      console.error('Failed to fetch categories:', err);
-      // Use mock categories as fallback
-      setCategories(MOCK_CATEGORIES);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.email, api, isDevMode]);
+  // Get categories based on type
+  const categories = useMemo(() => buildCategoryOptions(type), [type]);
 
   useEffect(() => {
     if (visible) {
-      fetchCategories();
       // Reset form when opening
       setType(initialType);
       setAmount('');
-      setCategoryId(null);
+      setSelectedCategory(null);
       setDate(new Date());
       setDescription('');
       setError(null);
     }
-  }, [visible, fetchCategories, initialType]);
+  }, [visible, initialType]);
 
-  const filteredCategories = categories.filter((cat) => cat.type === type);
+  // Reset selected category when type changes
+  useEffect(() => {
+    setSelectedCategory(null);
+  }, [type]);
 
   const handleSubmit = async () => {
     // Validation
     const numericAmount = parseFloat(amount.replace(',', '.'));
     if (!amount || isNaN(numericAmount) || numericAmount <= 0) {
-      setError('Podaj prawidłową kwotę');
+      setError('Podaj prawidlowa kwote');
       return;
     }
 
@@ -121,22 +122,23 @@ export default function AddTransactionSheet({
 
     try {
       if (!isDevMode) {
-        // Get category name from selected category
-        const selectedCategory = categories.find(c => c.id === categoryId);
-        const categoryName = selectedCategory?.name || 'other';
+        // Use the category key directly (e.g., 'salary', 'housing')
+        const categoryKey = selectedCategory || 'other';
+        const categoryConfig = categories.find(c => c.key === categoryKey);
+        const descriptionText = description || categoryConfig?.label || categoryKey;
 
         if (type === 'income') {
           await api.income.create(user.email, {
-            category: categoryName,
-            description: description || categoryName,
+            category: categoryKey,
+            description: descriptionText,
             amount: numericAmount,
             is_recurring: false,
             date: date.toISOString().split('T')[0],
           });
         } else {
           await api.expenses.create(user.email, {
-            category: categoryName,
-            description: description || categoryName,
+            category: categoryKey,
+            description: descriptionText,
             amount: numericAmount,
             is_recurring: false,
             date: date.toISOString().split('T')[0],
@@ -185,7 +187,7 @@ export default function AddTransactionSheet({
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={24} color="#6b7280" />
           </TouchableOpacity>
-          <Text style={styles.title}>Dodaj transakcję</Text>
+          <Text style={styles.title}>Dodaj transakcje</Text>
           <View style={styles.closeButton} />
         </View>
 
@@ -231,7 +233,7 @@ export default function AddTransactionSheet({
                   type === 'income' && styles.typeButtonTextActive,
                 ]}
               >
-                Przychód
+                Przychod
               </Text>
             </TouchableOpacity>
           </View>
@@ -256,37 +258,38 @@ export default function AddTransactionSheet({
           {/* Category Selector */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Kategoria</Text>
-            {isLoading ? (
-              <ActivityIndicator size="small" color="#f97316" />
-            ) : (
-              <View style={styles.categoriesGrid}>
-                {filteredCategories.map((cat) => (
-                  <TouchableOpacity
-                    key={cat.id}
+            <View style={styles.categoriesGrid}>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat.key}
+                  style={[
+                    styles.categoryChip,
+                    selectedCategory === cat.key && styles.categoryChipSelected,
+                    selectedCategory === cat.key && {
+                      borderColor: cat.color,
+                      backgroundColor: cat.backgroundColor,
+                    },
+                  ]}
+                  onPress={() => setSelectedCategory(
+                    cat.key === selectedCategory ? null : cat.key
+                  )}
+                >
+                  <Ionicons
+                    name={cat.icon as any}
+                    size={16}
+                    color={selectedCategory === cat.key ? cat.color : '#6b7280'}
+                  />
+                  <Text
                     style={[
-                      styles.categoryChip,
-                      categoryId === cat.id && styles.categoryChipSelected,
-                      categoryId === cat.id && { borderColor: cat.color || '#f97316' },
+                      styles.categoryChipText,
+                      selectedCategory === cat.key && { color: cat.color },
                     ]}
-                    onPress={() => setCategoryId(cat.id === categoryId ? null : cat.id)}
                   >
-                    <Ionicons
-                      name={(cat.icon || 'help-circle') as any}
-                      size={16}
-                      color={categoryId === cat.id ? cat.color || '#f97316' : '#6b7280'}
-                    />
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        categoryId === cat.id && { color: cat.color || '#f97316' },
-                      ]}
-                    >
-                      {cat.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* Date Picker */}
@@ -348,7 +351,7 @@ export default function AddTransactionSheet({
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                <Text style={styles.submitButtonText}>Zapisz transakcję</Text>
+                <Text style={styles.submitButtonText}>Zapisz transakcje</Text>
               </>
             )}
           </TouchableOpacity>
