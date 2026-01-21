@@ -121,21 +121,34 @@ export default function AddTransactionSheet({
 
     try {
       if (!isDevMode) {
-        await api.transactions.create(user.email, {
-          amount: numericAmount,
-          currency: 'PLN',
-          category_id: categoryId || undefined,
-          date: date.toISOString().split('T')[0],
-          description: description || undefined,
-          type,
-        });
+        // Get category name from selected category
+        const selectedCategory = categories.find(c => c.id === categoryId);
+        const categoryName = selectedCategory?.name || 'other';
+
+        if (type === 'income') {
+          await api.income.create(user.email, {
+            category: categoryName,
+            description: description || categoryName,
+            amount: numericAmount,
+            is_recurring: false,
+            date: date.toISOString().split('T')[0],
+          });
+        } else {
+          await api.expenses.create(user.email, {
+            category: categoryName,
+            description: description || categoryName,
+            amount: numericAmount,
+            is_recurring: false,
+            date: date.toISOString().split('T')[0],
+          });
+        }
       }
 
       onSuccess();
       onClose();
     } catch (err) {
       console.error('Failed to create transaction:', err);
-      setError('Nie udało się zapisać transakcji');
+      setError('Nie udalo sie zapisac transakcji');
     } finally {
       setIsSaving(false);
     }

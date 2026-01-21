@@ -491,6 +491,33 @@ export class ApiClient {
         method: 'POST',
         body: data,
       }),
+
+    update: (userId: string, incomeId: number, data: {
+      category?: string;
+      description?: string;
+      amount?: number;
+      is_recurring?: boolean;
+      date?: string;
+      end_date?: string | null;
+    }) =>
+      this.request<{
+        id: number;
+        category: string;
+        description: string;
+        amount: number;
+        is_recurring: boolean;
+        date: string;
+        end_date: string | null;
+        source: string;
+      }>(`/users/${userId}/income/${incomeId}`, {
+        method: 'PUT',
+        body: data,
+      }),
+
+    delete: (userId: string, incomeId: number) =>
+      this.request<void>(`/users/${userId}/income/${incomeId}`, {
+        method: 'DELETE',
+      }),
   };
 
   // ============== Savings ==============

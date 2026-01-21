@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { LevelProgressBar } from '@/components/LevelProgress';
 import { BadgeRow, ProgressBadge } from '@/components/AchievementBadge';
 import CelebrationModal from '@/components/CelebrationModal';
 import ForYouSection from '@/components/ForYouSection';
+import AddTransactionSheet from '@/components/AddTransactionSheet';
 import {
   useGamificationStore,
   usePendingCelebration,
@@ -81,12 +82,15 @@ interface DeltaValues {
 }
 
 export default function DashboardScreen() {
+  const router = useRouter();
   const { user, token } = useAuthStore();
   const api = useApi();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
 
   // Gamification state - use stable selectors
   const fetchOverview = useGamificationStore((s) => s.fetchOverview);
@@ -249,6 +253,15 @@ export default function DashboardScreen() {
     return `${(value * 100).toFixed(1)}%`;
   };
 
+  const handleOpenAddTransaction = useCallback((type: 'income' | 'expense') => {
+    setTransactionType(type);
+    setShowAddTransaction(true);
+  }, []);
+
+  const handleTransactionSuccess = useCallback(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
   // Determine mascot mood based on user progress
   const mascotMood: MascotMood = useMemo(() => {
     // Celebrating - when there's a pending celebration
@@ -302,6 +315,14 @@ export default function DashboardScreen() {
         onDismiss={dismissCelebration}
       />
 
+      {/* Add Transaction Sheet */}
+      <AddTransactionSheet
+        visible={showAddTransaction}
+        onClose={() => setShowAddTransaction(false)}
+        onSuccess={handleTransactionSuccess}
+        initialType={transactionType}
+      />
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -347,7 +368,11 @@ export default function DashboardScreen() {
             <Text style={styles.sectionTitle}>Podsumowanie miesiąca</Text>
             <View style={styles.metricsGrid}>
               <View style={styles.metricRow}>
-                <View style={styles.metricItem}>
+                <TouchableOpacity
+                  style={styles.metricItem}
+                  onPress={() => router.push('/income')}
+                  activeOpacity={0.7}
+                >
                   <MetricCard
                     title="Przychody"
                     value={formatCurrency(summary?.total_monthly_income || 0)}
@@ -358,7 +383,7 @@ export default function DashboardScreen() {
                     trend="positive"
                     compact
                   />
-                </View>
+                </TouchableOpacity>
                 <View style={styles.metricItem}>
                   <MetricCard
                     title="Wydatki"
@@ -566,13 +591,19 @@ export default function DashboardScreen() {
           <View style={styles.quickActions}>
             <Text style={styles.sectionTitle}>Szybkie akcje</Text>
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={[styles.actionButton, styles.expenseButton]}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.expenseButton]}
+                onPress={() => handleOpenAddTransaction('expense')}
+              >
                 <Ionicons name="remove-circle-outline" size={24} color="#ef4444" />
                 <Text style={styles.actionButtonLabel}>Dodaj wydatek</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.actionButton, styles.incomeButton]}>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.incomeButton]}
+                onPress={() => handleOpenAddTransaction('income')}
+              >
                 <Ionicons name="add-circle-outline" size={24} color="#22c55e" />
-                <Text style={styles.actionButtonLabel}>Dodaj przychód</Text>
+                <Text style={styles.actionButtonLabel}>Dodaj przychod</Text>
               </TouchableOpacity>
             </View>
           </View>

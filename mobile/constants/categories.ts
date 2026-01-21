@@ -213,10 +213,58 @@ export const CATEGORIES: Record<string, CategoryConfig> = {
 };
 
 /**
+ * Income category configuration
+ */
+export const INCOME_CATEGORIES: Record<string, CategoryConfig> = {
+  salary: {
+    emoji: '💼',
+    icon: 'briefcase-outline',
+    backgroundColor: '#dcfce7',
+    textColor: '#22c55e',
+    label: 'Wynagrodzenie',
+  },
+  freelance: {
+    emoji: '💻',
+    icon: 'laptop-outline',
+    backgroundColor: '#dbeafe',
+    textColor: '#3b82f6',
+    label: 'Freelance',
+  },
+  investments: {
+    emoji: '📈',
+    icon: 'trending-up-outline',
+    backgroundColor: '#f3e8ff',
+    textColor: '#8b5cf6',
+    label: 'Inwestycje',
+  },
+  rental: {
+    emoji: '🏠',
+    icon: 'home-outline',
+    backgroundColor: '#ffedd5',
+    textColor: '#f97316',
+    label: 'Wynajem',
+  },
+  other: {
+    emoji: '💰',
+    icon: 'cash-outline',
+    backgroundColor: '#f3f4f6',
+    textColor: '#6b7280',
+    label: 'Inne',
+  },
+};
+
+/**
  * Get category configuration, with fallback to default
  */
 export function getCategoryConfig(category: string): CategoryConfig {
   return CATEGORIES[category] || CATEGORIES.default;
+}
+
+/**
+ * Get income category configuration, with fallback to 'other'
+ */
+export function getIncomeCategoryConfig(category: string): CategoryConfig {
+  return INCOME_CATEGORIES[category] || INCOME_CATEGORIES.other;
 }
 
 /**
