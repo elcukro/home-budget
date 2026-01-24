@@ -204,7 +204,7 @@ Based on competitor failures, here's what FiredUp should prioritize:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Biometric Auth | ✅ | expo-secure-store |
+| Biometric Auth | ✅ | expo-local-authentication (Face ID/Touch ID) |
 | Standard Terminology | ✅ | Budget, Income, Expenses |
 | Onboarding Flow | ✅ | Multi-screen wizard |
 | Gamification | ✅ | XP, badges, streaks (unique differentiator!) |

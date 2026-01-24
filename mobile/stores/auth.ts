@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { initializeApiClient, getApiClient } from '@/lib/api';
+import { BiometricAuth } from '@/utils/biometric';
 
 // Dynamically import GoogleSignin to avoid crash in Expo Go
 let GoogleSignin: any = null;
@@ -25,12 +26,15 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  biometricEnabled: boolean;
 
   // Actions
   initialize: () => Promise<void>;
   signInWithGoogle: (idToken: string, photoUrl?: string | null) => Promise<void>;
+  signInWithBiometric: () => Promise<boolean>;
   devLogin: () => Promise<void>;
   signOut: () => Promise<void>;
+  setBiometricEnabled: (enabled: boolean) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -38,12 +42,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   isLoading: true,
   isAuthenticated: false,
+  biometricEnabled: false,
 
   initialize: async () => {
     try {
       // Load stored token and user
       const token = await SecureStore.getItemAsync(TOKEN_KEY);
       const userJson = await SecureStore.getItemAsync(USER_KEY);
+      const biometricEnabled = await BiometricAuth.isEnabled();
 
       if (token && userJson) {
         let user = JSON.parse(userJson) as User;
@@ -74,6 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           user,
           isAuthenticated: true,
           isLoading: false,
+          biometricEnabled,
         });
       } else {
         // Initialize API client without token (for login endpoint)
@@ -82,7 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           () => {}
         );
 
-        set({ isLoading: false });
+        set({ isLoading: false, biometricEnabled: false });
       }
     } catch (error) {
       console.error('Failed to initialize auth:', error);
@@ -171,16 +178,79 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  signInWithBiometric: async () => {
+    try {
+      // First check if we have stored credentials
+      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+      const userJson = await SecureStore.getItemAsync(USER_KEY);
+      
+      if (!token || !userJson) {
+        return false;
+      }
+
+      // Authenticate with biometrics
+      const result = await BiometricAuth.authenticateForLogin();
+      
+      if (!result.success) {
+        console.log('Biometric auth failed:', result.error);
+        return false;
+      }
+
+      // If successful, restore the session
+      const user = JSON.parse(userJson) as User;
+      
+      // Initialize API client
+      initializeApiClient(
+        async () => token,
+        () => get().signOut()
+      );
+
+      set({
+        token,
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Biometric sign in failed:', error);
+      return false;
+    }
+  },
+
+  setBiometricEnabled: async (enabled: boolean) => {
+    try {
+      if (enabled) {
+        // Check if biometric is available before enabling
+        const isAvailable = await BiometricAuth.isAvailable();
+        if (!isAvailable) {
+          throw new Error('Biometric authentication not available on this device');
+        }
+      }
+      
+      await BiometricAuth.setEnabled(enabled);
+      set({ biometricEnabled: enabled });
+    } catch (error) {
+      console.error('Failed to set biometric preference:', error);
+      throw error;
+    }
+  },
+
   signOut: async () => {
     try {
       // Clear stored credentials
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       await SecureStore.deleteItemAsync(USER_KEY);
+      
+      // Also disable biometric on sign out
+      await BiometricAuth.setEnabled(false);
 
       set({
         token: null,
         user: null,
         isAuthenticated: false,
+        biometricEnabled: false,
       });
     } catch (error) {
       console.error('Sign out failed:', error);

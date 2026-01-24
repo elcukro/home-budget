@@ -18,6 +18,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/hooks/useApi';
+import { BiometricAuth } from '@/utils/biometric';
+import { Switch } from 'react-native';
 
 // ============== Types ==============
 
@@ -231,7 +233,7 @@ function PickerModal({
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { user, token, signOut } = useAuthStore();
+  const { user, token, signOut, biometricEnabled, setBiometricEnabled } = useAuthStore();
   const api = useApi();
 
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -239,6 +241,8 @@ export default function SettingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<string | null>(null);
 
   // Picker modals
   const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -294,6 +298,34 @@ export default function SettingsScreen() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Check biometric availability
+  useEffect(() => {
+    const checkBiometric = async () => {
+      const isAvailable = await BiometricAuth.isAvailable();
+      const type = await BiometricAuth.getBiometricType();
+      setBiometricAvailable(isAvailable);
+      setBiometricType(type);
+    };
+    checkBiometric();
+  }, []);
+
+  // Handle biometric toggle
+  const handleBiometricToggle = async (value: boolean) => {
+    try {
+      if (value) {
+        // Test biometric before enabling
+        const result = await BiometricAuth.authenticate('Włącz szybkie logowanie');
+        if (!result.success) {
+          Alert.alert('Błąd', result.error || 'Nie udało się włączyć biometrii');
+          return;
+        }
+      }
+      await setBiometricEnabled(value);
+    } catch (error) {
+      Alert.alert('Błąd', 'Nie udało się zmienić ustawienia');
+    }
+  };
 
   // Update settings
   const updateSetting = async <K extends keyof UserSettings>(
@@ -452,6 +484,27 @@ export default function SettingsScreen() {
           />
         </View>
       </View>
+
+      {/* Security Section */}
+      {biometricAvailable && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Bezpieczeństwo</Text>
+          <View style={styles.sectionContent}>
+            <SettingRow
+              icon={biometricType === 'FaceID' ? 'scan-outline' : 'finger-print'}
+              label={`Logowanie przez ${biometricType === 'FaceID' ? 'Face ID' : biometricType === 'TouchID' ? 'Touch ID' : 'biometrię'}`}
+            >
+              <Switch
+                value={biometricEnabled}
+                onValueChange={handleBiometricToggle}
+                trackColor={{ false: '#d1d5db', true: '#f97316' }}
+                thumbColor="#fff"
+                ios_backgroundColor="#d1d5db"
+              />
+            </SettingRow>
+          </View>
+        </View>
+      )}
 
       {/* Preferences Section */}
       <View style={styles.section}>

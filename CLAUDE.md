@@ -131,7 +131,8 @@ mobile/
 │   ├── gamification.ts   # XP, badges, celebrations
 │   └── onboarding.ts     # Onboarding state
 ├── constants/            # App constants
-├── utils/                # Utility functions
+├── utils/
+│   └── biometric.ts     # Face ID / Touch ID authentication
 └── assets/               # Images, fonts, icons
 ```
 
@@ -157,6 +158,39 @@ npx tsc --noEmit         # Check for TypeScript errors
 npx expo-doctor          # Check for configuration issues
 ```
 
+#### Biometric Authentication (Face ID / Touch ID)
+
+**Package:** `expo-local-authentication`
+
+**How it works:**
+1. User logs in via Google Sign-In (first time)
+2. User enables biometric login in Settings → "Bezpieczeństwo"
+3. System verifies biometric capability before enabling
+4. On next app launch, Face ID/Touch ID prompt appears automatically
+5. Successful scan restores the session from secure storage
+
+**Key files:**
+- `utils/biometric.ts` - BiometricAuth utility class
+- `stores/auth.ts` - `signInWithBiometric()`, `setBiometricEnabled()`
+- `app/index.tsx` - Auto-prompt on app launch
+- `app/(tabs)/settings.tsx` - Toggle switch in Security section
+
+**BiometricAuth API:**
+```typescript
+BiometricAuth.isAvailable()           // Check if device supports biometrics
+BiometricAuth.getBiometricType()      // Returns 'FaceID' | 'TouchID' | 'Biometric'
+BiometricAuth.isEnabled()             // Check if user enabled biometric login
+BiometricAuth.setEnabled(bool)        // Enable/disable biometric login
+BiometricAuth.authenticate(reason)    // Show biometric prompt
+BiometricAuth.authenticateForLogin()  // Prompt with "Login to FiredUp" message
+```
+
+**Security notes:**
+- JWT token stored in `expo-secure-store` (encrypted)
+- Biometric only unlocks access to stored token
+- On sign out, biometric preference is cleared
+- iOS requires `NSFaceIDUsageDescription` in Info.plist (already configured)
+
 #### API Integration
 
 **Base URL:** Production API at `https://firedup.app`
@@ -164,6 +198,7 @@ npx expo-doctor          # Check for configuration issues
 **Authentication:**
 - Google Sign-In → exchange Google token for app JWT
 - JWT stored in expo-secure-store
+- Biometric login (Face ID/Touch ID) for returning users
 - All API requests include `Authorization: Bearer <token>` header
 
 **API Client Location:** `mobile/lib/api.ts`
@@ -194,7 +229,11 @@ api.gamification.checkin()             // Daily check-in
 - `user` - Current user data
 - `token` - JWT token
 - `isAuthenticated` - Auth status
-- `login()` / `logout()` - Auth actions
+- `biometricEnabled` - Whether biometric login is enabled
+- `signInWithGoogle()` - Google OAuth login
+- `signInWithBiometric()` - Face ID/Touch ID login
+- `setBiometricEnabled()` - Enable/disable biometric
+- `signOut()` - Logout (also clears biometric preference)
 
 **Gamification Store (`stores/gamification.ts`):**
 - `stats` - XP, level, streaks
@@ -331,10 +370,18 @@ npx eas build --platform android
 
 **Preview/Testing:**
 - Use Expo Go app for quick testing
-- Use development builds for native features
+- Use development builds for native features (required for biometrics)
 - Test on both iOS and Android
 
+**iOS Permissions (Info.plist):**
+- `NSFaceIDUsageDescription` - Required for Face ID (already configured)
+
 #### Troubleshooting
+
+**Face ID not working in Simulator:**
+- Enable Face ID: Features → Face ID → Enrolled
+- Trigger successful scan: Features → Face ID → Matching Face
+- Trigger failed scan: Features → Face ID → Non-matching Face
 
 **"JSON Parse error: Unexpected character: <"**
 - API returning HTML instead of JSON
