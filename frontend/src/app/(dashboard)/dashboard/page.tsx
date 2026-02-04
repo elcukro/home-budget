@@ -611,8 +611,8 @@ export default function Home() {
         <section className="space-y-4">
           <SectionHeader
             icon={<PiggyBank className="h-5 w-5" />}
-            title={intl.formatMessage({ id: 'dashboard.sections.savings.title', defaultMessage: 'Savings Goals' })}
-            description={intl.formatMessage({ id: 'dashboard.sections.savings.description', defaultMessage: 'Track your progress toward financial goals' })}
+            title={intl.formatMessage({ id: 'dashboard.sections.savings.title' })}
+            description={intl.formatMessage({ id: 'dashboard.sections.savings.description' })}
           />
           {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -620,7 +620,7 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-1">
                 <Wallet className="h-4 w-4 text-emerald-600" />
                 <span className="text-sm text-emerald-700">
-                  {intl.formatMessage({ id: 'dashboard.savings.totalBalance', defaultMessage: 'Total Savings' })}
+                  {intl.formatMessage({ id: 'dashboard.savings.totalBalance' })}
                 </span>
               </div>
               <p className="text-2xl font-bold text-emerald-800">
@@ -631,7 +631,7 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-1">
                 <TrendingUp className="h-4 w-4 text-sky-600" />
                 <span className="text-sm text-sky-700">
-                  {intl.formatMessage({ id: 'dashboard.savings.monthlySavings', defaultMessage: 'This Month' })}
+                  {intl.formatMessage({ id: 'dashboard.savings.monthlySavings' })}
                 </span>
               </div>
               <p className={`text-2xl font-bold ${dashboardData.savings.monthlySavings >= 0 ? 'text-sky-800' : 'text-rose-600'}`}>
