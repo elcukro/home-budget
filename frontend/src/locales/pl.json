@@ -513,6 +513,14 @@
       "target": "Cel",
       "deadline": "Termin",
       "monthlyNeeded": "Miesięcznie potrzeba",
+      "projectedCompletion": "Przewidywane ukończenie",
+      "status": {
+        "label": "Status",
+        "onTrack": "Na dobrej drodze",
+        "atRisk": "Zagrożony",
+        "overdue": "Po terminie",
+        "completed": "Ukończony"
+      },
       "statistics": {
         "overallProgress": "Łączny Postęp",
         "activeGoals": "Aktywne Cele",
@@ -520,7 +528,10 @@
         "completed": "Ukończone",
         "goalsReached": "osiągnięte cele",
         "avgProgress": "Śr. Postęp",
-        "perGoal": "na cel"
+        "perGoal": "na cel",
+        "atRiskGoals": "Zagrożone",
+        "overdueGoals": "Po terminie",
+        "needsAttention": "wymaga uwagi"
       }
     },
     "loans": {

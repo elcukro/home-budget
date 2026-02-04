@@ -15,7 +15,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { useEffect, useState, useMemo } from 'react';
-import { Target, TrendingUp, CheckCircle2, Clock } from 'lucide-react';
+import { Target, TrendingUp, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import { SavingsGoal, GoalStatus } from '@/types/financial-freedom';
 import Link from 'next/link';
 
@@ -43,6 +43,90 @@ interface GoalStats {
   totalCurrentAmount: number;
   overallProgress: number;
   averageProgress: number;
+  atRiskGoals: number;
+  overdueGoals: number;
+}
+
+// Helper function to check if a goal is overdue (deadline in the past and not completed)
+function isGoalOverdue(goal: SavingsGoal): boolean {
+  if (!goal.deadline || goal.status === GoalStatus.COMPLETED) return false;
+  const deadlineDate = new Date(goal.deadline);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return deadlineDate < today;
+}
+
+// Helper function to calculate projected completion date based on current pace
+function getProjectedCompletionDate(goal: SavingsGoal): Date | null {
+  // If already completed or no target/current amount, return null
+  if (goal.status === GoalStatus.COMPLETED || goal.target_amount <= 0) return null;
+  if (goal.current_amount >= goal.target_amount) return null;
+
+  // Calculate based on monthly_needed (if available) or estimate from progress
+  if (goal.monthly_needed && goal.monthly_needed > 0) {
+    const remainingMonths = goal.remaining_amount / goal.monthly_needed;
+    const projectedDate = new Date();
+    projectedDate.setMonth(projectedDate.getMonth() + Math.ceil(remainingMonths));
+    return projectedDate;
+  }
+
+  // If we don't have monthly_needed, we can't calculate projection
+  return null;
+}
+
+// Get status badge info for a goal
+function getGoalStatusInfo(goal: SavingsGoal, intl: ReturnType<typeof useIntl>): {
+  badge: 'on_track' | 'at_risk' | 'overdue' | 'completed' | null;
+  badgeColor: string;
+  badgeText: string;
+  projectedDate: Date | null;
+} | null {
+  // Edge case: 100%+ funded - treat as completed
+  if (goal.progress_percent >= 100 || goal.current_amount >= goal.target_amount) {
+    return {
+      badge: 'completed',
+      badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      badgeText: intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.completed' }),
+      projectedDate: null,
+    };
+  }
+
+  // Edge case: goal with $0 target - skip status display
+  if (goal.target_amount <= 0) {
+    return null;
+  }
+
+  // Check if overdue
+  if (isGoalOverdue(goal)) {
+    return {
+      badge: 'overdue',
+      badgeColor: 'bg-red-100 text-red-700 border-red-200',
+      badgeText: intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.overdue' }),
+      projectedDate: getProjectedCompletionDate(goal),
+    };
+  }
+
+  // Check if goal has deadline and on-track info
+  if (goal.deadline && goal.is_on_track !== null && goal.is_on_track !== undefined) {
+    if (goal.is_on_track) {
+      return {
+        badge: 'on_track',
+        badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        badgeText: intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.onTrack' }),
+        projectedDate: null,
+      };
+    } else {
+      return {
+        badge: 'at_risk',
+        badgeColor: 'bg-amber-100 text-amber-700 border-amber-200',
+        badgeText: intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.atRisk' }),
+        projectedDate: getProjectedCompletionDate(goal),
+      };
+    }
+  }
+
+  // No deadline - no status badge
+  return null;
 }
 
 const _statusColors: Record<GoalStatus, { bar: string; barLight: string }> = {
@@ -86,13 +170,21 @@ export default function SavingsGoalProgressChart({
   const stats: GoalStats = useMemo(() => {
     const active = goals.filter((g) => g.status === GoalStatus.ACTIVE);
     const completed = goals.filter((g) => g.status === GoalStatus.COMPLETED);
-    const totalTarget = goals.reduce((sum, g) => sum + g.target_amount, 0);
-    const totalCurrent = goals.reduce((sum, g) => sum + g.current_amount, 0);
+    // Filter out goals with $0 target to avoid division issues
+    const validGoals = goals.filter((g) => g.target_amount > 0);
+    const totalTarget = validGoals.reduce((sum, g) => sum + g.target_amount, 0);
+    const totalCurrent = validGoals.reduce((sum, g) => sum + g.current_amount, 0);
     const overallProgress = totalTarget > 0 ? (totalCurrent / totalTarget) * 100 : 0;
     const avgProgress =
-      goals.length > 0
-        ? goals.reduce((sum, g) => sum + g.progress_percent, 0) / goals.length
+      validGoals.length > 0
+        ? validGoals.reduce((sum, g) => sum + g.progress_percent, 0) / validGoals.length
         : 0;
+
+    // Count at-risk and overdue goals
+    const atRisk = active.filter(
+      (g) => g.deadline && g.is_on_track === false && !isGoalOverdue(g)
+    ).length;
+    const overdue = active.filter((g) => isGoalOverdue(g)).length;
 
     return {
       totalGoals: goals.length,
@@ -102,6 +194,8 @@ export default function SavingsGoalProgressChart({
       totalCurrentAmount: totalCurrent,
       overallProgress: Math.min(overallProgress, 100),
       averageProgress: Math.min(avgProgress, 100),
+      atRiskGoals: atRisk,
+      overdueGoals: overdue,
     };
   }, [goals]);
 
@@ -227,6 +321,24 @@ export default function SavingsGoalProgressChart({
                     id: 'dashboard.savingsGoalProgress.monthlyNeeded',
                   })}: ${formatCurrency(goal.monthly_needed)}`
                 );
+              }
+
+              // Add status info
+              const statusInfo = getGoalStatusInfo(goal, intl);
+              if (statusInfo) {
+                lines.push('');
+                lines.push(
+                  `${intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.label' })}: ${statusInfo.badgeText}`
+                );
+                // Add projected completion date for at-risk or overdue goals
+                if (statusInfo.projectedDate && (statusInfo.badge === 'at_risk' || statusInfo.badge === 'overdue')) {
+                  lines.push(
+                    `${intl.formatMessage({ id: 'dashboard.savingsGoalProgress.projectedCompletion' })}: ${intl.formatDate(statusInfo.projectedDate, {
+                      year: 'numeric',
+                      month: 'short',
+                    })}`
+                  );
+                }
               }
 
               return lines;
@@ -377,24 +489,44 @@ export default function SavingsGoalProgressChart({
           </p>
         </div>
 
-        <div className="bg-muted/50 rounded-lg p-3">
-          <div className="flex items-center gap-1 mb-1">
-            <Clock className="h-3.5 w-3.5 text-amber-600" />
+        {/* Show at-risk/overdue stat if any exist, otherwise show average progress */}
+        {(stats.atRiskGoals > 0 || stats.overdueGoals > 0) ? (
+          <div className={`rounded-lg p-3 ${stats.overdueGoals > 0 ? 'bg-red-50' : 'bg-amber-50'}`}>
+            <div className="flex items-center gap-1 mb-1">
+              <AlertTriangle className={`h-3.5 w-3.5 ${stats.overdueGoals > 0 ? 'text-red-600' : 'text-amber-600'}`} />
+              <p className={`text-xs ${stats.overdueGoals > 0 ? 'text-red-700' : 'text-amber-700'}`}>
+                {stats.overdueGoals > 0
+                  ? intl.formatMessage({ id: 'dashboard.savingsGoalProgress.statistics.overdueGoals' })
+                  : intl.formatMessage({ id: 'dashboard.savingsGoalProgress.statistics.atRiskGoals' })}
+              </p>
+            </div>
+            <p className={`text-lg font-semibold ${stats.overdueGoals > 0 ? 'text-red-700' : 'text-amber-700'}`}>
+              {stats.overdueGoals > 0 ? stats.overdueGoals : stats.atRiskGoals}
+            </p>
+            <p className={`text-xs ${stats.overdueGoals > 0 ? 'text-red-600' : 'text-amber-600'}`}>
+              {intl.formatMessage({ id: 'dashboard.savingsGoalProgress.statistics.needsAttention' })}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-muted/50 rounded-lg p-3">
+            <div className="flex items-center gap-1 mb-1">
+              <Clock className="h-3.5 w-3.5 text-amber-600" />
+              <p className="text-xs text-secondary">
+                {intl.formatMessage({
+                  id: 'dashboard.savingsGoalProgress.statistics.avgProgress',
+                })}
+              </p>
+            </div>
+            <p className="text-lg font-semibold text-primary">
+              {stats.averageProgress.toFixed(0)}%
+            </p>
             <p className="text-xs text-secondary">
               {intl.formatMessage({
-                id: 'dashboard.savingsGoalProgress.statistics.avgProgress',
+                id: 'dashboard.savingsGoalProgress.statistics.perGoal',
               })}
             </p>
           </div>
-          <p className="text-lg font-semibold text-primary">
-            {stats.averageProgress.toFixed(0)}%
-          </p>
-          <p className="text-xs text-secondary">
-            {intl.formatMessage({
-              id: 'dashboard.savingsGoalProgress.statistics.perGoal',
-            })}
-          </p>
-        </div>
+        )}
       </div>
     </div>
   );
