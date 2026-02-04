@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:  # Allow this workflow to be called by other workflows
 
 jobs:
   backend-tests:
@@ -63,8 +64,8 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      # Note: Lint step temporarily disabled due to ESLint 9 + Next.js 16 flat config compatibility issues
-      # TODO: Re-enable when eslint-config-next supports ESLint 9 flat config properly
+      - name: Lint
+        run: npm run lint
 
       - name: Run tests with coverage
         run: npm run test:coverage

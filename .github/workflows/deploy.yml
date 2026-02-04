@@ -1,0 +1,104 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  # Run tests first
+  test:
+    uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  # Deploy after tests pass
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to production
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: firedup.app
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            echo "=== Starting deployment ==="
+            echo "Commit: ${{ github.sha }}"
+
+            cd /opt/home-budget
+
+            # Ensure clean state before pull
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Deploy backend
+            echo "Deploying backend..."
+            cd /opt/home-budget/backend
+            source venv/bin/activate
+            pip install -r requirements.txt --quiet
+            sudo systemctl restart home-budget-backend
+
+            # Deploy frontend
+            echo "Deploying frontend..."
+            cd /opt/home-budget/frontend
+            npm ci --silent
+            npm run build
+            sudo systemctl restart home-budget-frontend
+
+            # Verify services are running
+            echo "Verifying services..."
+            sleep 5
+            systemctl is-active home-budget-backend || exit 1
+            systemctl is-active home-budget-frontend || exit 1
+
+            echo "=== Deployment complete ==="
+
+      - name: Notify on success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const message = `✅ **Deployment Successful**
+
+            **Commit:** ${context.sha.substring(0, 7)}
+            **Branch:** ${context.ref.replace('refs/heads/', '')}
+            **Author:** ${context.actor}
+            **URL:** https://firedup.app
+
+            [View Commit](https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${context.sha})`;
+
+            console.log(message);
+
+            // Create a deployment status
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'success',
+              context: 'deployment',
+              description: 'Deployed to production',
+              target_url: 'https://firedup.app'
+            });
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            console.log('❌ Deployment failed');
+
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'failure',
+              context: 'deployment',
+              description: 'Deployment failed'
+            });
