@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import { BabyStep } from '@/types/financial-freedom';
-import { CheckCircleIcon, PencilIcon, CheckIcon, XMarkIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useSettings } from '@/contexts/SettingsContext';
 import { logger } from '@/lib/logger';
 
@@ -14,7 +14,7 @@ interface BabyStepCardProps {
   currency: string;
 }
 
-export default function BabyStepCard({ step, onUpdate, formatCurrency, currency }: BabyStepCardProps) {
+export default function BabyStepCard({ step, onUpdate, formatCurrency, currency: _currency }: BabyStepCardProps) {
   // Access the settings context to get emergency_fund_months
   const { settings } = useSettings();
   const intl = useIntl();

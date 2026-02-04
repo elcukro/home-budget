@@ -27,7 +27,6 @@ import {
   Truck,
   Undo2,
   Wallet,
-  Bell,
   Clock,
 } from "lucide-react";
 
@@ -1612,7 +1611,7 @@ export default function LoansPage() {
                     {/* Payment status indicator */}
                     {(() => {
                       const status = getPaymentStatus(loan);
-                      const loanId = typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string);
+                      const _loanId = typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string);
                       if (status === "paid") {
                         return (
                           <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-700">

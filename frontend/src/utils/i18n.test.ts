@@ -1,11 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   SUPPORTED_LOCALES,
   DEFAULT_LOCALE,
   getInitialLocale,
   formatLocaleCurrency,
   formatLocaleDate,
-  type SupportedLocale,
 } from './i18n'
 
 describe('i18n constants', () => {

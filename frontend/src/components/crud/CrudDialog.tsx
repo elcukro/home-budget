@@ -102,7 +102,6 @@ export interface CrudDialogProps<TFormValues extends FieldValues> {
 
 export function CrudDialog<TFormValues extends FieldValues>({
   open,
-  mode,
   onOpenChange,
   titleId,
   descriptionId,
@@ -216,7 +215,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
                 key={fieldConfig.name}
                 control={form.control}
                 name={fieldConfig.name}
-                render={({ field, fieldState }) => (
+                render={({ field }) => (
                   <FormItem>
                     <FormLabel>
                       {intl.formatMessage({ id: fieldConfig.labelId })}

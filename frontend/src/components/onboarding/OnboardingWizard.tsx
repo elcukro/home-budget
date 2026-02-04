@@ -37,15 +37,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { useSettings } from '@/contexts/SettingsContext';
 import { cn } from '@/lib/utils';
 import { type AmountTone } from './common/AnimatedAmount';
@@ -815,7 +806,7 @@ const mergeIrregularExpenses = (
 const sumIrregularExpenses = (expenses: IrregularExpenses): number =>
   expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
 
-const expenseGroupTotals = (
+const _expenseGroupTotals = (
   expenses: OnboardingExpenses
 ): Array<{ key: ExpenseGroupKey; title: string; total: number }> =>
   EXPENSE_GROUPS.map((group) => ({
@@ -839,7 +830,7 @@ const getTotalTone = (total: number, monthlyIncome?: number): AmountTone => {
   return 'high';
 };
 
-const flattenTotals = (expenses: OnboardingExpenses) =>
+const _flattenTotals = (expenses: OnboardingExpenses) =>
   EXPENSE_GROUPS.map((group) => ({
     key: group.key,
     title: group.title,
@@ -849,7 +840,7 @@ const flattenTotals = (expenses: OnboardingExpenses) =>
     ),
   }));
 
-const flattenExpenseItems = flattenExpenses;
+const _flattenExpenseItems = flattenExpenses;
 export interface OnboardingData {
   life: {
     maritalStatus: 'single' | 'relationship' | 'married' | '';
@@ -1121,7 +1112,7 @@ const mergeOnboardingData = (
   };
 };
 
-const hasMeaningfulData = (data: OnboardingData): boolean => {
+const _hasMeaningfulData = (data: OnboardingData): boolean => {
   if (!data) return false;
 
   const { life, income, expenses, irregularExpenses, liabilities, assets, goals } = data;

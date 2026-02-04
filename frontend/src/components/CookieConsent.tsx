@@ -7,8 +7,6 @@ import { Cookie, X, Settings, Check } from 'lucide-react';
 
 const COOKIE_CONSENT_KEY = 'firedup-cookie-consent';
 
-type ConsentType = 'all' | 'necessary' | null;
-
 export default function CookieConsent() {
   const [isVisible, setIsVisible] = useState(false);
   const [showDetails, setShowDetails] = useState(false);

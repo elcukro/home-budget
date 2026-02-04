@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
-import { FormattedMessage, FormattedNumber, useIntl } from "react-intl";
+import { FormattedMessage, useIntl } from "react-intl";
 import {
   ArrowPathIcon,
   LightBulbIcon,
@@ -262,7 +262,7 @@ export default function BankTransactionsPage() {
       } else {
         throw new Error("Sync failed");
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: intl.formatMessage({ id: "bankTransactions.toast.syncError" }),
         variant: "destructive",
@@ -321,7 +321,7 @@ export default function BankTransactionsPage() {
       } else {
         throw new Error("Categorization failed");
       }
-    } catch (error) {
+    } catch (_error) {
       clearInterval(progressInterval);
       setCategorizing(false);
       toast({
@@ -455,7 +455,7 @@ export default function BankTransactionsPage() {
     return transactions.every((tx) => tx.confidence_score && tx.confidence_score > 0);
   }, [transactions]);
 
-  const uncategorizedCount = useMemo(() => {
+  const _uncategorizedCount = useMemo(() => {
     return transactions.filter((tx) => !tx.confidence_score || tx.confidence_score === 0).length;
   }, [transactions]);
 
@@ -547,7 +547,7 @@ export default function BankTransactionsPage() {
         setAddModalOpen(false);
         fetchData();
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: intl.formatMessage({ id: "bankTransactions.addToBudget.error" }),
         variant: "destructive",

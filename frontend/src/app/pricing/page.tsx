@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -73,7 +73,6 @@ const comparisonRows = [
 function PricingContent() {
   const intl = useIntl();
   const { toast } = useToast();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { subscription, isPremium, isTrial, trialDaysLeft, createCheckout } = useSubscription();
   const [loading, setLoading] = useState<string | null>(null);

@@ -99,7 +99,6 @@ export function BelkaTaxInfo({ className = '' }: { className?: string }) {
  * Info o uldze IKZE
  */
 export function IKZETaxBenefit({
-  rocznyDochod,
   className = ''
 }: {
   rocznyDochod?: number;

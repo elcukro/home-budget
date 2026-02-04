@@ -62,7 +62,7 @@ export default function FinancialFreedomPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<FinancialFreedomData | null>(null);
   const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
-  const [totalNonMortgageDebt, setTotalNonMortgageDebt] = useState<number>(0);
+  const [_totalNonMortgageDebt, setTotalNonMortgageDebt] = useState<number>(0);
   const [monthlyExpensesAmount, setMonthlyExpensesAmount] = useState<number>(8000);
   const [totalSavings, setTotalSavings] = useState<number>(0);
 

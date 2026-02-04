@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Flame, Target, Wallet, PiggyBank, Receipt } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Insight, InsightStatus, InsightsResponse } from '@/types/insights';
+import { Insight, InsightStatus } from '@/types/insights';
 import { EnhancedInsightsResponse, InsightsMetadata } from '@/types/cache';
 import { cn } from '@/lib/utils';
 
@@ -462,7 +462,7 @@ const AIAnalysisPage = () => {
 
       const data = await response.json();
       setInsights(data);
-    } catch (err) {
+    } catch (_err) {
       setErrorMessageId('dashboard.summary.aiInsights.apiErrors.generic');
       setInsights(null);
     } finally {

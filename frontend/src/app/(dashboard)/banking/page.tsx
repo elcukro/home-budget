@@ -13,7 +13,7 @@ interface AccountInfo {
 }
 
 export default function BankingPage() {
-  const router = useRouter();
+  const _router = useRouter();
   const [country, setCountry] = useState<string>('gb');
   const [institutionId, setInstitutionId] = useState<string>('');
   const [requisitionId, setRequisitionId] = useState<string>('');

@@ -80,7 +80,7 @@ export default function Sidebar() {
   const { data: session } = useSession();
   const { settings, isLoading: settingsLoading } = useSettings();
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingCheckDone, setOnboardingCheckDone] = useState(false);
+  const [, setOnboardingCheckDone] = useState(false);
 
   useEffect(() => {
     const checkShouldShowOnboarding = async () => {

@@ -9,10 +9,10 @@ interface ProgressSummaryProps {
   currency: string;
 }
 
-export default function ProgressSummary({ 
-  data, 
-  formatCurrency,
-  currency
+export default function ProgressSummary({
+  data,
+  formatCurrency: _formatCurrency,
+  currency: _currency
 }: ProgressSummaryProps) {
   const intl = useIntl();
   

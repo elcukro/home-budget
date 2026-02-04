@@ -17,7 +17,7 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
       capture_pageleave: true,
       autocapture: true,
       persistence: 'localStorage',
-      loaded: (posthog) => {
+      loaded: (_posthog) => {
         // PostHog loaded successfully
       },
     });

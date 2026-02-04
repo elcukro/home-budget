@@ -20,7 +20,7 @@ export default function OnboardingPage() {
   const mode: OnboardingMode = modeParam === 'fresh' || modeParam === 'merge' ? modeParam : 'default';
 
   const [isChecking, setIsChecking] = useState(true);
-  const [hasExistingData, setHasExistingData] = useState(false);
+  const [_hasExistingData, setHasExistingData] = useState(false);
 
   useEffect(() => {
     const checkForExistingData = async () => {

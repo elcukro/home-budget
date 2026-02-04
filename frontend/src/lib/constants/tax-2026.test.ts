@@ -293,10 +293,7 @@ describe('calculateHealthContribution', () => {
 })
 
 describe('isEligibleForYouthRelief', () => {
-  let realDate: typeof Date
-
   beforeEach(() => {
-    realDate = global.Date
     // Mock current date to 2026-01-18
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-01-18'))

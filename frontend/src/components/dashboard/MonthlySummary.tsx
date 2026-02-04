@@ -3,7 +3,6 @@
 import { useIntl } from 'react-intl';
 import { useMemo } from 'react';
 import { SparklesIcon } from '@heroicons/react/24/outline';
-import { useSettings } from '@/contexts/SettingsContext';
 import Link from 'next/link';
 import { ArrowDownRight, ArrowUpRight, Minus, AlertTriangle } from 'lucide-react';
 import { TAX_LIMITS_2026 } from '@/lib/tax-limits-2026';
@@ -31,7 +30,6 @@ interface MonthlySummaryProps {
 
 const MonthlySummary: React.FC<MonthlySummaryProps> = ({ data, deltas, referenceLabel, formatCurrency }) => {
   const intl = useIntl();
-  const { settings } = useSettings();
   const safeDeltas = deltas || {
     income: 0,
     expenses: 0,

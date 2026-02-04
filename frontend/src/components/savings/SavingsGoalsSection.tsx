@@ -428,7 +428,7 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
     const status = statusConfig[goal.status];
     const isComplete = goal.status === GoalStatus.COMPLETED;
     const isBabyStep = isBabyStepGoal(goal);
-    const progressColor =
+    const _progressColor =
       goal.progress_percent >= 100
         ? "bg-emerald-500"
         : goal.progress_percent >= 75

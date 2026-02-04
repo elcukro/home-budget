@@ -253,10 +253,10 @@ const FinancialChart = ({ data }: { data: YearlyBudget }) => {
     });
 
     // Get the data values
-    const totalIncome = monthEntries.map(([_, data]) => data.totals.income);
-    const totalExpenses = monthEntries.map(([_, data]) => data.totals.expenses);
-    const totalSavings = monthEntries.map(([_, data]) => data.totals.savings);
-    const availableCash = monthEntries.map(([_, data]) =>
+    const totalIncome = monthEntries.map(([_key, data]) => data.totals.income);
+    const totalExpenses = monthEntries.map(([_key, data]) => data.totals.expenses);
+    const totalSavings = monthEntries.map(([_key, data]) => data.totals.savings);
+    const availableCash = monthEntries.map(([_key, data]) =>
       data.totals.income - (data.totals.expenses + data.totals.loanPayments)
     );
 

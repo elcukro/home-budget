@@ -49,7 +49,7 @@ import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
-import Tooltip from "@/components/Tooltip";
+import _Tooltip from "@/components/Tooltip";
 
 // Polish employment types for tax calculation
 enum EmploymentType {

@@ -20,7 +20,7 @@ export const logActivity = async (activity: ActivityLog): Promise<void> => {
     // Filter out created_at and updated_at from values
     const filterTimestamps = (values?: unknown): Record<string, unknown> | undefined => {
       if (!values || typeof values !== 'object' || Array.isArray(values)) return undefined;
-      const { created_at, updated_at, ...filteredValues } = values as Record<string, unknown>;
+      const { created_at: _created_at, updated_at: _updated_at, ...filteredValues } = values as Record<string, unknown>;
       return filteredValues;
     };
 

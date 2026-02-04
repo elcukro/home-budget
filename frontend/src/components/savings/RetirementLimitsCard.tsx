@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useIntl } from 'react-intl';
 import { AlertTriangle, CheckCircle, Info, Plus, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button as _Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { getRetirementLimits, RetirementLimitsResponse, RetirementAccountLimit } from '@/api/savings';
 import { AccountType, SavingCategory } from '@/types/financial-freedom';
@@ -32,7 +32,7 @@ const accountTypeIcons: Record<AccountType, string> = {
   [AccountType.OIPE]: '🇪🇺',
 };
 
-const accountTypeColors: Record<AccountType, string> = {
+const _accountTypeColors: Record<AccountType, string> = {
   [AccountType.STANDARD]: 'bg-gray-500',
   [AccountType.IKE]: 'bg-emerald-500',
   [AccountType.IKZE]: 'bg-blue-500',

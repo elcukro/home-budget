@@ -54,7 +54,7 @@ import { logActivity } from "@/utils/activityLogger";
 import { logger } from "@/lib/logger";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
-import Tooltip from "@/components/Tooltip";
+import _Tooltip from "@/components/Tooltip";
 
 interface Expense {
   id: number | string;
@@ -388,7 +388,7 @@ export default function ExpensesPage() {
     );
   }, [expenses]);
 
-  const monthOptions = useMemo(() => {
+  const _monthOptions = useMemo(() => {
     const formatted = monthlyTotals.map((entry) => ({
       value: entry.key,
       label: intl.formatDate(entry.date, { month: "long", year: "numeric" }),
@@ -457,7 +457,7 @@ export default function ExpensesPage() {
   // Filter expenses based on selected month
   // - Recurring items: show if start_date <= selected_month <= end_date (or forever if no end_date)
   // - One-off items: show only if date matches selected month
-  const filteredExpenses = useMemo(() => {
+  const _filteredExpenses = useMemo(() => {
     const filtered = expenses.filter((expense) => {
       if (selectedMonth !== "all") {
         const expenseDate = new Date(expense.date);
@@ -645,12 +645,12 @@ export default function ExpensesPage() {
     });
   };
 
-  const totalSpend = useMemo(
+  const _totalSpend = useMemo(
     () => Object.values(expensesByCategory).reduce((sum, group) => sum + group.activeTotal, 0),
     [expensesByCategory],
   );
 
-  const topCategories = useMemo(() => {
+  const _topCategories = useMemo(() => {
     const sorted = Object.entries(expensesByCategory)
       .map(([category, group]) => ({ category, total: group.activeTotal }))
       .sort((a, b) => b.total - a.total);
@@ -670,7 +670,7 @@ export default function ExpensesPage() {
   const previousMonthEntry =
     selectedMonthIndex > 0 ? monthlyTotals[selectedMonthIndex - 1] : undefined;
 
-  const currentPeriodLabel = useMemo(() => {
+  const _currentPeriodLabel = useMemo(() => {
     if (selectedMonth === "all") {
       return intl.formatMessage({ id: "expenses.summary.periodAll" });
     }
@@ -683,7 +683,7 @@ export default function ExpensesPage() {
     });
   }, [selectedMonth, selectedMonthEntry, intl]);
 
-  const comparisonDescriptor = useMemo(() => {
+  const _comparisonDescriptor = useMemo(() => {
     if (!selectedMonthEntry) {
       if (selectedMonth === "all") {
         return {
@@ -747,11 +747,11 @@ export default function ExpensesPage() {
   }, [selectedMonthEntry, previousMonthEntry, intl, selectedMonth]);
 
   const unitKey = selectedMonth === "all" ? "period" : "month";
-  const unitLabel = intl.formatMessage({
+  const _unitLabel = intl.formatMessage({
     id: `expenses.summary.unit.${unitKey}`,
   });
 
-  const trendSparkline = useMemo(() => {
+  const _trendSparkline = useMemo(() => {
     if (monthlyTotals.length < 2) {
       return null;
     }
@@ -807,7 +807,7 @@ export default function ExpensesPage() {
       ? monthlyTotals[currentIndexForNavigation + 1].key
       : undefined;
 
-  const handlePrevMonth = () => {
+  const _handlePrevMonth = () => {
     if (selectedMonth === "all") {
       if (prevMonthKey) {
         setSelectedMonth(prevMonthKey);
@@ -819,7 +819,7 @@ export default function ExpensesPage() {
     }
   };
 
-  const handleNextMonth = () => {
+  const _handleNextMonth = () => {
     if (selectedMonth === "all") {
       return;
     }

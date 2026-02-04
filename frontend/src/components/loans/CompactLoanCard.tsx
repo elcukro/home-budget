@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useIntl, FormattedMessage, FormattedDate } from 'react-intl';
+import { useIntl, FormattedMessage } from 'react-intl';
 import {
   AlertTriangle,
   Banknote,
@@ -143,7 +143,7 @@ export default function CompactLoanCard({
   formatCurrency,
   onEdit,
   onDelete,
-  onViewSchedule,
+  onViewSchedule: _onViewSchedule,
 }: CompactLoanCardProps) {
   const intl = useIntl();
   const meta = LOAN_TYPE_META[loan.loan_type] ?? DEFAULT_LOAN_META;

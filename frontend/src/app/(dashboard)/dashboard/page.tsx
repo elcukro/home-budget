@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-interface Summary {
+interface _Summary {
   totalIncome: number;
   totalExpenses: number;
   totalLoans: number;
@@ -74,7 +74,7 @@ const getRelativeTimeLabel = (dateIso: string, locale: string) => {
     }
     const months = Math.round(diffMs / month);
     return rtf.format(months, 'month');
-  } catch (error) {
+  } catch (_error) {
     return '';
   }
 };
@@ -85,7 +85,7 @@ interface CardProps {
   formatCurrency: (amount: number) => string;
 }
 
-function SummaryCard({ title, amount, formatCurrency }: CardProps) {
+function _SummaryCard({ title, amount, formatCurrency }: CardProps) {
   return (
     <div className="bg-card border border-default p-6 rounded-lg shadow-sm">
       <h3 className="text-lg font-medium mb-2 text-primary">

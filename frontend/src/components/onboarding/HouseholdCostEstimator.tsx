@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import { cn as _cn } from '@/lib/utils';
 
 type CitySize = 'large' | 'medium' | 'small' | 'village';
 type HousingType = 'rent' | 'mortgage' | 'owned' | '';

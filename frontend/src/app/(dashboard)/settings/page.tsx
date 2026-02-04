@@ -189,7 +189,7 @@ export default function SettingsPage() {
     reason: string | null;
     created_at: string;
   }>>([]);
-  const [hasCompleteData, setHasCompleteData] = useState(false);
+  const [_hasCompleteData, setHasCompleteData] = useState(false);
   const [exportBackups, setExportBackups] = useState<ExportBackup[]>([]);
   const [deletingBackupId, setDeletingBackupId] = useState<number | null>(null);
 

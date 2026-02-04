@@ -36,7 +36,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -71,7 +70,7 @@ interface SavingsFilters {
   savingType?: SavingType;
 }
 
-const savingTypeOptions = [
+const _savingTypeOptions = [
   { value: SavingType.DEPOSIT, labelId: "savings.types.deposit" },
   { value: SavingType.WITHDRAWAL, labelId: "savings.types.withdrawal" },
 ];
@@ -441,7 +440,7 @@ export const SavingsManager = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Saving | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [recentExpanded, setRecentExpanded] = useState(false);
+  const [recentExpanded, _setRecentExpanded] = useState(false);
 
   // Change rate dialog state
   const [changeRateOpen, setChangeRateOpen] = useState(false);
@@ -471,7 +470,7 @@ export const SavingsManager = () => {
     });
   }, []);
   const tableRef = useRef<HTMLDivElement | null>(null);
-  const sparklineGradientId = useId();
+  const _sparklineGradientId = useId();
 
   const categoryTargetDefaults = useMemo(() => {
     const latest = new Map<SavingCategory, { amount: number; timestamp: number }>();
@@ -1222,7 +1221,7 @@ export const SavingsManager = () => {
     return { category, amount };
   }, [summary]);
 
-  const displayedRecentTransactions = useMemo(() => {
+  const _displayedRecentTransactions = useMemo(() => {
     if (!summary) {
       return [];
     }
@@ -1232,15 +1231,15 @@ export const SavingsManager = () => {
       : summary.recent_transactions.slice(0, 3);
   }, [recentExpanded, summary]);
 
-  const canExpandRecent = Boolean(
+  const _canExpandRecent = Boolean(
     summary && summary.recent_transactions.length > 3,
   );
 
-  const handleScrollToTable = useCallback(() => {
+  const _handleScrollToTable = useCallback(() => {
     tableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  const sparkline = useMemo(() => {
+  const _sparkline = useMemo(() => {
     if (monthlyTotals.length < 2) {
       return null;
     }

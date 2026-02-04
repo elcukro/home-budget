@@ -48,7 +48,7 @@ function calculatePayoff(
   const maxMonths = 360; // 30 years max
 
   // Total minimum payments
-  const totalMinPayment = loans.reduce((sum, loan) => sum + loan.monthly_payment, 0);
+  const _totalMinPayment = loans.reduce((sum, loan) => sum + loan.monthly_payment, 0);
 
   // Available extra each month starts with provided extra
   let availableExtra = extraPayment;
@@ -138,7 +138,7 @@ export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayo
 
   // Calculate savings
   const interestSavings = snowballResult.totalInterest - avalancheResult.totalInterest;
-  const timeSavings = snowballResult.monthsToPayoff - avalancheResult.monthsToPayoff;
+  const _timeSavings = snowballResult.monthsToPayoff - avalancheResult.monthsToPayoff;
 
   if (consumerLoans.length === 0) {
     return null;
