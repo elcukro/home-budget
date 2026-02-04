@@ -738,3 +738,23 @@ class GamificationEvent(Base):
         Index('idx_gamification_events_type', 'event_type'),
         Index('idx_gamification_events_created_at', 'created_at'),
     )
+
+
+class ProcessedWebhookEvent(Base):
+    """
+    Tracks processed webhook events for idempotency.
+    Prevents duplicate processing of the same webhook event.
+    """
+    __tablename__ = "processed_webhook_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(String, nullable=False)  # The unique event ID from the provider
+    provider = Column(String, nullable=False, default="stripe")  # stripe, tink, etc.
+    event_type = Column(String, nullable=True)  # Optional: type of event for logging
+    processed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('event_id', 'provider', name='uq_webhook_event_provider'),
+        Index('idx_processed_webhooks_event_id', 'event_id'),
+        Index('idx_processed_webhooks_processed_at', 'processed_at'),
+    )

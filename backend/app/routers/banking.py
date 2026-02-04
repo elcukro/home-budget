@@ -10,6 +10,7 @@ from ..database import get_db
 from sqlalchemy.orm import Session
 from ..dependencies import get_current_user
 from ..models import User
+from ..security import require_debug_mode
 from pydantic import BaseModel
 
 # Set up logging first
@@ -208,10 +209,11 @@ async def get_access_token():
 
 @router.get("/token", response_model=dict)
 async def get_token(
+    _debug: None = Depends(require_debug_mode),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get access token for GoCardless API (for testing purposes)"""
+    """Get access token for GoCardless API (for testing purposes). Protected in production."""
     try:
         token = await get_access_token()
         return {

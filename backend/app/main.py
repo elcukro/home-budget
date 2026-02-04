@@ -38,22 +38,45 @@ import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
-# Initialize Sentry
-sentry_sdk.init(
-    dsn="https://49db97f131e54426066081af30c141b7@o4510725745868800.ingest.de.sentry.io/4510725761204304",
-    integrations=[
-        FastApiIntegration(transaction_style="endpoint"),
-        SqlalchemyIntegration(),
-    ],
-    traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
-    profiles_sample_rate=0.1,
-    environment=os.getenv("ENVIRONMENT", "production"),
+logger = logging.getLogger(__name__)
+
+# Security configuration
+from .security import (
+    SecurityConfig,
+    safe_error_response,
+    get_allowed_origins,
+    sanitize_log_data,
+    mask_email,
 )
+
+# Validate security configuration at startup (disabled for tests)
+if os.getenv("TESTING") != "true":
+    try:
+        SecurityConfig.validate_startup()
+    except ValueError as e:
+        logger.critical(str(e))
+        # In production, fail hard. In development, warn but continue.
+        if SecurityConfig.IS_PRODUCTION:
+            raise
+
+# Initialize Sentry - DSN must be set via environment variable
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        integrations=[
+            FastApiIntegration(transaction_style="endpoint"),
+            SqlalchemyIntegration(),
+        ],
+        traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+        profiles_sample_rate=0.1,
+        environment=os.getenv("ENVIRONMENT", "production"),
+    )
+else:
+    logger.warning("SENTRY_DSN not set. Error tracking is disabled.")
 
 # Initialize rate limiter
 limiter = Limiter(key_func=get_remote_address)
-
-logger = logging.getLogger(__name__)
 
 
 print = make_conditional_print(__name__)
@@ -77,16 +100,9 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Configure CORS - restrict in production
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
-# Always allow these origins in addition to env config
-allowed_origins = [
-    "https://firedup.app",
-    "https://www.firedup.app",
-    *cors_origins
-]
-# Remove duplicates and empty strings
-allowed_origins = list(set(filter(None, allowed_origins)))
+# Configure CORS - uses secure helper that excludes localhost in production
+allowed_origins = get_allowed_origins()
+logger.info(f"CORS allowed origins: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -363,69 +379,42 @@ class SettingsCreate(SettingsBase):
     pass
 
 # User endpoints
-@app.get("/users/me", response_model=User)
-def get_or_create_current_user(
-    x_user_id: str = Header(..., alias="X-User-ID", description="Authenticated user ID from session"),
+# DEPRECATED: This endpoint is kept for backward compatibility only.
+# Use /users/me from the users router which properly validates X-Internal-Secret.
+# This endpoint will be removed in a future release.
+@app.get("/users/me", response_model=User, include_in_schema=False)
+def get_or_create_current_user_deprecated(
+    current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
-    """Get or create current user. Uses X-User-ID header from authenticated session."""
-    try:
-        print(f"[FastAPI] Getting user with ID: {x_user_id}")
-        user = db.query(models.User).filter(models.User.id == x_user_id).first()
+    """
+    DEPRECATED: Get or create current user.
+    This endpoint now requires proper authentication via X-Internal-Secret header
+    or Bearer token. Use /users/me from the users router instead.
+    """
+    # User already authenticated and fetched by dependency
+    # Check if subscription exists, create trial if not
+    subscription = db.query(models.Subscription).filter(
+        models.Subscription.user_id == current_user.id
+    ).first()
 
-        if not user:
-            print(f"[FastAPI] User not found with ID: {x_user_id}, creating new user")
-            # Create new user
-            user = models.User(
-                id=x_user_id,
-                email=x_user_id,  # Using ID as email since we use email as ID
-                name=None
-            )
-            db.add(user)
-            try:
-                db.commit()
-                db.refresh(user)
-                print(f"[FastAPI] Created new user: {user}")
+    if not subscription:
+        now = datetime.now(timezone.utc)
+        trial_end = now + timedelta(days=TRIAL_DAYS)
+        subscription = models.Subscription(
+            user_id=current_user.id,
+            status="trialing",
+            plan_type="trial",
+            trial_start=now,
+            trial_end=trial_end,
+            is_lifetime=False,
+            cancel_at_period_end=False,
+        )
+        db.add(subscription)
+        db.commit()
+        print(f"[FastAPI] Created trial subscription for user (ends: {trial_end})")
 
-                # Create default settings for the new user
-                settings = models.Settings(
-                    user_id=x_user_id,
-                    language="pl",  # Default to Polish
-                    currency="PLN",  # Default to PLN
-                    ai={"apiKey": None}
-                )
-                db.add(settings)
-                db.commit()
-                print(f"[FastAPI] Created default settings for new user")
-
-                # Create trial subscription for new user
-                now = datetime.now(timezone.utc)
-                trial_end = now + timedelta(days=TRIAL_DAYS)
-                subscription = models.Subscription(
-                    user_id=x_user_id,
-                    status="trialing",
-                    plan_type="trial",
-                    trial_start=now,
-                    trial_end=trial_end,
-                    is_lifetime=False,
-                    cancel_at_period_end=False,
-                )
-                db.add(subscription)
-                db.commit()
-                print(f"[FastAPI] Created trial subscription for new user (ends: {trial_end})")
-            except Exception as e:
-                db.rollback()
-                print(f"[FastAPI] Error creating user: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
-
-        print(f"[FastAPI] Returning user: {user}")
-        return user
-    except Exception as e:
-        print(f"[FastAPI] Error in get_or_create_current_user: {str(e)}")
-        print(f"[FastAPI] Error type: {type(e)}")
-        import traceback
-        print(f"[FastAPI] Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return current_user
 
 @app.post("/users", response_model=User)
 def create_user(user: UserBase, db: Session = Depends(database.get_db)):

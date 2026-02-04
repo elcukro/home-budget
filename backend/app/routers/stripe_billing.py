@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from .. import models, database
 from ..services.subscription_service import SubscriptionService
+from ..dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -105,41 +106,62 @@ def get_or_create_stripe_customer(user: models.User, db: Session) -> str:
     return customer.id
 
 
-def ensure_user_exists(user_id: str, db: Session) -> models.User:
-    """Ensure user exists in database, create if not."""
+def validate_user_id_format(user_id: str) -> bool:
+    """
+    Validate user_id format for security.
+    User IDs should be valid email addresses in this system.
+    """
+    import re
+    if not user_id or len(user_id) > 255:
+        return False
+    # Basic email format validation
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return bool(re.match(email_pattern, user_id))
+
+
+def get_user_or_none(user_id: str, db: Session) -> Optional[models.User]:
+    """
+    Get user by ID, returning None if not found.
+    SECURITY: Does NOT auto-create users. Webhooks should not create users.
+    """
+    if not validate_user_id_format(user_id):
+        logger.warning(f"Invalid user_id format received: {user_id[:50]}...")
+        return None
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    return user
+
+
+def ensure_user_exists(user_id: str, db: Session) -> Optional[models.User]:
+    """
+    Get user if exists in database.
+
+    SECURITY CHANGE: No longer auto-creates users from webhooks.
+    Users must be created through proper authentication flows.
+    """
+    if not validate_user_id_format(user_id):
+        logger.warning(f"Invalid user_id format: {user_id[:50]}...")
+        return None
+
     user = db.query(models.User).filter(models.User.id == user_id).first()
 
     if not user:
-        # Create user with email as ID (standard pattern in this app)
-        user = models.User(
-            id=user_id,
-            email=user_id,  # user_id is the email in this system
-            name=user_id.split('@')[0]  # Use part before @ as name
-        )
-        db.add(user)
-
-        # Also create default settings for the new user
-        settings = models.Settings(
-            user_id=user_id,
-            language="pl",
-            currency="PLN",
-            ai={"apiKey": None},
-            emergency_fund_target=1000,
-            emergency_fund_months=3,
-            base_currency="PLN"
-        )
-        db.add(settings)
-        db.commit()
-        db.refresh(user)
-        logger.info(f"Created user record for {user_id}")
+        logger.warning(f"User not found for webhook: {user_id}")
+        return None
 
     return user
 
 
-def ensure_subscription_exists(user_id: str, db: Session) -> models.Subscription:
-    """Ensure user has a subscription record, create trial if not."""
-    # First ensure user exists (foreign key requirement)
-    ensure_user_exists(user_id, db)
+def ensure_subscription_exists(user_id: str, db: Session) -> Optional[models.Subscription]:
+    """
+    Ensure user has a subscription record, create trial if not.
+    Returns None if user doesn't exist (user must be created through auth flow).
+    """
+    # First check if user exists (foreign key requirement)
+    user = ensure_user_exists(user_id, db)
+    if not user:
+        logger.warning(f"Cannot create subscription - user doesn't exist: {user_id}")
+        return None
 
     subscription = db.query(models.Subscription).filter(
         models.Subscription.user_id == user_id
@@ -183,12 +205,20 @@ def check_trial_expiration(subscription: models.Subscription, db: Session) -> mo
 # Endpoints
 @router.get("/status", response_model=SubscriptionStatusResponse)
 async def get_subscription_status(
-    user_id: str = Query(..., description="The user ID"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """Get current subscription status."""
     # Ensure subscription exists (creates trial for new users)
-    subscription = ensure_subscription_exists(user_id, db)
+    # User is already authenticated via dependency, so this should always work
+    subscription = ensure_subscription_exists(current_user.id, db)
+
+    if not subscription:
+        # This shouldn't happen since user is authenticated, but handle gracefully
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to retrieve subscription status"
+        )
 
     # Check trial expiration
     subscription = check_trial_expiration(subscription, db)
@@ -220,18 +250,18 @@ async def get_subscription_status(
 
 @router.get("/usage", response_model=UsageStatsResponse)
 async def get_usage_stats(
-    user_id: str = Query(..., description="The user ID"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """Get current usage statistics."""
-    stats = SubscriptionService.get_usage_stats(user_id, db)
+    stats = SubscriptionService.get_usage_stats(current_user.id, db)
     return UsageStatsResponse(**stats)
 
 
 @router.post("/checkout", response_model=CheckoutResponse)
 async def create_checkout_session(
     request: CreateCheckoutRequest,
-    user_id: str = Query(..., description="The user ID"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """Create Stripe Checkout Session for subscription."""
@@ -247,12 +277,7 @@ async def create_checkout_session(
     if not price_id:
         raise HTTPException(status_code=500, detail=f"Price ID for {plan_type} not configured")
 
-    # Get user
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    customer_id = get_or_create_stripe_customer(user, db)
+    customer_id = get_or_create_stripe_customer(current_user, db)
 
     # Determine checkout mode
     mode = "payment" if plan_type == "lifetime" else "subscription"
@@ -264,7 +289,7 @@ async def create_checkout_session(
         "success_url": f"{FRONTEND_URL}/onboarding?from=payment&session_id={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{FRONTEND_URL}/#pricing",
         "metadata": {
-            "user_id": user_id,
+            "user_id": current_user.id,
             "plan_type": plan_type
         },
         "locale": "pl",  # Polish locale for PLN
@@ -275,14 +300,14 @@ async def create_checkout_session(
     if mode == "subscription":
         session_params["subscription_data"] = {
             "metadata": {
-                "user_id": user_id,
+                "user_id": current_user.id,
                 "plan_type": plan_type
             }
         }
 
     try:
         session = stripe.checkout.Session.create(**session_params)
-        logger.info(f"Created checkout session {session.id} for user {user_id}, plan {plan_type}")
+        logger.info(f"Created checkout session {session.id} for user {current_user.id}, plan {plan_type}")
         return CheckoutResponse(
             checkout_url=session.url,
             session_id=session.id
@@ -294,7 +319,7 @@ async def create_checkout_session(
 
 @router.post("/portal", response_model=PortalResponse)
 async def create_portal_session(
-    user_id: str = Query(..., description="The user ID"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """Create Stripe Customer Portal session."""
@@ -302,7 +327,7 @@ async def create_portal_session(
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
     subscription = db.query(models.Subscription).filter(
-        models.Subscription.user_id == user_id
+        models.Subscription.user_id == current_user.id
     ).first()
 
     if not subscription or not subscription.stripe_customer_id:
@@ -325,10 +350,17 @@ async def stripe_webhook(
     stripe_signature: str = Header(None, alias="Stripe-Signature"),
     db: Session = Depends(database.get_db)
 ):
-    """Handle Stripe webhook events."""
+    """
+    Handle Stripe webhook events.
+
+    SECURITY:
+    - Verifies webhook signature to ensure authenticity
+    - Uses idempotency check to prevent duplicate processing
+    - Validates user_id format in metadata before use
+    """
     if not STRIPE_WEBHOOK_SECRET:
         logger.error("Stripe webhook secret not configured")
-        raise HTTPException(status_code=500, detail="Webhook not configured")
+        raise HTTPException(status_code=500, detail="Webhook configuration error")
 
     payload = await request.body()
 
@@ -336,36 +368,52 @@ async def stripe_webhook(
         event = stripe.Webhook.construct_event(
             payload, stripe_signature, STRIPE_WEBHOOK_SECRET
         )
-    except ValueError as e:
-        logger.error(f"Invalid webhook payload: {e}")
+    except ValueError:
+        logger.error("Invalid webhook payload")
         raise HTTPException(status_code=400, detail="Invalid payload")
-    except stripe.error.SignatureVerificationError as e:
-        logger.error(f"Invalid webhook signature: {e}")
+    except stripe.error.SignatureVerificationError:
+        logger.error("Invalid webhook signature")
         raise HTTPException(status_code=400, detail="Invalid signature")
 
+    event_id = event.get("id")
     event_type = event["type"]
     data = event["data"]["object"]
 
-    logger.info(f"Received Stripe webhook: {event_type}")
+    # SECURITY: Idempotency check - prevent duplicate processing
+    from ..security import WebhookIdempotency
+    if WebhookIdempotency.is_processed(db, event_id, "stripe"):
+        logger.info(f"Stripe webhook already processed: {event_id}")
+        return {"status": "success", "message": "already processed"}
 
-    # Handle different event types
-    if event_type == "checkout.session.completed":
-        await handle_checkout_completed(data, db)
+    logger.info(f"Processing Stripe webhook: {event_type} (event_id: {event_id})")
 
-    elif event_type == "invoice.paid":
-        await handle_invoice_paid(data, db)
+    try:
+        # Handle different event types
+        if event_type == "checkout.session.completed":
+            await handle_checkout_completed(data, db)
 
-    elif event_type == "invoice.payment_failed":
-        await handle_payment_failed(data, db)
+        elif event_type == "invoice.paid":
+            await handle_invoice_paid(data, db)
 
-    elif event_type == "customer.subscription.updated":
-        await handle_subscription_updated(data, db)
+        elif event_type == "invoice.payment_failed":
+            await handle_payment_failed(data, db)
 
-    elif event_type == "customer.subscription.deleted":
-        await handle_subscription_deleted(data, db)
+        elif event_type == "customer.subscription.updated":
+            await handle_subscription_updated(data, db)
 
-    elif event_type == "customer.subscription.trial_will_end":
-        await handle_trial_will_end(data, db)
+        elif event_type == "customer.subscription.deleted":
+            await handle_subscription_deleted(data, db)
+
+        elif event_type == "customer.subscription.trial_will_end":
+            await handle_trial_will_end(data, db)
+
+        # Mark event as processed after successful handling
+        WebhookIdempotency.mark_processed(db, event_id, "stripe", event_type)
+
+    except Exception as e:
+        # Log error but don't mark as processed (allow retry)
+        logger.error(f"Error processing webhook {event_id}: {e}")
+        raise HTTPException(status_code=500, detail="Webhook processing error")
 
     return {"status": "success"}
 
@@ -379,6 +427,17 @@ async def handle_checkout_completed(session_data: dict, db: Session):
 
     if not user_id:
         logger.error("No user_id in checkout session metadata")
+        return
+
+    # SECURITY: Validate user_id format
+    if not validate_user_id_format(user_id):
+        logger.error(f"Invalid user_id format in checkout metadata: {user_id[:50]}...")
+        return
+
+    # SECURITY: User must already exist (created during auth flow)
+    user = get_user_or_none(user_id, db)
+    if not user:
+        logger.error(f"User not found for checkout completion: {user_id}")
         return
 
     subscription = db.query(models.Subscription).filter(

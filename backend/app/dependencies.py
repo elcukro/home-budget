@@ -6,7 +6,20 @@ from .database import get_db
 from .models import User
 
 # JWT configuration (must match auth.py)
-JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production-use-strong-secret")
+# SECURITY: In production, JWT_SECRET must be set via environment variable
+_jwt_secret = os.getenv("JWT_SECRET")
+_environment = os.getenv("ENVIRONMENT", "development")
+
+if not _jwt_secret:
+    if _environment == "production":
+        raise ValueError(
+            "CRITICAL: JWT_SECRET environment variable is required in production. "
+            "Generate a secure secret with: openssl rand -base64 32"
+        )
+    # Only use weak default in development/testing
+    _jwt_secret = "change-me-in-production-use-strong-secret"
+
+JWT_SECRET = _jwt_secret
 JWT_ALGORITHM = "HS256"
 
 # Internal service secret - required for X-User-ID header authentication
@@ -52,10 +65,11 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired"
             )
-        except jwt.InvalidTokenError as e:
+        except jwt.InvalidTokenError:
+            # SECURITY: Don't expose token parsing details
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid token: {str(e)}"
+                detail="Invalid token"
             )
 
     # Method 2: X-User-ID header (web app via Next.js proxy)
@@ -64,12 +78,12 @@ async def get_current_user(
         if not INTERNAL_SERVICE_SECRET:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal service secret not configured"
+                detail="Service configuration error"
             )
         if x_internal_secret != INTERNAL_SERVICE_SECRET:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or missing internal service secret"
+                detail="Authentication failed"
             )
         user_identifier = x_user_id
         # X-User-ID contains email (from NextAuth session)
@@ -92,9 +106,10 @@ async def get_current_user(
         user = db.query(User).filter(User.id == user_identifier).first()
 
     if not user:
+        # SECURITY: Don't expose which user was requested
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User not found: {user_identifier}"
+            detail="User not found"
         )
 
     return user
@@ -135,10 +150,11 @@ async def get_or_create_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Token has expired"
             )
-        except jwt.InvalidTokenError as e:
+        except jwt.InvalidTokenError:
+            # SECURITY: Don't expose token parsing details
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid token: {str(e)}"
+                detail="Invalid token"
             )
 
     # Method 2: X-User-ID header (web app via Next.js proxy)
@@ -146,12 +162,12 @@ async def get_or_create_current_user(
         if not INTERNAL_SERVICE_SECRET:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal service secret not configured"
+                detail="Service configuration error"
             )
         if x_internal_secret != INTERNAL_SERVICE_SECRET:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid or missing internal service secret"
+                detail="Authentication failed"
             )
         user_identifier = x_user_id
         lookup_by_email = True

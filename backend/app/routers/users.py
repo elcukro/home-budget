@@ -74,54 +74,6 @@ def get_me(
     return current_user
 
 
-# Legacy endpoint for backwards compatibility - will be removed
-@router.get("/me/legacy", response_model=User, include_in_schema=False)
-def get_current_user_legacy(user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
-    try:
-        print(f"[FastAPI] Getting user with ID (legacy): {user_id}")
-        user = db.query(models.User).filter(models.User.id == user_id).first()
-        
-        if not user:
-            print(f"[FastAPI] User not found with ID: {user_id}, creating new user")
-            # Create new user
-            user = models.User(
-                id=user_id,
-                email=user_id,  # Using ID as email since we use email as ID
-                name=None
-            )
-            db.add(user)
-            try:
-                db.commit()
-                db.refresh(user)
-                print(f"[FastAPI] Created new user: {user}")
-                
-                # Create default settings for the new user
-                settings = models.Settings(
-                    user_id=user_id,
-                    language="en",
-                    currency="USD",
-                    ai={"apiKey": None},
-                    emergency_fund_target=1000,
-                    emergency_fund_months=3,
-                    base_currency="USD"
-                )
-                db.add(settings)
-                db.commit()
-                print(f"[FastAPI] Created default settings for new user")
-            except Exception as e:
-                db.rollback()
-                print(f"[FastAPI] Error creating user: {str(e)}")
-                raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
-        
-        print(f"[FastAPI] Returning user: {user}")
-        return user
-    except Exception as e:
-        print(f"[FastAPI] Error in get_current_user: {str(e)}")
-        print(f"[FastAPI] Error type: {type(e)}")
-        import traceback
-        print(f"[FastAPI] Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.post("", response_model=User)
 def create_user(user: UserBase, db: Session = Depends(database.get_db)):
     try:
@@ -159,22 +111,49 @@ def create_user(user: UserBase, db: Session = Depends(database.get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{email}/settings", response_model=Settings)
-def get_user_settings(email: str, db: Session = Depends(database.get_db)):
+def get_user_settings(
+    email: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Get settings for a specific user.
+    Uses X-User-ID + X-Internal-Secret headers or Bearer token for authentication.
+    Users can only access their own settings.
+    """
+    # SECURITY: Verify user can only access their own settings
+    if email != current_user.email and email != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     settings = db.query(models.Settings).filter(models.Settings.user_id == email).first()
     if not settings:
         raise HTTPException(status_code=404, detail="Settings not found")
     return settings
 
 @router.put("/{email}/settings", response_model=Settings)
-def update_user_settings(email: str, settings_update: SettingsBase, db: Session = Depends(database.get_db)):
+def update_user_settings(
+    email: str,
+    settings_update: SettingsBase,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Update settings for a specific user.
+    Uses X-User-ID + X-Internal-Secret headers or Bearer token for authentication.
+    Users can only update their own settings.
+    """
+    # SECURITY: Verify user can only update their own settings
+    if email != current_user.email and email != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     settings = db.query(models.Settings).filter(models.Settings.user_id == email).first()
     if not settings:
         raise HTTPException(status_code=404, detail="Settings not found")
-    
+
     for key, value in settings_update.dict().items():
         setattr(settings, key, value)
     settings.updated_at = datetime.utcnow()
-    
+
     try:
         db.commit()
         db.refresh(settings)

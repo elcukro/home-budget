@@ -48,7 +48,9 @@ class TinkService:
     """Service class for Tink API interactions."""
 
     # Tink Link's official client ID for delegation
-    TINK_LINK_CLIENT_ID = "df05e4b379934cd09963197cc855bfe9"
+    # This is a public well-known ID used by Tink Link, not a secret
+    # Reference: https://docs.tink.com/resources/tink-link-web
+    TINK_LINK_CLIENT_ID = os.getenv("TINK_LINK_CLIENT_ID", "df05e4b379934cd09963197cc855bfe9")
 
     def __init__(self):
         self.client_id = os.getenv("TINK_CLIENT_ID", "")

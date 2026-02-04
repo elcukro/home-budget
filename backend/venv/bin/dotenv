@@ -1,4 +1,4 @@
-#!/opt/home-budget/backend/venv/bin/python3
+#!/Users/maestro/claude/repos/home-budget/backend/venv/bin/python3.14
 import sys
 from dotenv.__main__ import cli
 if __name__ == '__main__':

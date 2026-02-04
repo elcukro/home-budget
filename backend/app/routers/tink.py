@@ -16,6 +16,7 @@ from ..dependencies import get_current_user
 from ..models import User, TinkConnection, BankTransaction
 from ..services.tink_service import tink_service
 from ..services.subscription_service import SubscriptionService
+from ..security import require_debug_mode, is_debug_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -266,14 +267,18 @@ async def disconnect(
 @router.get("/test")
 async def test_tink_api(
     current_user: User = Depends(get_current_user),
+    _debug: None = Depends(require_debug_mode),  # SECURITY: Only available in debug mode
 ):
-    """Test if the Tink API router is working."""
+    """
+    Test if the Tink API router is working.
+    SECURITY: This endpoint is protected and only available in non-production environments.
+    """
     return {
         "status": "ok",
         "message": "Tink API is configured",
         "client_id_set": bool(tink_service.client_id),
         "client_secret_set": bool(tink_service.client_secret),
-        "redirect_uri": tink_service.redirect_uri,
+        # SECURITY: Don't expose redirect_uri in test endpoint
         "timestamp": datetime.now().isoformat()
     }
 
@@ -371,11 +376,14 @@ async def refresh_tink_data(
 @router.get("/debug-data")
 async def get_debug_data(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _debug: None = Depends(require_debug_mode),  # SECURITY: Only available in debug mode
 ):
     """
     Fetch all available data from Tink for debugging/testing.
     Returns accounts, transactions, balances, and raw API responses.
+
+    SECURITY: This endpoint is protected and only available in non-production environments.
     """
     try:
         # Get user's active Tink connection

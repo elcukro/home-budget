@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
 # Download Polish bank logos from Brandfetch
-# Usage: ./download-bank-logos.sh
+# Usage: BRANDFETCH_API_KEY=your_key ./download-bank-logos.sh
 
 OUTPUT_DIR="../frontend/public/images/banks"
-API_KEY="1id4Z7B5NIBmhyZvJfo"
+API_KEY="${BRANDFETCH_API_KEY:-}"
+
+if [ -z "$API_KEY" ]; then
+    echo "Error: BRANDFETCH_API_KEY environment variable is required"
+    echo "Usage: BRANDFETCH_API_KEY=your_key ./download-bank-logos.sh"
+    exit 1
+fi
 
 mkdir -p "$OUTPUT_DIR"
 
