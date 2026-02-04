@@ -12,3 +12,4 @@ slowapi==0.1.9
 sentry-sdk[fastapi]>=2.19.3
 PyJWT==2.9.0
 resend>=1.0.0
+stripe>=10.0.0
