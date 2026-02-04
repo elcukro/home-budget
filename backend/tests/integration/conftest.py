@@ -11,6 +11,7 @@ import sys
 os.environ["ENVIRONMENT"] = "test"
 os.environ["POSTGRES_PASSWORD"] = "test"  # Still needed to prevent validation errors
 os.environ["STRIPE_SECRET_KEY"] = "sk_test_fake_key"
+os.environ["INTERNAL_SERVICE_SECRET"] = "test-internal-secret"  # Required for X-User-ID auth
 
 # Mock external dependencies before importing the app
 from unittest.mock import MagicMock, patch
@@ -106,8 +107,15 @@ def client(db_session):
 
 @pytest.fixture
 def auth_headers(test_user):
-    """Create authentication headers for the test user."""
-    return {"X-User-ID": test_user.id}
+    """Create authentication headers for the test user.
+
+    Uses X-User-ID + X-Internal-Secret for web-style authentication.
+    The test_user.email is used since get_current_user looks up by email.
+    """
+    return {
+        "X-User-ID": test_user.email,  # Auth looks up by email, not ID
+        "X-Internal-Secret": "test-internal-secret"
+    }
 
 
 @pytest.fixture

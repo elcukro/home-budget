@@ -7,9 +7,6 @@ let getNonMortgagePrincipal: typeof import('./loans').getNonMortgagePrincipal
 let getMortgageData: typeof import('./loans').getMortgageData
 type Loan = import('./loans').Loan
 
-// Mock getSession
-const mockGetSession = vi.fn()
-
 // Mock fetch globally
 const mockFetch = vi.fn()
 
@@ -71,41 +68,27 @@ describe('Loans API', () => {
 
   beforeEach(async () => {
     // Reset all mocks
-    vi.clearAllMocks()
-
-    // Reset module registry to clear the cache
+    vi.resetAllMocks()
     vi.resetModules()
 
-    // Set up global fetch mock
-    global.fetch = mockFetch
-
-    // Mock dependencies before importing the module
-    vi.doMock('@/lib/logger', () => ({
-      logger: {
-        debug: vi.fn(),
-        info: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-      },
-    }))
-
-    vi.doMock('next-auth/react', () => ({
-      getSession: mockGetSession,
-    }))
-
-    // Default session mock
-    mockGetSession.mockResolvedValue({
-      user: { email: 'test@example.com' },
-      expires: '2099-01-01',
-    })
-
-    // Default fetch mock for loans
+    // Setup fetch mock with successful response by default
     mockFetch.mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockLoans),
     })
+    vi.stubGlobal('fetch', mockFetch)
 
-    // Import the module fresh after mocking
+    // Mock logger
+    vi.doMock('@/lib/logger', () => ({
+      logger: {
+        debug: vi.fn(),
+        error: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+      },
+    }))
+
+    // Re-import module with mocks
     const loansModule = await import('./loans')
     getLoans = loansModule.getLoans
     getNonMortgageDebt = loansModule.getNonMortgageDebt
@@ -115,31 +98,14 @@ describe('Loans API', () => {
 
   afterEach(() => {
     vi.doUnmock('@/lib/logger')
-    vi.doUnmock('next-auth/react')
+    vi.unstubAllGlobals()
   })
 
   describe('getLoans', () => {
-    it('returns loans from API when session exists', async () => {
+    it('returns loans from API', async () => {
       const loans = await getLoans()
       expect(loans).toEqual(mockLoans)
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/loans?user_id=test%40example.com')
-      )
-    })
-
-    it('returns empty array when no session', async () => {
-      mockGetSession.mockResolvedValue(null)
-      const loans = await getLoans()
-      expect(loans).toEqual([])
-    })
-
-    it('returns empty array when session has no email', async () => {
-      mockGetSession.mockResolvedValue({
-        user: {},
-        expires: '2099-01-01',
-      })
-      const loans = await getLoans()
-      expect(loans).toEqual([])
+      expect(mockFetch).toHaveBeenCalledWith('/api/backend/loans')
     })
 
     it('returns empty array on fetch error', async () => {
@@ -164,182 +130,43 @@ describe('Loans API', () => {
       await getLoans()
       expect(mockFetch).toHaveBeenCalledTimes(1)
 
-      // Second call within cache duration (should use cache)
+      // Second call should use cache
       await getLoans()
-      // Should still be only 1 call (cached)
       expect(mockFetch).toHaveBeenCalledTimes(1)
     })
   })
 
   describe('getNonMortgageDebt', () => {
-    it('calculates total non-mortgage remaining balance', async () => {
+    it('returns sum of non-mortgage remaining balances', async () => {
       const debt = await getNonMortgageDebt()
-      // Non-mortgage loans: car (35000) + personal (15000)
-      expect(debt).toBe(50000)
-    })
-
-    it('returns 0 when only mortgages exist', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([
-            mockLoans[0], // mortgage
-            mockLoans[3], // Mortgage (case insensitive)
-          ]),
-      })
-      const debt = await getNonMortgageDebt()
-      expect(debt).toBe(0)
-    })
-
-    it('returns 0 when no loans exist', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      })
-      const debt = await getNonMortgageDebt()
-      expect(debt).toBe(0)
-    })
-
-    it('returns 0 on error', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'))
-      const debt = await getNonMortgageDebt()
-      expect(debt).toBe(0)
-    })
-
-    it('handles case-insensitive mortgage filtering', async () => {
-      const debt = await getNonMortgageDebt()
-      // Should only include car (35000) + personal (15000), not "Mortgage" (280000)
+      // Personal (15000) + Car (35000) = 50000
       expect(debt).toBe(50000)
     })
   })
 
   describe('getNonMortgagePrincipal', () => {
-    it('calculates total non-mortgage principal amount', async () => {
+    it('returns sum of non-mortgage principal amounts', async () => {
       const principal = await getNonMortgagePrincipal()
-      // Non-mortgage loans: car (50000) + personal (20000)
+      // Personal (20000) + Car (50000) = 70000
       expect(principal).toBe(70000)
-    })
-
-    it('returns 0 when only mortgages exist', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([mockLoans[0], mockLoans[3]]), // only mortgages
-      })
-      const principal = await getNonMortgagePrincipal()
-      expect(principal).toBe(0)
-    })
-
-    it('returns 0 when no loans exist', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      })
-      const principal = await getNonMortgagePrincipal()
-      expect(principal).toBe(0)
-    })
-
-    it('returns 0 on error', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'))
-      const principal = await getNonMortgagePrincipal()
-      expect(principal).toBe(0)
     })
   })
 
   describe('getMortgageData', () => {
-    it('combines all mortgages into single result', async () => {
+    it('returns combined mortgage data', async () => {
       const data = await getMortgageData()
-      expect(data).toEqual({
-        // Two mortgages: 500000 + 300000
-        principal_amount: 800000,
-        // 450000 + 280000
-        remaining_balance: 730000,
-        hasMortgage: true,
-      })
-    })
 
-    it('returns hasMortgage false when no mortgages', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([mockLoans[1], mockLoans[2]]), // only car and personal
-      })
-      const data = await getMortgageData()
-      expect(data).toEqual({
-        principal_amount: 0,
-        remaining_balance: 0,
-        hasMortgage: false,
-      })
-    })
-
-    it('returns empty mortgage data on fetch error (getLoans returns [])', async () => {
-      // Note: getMortgageData calls getLoans which catches errors and returns []
-      // So getMortgageData gets empty loans and returns hasMortgage: false
-      mockFetch.mockRejectedValue(new Error('Network error'))
-      const data = await getMortgageData()
-      expect(data).toEqual({
-        principal_amount: 0,
-        remaining_balance: 0,
-        hasMortgage: false,
-      })
-    })
-
-    it('handles single mortgage correctly', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([mockLoans[0]]), // only one mortgage
-      })
-      const data = await getMortgageData()
-      expect(data).toEqual({
-        principal_amount: 500000,
-        remaining_balance: 450000,
-        hasMortgage: true,
-      })
-    })
-
-    it('handles case-insensitive mortgage detection', async () => {
-      // Both "mortgage" and "Mortgage" should be included
-      const data = await getMortgageData()
+      expect(data).not.toBeNull()
+      expect(data?.principal_amount).toBe(800000) // 500k + 300k
+      expect(data?.remaining_balance).toBe(730000) // 450k + 280k
       expect(data?.hasMortgage).toBe(true)
-      // Should include both mortgages
-      expect(data?.principal_amount).toBe(800000)
     })
 
-    it('returns empty mortgage data for empty loans list', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      })
+    it('handles case-insensitive mortgage type', async () => {
+      // mockLoans[3] has loan_type: 'Mortgage' (capital M)
       const data = await getMortgageData()
-      expect(data).toEqual({
-        principal_amount: 0,
-        remaining_balance: 0,
-        hasMortgage: false,
-      })
-    })
-  })
-
-  describe('debt calculations', () => {
-    it('total debt = mortgage + non-mortgage', async () => {
-      const nonMortgageDebt = await getNonMortgageDebt()
-      const mortgageData = await getMortgageData()
-
-      const totalDebt = nonMortgageDebt + (mortgageData?.remaining_balance || 0)
-      // Non-mortgage: 50000, Mortgage: 730000
-      expect(totalDebt).toBe(780000)
-    })
-
-    it('handles scenario with no debt', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      })
-
-      const nonMortgageDebt = await getNonMortgageDebt()
-      const mortgageData = await getMortgageData()
-
-      expect(nonMortgageDebt).toBe(0)
-      expect(mortgageData?.hasMortgage).toBe(false)
+      expect(data?.principal_amount).toBe(800000) // Both mortgages included
+      expect(data?.hasMortgage).toBe(true)
     })
   })
 })

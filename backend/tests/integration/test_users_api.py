@@ -11,30 +11,32 @@ class TestGetCurrentUser:
 
     def test_creates_new_user_if_not_exists(self, client):
         """New user is created automatically on first access."""
-        response = client.get("/users/me", params={"user_id": "new@example.com"})
+        # Use auth headers with a new email
+        headers = {
+            "X-User-ID": "new@example.com",
+            "X-Internal-Secret": "test-internal-secret"
+        }
+        response = client.get("/users/me", headers=headers)
 
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == "new@example.com"
         assert data["email"] == "new@example.com"
-        assert data["name"] is None
         assert "created_at" in data
 
-    def test_returns_existing_user(self, client, test_user):
+    def test_returns_existing_user(self, client, test_user, auth_headers):
         """Existing user is returned."""
-        response = client.get("/users/me", params={"user_id": test_user.id})
+        response = client.get("/users/me", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == test_user.id
         assert data["email"] == test_user.email
         assert data["name"] == test_user.name
 
-    def test_user_id_is_required(self, client):
-        """Request without user_id returns validation error."""
+    def test_returns_401_without_auth(self, client):
+        """Request without auth returns 401."""
         response = client.get("/users/me")
 
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 401
 
 
 class TestCreateUser:
@@ -73,11 +75,14 @@ class TestCreateUser:
 
 
 class TestGetUserSettings:
-    """Tests for GET /users/{email}/settings endpoint."""
+    """Tests for GET /users/{user_id}/settings endpoint."""
 
-    def test_returns_settings(self, client, test_user_with_settings):
+    def test_returns_settings(self, client, test_user_with_settings, auth_headers):
         """Settings are returned for existing user."""
-        response = client.get(f"/users/{test_user_with_settings.id}/settings")
+        response = client.get(
+            f"/users/{test_user_with_settings.id}/settings",
+            headers=auth_headers
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -85,21 +90,24 @@ class TestGetUserSettings:
         assert data["language"] == "en"
         assert data["currency"] == "USD"
 
-    def test_returns_404_for_nonexistent_user(self, client):
-        """404 returned when settings don't exist."""
-        response = client.get("/users/nonexistent@example.com/settings")
+    def test_returns_403_for_different_user(self, client, auth_headers):
+        """403 returned when trying to access another user's settings."""
+        response = client.get(
+            "/users/different-user-id/settings",
+            headers=auth_headers
+        )
 
-        assert response.status_code == 404
-        assert "not found" in response.json()["detail"].lower()
+        assert response.status_code == 403
 
 
 class TestUpdateUserSettings:
-    """Tests for PUT /users/{email}/settings endpoint."""
+    """Tests for PUT /users/{user_id}/settings endpoint."""
 
-    def test_updates_settings(self, client, test_user_with_settings):
+    def test_updates_settings(self, client, test_user_with_settings, auth_headers):
         """Settings are updated successfully."""
         response = client.put(
             f"/users/{test_user_with_settings.id}/settings",
+            headers=auth_headers,
             json={
                 "language": "pl",
                 "currency": "PLN"
@@ -111,10 +119,11 @@ class TestUpdateUserSettings:
         assert data["language"] == "pl"
         assert data["currency"] == "PLN"
 
-    def test_partial_update(self, client, test_user_with_settings):
+    def test_partial_update(self, client, test_user_with_settings, auth_headers):
         """Only provided fields are updated."""
         response = client.put(
             f"/users/{test_user_with_settings.id}/settings",
+            headers=auth_headers,
             json={
                 "language": "de",
                 "currency": "EUR"
@@ -126,25 +135,26 @@ class TestUpdateUserSettings:
         assert data["language"] == "de"
         assert data["currency"] == "EUR"
 
-    def test_returns_404_for_nonexistent_user(self, client):
-        """404 returned when settings don't exist."""
+    def test_returns_403_for_different_user(self, client, auth_headers):
+        """403 returned when trying to update another user's settings."""
         response = client.put(
-            "/users/nonexistent@example.com/settings",
+            "/users/different-user-id/settings",
+            headers=auth_headers,
             json={"language": "en", "currency": "USD"}
         )
 
-        assert response.status_code == 404
+        assert response.status_code == 403
 
 
 class TestDeleteUserAccount:
     """Tests for DELETE /users/me/account endpoint."""
 
-    def test_deletes_account_with_english_phrase(self, client, test_user):
+    def test_deletes_account_with_english_phrase(self, client, test_user, auth_headers):
         """Account is deleted with English confirmation phrase."""
         response = client.request(
             "DELETE",
             "/users/me/account",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"confirmation_phrase": "DELETE ACCOUNT"}
         )
 
@@ -153,12 +163,12 @@ class TestDeleteUserAccount:
         assert data["success"] is True
         assert "deleted" in data["message"].lower()
 
-    def test_deletes_account_with_polish_phrase(self, client, test_user):
+    def test_deletes_account_with_polish_phrase(self, client, test_user, auth_headers):
         """Account is deleted with Polish confirmation phrase."""
         response = client.request(
             "DELETE",
             "/users/me/account",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"confirmation_phrase": "USUŃ KONTO"}
         )
 
@@ -166,24 +176,24 @@ class TestDeleteUserAccount:
         data = response.json()
         assert data["success"] is True
 
-    def test_rejects_invalid_phrase(self, client, test_user):
+    def test_rejects_invalid_phrase(self, client, test_user, auth_headers):
         """Invalid confirmation phrase is rejected."""
         response = client.request(
             "DELETE",
             "/users/me/account",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"confirmation_phrase": "wrong phrase"}
         )
 
         assert response.status_code == 400
         assert "invalid confirmation phrase" in response.json()["detail"].lower()
 
-    def test_rejects_case_sensitive_phrase(self, client, test_user):
+    def test_rejects_case_sensitive_phrase(self, client, test_user, auth_headers):
         """Confirmation phrase is case-sensitive."""
         response = client.request(
             "DELETE",
             "/users/me/account",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"confirmation_phrase": "delete account"}  # lowercase
         )
 
@@ -191,10 +201,14 @@ class TestDeleteUserAccount:
 
     def test_returns_404_for_nonexistent_user(self, client):
         """404 returned when user doesn't exist."""
+        headers = {
+            "X-User-ID": "nonexistent@example.com",
+            "X-Internal-Secret": "test-internal-secret"
+        }
         response = client.request(
             "DELETE",
             "/users/me/account",
-            params={"user_id": "nonexistent@example.com"},
+            headers=headers,
             json={"confirmation_phrase": "DELETE ACCOUNT"}
         )
 
@@ -204,7 +218,7 @@ class TestDeleteUserAccount:
 class TestOnboardingBackups:
     """Tests for onboarding backup endpoints."""
 
-    def test_create_backup(self, client, test_user):
+    def test_create_backup(self, client, test_user, auth_headers):
         """Backup is created successfully."""
         backup_data = {
             "data": {"income": [{"amount": 5000}], "expenses": []},
@@ -212,7 +226,7 @@ class TestOnboardingBackups:
         }
         response = client.post(
             "/users/me/onboarding-backups",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json=backup_data
         )
 
@@ -224,11 +238,11 @@ class TestOnboardingBackups:
         assert "id" in data
         assert "created_at" in data
 
-    def test_create_backup_without_reason(self, client, test_user):
+    def test_create_backup_without_reason(self, client, test_user, auth_headers):
         """Backup can be created without reason."""
         response = client.post(
             "/users/me/onboarding-backups",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"data": {"test": "data"}}
         )
 
@@ -236,23 +250,23 @@ class TestOnboardingBackups:
         data = response.json()
         assert data["reason"] is None
 
-    def test_list_backups(self, client, test_user):
+    def test_list_backups(self, client, test_user, auth_headers):
         """Backups are listed in descending order."""
         # Create two backups
         client.post(
             "/users/me/onboarding-backups",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"data": {"first": True}, "reason": "first"}
         )
         client.post(
             "/users/me/onboarding-backups",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"data": {"second": True}, "reason": "second"}
         )
 
         response = client.get(
             "/users/me/onboarding-backups",
-            params={"user_id": test_user.id}
+            headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -262,18 +276,18 @@ class TestOnboardingBackups:
         reasons = {item["reason"] for item in data}
         assert reasons == {"first", "second"}
 
-    def test_get_backup(self, client, test_user):
+    def test_get_backup(self, client, test_user, auth_headers):
         """Single backup is retrieved with full data."""
         create_response = client.post(
             "/users/me/onboarding-backups",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"data": {"full": "data", "nested": {"key": "value"}}}
         )
         backup_id = create_response.json()["id"]
 
         response = client.get(
             f"/users/me/onboarding-backups/{backup_id}",
-            params={"user_id": test_user.id}
+            headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -281,34 +295,39 @@ class TestOnboardingBackups:
         assert data["id"] == backup_id
         assert data["data"]["nested"]["key"] == "value"
 
-    def test_get_backup_returns_404_for_wrong_user(self, client, test_user):
+    def test_get_backup_returns_404_for_wrong_user(self, client, test_user, auth_headers):
         """Cannot access other user's backup."""
         create_response = client.post(
             "/users/me/onboarding-backups",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"data": {"private": True}}
         )
         backup_id = create_response.json()["id"]
 
+        # Try to access with different user
+        other_headers = {
+            "X-User-ID": "other@example.com",
+            "X-Internal-Secret": "test-internal-secret"
+        }
         response = client.get(
             f"/users/me/onboarding-backups/{backup_id}",
-            params={"user_id": "other@example.com"}
+            headers=other_headers
         )
 
         assert response.status_code == 404
 
-    def test_delete_backup(self, client, test_user):
+    def test_delete_backup(self, client, test_user, auth_headers):
         """Backup is deleted successfully."""
         create_response = client.post(
             "/users/me/onboarding-backups",
-            params={"user_id": test_user.id},
+            headers=auth_headers,
             json={"data": {"to_delete": True}}
         )
         backup_id = create_response.json()["id"]
 
         response = client.delete(
             f"/users/me/onboarding-backups/{backup_id}",
-            params={"user_id": test_user.id}
+            headers=auth_headers
         )
 
         assert response.status_code == 200
@@ -317,24 +336,28 @@ class TestOnboardingBackups:
         # Verify it's deleted
         get_response = client.get(
             f"/users/me/onboarding-backups/{backup_id}",
-            params={"user_id": test_user.id}
+            headers=auth_headers
         )
         assert get_response.status_code == 404
 
-    def test_delete_nonexistent_backup(self, client, test_user):
+    def test_delete_nonexistent_backup(self, client, test_user, auth_headers):
         """Deleting nonexistent backup returns 404."""
         response = client.delete(
             "/users/me/onboarding-backups/99999",
-            params={"user_id": test_user.id}
+            headers=auth_headers
         )
 
         assert response.status_code == 404
 
     def test_create_backup_for_nonexistent_user(self, client):
         """Creating backup for nonexistent user returns 404."""
+        headers = {
+            "X-User-ID": "nonexistent@example.com",
+            "X-Internal-Secret": "test-internal-secret"
+        }
         response = client.post(
             "/users/me/onboarding-backups",
-            params={"user_id": "nonexistent@example.com"},
+            headers=headers,
             json={"data": {}}
         )
 
