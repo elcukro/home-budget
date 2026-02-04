@@ -62,7 +62,9 @@ import { parseNumber, validateAmountPositive } from "@/lib/validation";
 // Goal form schema
 const goalSchema = z.object({
   name: z.string().min(1, "validation.required").max(100),
-  category: z.enum(Object.values(SavingCategory) as [SavingCategory, ...SavingCategory[]], { message: "validation.categoryRequired" }),
+  category: z.enum(Object.values(SavingCategory) as [SavingCategory, ...SavingCategory[]], {
+    error: "validation.categoryRequired",
+  }),
   target_amount: z
     .preprocess((value) => {
       if (typeof value === "number") return value.toString();
