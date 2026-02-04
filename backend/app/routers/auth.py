@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 import os
 import jwt
@@ -13,7 +13,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from ..database import get_db
-from ..models import User, Account, Session as UserSession, VerificationToken
+from ..models import User, Account, Session as UserSession, VerificationToken, Subscription
+from ..services.email_service import send_welcome_email
 
 logger = logging.getLogger(__name__)
 
@@ -291,8 +292,10 @@ async def mobile_google_auth(
 
     # Find or create user
     db_user = db.query(User).filter(User.email == email).first()
+    is_new_user = False
 
     if not db_user:
+        is_new_user = True
         db_user = User(
             id=str(uuid.uuid4()),
             email=email,
@@ -306,6 +309,22 @@ async def mobile_google_auth(
         db_user.name = name
         db.commit()
         db.refresh(db_user)
+
+    # Send welcome email for new users or users who haven't received it yet
+    if is_new_user or not db_user.welcome_email_sent_at:
+        try:
+            # Get subscription to find trial end date
+            from .stripe_billing import ensure_subscription_exists
+            subscription = ensure_subscription_exists(db_user.id, db)
+            trial_end = subscription.trial_end if subscription else None
+
+            if send_welcome_email(db_user.email, db_user.name, trial_end):
+                db_user.welcome_email_sent_at = datetime.now(timezone.utc)
+                db.commit()
+                logger.info(f"Welcome email sent to user {db_user.id}")
+        except Exception as e:
+            # Don't fail auth if email fails
+            logger.error(f"Failed to send welcome email to user {db_user.id}: {e}")
 
     # Create app JWT
     access_token, expires_in = create_app_jwt(email)

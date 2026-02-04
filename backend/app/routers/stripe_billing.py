@@ -16,6 +16,13 @@ from sqlalchemy.orm import Session
 
 from .. import models, database
 from ..services.subscription_service import SubscriptionService
+from ..services.email_service import (
+    send_payment_confirmation_email,
+    send_trial_ending_email,
+    send_trial_ended_email,
+    send_subscription_canceled_email,
+    send_payment_failed_email,
+)
 from ..dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -198,6 +205,18 @@ def check_trial_expiration(subscription: models.Subscription, db: Session) -> mo
             subscription.plan_type = "free"
             db.commit()
             logger.info(f"Trial expired for user {subscription.user_id}")
+
+            # Send trial ended email (prevent duplicates)
+            try:
+                user = db.query(models.User).filter(models.User.id == subscription.user_id).first()
+                if user and user.email and not user.trial_ended_email_sent_at:
+                    if send_trial_ended_email(user.email, user.name):
+                        user.trial_ended_email_sent_at = datetime.now(timezone.utc)
+                        db.commit()
+                        logger.info(f"Trial ended email sent to user {subscription.user_id}")
+            except Exception as e:
+                # Don't fail if email fails
+                logger.error(f"Failed to send trial ended email: {e}")
 
     return subscription
 
@@ -467,10 +486,11 @@ async def handle_checkout_completed(session_data: dict, db: Session):
         logger.info(f"Activated {plan_type} subscription for user {user_id}")
 
     # Record payment
+    amount_total = session_data.get("amount_total", 0)
     payment = models.PaymentHistory(
         user_id=user_id,
         stripe_checkout_session_id=session_data.get("id"),
-        amount=session_data.get("amount_total", 0),
+        amount=amount_total,
         currency=session_data.get("currency", "pln"),
         status="succeeded",
         plan_type=plan_type,
@@ -478,6 +498,30 @@ async def handle_checkout_completed(session_data: dict, db: Session):
     )
     db.add(payment)
     db.commit()
+
+    # Send payment confirmation email
+    try:
+        # Get invoice URL if available (for recurring subscriptions)
+        receipt_url = None
+        if session_data.get("invoice"):
+            try:
+                invoice = stripe.Invoice.retrieve(session_data.get("invoice"))
+                receipt_url = invoice.get("hosted_invoice_url")
+            except Exception as e:
+                logger.warning(f"Could not retrieve invoice for receipt URL: {e}")
+
+        send_payment_confirmation_email(
+            to_email=user.email,
+            user_name=user.name,
+            plan_type=plan_type,
+            amount_grosze=amount_total,
+            receipt_url=receipt_url,
+            period_start=subscription.current_period_start,
+            period_end=subscription.current_period_end,
+        )
+    except Exception as e:
+        # Don't fail the webhook if email fails
+        logger.error(f"Failed to send payment confirmation email: {e}")
 
 
 async def handle_invoice_paid(invoice_data: dict, db: Session):
@@ -516,6 +560,8 @@ async def handle_payment_failed(invoice_data: dict, db: Session):
     if subscription:
         subscription.status = "past_due"
 
+        failure_reason = str(invoice_data.get("last_finalization_error", {}).get("message", "Unknown error"))
+
         # Record failed payment
         payment = models.PaymentHistory(
             user_id=subscription.user_id,
@@ -523,11 +569,23 @@ async def handle_payment_failed(invoice_data: dict, db: Session):
             amount=invoice_data.get("amount_due", 0),
             currency=invoice_data.get("currency", "pln"),
             status="failed",
-            failure_reason=str(invoice_data.get("last_finalization_error", {}).get("message", "Unknown error"))
+            failure_reason=failure_reason
         )
         db.add(payment)
         db.commit()
         logger.warning(f"Payment failed for user {subscription.user_id}")
+
+        # Send payment failed email
+        try:
+            user = db.query(models.User).filter(models.User.id == subscription.user_id).first()
+            if user and user.email:
+                send_payment_failed_email(
+                    to_email=user.email,
+                    user_name=user.name,
+                    failure_reason=failure_reason,
+                )
+        except Exception as e:
+            logger.error(f"Failed to send payment failed email: {e}")
 
 
 async def handle_subscription_updated(subscription_data: dict, db: Session):
@@ -578,11 +636,24 @@ async def handle_subscription_deleted(subscription_data: dict, db: Session):
     ).first()
 
     if subscription and not subscription.is_lifetime:
+        canceled_at = datetime.now(timezone.utc)
         subscription.status = "canceled"
-        subscription.canceled_at = datetime.now(timezone.utc)
+        subscription.canceled_at = canceled_at
         subscription.plan_type = "free"
         db.commit()
         logger.info(f"Subscription canceled for user {subscription.user_id}")
+
+        # Send subscription canceled email
+        try:
+            user = db.query(models.User).filter(models.User.id == subscription.user_id).first()
+            if user and user.email:
+                send_subscription_canceled_email(
+                    to_email=user.email,
+                    user_name=user.name,
+                    cancel_date=canceled_at,
+                )
+        except Exception as e:
+            logger.error(f"Failed to send subscription canceled email: {e}")
 
 
 async def handle_trial_will_end(subscription_data: dict, db: Session):
@@ -594,5 +665,30 @@ async def handle_trial_will_end(subscription_data: dict, db: Session):
     ).first()
 
     if subscription:
-        # Could trigger email notification here
         logger.info(f"Trial ending soon for user: {subscription.user_id}")
+
+        # Send trial ending email (prevent duplicates)
+        try:
+            user = db.query(models.User).filter(models.User.id == subscription.user_id).first()
+            if user and user.email and not user.trial_ending_email_sent_at:
+                # Calculate days left
+                trial_days_left = 3  # Default from Stripe's trial_will_end event (sent 3 days before)
+                trial_end_date = subscription.trial_end
+
+                if trial_end_date:
+                    if trial_end_date.tzinfo is None:
+                        trial_end_date = trial_end_date.replace(tzinfo=timezone.utc)
+                    delta = trial_end_date - datetime.now(timezone.utc)
+                    trial_days_left = max(0, delta.days)
+
+                if send_trial_ending_email(
+                    to_email=user.email,
+                    user_name=user.name,
+                    trial_days_left=trial_days_left,
+                    trial_end_date=trial_end_date,
+                ):
+                    user.trial_ending_email_sent_at = datetime.now(timezone.utc)
+                    db.commit()
+                    logger.info(f"Trial ending email sent to user {subscription.user_id}")
+        except Exception as e:
+            logger.error(f"Failed to send trial ending email: {e}")

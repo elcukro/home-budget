@@ -1,9 +1,13 @@
 import os
+import logging
+from datetime import datetime, timezone
 import jwt
 from fastapi import Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
+
+logger = logging.getLogger(__name__)
 
 # JWT configuration (must match auth.py)
 # SECURITY: In production, JWT_SECRET must be set via environment variable
@@ -187,7 +191,9 @@ async def get_or_create_current_user(
         user = db.query(User).filter(User.id == user_identifier).first()
 
     # Auto-create user if not found (OAuth registration)
+    is_new_user = False
     if not user:
+        is_new_user = True
         user = User(
             id=user_identifier,
             email=user_identifier,
@@ -209,5 +215,23 @@ async def get_or_create_current_user(
 
         db.commit()
         db.refresh(user)
+
+    # Send welcome email for new users or users who haven't received it yet
+    if is_new_user or not user.welcome_email_sent_at:
+        try:
+            from .services.email_service import send_welcome_email
+            from .routers.stripe_billing import ensure_subscription_exists
+
+            # Get subscription to find trial end date
+            subscription = ensure_subscription_exists(user.id, db)
+            trial_end = subscription.trial_end if subscription else None
+
+            if send_welcome_email(user.email, user.name, trial_end):
+                user.welcome_email_sent_at = datetime.now(timezone.utc)
+                db.commit()
+                logger.info(f"Welcome email sent to user {user.id}")
+        except Exception as e:
+            # Don't fail auth if email fails
+            logger.error(f"Failed to send welcome email to user {user.id}: {e}")
 
     return user
