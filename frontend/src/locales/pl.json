@@ -306,6 +306,10 @@
         "title": "Trend wydatków",
         "description": "Obserwuj, jak zmieniają się Twoje wydatki z miesiąca na miesiąc."
       },
+      "budgetVsActual": {
+        "title": "Budżet vs Rzeczywistość",
+        "description": "Porównaj wydatki ze średnią historyczną."
+      },
       "loans": {
         "title": "Przegląd zobowiązań",
         "description": "Postęp spłat i pozostałe salda pożyczek."
@@ -480,6 +484,44 @@
       "title": "Wydatki wg kategorii",
       "totalExpenses": "Łączne wydatki",
       "emptyState": "Brak wydatków w tym miesiącu. Dodaj wydatek, aby zobaczyć rozkład kategorii."
+    },
+    "budgetVsActual": {
+      "title": "Budżet vs Rzeczywistość",
+      "description": "Porównaj wydatki tego miesiąca ze średnią z ostatnich 3 miesięcy.",
+      "budget": "Budżet (śr. 3 mies.)",
+      "actual": "Rzeczywiste",
+      "totalBudget": "Budżet",
+      "totalActual": "Rzeczywiste",
+      "variance": "Różnica",
+      "status": "Status",
+      "emptyState": "Brak danych o wydatkach. Dodaj wydatki, aby zobaczyć porównanie z budżetem.",
+      "legendNote": "Zielony = poniżej budżetu • Czerwony = powyżej budżetu • Budżet oparty na średniej z 3 miesięcy",
+      "tooltip": {
+        "overBudget": "Powyżej budżetu",
+        "underBudget": "Poniżej budżetu"
+      }
+    },
+    "savingsGoalProgress": {
+      "title": "Postęp Celów Oszczędnościowych",
+      "description": "Śledź postęp realizacji swoich celów finansowych.",
+      "emptyState": "Brak celów oszczędnościowych. Utwórz pierwszy cel, aby rozpocząć śledzenie.",
+      "addGoal": "Utwórz cel oszczędnościowy",
+      "noActiveGoals": "Brak aktywnych celów do wyświetlenia. Wszystkie cele są ukończone lub wstrzymane.",
+      "currentAmount": "Zaoszczędzono",
+      "remaining": "Pozostało",
+      "saved": "Zaoszczędzono",
+      "target": "Cel",
+      "deadline": "Termin",
+      "monthlyNeeded": "Miesięcznie potrzeba",
+      "statistics": {
+        "overallProgress": "Łączny Postęp",
+        "activeGoals": "Aktywne Cele",
+        "ofTotal": "z {total} łącznie",
+        "completed": "Ukończone",
+        "goalsReached": "osiągnięte cele",
+        "avgProgress": "Śr. Postęp",
+        "perGoal": "na cel"
+      }
     },
     "loans": {
       "title": "Przegląd Pożyczek",

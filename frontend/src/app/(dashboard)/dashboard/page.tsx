@@ -10,11 +10,15 @@ import DistributionChart from '@/components/dashboard/DistributionChart';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
 import SpendingTrendChart from '@/components/dashboard/SpendingTrendChart';
 import CategoryBreakdownChart from '@/components/dashboard/CategoryBreakdownChart';
+import BudgetVsActualChart from '@/components/dashboard/BudgetVsActualChart';
+import SavingsGoalProgressChart from '@/components/dashboard/SavingsGoalProgressChart';
 import LoanOverview from '@/components/dashboard/LoanOverview';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import { Button } from '@/components/ui/button';
 import { useSession } from 'next-auth/react';
 import { logger } from '@/lib/logger';
+import { getSavingsGoals } from '@/api/savings';
+import { SavingsGoal } from '@/types/financial-freedom';
 import {
   TrendingUp,
   TrendingDown,
@@ -266,6 +270,7 @@ export default function Home() {
   const intl = useIntl();
   const { formatCurrency } = useSettings();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [expandedActivities, setExpandedActivities] = useState<Set<number>>(new Set());
   const [showAllActivities, setShowAllActivities] = useState(false);
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
@@ -371,13 +376,17 @@ export default function Home() {
 
       try {
         setErrorMessageId(null);
-        // Use Next.js API proxy to ensure auth headers are added
-        const response = await fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/summary`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch dashboard data: ${response.statusText}`);
+        // Fetch dashboard summary and savings goals in parallel
+        const [summaryResponse, goalsData] = await Promise.all([
+          fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/summary`),
+          getSavingsGoals(),
+        ]);
+
+        if (!summaryResponse.ok) {
+          throw new Error(`Failed to fetch dashboard data: ${summaryResponse.statusText}`);
         }
-        const data = await response.json();
-        
+        const data = await summaryResponse.json();
+
         // Map the API response fields to the expected format
         const mappedData: DashboardData = {
           summary: {
@@ -385,11 +394,11 @@ export default function Home() {
             totalExpenses: data.total_monthly_expenses || 0,
             totalLoanPayments: data.total_monthly_loan_payments || 0,
             netCashflow: data.monthly_balance || 0,
-            savingsRate: data.savings_rate !== undefined ? data.savings_rate : 
-              (data.total_monthly_income > 0 ? 
+            savingsRate: data.savings_rate !== undefined ? data.savings_rate :
+              (data.total_monthly_income > 0 ?
                 (data.total_monthly_income - data.total_monthly_expenses - data.total_monthly_loan_payments) / data.total_monthly_income : 0),
             debtToIncome: data.debt_to_income !== undefined ? data.debt_to_income :
-              (data.total_monthly_income > 0 ? 
+              (data.total_monthly_income > 0 ?
                 data.total_monthly_loan_payments / data.total_monthly_income : 0)
           },
           incomeDistribution: data.income_distribution || [],
@@ -418,8 +427,9 @@ export default function Home() {
             })),
           }
         };
-        
+
         setDashboardData(mappedData);
+        setSavingsGoals(goalsData);
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
           logger.error('[Dashboard] Error:', error instanceof Error ? error.message : 'Failed to load dashboard data');
@@ -564,6 +574,19 @@ export default function Home() {
 
         <section className="space-y-4">
           <SectionHeader
+            icon={<Target className="h-5 w-5" />}
+            title={intl.formatMessage({ id: 'dashboard.sections.budgetVsActual.title' })}
+            description={intl.formatMessage({ id: 'dashboard.sections.budgetVsActual.description' })}
+          />
+          <BudgetVsActualChart
+            cashFlowData={dashboardData.cashFlow}
+            expenseDistribution={dashboardData.expenseDistribution}
+            formatCurrency={formatCurrency}
+          />
+        </section>
+
+        <section className="space-y-4">
+          <SectionHeader
             icon={<BarChart2 className="h-5 w-5" />}
             title={intl.formatMessage({ id: 'dashboard.sections.cashFlow.title' })}
             description={intl.formatMessage({ id: 'dashboard.sections.cashFlow.description' })}
@@ -591,77 +614,36 @@ export default function Home() {
             title={intl.formatMessage({ id: 'dashboard.sections.savings.title', defaultMessage: 'Savings Goals' })}
             description={intl.formatMessage({ id: 'dashboard.sections.savings.description', defaultMessage: 'Track your progress toward financial goals' })}
           />
-          <div className="bg-card border border-default rounded-xl shadow-sm p-6">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <div className="bg-emerald-50 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Wallet className="h-4 w-4 text-emerald-600" />
-                  <span className="text-sm text-emerald-700">
-                    {intl.formatMessage({ id: 'dashboard.savings.totalBalance', defaultMessage: 'Total Savings' })}
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-emerald-800">
-                  {formatCurrency(dashboardData.savings.totalBalance)}
-                </p>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Wallet className="h-4 w-4 text-emerald-600" />
+                <span className="text-sm text-emerald-700">
+                  {intl.formatMessage({ id: 'dashboard.savings.totalBalance', defaultMessage: 'Total Savings' })}
+                </span>
               </div>
-              <div className="bg-sky-50 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp className="h-4 w-4 text-sky-600" />
-                  <span className="text-sm text-sky-700">
-                    {intl.formatMessage({ id: 'dashboard.savings.monthlySavings', defaultMessage: 'This Month' })}
-                  </span>
-                </div>
-                <p className={`text-2xl font-bold ${dashboardData.savings.monthlySavings >= 0 ? 'text-sky-800' : 'text-rose-600'}`}>
-                  {dashboardData.savings.monthlySavings >= 0 ? '+' : ''}{formatCurrency(dashboardData.savings.monthlySavings)}
-                </p>
-              </div>
+              <p className="text-2xl font-bold text-emerald-800">
+                {formatCurrency(dashboardData.savings.totalBalance)}
+              </p>
             </div>
-
-            {/* Goals List */}
-            {dashboardData.savings.goals.length > 0 ? (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-secondary mb-2">
-                  {intl.formatMessage({ id: 'dashboard.savings.goalsTitle', defaultMessage: 'Your Goals' })}
-                </h4>
-                {dashboardData.savings.goals.map((goal, index) => (
-                  <div key={index} className="border border-default rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-primary" />
-                        <span className="font-medium text-primary">
-                          {intl.formatMessage({ id: `savings.categories.${goal.category}`, defaultMessage: goal.category })}
-                        </span>
-                      </div>
-                      <span className="text-sm text-secondary">
-                        {goal.progress.toFixed(0)}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2 mb-1">
-                      <div
-                        className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(goal.progress, 100)}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-secondary">
-                      <span>{formatCurrency(goal.currentAmount)}</span>
-                      {goal.targetAmount > 0 && (
-                        <span>{intl.formatMessage({ id: 'dashboard.savings.goalTarget', defaultMessage: 'Goal: {amount}' }, { amount: formatCurrency(goal.targetAmount) })}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+            <div className="bg-sky-50 border border-sky-100 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="h-4 w-4 text-sky-600" />
+                <span className="text-sm text-sky-700">
+                  {intl.formatMessage({ id: 'dashboard.savings.monthlySavings', defaultMessage: 'This Month' })}
+                </span>
               </div>
-            ) : (
-              <div className="text-center py-6 text-secondary">
-                <PiggyBank className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>{intl.formatMessage({ id: 'dashboard.savings.noGoals', defaultMessage: 'No savings goals yet' })}</p>
-                <Link href="/savings" className="text-primary hover:underline text-sm mt-1 inline-block">
-                  {intl.formatMessage({ id: 'dashboard.savings.addGoal', defaultMessage: 'Add your first savings goal' })}
-                </Link>
-              </div>
-            )}
+              <p className={`text-2xl font-bold ${dashboardData.savings.monthlySavings >= 0 ? 'text-sky-800' : 'text-rose-600'}`}>
+                {dashboardData.savings.monthlySavings >= 0 ? '+' : ''}{formatCurrency(dashboardData.savings.monthlySavings)}
+              </p>
+            </div>
           </div>
+          {/* Goals Progress Chart */}
+          <SavingsGoalProgressChart
+            goals={savingsGoals}
+            formatCurrency={formatCurrency}
+          />
         </section>
 
         <section className="space-y-4">

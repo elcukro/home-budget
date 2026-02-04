@@ -356,6 +356,10 @@
         "title": "Spending Trend",
         "description": "See how your spending changes from month to month."
       },
+      "budgetVsActual": {
+        "title": "Budget vs Actual",
+        "description": "Compare spending against your historical averages."
+      },
       "loans": {
         "title": "Loan overview",
         "description": "Progress on repayments and remaining balances."
@@ -527,6 +531,44 @@
       "title": "Spending by Category",
       "totalExpenses": "Total Expenses",
       "emptyState": "No expenses this month. Add an expense to see the category breakdown."
+    },
+    "budgetVsActual": {
+      "title": "Budget vs Actual",
+      "description": "Compare this month's spending against your 3-month average.",
+      "budget": "Budget (3-mo avg)",
+      "actual": "Actual",
+      "totalBudget": "Budget",
+      "totalActual": "Actual",
+      "variance": "Variance",
+      "status": "Status",
+      "emptyState": "No expense data yet. Add expenses to see budget comparisons.",
+      "legendNote": "Green = under budget • Red = over budget • Budget based on 3-month average",
+      "tooltip": {
+        "overBudget": "Over budget",
+        "underBudget": "Under budget"
+      }
+    },
+    "savingsGoalProgress": {
+      "title": "Savings Goal Progress",
+      "description": "Track progress toward your financial goals.",
+      "emptyState": "No savings goals yet. Create your first goal to start tracking.",
+      "addGoal": "Create a savings goal",
+      "noActiveGoals": "No active goals to display. All goals are completed or paused.",
+      "currentAmount": "Saved",
+      "remaining": "Remaining",
+      "saved": "Saved",
+      "target": "Target",
+      "deadline": "Deadline",
+      "monthlyNeeded": "Monthly needed",
+      "statistics": {
+        "overallProgress": "Overall Progress",
+        "activeGoals": "Active Goals",
+        "ofTotal": "of {total} total",
+        "completed": "Completed",
+        "goalsReached": "goals reached",
+        "avgProgress": "Avg. Progress",
+        "perGoal": "per goal"
+      }
     },
     "loans": {
       "title": "Loans Overview",
