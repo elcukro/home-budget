@@ -2,8 +2,13 @@
 
 ## Commands
 
+### Local Development URLs
+- **Frontend**: http://localhost:3100 (Next.js dev server)
+- **Backend**: http://localhost:8100 (FastAPI via proxy)
+- **Backend Direct**: http://localhost:8000 (FastAPI direct, use proxy instead)
+
 ### Frontend
-- `cd frontend && npm run dev` - Start frontend development server
+- `cd frontend && npm run dev` - Start frontend development server (runs on port 3100)
 - `cd frontend && npm run build` - Build frontend for production
 - `cd frontend && npm run lint` - Run ESLint checks
 - `cd frontend && npx tsc` - Run TypeScript type checking
@@ -90,9 +95,11 @@ journalctl -u home-budget-frontend -f
 journalctl -u home-budget-backend -f
 ```
 
-**Frontend** (port 3000): Needs restart after code changes (runs `npm run build` automatically on restart)
+**Frontend** (production port 3000, NOT local 3100): Needs restart after code changes (runs `npm run build` automatically on restart)
 
 **Backend** (port 8000): Has `--reload` flag, auto-reloads on Python changes. Manual restart rarely needed.
+
+**Note**: Local development uses different ports! See "Local Development URLs" section above.
 
 ## Style Guidelines
 
