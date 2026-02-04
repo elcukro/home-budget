@@ -9,6 +9,7 @@ import MonthlySummary from '@/components/dashboard/MonthlySummary';
 import DistributionChart from '@/components/dashboard/DistributionChart';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
 import SpendingTrendChart from '@/components/dashboard/SpendingTrendChart';
+import CategoryBreakdownChart from '@/components/dashboard/CategoryBreakdownChart';
 import LoanOverview from '@/components/dashboard/LoanOverview';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import { Button } from '@/components/ui/button';
@@ -549,10 +550,16 @@ export default function Home() {
             title={intl.formatMessage({ id: 'dashboard.sections.spendingTrend.title' })}
             description={intl.formatMessage({ id: 'dashboard.sections.spendingTrend.description' })}
           />
-          <SpendingTrendChart
-            data={dashboardData.cashFlow}
-            formatCurrency={formatCurrency}
-          />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <SpendingTrendChart
+              data={dashboardData.cashFlow}
+              formatCurrency={formatCurrency}
+            />
+            <CategoryBreakdownChart
+              data={dashboardData.expenseDistribution}
+              formatCurrency={formatCurrency}
+            />
+          </div>
         </section>
 
         <section className="space-y-4">

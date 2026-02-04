@@ -476,6 +476,11 @@
       "emptyState": "Brak danych o wydatkach. Dodaj swój pierwszy wydatek, aby zobaczyć trendy.",
       "noDataForPeriod": "Brak danych dla wybranego okresu."
     },
+    "categoryBreakdown": {
+      "title": "Wydatki wg kategorii",
+      "totalExpenses": "Łączne wydatki",
+      "emptyState": "Brak wydatków w tym miesiącu. Dodaj wydatek, aby zobaczyć rozkład kategorii."
+    },
     "loans": {
       "title": "Przegląd Pożyczek",
       "subtitle": "Śledź salda, raty i tempo spłaty.",

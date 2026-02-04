@@ -523,6 +523,11 @@
       "emptyState": "No spending data yet. Add your first expense to see trends.",
       "noDataForPeriod": "No data available for the selected period."
     },
+    "categoryBreakdown": {
+      "title": "Spending by Category",
+      "totalExpenses": "Total Expenses",
+      "emptyState": "No expenses this month. Add an expense to see the category breakdown."
+    },
     "loans": {
       "title": "Loans Overview",
       "subtitle": "Track balances, payments, and payoff momentum.",
