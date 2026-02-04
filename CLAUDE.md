@@ -18,6 +18,38 @@
 - `cd backend && source venv/bin/activate && pytest tests/integration/` - Run only integration tests
 - `cd backend && python test_gocardless.py` - Test GoCardless bank data API connectivity
 
+### Database Migrations (Alembic)
+
+**Local development (sandbox):**
+```bash
+cd backend
+
+# Check current migration status
+./venv/bin/alembic current
+
+# Create a new migration after model changes
+./venv/bin/alembic revision --autogenerate -m "Description of changes"
+
+# Apply pending migrations
+./venv/bin/alembic upgrade head
+
+# Rollback last migration
+./venv/bin/alembic downgrade -1
+```
+
+**Production:**
+```bash
+ssh root@firedup.app "cd /opt/home-budget/backend && source venv/bin/activate && alembic upgrade head"
+```
+
+**Workflow for schema changes:**
+1. Modify models in `app/models.py`
+2. Generate migration: `./venv/bin/alembic revision --autogenerate -m "Add X column"`
+3. Review generated migration in `alembic/versions/`
+4. Test locally: `./venv/bin/alembic upgrade head`
+5. Commit migration file
+6. Deploy and run migration on production
+
 ### Mobile (Expo/React Native)
 - `cd mobile && npm install` - Install mobile app dependencies
 - `cd mobile && npx expo start` - Start Expo development server

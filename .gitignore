@@ -79,3 +79,8 @@ dist/
 .vercel
 notes.txt
 ING.SECRET.KEY.txt
+
+# Environment files with secrets
+backend/.env
+.env.local
+
