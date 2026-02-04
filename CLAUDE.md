@@ -7,6 +7,26 @@
 - **Backend**: http://localhost:8100 (FastAPI via proxy)
 - **Backend Direct**: http://localhost:8000 (FastAPI direct, use proxy instead)
 
+### QA Testing (for autonomous agents)
+
+**Test Account**: `elcukrodev@gmail.com` (Google Sign-In)
+- Use this account for all manual/browser testing
+- Has sample data for expenses, loans, goals
+- Works on both localhost:3100 and production
+
+**Key Pages to Test**:
+- `/dashboard` - Main dashboard with charts
+- `/expenses` - Expense tracking
+- `/loans` - Loan management
+- `/financial-freedom` - Baby Steps / Fire goals
+- `/settings` - User settings
+
+**How to Sign In for Testing**:
+1. Navigate to http://localhost:3100
+2. Click "Sign In with Google"
+3. Use `elcukrodev@gmail.com` account
+4. You'll be redirected to dashboard with test data
+
 ### Frontend
 - `cd frontend && npm run dev` - Start frontend development server (runs on port 3100)
 - `cd frontend && npm run build` - Build frontend for production
