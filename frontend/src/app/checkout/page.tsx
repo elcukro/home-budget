@@ -7,7 +7,8 @@ import { Flame, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { logger } from '@/lib/logger';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
+const API_BASE_URL = '/api/backend';
 
 const planNames: Record<string, string> = {
   monthly: 'Miesięczny',
@@ -58,6 +59,7 @@ export default function CheckoutPage() {
     try {
       logger.debug('[checkout] Creating checkout session for plan:', planType);
 
+      // Billing endpoints require user_id as a query parameter
       const response = await fetch(
         `${API_BASE_URL}/billing/checkout?user_id=${encodeURIComponent(session.user.email)}`,
         {

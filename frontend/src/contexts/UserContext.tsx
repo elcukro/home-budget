@@ -57,8 +57,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       setIsLoading(true);
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${API_URL}/users/me?user_id=${encodeURIComponent(session.user.email || '')}`);
+      // Use Next.js API proxy for all backend calls to ensure auth headers are added
+      const response = await fetch('/api/backend/users/me');
       
       if (!response.ok) {
         throw new Error('Failed to fetch user data');

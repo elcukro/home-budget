@@ -67,8 +67,7 @@ interface Expense {
   created_at: string;
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use Next.js API proxy for all backend calls (adds auth headers automatically)
 
 const expenseToActivityValues = (
   expense: Expense | null | undefined,
@@ -430,7 +429,7 @@ export default function ExpensesPage() {
         setApiError(null);
 
         const response = await fetch(
-          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`,
+          `/api/backend/users/${encodeURIComponent(userEmail)}/expenses`,
           {
             headers: { Accept: "application/json" },
             cache: "no-store",
@@ -872,7 +871,7 @@ export default function ExpensesPage() {
 
       if (dialogMode === "create") {
         const response = await fetch(
-          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`,
+          `/api/backend/users/${encodeURIComponent(userEmail)}/expenses`,
           {
             method: "POST",
             headers: {
@@ -905,7 +904,7 @@ export default function ExpensesPage() {
         });
       } else if (activeExpense) {
         const response = await fetch(
-          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses/${activeExpense.id}`,
+          `/api/backend/users/${encodeURIComponent(userEmail)}/expenses/${activeExpense.id}`,
           {
             method: "PUT",
             headers: {
@@ -962,7 +961,7 @@ export default function ExpensesPage() {
     setIsDeleting(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses/${pendingDelete.id}`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/expenses/${pendingDelete.id}`,
         {
           method: "DELETE",
           headers: { Accept: "application/json" },
@@ -1027,7 +1026,7 @@ export default function ExpensesPage() {
 
       // Step 1: Update the existing item with end_date
       const updateResponse = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses/${changeRateItem.id}`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/expenses/${changeRateItem.id}`,
         {
           method: "PUT",
           headers: {
@@ -1051,7 +1050,7 @@ export default function ExpensesPage() {
       // Step 2: Create a new item with the new amount
       const effectiveDateStr = `${effectiveDate.getFullYear()}-${String(effectiveDate.getMonth() + 1).padStart(2, "0")}-01`;
       const createResponse = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/expenses`,
         {
           method: "POST",
           headers: {

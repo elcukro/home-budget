@@ -1,17 +1,17 @@
 import { BabyStep, FinancialFreedomData } from '@/types/financial-freedom';
 import { logger } from '@/lib/logger';
-import { fetchWithAuth } from './fetchWithAuth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
 
 export const getFinancialFreedomData = async (): Promise<FinancialFreedomData> => {
   try {
-    const response = await fetchWithAuth(`${API_URL}/financial-freedom`);
-    
+    // Use Next.js API proxy which adds auth headers (X-User-ID + X-Internal-Secret)
+    const response = await fetch('/api/backend/financial-freedom');
+
     if (!response.ok) {
       throw new Error(`Failed to fetch financial freedom data: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     logger.error('Error fetching financial freedom data:', error);
@@ -21,18 +21,19 @@ export const getFinancialFreedomData = async (): Promise<FinancialFreedomData> =
 
 export const updateFinancialFreedomData = async (data: { steps: BabyStep[], startDate?: string }): Promise<FinancialFreedomData> => {
   try {
-    const response = await fetchWithAuth(`${API_URL}/financial-freedom`, {
+    // Use Next.js API proxy which adds auth headers (X-User-ID + X-Internal-Secret)
+    const response = await fetch('/api/backend/financial-freedom', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to update financial freedom data: ${response.statusText}`);
     }
-    
+
     return await response.json();
   } catch (error) {
     logger.error('Error updating financial freedom data:', error);

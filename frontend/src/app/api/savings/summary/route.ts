@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { createBackendHeadersNoBody } from '@/lib/backend-headers';
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -16,9 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     const response = await fetch(`${API_BASE_URL}/savings/summary`, {
-      headers: {
-        'X-User-ID': session.user.email,
-      },
+      headers: createBackendHeadersNoBody(session.user.email),
     });
 
     if (!response.ok) {

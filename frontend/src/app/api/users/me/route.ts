@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { createBackendHeaders } from "@/lib/backend-headers";
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -21,13 +22,12 @@ export async function GET(request: NextRequest) {
     logger.debug('[api][users/me] Fetching user with email:', session.user.email);
 
     // Fetch user data from FastAPI backend
+    // Backend expects X-User-ID header for auto-creation of new users
     const response = await fetch(
-      `${API_BASE_URL}/users/me?user_id=${encodeURIComponent(session.user.email)}`,
+      `${API_BASE_URL}/users/me`,
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: createBackendHeaders(session.user.email),
       }
     );
 

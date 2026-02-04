@@ -1,8 +1,6 @@
 import { logger } from '@/lib/logger';
-import { fetchWithAuth } from './fetchWithAuth';
-import { getSession } from 'next-auth/react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
 
 export interface Loan {
   id: number;
@@ -48,42 +46,32 @@ export const getLoans = async (): Promise<Loan[]> => {
   // Check if we have a valid cached response
   const now = Date.now();
   if (
-    apiCache.loans && 
+    apiCache.loans &&
     now - apiCache.loans.timestamp < CACHE_DURATION
   ) {
     logger.debug('Using cached loans data');
     return apiCache.loans.data;
   }
-  
+
   try {
-    const session = await getSession();
-    
-    if (!session?.user?.email) {
-      logger.error('No active session found or missing user email');
-      return [];
-    }
-    
-    // Use the user_id as a query parameter instead of a header
-    const url = `${API_URL}/loans?user_id=${encodeURIComponent(session.user.email)}`;
-    logger.debug('Fetching loans from:', url);
-    
-    const response = await fetch(url);
-    
+    // Use Next.js API proxy which adds auth headers (X-User-ID + X-Internal-Secret)
+    const response = await fetch('/api/backend/loans');
+
     if (!response.ok) {
       const errorText = await response.text();
       logger.error(`Failed to fetch loans: ${response.status} ${response.statusText}`, errorText);
       throw new Error(`Failed to fetch loans: ${response.statusText}`);
     }
-    
+
     const data = await response.json();
     logger.debug('Loans data:', data);
-    
+
     // Cache the response
     apiCache.loans = {
       data,
       timestamp: now,
     };
-    
+
     return data;
   } catch (error) {
     logger.error('Error fetching loans:', error);

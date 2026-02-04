@@ -434,9 +434,9 @@ const AIAnalysisPage = () => {
       setIsLoading(true);
       setErrorMessageId(null);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      // Use Next.js API proxy for backend calls (adds auth headers automatically)
       const url = new URL(
-        `${API_URL}/users/${encodeURIComponent(session.user.email)}/insights`,
+        `/api/backend/users/${encodeURIComponent(session.user.email)}/insights`,
         window.location.origin
       );
       if (forceRefresh) {

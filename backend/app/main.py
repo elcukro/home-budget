@@ -16,6 +16,8 @@ import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification
+from datetime import timezone
+from .routers.stripe_billing import TRIAL_DAYS
 from .database import engine, Base
 from .routers.users import User, UserBase, Settings, SettingsBase  # Import User, UserBase, Settings, and SettingsBase models from users router
 import json
@@ -388,13 +390,29 @@ def get_or_create_current_user(
                 # Create default settings for the new user
                 settings = models.Settings(
                     user_id=x_user_id,
-                    language="en",
-                    currency="USD",
+                    language="pl",  # Default to Polish
+                    currency="PLN",  # Default to PLN
                     ai={"apiKey": None}
                 )
                 db.add(settings)
                 db.commit()
                 print(f"[FastAPI] Created default settings for new user")
+
+                # Create trial subscription for new user
+                now = datetime.now(timezone.utc)
+                trial_end = now + timedelta(days=TRIAL_DAYS)
+                subscription = models.Subscription(
+                    user_id=x_user_id,
+                    status="trialing",
+                    plan_type="trial",
+                    trial_start=now,
+                    trial_end=trial_end,
+                    is_lifetime=False,
+                    cancel_at_period_end=False,
+                )
+                db.add(subscription)
+                db.commit()
+                print(f"[FastAPI] Created trial subscription for new user (ends: {trial_end})")
             except Exception as e:
                 db.rollback()
                 print(f"[FastAPI] Error creating user: {str(e)}")

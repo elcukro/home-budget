@@ -368,8 +368,8 @@ export default function Home() {
 
       try {
         setErrorMessageId(null);
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-        const response = await fetch(`${API_URL}/users/${encodeURIComponent(session.user.email)}/summary`);
+        // Use Next.js API proxy to ensure auth headers are added
+        const response = await fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/summary`);
         if (!response.ok) {
           throw new Error(`Failed to fetch dashboard data: ${response.statusText}`);
         }

@@ -28,7 +28,19 @@ const buildBackendUrl = (request: NextRequest, pathSegments: string[]): string =
   return `${targetBase}${targetPath}${search}`
 }
 
-const createForwardHeaders = async (request: NextRequest) => {
+// Paths that don't require authentication (public endpoints)
+const PUBLIC_PATHS = new Set([
+  "health",
+  "docs",
+  "openapi.json",
+])
+
+const isPublicPath = (pathSegments: string[]): boolean => {
+  if (pathSegments.length === 0) return true
+  return PUBLIC_PATHS.has(pathSegments[0])
+}
+
+const createForwardHeaders = async (request: NextRequest): Promise<{ headers: Headers; session: any }> => {
   const headers = new Headers()
 
   // Forward content-related headers from the incoming request
@@ -38,13 +50,26 @@ const createForwardHeaders = async (request: NextRequest) => {
     }
   }
 
-  // Attach user context when available
-  const session = await getServerSession(authOptions)
-  if (session?.user?.email) {
-    headers.set("X-User-ID", session.user.email)
+  // Try to get session, handle JWT errors gracefully
+  let session = null
+  try {
+    session = await getServerSession(authOptions)
+  } catch (error) {
+    logger.warn("[api/backend proxy] Session error (likely invalid JWT):", error)
+    // Session is invalid - will return null
   }
 
-  return headers
+  if (session?.user?.email) {
+    headers.set("X-User-ID", session.user.email)
+    // SECURITY: Include internal service secret to prove this request
+    // comes from the trusted Next.js server, not a spoofed client request
+    const internalSecret = process.env.INTERNAL_SERVICE_SECRET
+    if (internalSecret) {
+      headers.set("X-Internal-Secret", internalSecret)
+    }
+  }
+
+  return { headers, session }
 }
 
 const forwardRequest = async (request: NextRequest, params: { path?: string[] }) => {
@@ -52,7 +77,17 @@ const forwardRequest = async (request: NextRequest, params: { path?: string[] })
     const pathSegments = params.path ?? []
     const targetUrl = buildBackendUrl(request, pathSegments)
     const method = request.method
-    const headers = await createForwardHeaders(request)
+    const { headers, session } = await createForwardHeaders(request)
+
+    // For protected endpoints, require valid session
+    // This prevents forwarding unauthenticated requests that will fail with 422
+    if (!isPublicPath(pathSegments) && !session?.user?.email) {
+      logger.warn("[api/backend proxy] No valid session for protected endpoint:", pathSegments.join("/"))
+      return NextResponse.json(
+        { error: "Authentication required. Please login again." },
+        { status: 401 }
+      )
+    }
 
     const hasBody = !["GET", "HEAD"].includes(method)
     const body = hasBody ? await request.arrayBuffer() : undefined

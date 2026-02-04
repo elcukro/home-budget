@@ -523,9 +523,9 @@ const BudgetReport = () => {
       const startMonth = period.startDate.toISOString().slice(0, 7);
       const endMonth = period.endDate.toISOString().slice(0, 7);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      // Use Next.js API proxy to add authentication headers
       const response = await fetch(
-        `${API_URL}/api/reports/yearly-budget?start_date=${startMonth}&end_date=${endMonth}&user_id=${session.user.email}`
+        `/api/backend/api/reports/yearly-budget?start_date=${startMonth}&end_date=${endMonth}`
       );
 
       const data = await response.json();

@@ -21,14 +21,22 @@ export async function GET() {
       );
     }
 
+    // Build headers with authentication
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-User-ID': session.user.email,
+    };
+
+    // Add internal service secret for secure server-to-server auth
+    const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+    if (internalSecret) {
+      headers['X-Internal-Secret'] = internalSecret;
+    }
+
     // Fetch monthly expenses from the backend (which handles end_date filtering)
     const response = await fetch(
       `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses/monthly`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+      { headers }
     );
 
     if (!response.ok) {

@@ -6,7 +6,8 @@ import { SupportedLocale, DEFAULT_LOCALE, formatLocaleCurrency } from '@/utils/i
 import { convertCurrency } from '@/api/exchangeRates';
 import { logger } from '@/lib/logger';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
+const API_BASE_URL = '/api/backend';
 
 interface Settings {
   language: string;

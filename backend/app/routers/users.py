@@ -1,11 +1,13 @@
 import logging
 import os
 import traceback
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+import os
 from .. import models, database
+from ..dependencies import get_or_create_current_user, get_current_user, INTERNAL_SERVICE_SECRET
 from pydantic import BaseModel
 from ..logging_utils import make_conditional_print
 
@@ -64,9 +66,19 @@ class Settings(SettingsBase):
         from_attributes = True
 
 @router.get("/me", response_model=User)
-def get_current_user(user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
+def get_me(
+    current_user: models.User = Depends(get_or_create_current_user),
+):
+    """Get or create current user. Uses X-User-ID + X-Internal-Secret headers."""
+    # The user is already fetched/created by the dependency
+    return current_user
+
+
+# Legacy endpoint for backwards compatibility - will be removed
+@router.get("/me/legacy", response_model=User, include_in_schema=False)
+def get_current_user_legacy(user_id: str = Query(..., description="The ID of the user"), db: Session = Depends(database.get_db)):
     try:
-        print(f"[FastAPI] Getting user with ID: {user_id}")
+        print(f"[FastAPI] Getting user with ID (legacy): {user_id}")
         user = db.query(models.User).filter(models.User.id == user_id).first()
         
         if not user:
@@ -183,15 +195,16 @@ class DeleteAccountResponse(BaseModel):
 
 
 @router.delete("/me/account", response_model=DeleteAccountResponse)
-def delete_user_account(
+async def delete_user_account(
     request: DeleteAccountRequest,
-    user_id: str = Query(..., description="The ID of the user"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """
     Permanently delete user account and all associated data.
     Requires confirmation phrase: "USUŃ KONTO" (PL) or "DELETE ACCOUNT" (EN).
     If user has an active Stripe subscription (not lifetime), it will be cancelled.
+    Uses X-User-ID + X-Internal-Secret headers for authentication.
     """
     # Validate confirmation phrase
     valid_phrases = ["USUŃ KONTO", "DELETE ACCOUNT"]
@@ -201,10 +214,8 @@ def delete_user_account(
             detail="Invalid confirmation phrase. Please type 'USUŃ KONTO' or 'DELETE ACCOUNT' exactly."
         )
 
-    # Get user
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user = current_user
+    user_id = current_user.id
 
     try:
         # Check for active Stripe subscription and cancel if exists
@@ -269,17 +280,16 @@ class OnboardingBackupListItem(BaseModel):
 
 
 @router.post("/me/onboarding-backups", response_model=OnboardingBackupResponse)
-def create_onboarding_backup(
+async def create_onboarding_backup(
     backup: OnboardingBackupCreate,
-    user_id: str = Query(..., description="The ID of the user"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """
     Create a backup of user's data before onboarding fresh start.
+    Uses X-User-ID + X-Internal-Secret headers for authentication.
     """
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user_id = current_user.id
 
     try:
         db_backup = models.OnboardingBackup(
@@ -300,16 +310,15 @@ def create_onboarding_backup(
 
 
 @router.get("/me/onboarding-backups", response_model=List[OnboardingBackupListItem])
-def list_onboarding_backups(
-    user_id: str = Query(..., description="The ID of the user"),
+async def list_onboarding_backups(
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """
     List all onboarding backups for the user (without full data, for performance).
+    Uses X-User-ID + X-Internal-Secret headers for authentication.
     """
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    user_id = current_user.id
 
     backups = db.query(models.OnboardingBackup).filter(
         models.OnboardingBackup.user_id == user_id
@@ -319,14 +328,16 @@ def list_onboarding_backups(
 
 
 @router.get("/me/onboarding-backups/{backup_id}", response_model=OnboardingBackupResponse)
-def get_onboarding_backup(
+async def get_onboarding_backup(
     backup_id: int,
-    user_id: str = Query(..., description="The ID of the user"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """
     Get a specific onboarding backup with full data.
+    Uses X-User-ID + X-Internal-Secret headers for authentication.
     """
+    user_id = current_user.id
     backup = db.query(models.OnboardingBackup).filter(
         models.OnboardingBackup.id == backup_id,
         models.OnboardingBackup.user_id == user_id
@@ -339,14 +350,16 @@ def get_onboarding_backup(
 
 
 @router.delete("/me/onboarding-backups/{backup_id}")
-def delete_onboarding_backup(
+async def delete_onboarding_backup(
     backup_id: int,
-    user_id: str = Query(..., description="The ID of the user"),
+    current_user: models.User = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """
     Delete a specific onboarding backup.
+    Uses X-User-ID + X-Internal-Secret headers for authentication.
     """
+    user_id = current_user.id
     backup = db.query(models.OnboardingBackup).filter(
         models.OnboardingBackup.id == backup_id,
         models.OnboardingBackup.user_id == user_id

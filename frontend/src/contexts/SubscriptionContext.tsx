@@ -4,7 +4,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useSession } from 'next-auth/react';
 import { logger } from '@/lib/logger';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
+const API_BASE_URL = '/api/backend';
 
 interface SubscriptionStatus {
   status: string;
@@ -99,6 +100,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      // Billing endpoints require user_id as a query parameter
       const response = await fetch(`${API_BASE_URL}/billing/status?user_id=${encodeURIComponent(session.user.email)}`);
 
       if (!response.ok) {
@@ -123,6 +125,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
+      // Billing endpoints require user_id as a query parameter
       const response = await fetch(`${API_BASE_URL}/billing/usage?user_id=${encodeURIComponent(session.user.email)}`);
 
       if (!response.ok) {
@@ -141,6 +144,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       throw new Error('Not authenticated');
     }
 
+    // Billing endpoints require user_id as a query parameter
     const response = await fetch(`${API_BASE_URL}/billing/checkout?user_id=${encodeURIComponent(session.user.email)}`, {
       method: 'POST',
       headers: {
@@ -163,6 +167,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       throw new Error('Not authenticated');
     }
 
+    // Billing endpoints require user_id as a query parameter
     const response = await fetch(`${API_BASE_URL}/billing/portal?user_id=${encodeURIComponent(session.user.email)}`, {
       method: 'POST',
     });

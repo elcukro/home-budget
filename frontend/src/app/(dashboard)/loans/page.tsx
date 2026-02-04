@@ -108,8 +108,8 @@ interface LoanPayment {
   created_at: string;
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
+const API_BASE_URL = "/api/backend";
 
 const loanTypeOptions = [
   { value: "mortgage", labelId: "loans.types.mortgage" },
@@ -650,7 +650,7 @@ export default function LoansPage() {
         setApiError(null);
 
         const response = await fetch(
-          `${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`,
+          `${API_BASE_URL}/loans`,
           {
             headers: { Accept: "application/json" },
             cache: "no-store",
@@ -1190,7 +1190,7 @@ export default function LoansPage() {
 
       if (dialogMode === "create") {
         const response = await fetch(
-          `${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`,
+          `${API_BASE_URL}/loans`,
           {
             method: "POST",
             headers: {
@@ -1221,7 +1221,7 @@ export default function LoansPage() {
         });
       } else if (activeLoan) {
         const response = await fetch(
-          `${API_BASE_URL}/loans/${activeLoan.id}?user_id=${encodeURIComponent(userEmail)}`,
+          `${API_BASE_URL}/loans/${activeLoan.id}`,
           {
             method: "PUT",
             headers: {

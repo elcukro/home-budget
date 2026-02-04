@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 export async function POST() {
   const session = await getServerSession(authOptions);
@@ -14,10 +15,7 @@ export async function POST() {
 
     const response = await fetch(backendUrl, {
       method: "POST",
-      headers: {
-        "X-User-ID": session.user.email,
-        "Content-Type": "application/json",
-      },
+      headers: createBackendHeaders(session.user.email),
     });
 
     const data = await response.json();

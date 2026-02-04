@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -13,10 +14,7 @@ export async function GET() {
     const backendUrl = `${process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/banking/tink/debug-data`;
 
     const response = await fetch(backendUrl, {
-      headers: {
-        "X-User-ID": session.user.email,
-        "Content-Type": "application/json",
-      },
+      headers: createBackendHeaders(session.user.email),
     });
 
     const data = await response.json();

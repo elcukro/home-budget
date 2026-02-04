@@ -482,8 +482,8 @@ const ADDITIONAL_SOURCE_META: Record<
   },
 };
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
+const API_BASE_URL = '/api/backend';
 
 const toISODate = (value: Date | string) => {
   const date = typeof value === 'string' ? new Date(value) : value;
@@ -1728,7 +1728,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
 
           // Create backup via API
           const backupResponse = await fetch(
-            `${API_BASE_URL}/users/me/onboarding-backups?user_id=${encodeURIComponent(userEmail)}`,
+            `${API_BASE_URL}/users/me/onboarding-backups`,
             {
               method: 'POST',
               headers: jsonHeaders,
@@ -2051,9 +2051,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
     // --- Loans sync ---
     try {
       if (shouldDeleteExistingData) {
-        const loansQuery = `${API_BASE_URL}/loans?user_id=${encodeURIComponent(
-          userEmail
-        )}`;
+        const loansQuery = `${API_BASE_URL}/loans`;
         const existingLoansRes = await fetch(loansQuery);
         if (existingLoansRes.ok) {
           const existingLoans: Array<Record<string, unknown>> =
@@ -2146,7 +2144,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
           : liability.remainingAmount || principalAmount;
 
         const response = await fetch(
-          `${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`,
+          `${API_BASE_URL}/loans`,
           {
             method: 'POST',
             headers: jsonHeaders,

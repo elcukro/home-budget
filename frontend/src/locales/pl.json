@@ -507,6 +507,7 @@
         "saving": "Oszczędności",
         "payment": "Płatności"
       },
+      "emptyState": "Brak ostatniej aktywności.",
       "emptyStateFiltered": "Brak aktywności dla wybranego filtra."
     },
     "categories": {
@@ -1554,14 +1555,7 @@
       "category": "Wszystkie kategorie",
       "startDate": "Data początkowa",
       "endDate": "Data końcowa",
-      "dateRange": {
-        "currentMonth": "Bieżący miesiąc",
-        "lastMonth": "Ostatni miesiąc",
-        "lastQuarter": "Ostatni kwartał",
-        "lastHalf": "Ostatnie półrocze",
-        "lastYear": "Ostatni rok",
-        "all": "Wszystko"
-      },
+      "dateRange": "Wybierz okres",
       "dateRangeOptions": {
         "currentMonth": "Bieżący miesiąc",
         "lastMonth": "Ostatni miesiąc",

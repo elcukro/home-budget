@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -26,10 +27,7 @@ export async function DELETE(
 
     const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/income/${id}`, {
       method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers: createBackendHeaders(session.user.email),
     });
 
     if (!response.ok) {

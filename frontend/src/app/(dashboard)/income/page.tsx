@@ -75,8 +75,7 @@ interface Income {
   created_at: string;
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use Next.js API proxy for all backend calls (adds auth headers automatically)
 
 const incomeSchema = z.object({
   category: z.string().min(1, "validation.categoryRequired"),
@@ -329,7 +328,7 @@ export default function IncomePage() {
         setApiError(null);
 
         const response = await fetch(
-          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/income`,
+          `/api/backend/users/${encodeURIComponent(userEmail)}/income`,
           {
             headers: { Accept: "application/json" },
             cache: "no-store",
@@ -537,7 +536,7 @@ export default function IncomePage() {
 
       if (dialogMode === "create") {
         const response = await fetch(
-          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/income`,
+          `/api/backend/users/${encodeURIComponent(userEmail)}/income`,
           {
             method: "POST",
             headers: {
@@ -570,7 +569,7 @@ export default function IncomePage() {
         });
       } else if (activeIncome) {
         const response = await fetch(
-          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/income/${activeIncome.id}`,
+          `/api/backend/users/${encodeURIComponent(userEmail)}/income/${activeIncome.id}`,
           {
             method: "PUT",
             headers: {
@@ -627,7 +626,7 @@ export default function IncomePage() {
     setIsDeleting(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/income/${pendingDelete.id}`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/income/${pendingDelete.id}`,
         {
           method: "DELETE",
           headers: { Accept: "application/json" },
@@ -699,7 +698,7 @@ export default function IncomePage() {
 
       // Step 1: Update the existing item with end_date
       const updateResponse = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/income/${changeRateItem.id}`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/income/${changeRateItem.id}`,
         {
           method: "PUT",
           headers: {
@@ -731,7 +730,7 @@ export default function IncomePage() {
       });
 
       const createResponse = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/income`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/income`,
         {
           method: "POST",
           headers: {

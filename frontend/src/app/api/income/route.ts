@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -17,10 +18,7 @@ export async function GET() {
     }
 
     const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/income/`, {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers: createBackendHeaders(session.user.email),
     });
 
     if (!response.ok) {
@@ -49,10 +47,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const response = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/income/`, {
       method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers: createBackendHeaders(session.user.email),
       body: JSON.stringify(body),
     });
 

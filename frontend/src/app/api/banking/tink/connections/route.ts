@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,10 +14,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: {
-        'X-User-ID': session.user.email || '',
-        'Content-Type': 'application/json',
-      },
+      headers: createBackendHeaders(session.user.email || ''),
     });
 
     if (!response.ok) {

@@ -59,7 +59,7 @@ import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import { useSettings } from "@/contexts/SettingsContext";
 import Link from "next/link";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// API calls now go through Next.js proxy at /api/backend/* which adds auth headers
 
 interface BankTransaction {
   id: number;
@@ -213,11 +213,10 @@ export default function BankTransactionsPage() {
     if (!session?.user?.email) return;
 
     try {
-      const headers = { "X-User-ID": session.user.email };
-
+      // Use proxy which adds auth headers automatically
       const [connRes, txRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/banking/tink/connections`, { headers }),
-        fetch(`${API_BASE_URL}/banking/transactions?limit=500`, { headers }),
+        fetch(`/api/backend/banking/tink/connections`),
+        fetch(`/api/backend/banking/transactions?limit=500`),
       ]);
 
       if (connRes.ok) {
@@ -247,9 +246,8 @@ export default function BankTransactionsPage() {
 
     setSyncing(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/banking/transactions/sync`, {
+      const response = await fetch(`/api/backend/banking/transactions/sync`, {
         method: "POST",
-        headers: { "X-User-ID": session.user.email },
       });
 
       if (response.ok) {
@@ -297,9 +295,8 @@ export default function BankTransactionsPage() {
         setCategorizeStep(intl.formatMessage({ id: "bankTransactions.categorizeModal.step2" }));
       }, 1000);
 
-      const response = await fetch(`${API_BASE_URL}/banking/transactions/categorize`, {
+      const response = await fetch(`/api/backend/banking/transactions/categorize`, {
         method: "POST",
-        headers: { "X-User-ID": session.user.email },
       });
 
       clearInterval(progressInterval);
@@ -529,11 +526,10 @@ export default function BankTransactionsPage() {
     setAdding(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/banking/transactions/${selectedTransaction.id}/convert`,
+        `/api/backend/banking/transactions/${selectedTransaction.id}/convert`,
         {
           method: "POST",
           headers: {
-            "X-User-ID": session.user.email,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

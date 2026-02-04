@@ -50,7 +50,8 @@ import {
 import { Info } from "lucide-react";
 import { signOut } from "next-auth/react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
+const API_BASE_URL = "/api/backend";
 
 interface ExportBackup {
   id: number;
@@ -295,7 +296,7 @@ export default function SettingsPage() {
     if (!userEmail) return;
     try {
       const response = await fetch(
-        `${API_BASE_URL}/users/me/onboarding-backups?user_id=${encodeURIComponent(userEmail)}`
+        `${API_BASE_URL}/users/me/onboarding-backups`
       );
       if (response.ok) {
         const data = await response.json();
@@ -313,7 +314,7 @@ export default function SettingsPage() {
       const [incomeRes, expensesRes, loansRes, savingsRes] = await Promise.all([
         fetch('/api/income'),
         fetch(`${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`),
-        fetch(`${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`),
+        fetch(`${API_BASE_URL}/loans`),
         fetch('/api/savings'),
       ]);
 
@@ -333,7 +334,7 @@ export default function SettingsPage() {
     if (!userEmail) return;
     try {
       const response = await fetch(
-        `${API_BASE_URL}/users/me/onboarding-backups/${backupId}?user_id=${encodeURIComponent(userEmail)}`
+        `${API_BASE_URL}/users/me/onboarding-backups/${backupId}`
       );
       if (!response.ok) throw new Error("Failed to fetch backup");
 
@@ -362,7 +363,7 @@ export default function SettingsPage() {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/users/me/onboarding-backups/${backupId}?user_id=${encodeURIComponent(userEmail)}`,
+        `${API_BASE_URL}/users/me/onboarding-backups/${backupId}`,
         { method: "DELETE" }
       );
 
@@ -1760,7 +1761,7 @@ function AccountTabContent() {
     setIsDeleting(true);
     try {
       const response = await fetch(
-        `${API_BASE_URL}/users/me/account?user_id=${encodeURIComponent(userEmail)}`,
+        `${API_BASE_URL}/users/me/account`,
         {
           method: "DELETE",
           headers: {

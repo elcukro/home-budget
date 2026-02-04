@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -19,6 +20,22 @@ export async function GET() {
     }
 
     const email = encodeURIComponent(session.user.email);
+
+    // First ensure user exists in backend (auto-creates if not)
+    const headers = createBackendHeaders(session.user.email);
+    const userResponse = await fetch(`${API_BASE_URL}/users/me`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!userResponse.ok) {
+      logger.error('[Dashboard API] Failed to ensure user exists:', await userResponse.text());
+      return NextResponse.json(
+        { error: 'Failed to initialize user' },
+        { status: 500 }
+      );
+    }
+
     const endpoints = [
       `${API_BASE_URL}/users/${email}/income/`,
       `${API_BASE_URL}/users/${email}/expenses/`,
@@ -27,8 +44,8 @@ export async function GET() {
     ];
 
     const responses = await Promise.all(
-      endpoints.map(endpoint => 
-        fetch(endpoint)
+      endpoints.map(endpoint =>
+        fetch(endpoint, { headers })
           .then(res => res.ok ? res.json() : [])
           .catch(() => [])
       )

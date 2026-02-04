@@ -554,6 +554,7 @@
         "saving": "Savings",
         "payment": "Payment"
       },
+      "emptyState": "No recent activity.",
       "emptyStateFiltered": "No activity matches this filter yet."
     },
     "categories": {
@@ -1560,14 +1561,7 @@
       "category": "All categories",
       "startDate": "Start date",
       "endDate": "End date",
-      "dateRange": {
-        "currentMonth": "Current month",
-        "lastMonth": "Last month",
-        "lastQuarter": "Last quarter",
-        "lastHalf": "Last half-year",
-        "lastYear": "Last year",
-        "all": "All time"
-      },
+      "dateRange": "Select date range",
       "dateRangeOptions": {
         "currentMonth": "Current month",
         "lastMonth": "Last month",

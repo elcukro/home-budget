@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { createBackendHeaders } from "@/lib/backend-headers";
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -20,9 +21,7 @@ export async function GET(request: Request) {
     
     const response = await fetch(`${API_BASE_URL}/users/${session.user.email}/insights${forceRefresh ? "?refresh=true" : ""}`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: createBackendHeaders(session.user.email),
     });
 
     if (!response.ok) {
@@ -47,9 +46,7 @@ export async function POST(request: Request) {
 
     const response = await fetch(`${API_BASE_URL}/users/${session.user.email}/insights/refresh`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: createBackendHeaders(session.user.email),
     });
 
     if (!response.ok) {

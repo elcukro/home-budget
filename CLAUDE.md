@@ -64,6 +64,10 @@ journalctl -u home-budget-backend -f
 
 ## Style Guidelines
 
+### Code Organization
+- Keep files under 500 lines of code
+- When a file grows too large, break it up into smaller, focused modules
+
 ### Frontend
 - Use TypeScript with strict typing
 - Follow Next.js app router patterns
@@ -79,6 +83,25 @@ journalctl -u home-budget-backend -f
 - Validate requests with Pydantic models
 - Handle exceptions with appropriate status codes
 - Always check API schema against DB schema when adding new structures
+
+### API Authentication Pattern
+- All client-side API calls should use the `/api/backend/...` proxy pattern
+- Never call the backend directly from client code (e.g., `localhost:8100/...`)
+- The proxy automatically adds `X-User-ID` and `X-Internal-Secret` headers
+- Backend endpoints should use `Depends(get_authenticated_user)` for authentication
+
+## Debugging
+
+### Check Browser Console for Errors
+After making changes, always check the browser console for:
+- **401 Unauthorized**: Usually means a page is calling the backend directly instead of through the proxy
+- **422 Unprocessable Entity**: Often indicates backend endpoint expects different auth pattern
+- **Missing translations**: Shows which i18n keys need to be added to locale files
+- **React warnings**: Key props, hook dependencies, etc.
+
+### Common Issues
+- **401 errors on dashboard pages**: Change direct `${API_URL}/...` calls to `/api/backend/...`
+- **i18n MISSING_TRANSLATION**: Add the key to both `pl.json` and `en.json` in `src/locales/`
 
 ## Features
 

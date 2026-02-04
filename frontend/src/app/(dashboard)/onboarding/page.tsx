@@ -7,8 +7,6 @@ import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Loader2 } from 'lucide-react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
 type OnboardingMode = 'fresh' | 'merge' | 'default';
 
 export default function OnboardingPage() {
@@ -47,7 +45,7 @@ export default function OnboardingPage() {
         // Check for existing data (income and expenses are the most common)
         const [incomeRes, expensesRes] = await Promise.all([
           fetch('/api/income'),
-          fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses`),
+          fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/expenses`),
         ]);
 
         const hasIncome = incomeRes.ok && (await incomeRes.json()).length > 0;

@@ -91,12 +91,12 @@ const savingTypeIconOptions = [
 ];
 
 const dateRangeOptions: { value: SavingsDateRangePreset; labelId: string }[] = [
-  { value: "current_month", labelId: "savings.filters.dateRange.currentMonth" },
-  { value: "last_month", labelId: "savings.filters.dateRange.lastMonth" },
-  { value: "last_quarter", labelId: "savings.filters.dateRange.lastQuarter" },
-  { value: "last_half", labelId: "savings.filters.dateRange.lastHalf" },
-  { value: "last_year", labelId: "savings.filters.dateRange.lastYear" },
-  { value: "all", labelId: "savings.filters.dateRange.all" },
+  { value: "current_month", labelId: "savings.filters.dateRangeOptions.currentMonth" },
+  { value: "last_month", labelId: "savings.filters.dateRangeOptions.lastMonth" },
+  { value: "last_quarter", labelId: "savings.filters.dateRangeOptions.lastQuarter" },
+  { value: "last_half", labelId: "savings.filters.dateRangeOptions.lastHalf" },
+  { value: "last_year", labelId: "savings.filters.dateRangeOptions.lastYear" },
+  { value: "all", labelId: "savings.filters.dateRangeOptions.all" },
 ];
 
 const categoryOptions = Object.values(SavingCategory).map((category) => ({
@@ -1412,7 +1412,7 @@ export const SavingsManager = () => {
                           id="savings.summary.topCategory"
                           values={{
                             category: (
-                              <span className="font-medium text-emerald-900">
+                              <span key="category" className="font-medium text-emerald-900">
                                 <FormattedMessage id={`savings.categories.${topCategory.category}`} />
                               </span>
                             ),

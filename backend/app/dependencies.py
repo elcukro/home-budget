@@ -9,10 +9,15 @@ from .models import User
 JWT_SECRET = os.getenv("JWT_SECRET", "change-me-in-production-use-strong-secret")
 JWT_ALGORITHM = "HS256"
 
+# Internal service secret - required for X-User-ID header authentication
+# This prevents direct API access with spoofed X-User-ID headers
+INTERNAL_SERVICE_SECRET = os.getenv("INTERNAL_SERVICE_SECRET")
+
 
 async def get_current_user(
     authorization: str = Header(None, alias="Authorization"),
     x_user_id: str = Header(None, alias="X-User-ID"),
+    x_internal_secret: str = Header(None, alias="X-Internal-Secret"),
     db: Session = Depends(get_db)
 ) -> User:
     """
@@ -53,8 +58,19 @@ async def get_current_user(
                 detail=f"Invalid token: {str(e)}"
             )
 
-    # Method 2: X-User-ID header (web app)
+    # Method 2: X-User-ID header (web app via Next.js proxy)
+    # SECURITY: Requires matching X-Internal-Secret to prevent header spoofing
     elif x_user_id:
+        if not INTERNAL_SERVICE_SECRET:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal service secret not configured"
+            )
+        if x_internal_secret != INTERNAL_SERVICE_SECRET:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or missing internal service secret"
+            )
         user_identifier = x_user_id
         # X-User-ID contains email (from NextAuth session)
         lookup_by_email = True
@@ -80,5 +96,102 @@ async def get_current_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User not found: {user_identifier}"
         )
+
+    return user
+
+
+async def get_or_create_current_user(
+    authorization: str = Header(None, alias="Authorization"),
+    x_user_id: str = Header(None, alias="X-User-ID"),
+    x_internal_secret: str = Header(None, alias="X-Internal-Secret"),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Get or create the current user. Same as get_current_user but auto-creates
+    new users on first login (for OAuth registration flow).
+    """
+    from . import models  # Import here to avoid circular imports
+
+    user_identifier = None
+    lookup_by_email = False
+
+    # Method 1: Bearer token (mobile app)
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+
+        try:
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            user_identifier = payload.get("sub")
+            lookup_by_email = True
+
+            if not user_identifier:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token: missing subject"
+                )
+
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired"
+            )
+        except jwt.InvalidTokenError as e:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid token: {str(e)}"
+            )
+
+    # Method 2: X-User-ID header (web app via Next.js proxy)
+    elif x_user_id:
+        if not INTERNAL_SERVICE_SECRET:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal service secret not configured"
+            )
+        if x_internal_secret != INTERNAL_SERVICE_SECRET:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or missing internal service secret"
+            )
+        user_identifier = x_user_id
+        lookup_by_email = True
+
+    if not user_identifier:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+
+    # Look up user
+    if lookup_by_email:
+        user = db.query(User).filter(User.email == user_identifier).first()
+        if not user:
+            user = db.query(User).filter(User.id == user_identifier).first()
+    else:
+        user = db.query(User).filter(User.id == user_identifier).first()
+
+    # Auto-create user if not found (OAuth registration)
+    if not user:
+        user = User(
+            id=user_identifier,
+            email=user_identifier,
+            name=user_identifier.split('@')[0] if '@' in user_identifier else None
+        )
+        db.add(user)
+
+        # Create default settings
+        settings = models.Settings(
+            user_id=user_identifier,
+            language="pl",
+            currency="PLN",
+            ai={"apiKey": None},
+            emergency_fund_target=1000,
+            emergency_fund_months=3,
+            base_currency="PLN"
+        )
+        db.add(settings)
+
+        db.commit()
+        db.refresh(user)
 
     return user

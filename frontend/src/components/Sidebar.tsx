@@ -24,7 +24,7 @@ import SproutlyFiLogo from './SproutlyFiLogo';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { useSettings } from '@/contexts/SettingsContext';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Use Next.js API proxy for all backend calls to ensure auth headers are added
 
 const navigation = [
   { name: 'navigation.onboarding', href: '/onboarding?force=true', icon: UserPlusIcon },
@@ -100,8 +100,8 @@ export default function Sidebar() {
       try {
         const [incomeRes, expensesRes, loansRes, savingsRes] = await Promise.all([
           fetch('/api/income'),
-          fetch(`${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`),
-          fetch(`${API_BASE_URL}/loans?user_id=${encodeURIComponent(userEmail)}`),
+          fetch(`/api/backend/users/${encodeURIComponent(userEmail)}/expenses`),
+          fetch('/api/backend/loans'),
           fetch('/api/savings'),
         ]);
 

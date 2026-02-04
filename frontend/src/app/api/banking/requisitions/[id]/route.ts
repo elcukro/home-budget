@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 const BACKEND_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -50,10 +51,7 @@ export async function GET(
 
     const response = await fetch(backendUrl, {
       method: 'GET',
-      headers: {
-        'X-User-ID': session.user.email || '',
-        'Content-Type': 'application/json',
-      },
+      headers: createBackendHeaders(session.user.email || ''),
     });
 
     if (!response.ok) {

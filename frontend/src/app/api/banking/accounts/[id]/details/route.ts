@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from '@/lib/auth';
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 const BACKEND_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -33,10 +34,7 @@ export async function GET(
     
     // Make API call to backend to get account details
     const response = await fetch(`${BACKEND_BASE_URL}/banking/accounts/${accountId}/details`, {
-      headers: {
-        "Content-Type": "application/json",
-        "X-User-ID": session.user.email || '',
-      },
+      headers: createBackendHeaders(session.user.email || ''),
     });
     
     if (!response.ok) {

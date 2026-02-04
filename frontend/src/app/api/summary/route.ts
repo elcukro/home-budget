@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { logger } from '@/lib/logger';
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -18,8 +19,10 @@ export async function GET() {
       );
     }
 
+    const headers = createBackendHeaders(session.user.email);
+
     // Fetch income
-    const incomeResponse = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/income`);
+    const incomeResponse = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/income`, { headers });
     if (!incomeResponse.ok) {
       throw new Error('Failed to fetch income');
     }
@@ -27,7 +30,7 @@ export async function GET() {
     const totalIncome = incomeData.reduce((sum: number, item: any) => sum + item.amount, 0);
 
     // Fetch expenses
-    const expensesResponse = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses`);
+    const expensesResponse = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/expenses`, { headers });
     if (!expensesResponse.ok) {
       throw new Error('Failed to fetch expenses');
     }
@@ -35,7 +38,7 @@ export async function GET() {
     const totalExpenses = expensesData.reduce((sum: number, item: any) => sum + item.amount, 0);
 
     // Fetch loans
-    const loansResponse = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans`);
+    const loansResponse = await fetch(`${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/loans`, { headers });
     if (!loansResponse.ok) {
       throw new Error('Failed to fetch loans');
     }

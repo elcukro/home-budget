@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { createBackendHeaders } from '@/lib/backend-headers';
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -29,13 +30,14 @@ export async function GET() {
     }
 
     const userEmail = encodeURIComponent(session.user.email);
+    const headers = createBackendHeaders(session.user.email);
 
     // Fetch recent activities from all sources
     const [incomeResponse, expensesResponse, loansResponse, activitiesResponse] = await Promise.all([
-      fetch(`${API_BASE_URL}/users/${userEmail}/income`),
-      fetch(`${API_BASE_URL}/users/${userEmail}/expenses`),
-      fetch(`${API_BASE_URL}/users/${userEmail}/loans`),
-      fetch(`${API_BASE_URL}/users/${userEmail}/activities`)
+      fetch(`${API_BASE_URL}/users/${userEmail}/income`, { headers }),
+      fetch(`${API_BASE_URL}/users/${userEmail}/expenses`, { headers }),
+      fetch(`${API_BASE_URL}/users/${userEmail}/loans`, { headers }),
+      fetch(`${API_BASE_URL}/users/${userEmail}/activities`, { headers })
     ]);
 
     if (!incomeResponse.ok || !expensesResponse.ok || !loansResponse.ok || !activitiesResponse.ok) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { createBackendHeaders, createBackendHeadersNoBody } from '@/lib/backend-headers';
 
 const API_BASE_URL =
   process.env.BACKEND_API_URL ||
@@ -20,9 +21,7 @@ export async function GET(
     }
 
     const response = await fetch(`${API_BASE_URL}/savings/${id}`, {
-      headers: {
-        'X-User-ID': session.user.email,
-      },
+      headers: createBackendHeadersNoBody(session.user.email),
     });
 
     if (!response.ok) {
@@ -56,10 +55,7 @@ export async function PUT(
 
     const response = await fetch(`${API_BASE_URL}/savings/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User-ID': session.user.email,
-      },
+      headers: createBackendHeaders(session.user.email),
       body: JSON.stringify(body),
     });
 
@@ -93,9 +89,7 @@ export async function DELETE(
 
     const response = await fetch(`${API_BASE_URL}/savings/${id}`, {
       method: 'DELETE',
-      headers: {
-        'X-User-ID': session.user.email,
-      },
+      headers: createBackendHeadersNoBody(session.user.email),
     });
 
     if (!response.ok) {
