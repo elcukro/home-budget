@@ -51,6 +51,7 @@ interface GoalStats {
 function isGoalOverdue(goal: SavingsGoal): boolean {
   if (!goal.deadline || goal.status === GoalStatus.COMPLETED) return false;
   const deadlineDate = new Date(goal.deadline);
+  deadlineDate.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return deadlineDate < today;
@@ -77,7 +78,6 @@ function getProjectedCompletionDate(goal: SavingsGoal): Date | null {
 // Get status badge info for a goal
 function getGoalStatusInfo(goal: SavingsGoal, intl: ReturnType<typeof useIntl>): {
   badge: 'on_track' | 'at_risk' | 'overdue' | 'completed' | null;
-  badgeColor: string;
   badgeText: string;
   projectedDate: Date | null;
 } | null {
@@ -85,7 +85,6 @@ function getGoalStatusInfo(goal: SavingsGoal, intl: ReturnType<typeof useIntl>):
   if (goal.progress_percent >= 100 || goal.current_amount >= goal.target_amount) {
     return {
       badge: 'completed',
-      badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
       badgeText: intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.completed' }),
       projectedDate: null,
     };
@@ -100,7 +99,6 @@ function getGoalStatusInfo(goal: SavingsGoal, intl: ReturnType<typeof useIntl>):
   if (isGoalOverdue(goal)) {
     return {
       badge: 'overdue',
-      badgeColor: 'bg-red-100 text-red-700 border-red-200',
       badgeText: intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.overdue' }),
       projectedDate: getProjectedCompletionDate(goal),
     };
@@ -111,14 +109,12 @@ function getGoalStatusInfo(goal: SavingsGoal, intl: ReturnType<typeof useIntl>):
     if (goal.is_on_track) {
       return {
         badge: 'on_track',
-        badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-200',
         badgeText: intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.onTrack' }),
         projectedDate: null,
       };
     } else {
       return {
         badge: 'at_risk',
-        badgeColor: 'bg-amber-100 text-amber-700 border-amber-200',
         badgeText: intl.formatMessage({ id: 'dashboard.savingsGoalProgress.status.atRisk' }),
         projectedDate: getProjectedCompletionDate(goal),
       };
@@ -128,13 +124,6 @@ function getGoalStatusInfo(goal: SavingsGoal, intl: ReturnType<typeof useIntl>):
   // No deadline - no status badge
   return null;
 }
-
-const _statusColors: Record<GoalStatus, { bar: string; barLight: string }> = {
-  [GoalStatus.ACTIVE]: { bar: '#22C55E', barLight: '#BBF7D0' },
-  [GoalStatus.COMPLETED]: { bar: '#0EA5E9', barLight: '#BAE6FD' },
-  [GoalStatus.PAUSED]: { bar: '#F59E0B', barLight: '#FED7AA' },
-  [GoalStatus.ABANDONED]: { bar: '#9CA3AF', barLight: '#E5E7EB' },
-};
 
 const progressColors = {
   high: '#22C55E',      // 75%+ progress
