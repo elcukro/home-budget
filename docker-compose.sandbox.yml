@@ -1,0 +1,93 @@
+# Home Budget Sandbox Environment
+# Mirrors production (firedup.app) as closely as possible
+#
+# Usage:
+#   docker compose -f docker-compose.sandbox.yml up -d      # Start
+#   docker compose -f docker-compose.sandbox.yml down       # Stop
+#   docker compose -f docker-compose.sandbox.yml down -v    # Reset (delete data)
+#   docker compose -f docker-compose.sandbox.yml logs -f    # View logs
+#
+# Access:
+#   Frontend: http://localhost:3100
+#   Backend:  http://localhost:8100
+#   Database: localhost:5433
+
+services:
+  # PostgreSQL Database (matches production)
+  db:
+    image: postgres:16-alpine
+    container_name: home-budget-sandbox-db
+    environment:
+      POSTGRES_DB: home_budget_sandbox
+      POSTGRES_USER: sandbox
+      POSTGRES_PASSWORD: sandbox_dev_only
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    volumes:
+      - sandbox_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sandbox -d home_budget_sandbox"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: home-budget-sandbox-backend
+    env_file:
+      - ./backend/.env.sandbox
+    environment:
+      # Override database host for Docker networking
+      POSTGRES_HOST: db
+      # CORS - allow sandbox frontend
+      CORS_ORIGINS: http://localhost:3100,http://127.0.0.1:3100
+    ports:
+      - "8100:8000"  # Different port to avoid conflicts
+    volumes:
+      # Mount source for hot reload
+      - ./backend/app:/app/app
+      - ./backend/init_db.py:/app/init_db.py:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 2 &&
+        echo 'Initializing database...' &&
+        python init_db.py &&
+        echo 'Starting server...' &&
+        uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: home-budget-sandbox-frontend
+    env_file:
+      - ./frontend/.env.sandbox
+    environment:
+      # Disable telemetry
+      NEXT_TELEMETRY_DISABLED: 1
+      # Node environment
+      NODE_ENV: development
+    ports:
+      - "3100:3000"  # Different port to avoid conflicts
+    volumes:
+      # Mount source for hot reload (exclude node_modules)
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  sandbox_db_data:
+    name: home-budget-sandbox-db-data
