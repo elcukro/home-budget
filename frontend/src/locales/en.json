@@ -352,6 +352,10 @@
         "title": "Cash flow timeline",
         "description": "Track how income, expenses, and loan payments move through the year."
       },
+      "spendingTrend": {
+        "title": "Spending Trend",
+        "description": "See how your spending changes from month to month."
+      },
       "loans": {
         "title": "Loan overview",
         "description": "Progress on repayments and remaining balances."
@@ -495,6 +499,29 @@
         "deltaDown": "down",
         "change": "Change vs previous: {direction} {amount}"
       }
+    },
+    "spendingTrend": {
+      "title": "Spending Trend",
+      "description": "Monitor how your spending changes over time.",
+      "actualExpenses": "Actual Expenses",
+      "movingAverage": "Moving Average (3 mo.)",
+      "statistics": {
+        "total": "Total Spending",
+        "average": "Monthly Average",
+        "highest": "Highest Month",
+        "lowest": "Lowest Month"
+      },
+      "timeHorizon": {
+        "currentYear": "Current Year",
+        "lastYear": "Last Year",
+        "twoYears": "2 Years"
+      },
+      "tooltip": {
+        "change": "{direction} {percent}% vs previous",
+        "ma3": "3 mo. avg: {amount}"
+      },
+      "emptyState": "No spending data yet. Add your first expense to see trends.",
+      "noDataForPeriod": "No data available for the selected period."
     },
     "loans": {
       "title": "Loans Overview",

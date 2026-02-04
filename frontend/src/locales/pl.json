@@ -302,6 +302,10 @@
         "title": "Przepływy pieniężne",
         "description": "Śledź zmiany dochodów, wydatków i rat w skali roku."
       },
+      "spendingTrend": {
+        "title": "Trend wydatków",
+        "description": "Obserwuj, jak zmieniają się Twoje wydatki z miesiąca na miesiąc."
+      },
       "loans": {
         "title": "Przegląd zobowiązań",
         "description": "Postęp spłat i pozostałe salda pożyczek."
@@ -448,6 +452,29 @@
         "deltaDown": "w dół",
         "change": "Zmiana vs poprzedni: {direction} {amount}"
       }
+    },
+    "spendingTrend": {
+      "title": "Trend Wydatków",
+      "description": "Monitoruj, jak zmieniają się Twoje wydatki w czasie.",
+      "actualExpenses": "Rzeczywiste wydatki",
+      "movingAverage": "Średnia krocząca (3 mies.)",
+      "statistics": {
+        "total": "Łączne wydatki",
+        "average": "Średnia miesięczna",
+        "highest": "Najwyższy miesiąc",
+        "lowest": "Najniższy miesiąc"
+      },
+      "timeHorizon": {
+        "currentYear": "Bieżący rok",
+        "lastYear": "Poprzedni rok",
+        "twoYears": "2 lata"
+      },
+      "tooltip": {
+        "change": "{direction} {percent}% vs poprzedni",
+        "ma3": "Śr. 3 mies.: {amount}"
+      },
+      "emptyState": "Brak danych o wydatkach. Dodaj swój pierwszy wydatek, aby zobaczyć trendy.",
+      "noDataForPeriod": "Brak danych dla wybranego okresu."
     },
     "loans": {
       "title": "Przegląd Pożyczek",

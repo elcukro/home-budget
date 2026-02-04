@@ -8,6 +8,7 @@ import { DashboardSkeleton } from '@/components/LoadingSkeleton';
 import MonthlySummary from '@/components/dashboard/MonthlySummary';
 import DistributionChart from '@/components/dashboard/DistributionChart';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
+import SpendingTrendChart from '@/components/dashboard/SpendingTrendChart';
 import LoanOverview from '@/components/dashboard/LoanOverview';
 import SectionHeader from '@/components/dashboard/SectionHeader';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
   Plus,
   Target,
   Landmark,
+  LineChart,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -539,6 +541,18 @@ export default function Home() {
               type="expense"
             />
           </div>
+        </section>
+
+        <section className="space-y-4">
+          <SectionHeader
+            icon={<LineChart className="h-5 w-5" />}
+            title={intl.formatMessage({ id: 'dashboard.sections.spendingTrend.title' })}
+            description={intl.formatMessage({ id: 'dashboard.sections.spendingTrend.description' })}
+          />
+          <SpendingTrendChart
+            data={dashboardData.cashFlow}
+            formatCurrency={formatCurrency}
+          />
         </section>
 
         <section className="space-y-4">
