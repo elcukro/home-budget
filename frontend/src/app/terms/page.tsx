@@ -2,51 +2,61 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { LEGAL_ENTITY } from "@/constants/legal";
 
 export default function TermsOfServicePage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl">Regulamin Uslugi</CardTitle>
+          <CardTitle className="text-2xl">Regulamin Usługi</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Ostatnia aktualizacja: 13 stycznia 2026
+            Ostatnia aktualizacja: {LEGAL_ENTITY.lastUpdated}
           </p>
         </CardHeader>
         <CardContent className="prose prose-sm max-w-none dark:prose-invert">
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">1. Postanowienia ogolne</h2>
+            <h2 className="text-xl font-semibold mb-4">1. Postanowienia ogólne</h2>
             <p>
-              1.1. Niniejszy Regulamin okresla zasady korzystania z aplikacji <strong>FiredUp</strong>
-              (dalej: "Aplikacja", "Usluga") dostepnej pod adresem firedup.app.
+              1.1. Niniejszy Regulamin określa zasady korzystania z aplikacji <strong>FiredUp</strong>
+              (dalej: &quot;Aplikacja&quot;, &quot;Usługa&quot;) dostępnej pod adresem firedup.app.
             </p>
             <p>
-              1.2. Uslugodawca: <strong>FiredUp</strong> z siedziba w Polsce (dalej: "Uslugodawca", "my").
+              1.2. Usługodawca: <strong>{LEGAL_ENTITY.legalName}</strong>, prowadzący działalność pod marką <strong>{LEGAL_ENTITY.name}</strong>
+              (dalej: &quot;Usługodawca&quot;, &quot;my&quot;).
+            </p>
+            <p className="mt-2">
+              <strong>Dane Usługodawcy:</strong>
+            </p>
+            <ul className="list-none space-y-1 mt-2 mb-4">
+              <li>Adres: {LEGAL_ENTITY.address.street}, {LEGAL_ENTITY.address.postalCode} {LEGAL_ENTITY.address.city}, {LEGAL_ENTITY.address.country}</li>
+              <li>NIP: {LEGAL_ENTITY.nip}</li>
+              <li>Email: <a href={`mailto:${LEGAL_ENTITY.email.contact}`} className="text-primary">{LEGAL_ENTITY.email.contact}</a></li>
+            </ul>
+            <p>
+              1.3. Użytkownik: osoba fizyczna korzystająca z Aplikacji (dalej: &quot;Użytkownik&quot;, &quot;Ty&quot;).
             </p>
             <p>
-              1.3. Uzytkownik: osoba fizyczna korzystajaca z Aplikacji (dalej: "Uzytkownik", "Ty").
-            </p>
-            <p>
-              1.4. Korzystanie z Aplikacji oznacza akceptacje niniejszego Regulaminu oraz
-              <Link href="/privacy" className="text-primary"> Polityki Prywatnosci</Link>.
+              1.4. Korzystanie z Aplikacji oznacza akceptację niniejszego Regulaminu oraz
+              <Link href="/privacy" className="text-primary"> Polityki Prywatności</Link>.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">2. Opis Uslugi</h2>
+            <h2 className="text-xl font-semibold mb-4">2. Opis Usługi</h2>
             <p>
-              2.1. FiredUp to aplikacja do zarzadzania budzetem domowym, ktora umozliwia:
+              2.1. FiredUp to aplikacja do zarządzania budżetem domowym, która umożliwia:
             </p>
             <ul className="list-disc pl-6 space-y-1">
-              <li>Reczne wprowadzanie wydatkow i przychodow</li>
-              <li>Kategoryzacje transakcji</li>
-              <li>Sledzenie celow oszczednosciowych</li>
-              <li>Generowanie raportow finansowych</li>
+              <li>Ręczne wprowadzanie wydatków i przychodów</li>
+              <li>Kategoryzację transakcji</li>
+              <li>Śledzenie celów oszczędnościowych</li>
+              <li>Generowanie raportów finansowych</li>
               <li>Automatyczne pobieranie transakcji z kont bankowych (opcjonalnie)</li>
             </ul>
             <p>
-              2.2. Usluga ma charakter informacyjny i pomocniczy. Nie stanowi doradzwa finansowego,
+              2.2. Usługa ma charakter informacyjny i pomocniczy. Nie stanowi doradztwa finansowego,
               podatkowego ani inwestycyjnego.
             </p>
           </section>
@@ -54,108 +64,108 @@ export default function TermsOfServicePage() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">3. Rejestracja i konto</h2>
             <p>
-              3.1. Korzystanie z Aplikacji wymaga utworzenia konta za pomoca adresu e-mail lub
-              logowania przez dostawce tozsamosci (Google, itp.).
+              3.1. Korzystanie z Aplikacji wymaga utworzenia konta za pomocą adresu e-mail lub
+              logowania przez dostawcę tożsamości (Google, itp.).
             </p>
             <p>
-              3.2. Uzytkownik zobowiazuje sie do:
+              3.2. Użytkownik zobowiązuje się do:
             </p>
             <ul className="list-disc pl-6 space-y-1">
               <li>Podania prawdziwych danych</li>
-              <li>Zachowania poufnosci danych logowania</li>
-              <li>Niezwlocznego powiadomienia o nieautoryzowanym dostepie do konta</li>
+              <li>Zachowania poufności danych logowania</li>
+              <li>Niezwłocznego powiadomienia o nieautoryzowanym dostępie do konta</li>
             </ul>
             <p>
-              3.3. Jedno konto moze byc uzywane tylko przez jedna osobe.
+              3.3. Jedno konto może być używane tylko przez jedną osobę.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">4. Polaczenie z bankiem (Tink)</h2>
+            <h2 className="text-xl font-semibold mb-4">4. Połączenie z bankiem (Tink)</h2>
             <p>
-              4.1. Aplikacja umozliwia opcjonalne polaczenie konta bankowego w celu automatycznego
+              4.1. Aplikacja umożliwia opcjonalne połączenie konta bankowego w celu automatycznego
               pobierania transakcji.
             </p>
             <p>
-              4.2. Usluga polaczenia z bankiem jest realizowana przez <strong>Tink AB</strong>,
-              licencjonowanego dostawce uslug platniczych (AISP) regulowanego przez Finansinspektionen (Szwecja).
+              4.2. Usługa połączenia z bankiem jest realizowana przez <strong>Tink AB</strong>,
+              licencjonowanego dostawcę usług płatniczych (AISP) regulowanego przez Finansinspektionen (Szwecja).
             </p>
             <p>
-              4.3. Laczac konto bankowe, Uzytkownik:
+              4.3. Łącząc konto bankowe, Użytkownik:
             </p>
             <ul className="list-disc pl-6 space-y-1">
-              <li>Wyrazza zgode na dostep do danych konta (lista kont, salda, transakcje)</li>
-              <li>Akceptuje <a href="https://tink.com/legal/end-user-terms" target="_blank" rel="noopener noreferrer" className="text-primary">Warunki Tink dla Uzytkownikow Koncowych</a></li>
-              <li>Rozumie, ze logowanie odbywa sie bezposrednio na stronie banku</li>
+              <li>Wyraża zgodę na dostęp do danych konta (lista kont, salda, transakcje)</li>
+              <li>Akceptuje <a href="https://tink.com/legal/end-user-terms" target="_blank" rel="noopener noreferrer" className="text-primary">Warunki Tink dla Użytkowników Końcowych</a></li>
+              <li>Rozumie, że logowanie odbywa się bezpośrednio na stronie banku</li>
             </ul>
             <p>
-              4.4. Uzytkownik moze w kazdej chwili rozlaczyc konto bankowe w Ustawieniach aplikacji
+              4.4. Użytkownik może w każdej chwili rozłączyć konto bankowe w Ustawieniach aplikacji
               lub przez <a href="https://tink.com/consumer/revocation" target="_blank" rel="noopener noreferrer" className="text-primary">portal Tink</a>.
             </p>
             <p>
-              4.5. Nie przechowujemy danych logowania do banku (hasel, PIN-ow).
+              4.5. Nie przechowujemy danych logowania do banku (haseł, PIN-ów).
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">5. Zasady korzystania</h2>
-            <p>5.1. Uzytkownik zobowiazuje sie do:</p>
+            <p>5.1. Użytkownik zobowiązuje się do:</p>
             <ul className="list-disc pl-6 space-y-1">
               <li>Korzystania z Aplikacji zgodnie z prawem i dobrymi obyczajami</li>
-              <li>Niepodejmowania prob obejscia zabezpieczen</li>
-              <li>Nieuzywania Aplikacji do celow niezgodnych z prawem</li>
-              <li>Nieprzeciazania infrastruktury Aplikacji</li>
+              <li>Niepodejmowania prób obejścia zabezpieczeń</li>
+              <li>Nieużywania Aplikacji do celów niezgodnych z prawem</li>
+              <li>Nieprzeciążania infrastruktury Aplikacji</li>
             </ul>
-            <p>5.2. Zabrania sie:</p>
+            <p>5.2. Zabrania się:</p>
             <ul className="list-disc pl-6 space-y-1">
-              <li>Udostepniania konta osobom trzecim</li>
+              <li>Udostępniania konta osobom trzecim</li>
               <li>Automatycznego pobierania danych (scraping) bez zgody</li>
               <li>Reverse engineeringu Aplikacji</li>
             </ul>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">6. Odpowiedzialnosc</h2>
+            <h2 className="text-xl font-semibold mb-4">6. Odpowiedzialność</h2>
             <p>
-              6.1. Uslugodawca doklada starannosci, aby Aplikacja dzialala poprawnie, jednak nie
-              gwarantuje nieprzerwanej dostepnosci ani braku bledow.
+              6.1. Usługodawca dokłada staranności, aby Aplikacja działała poprawnie, jednak nie
+              gwarantuje nieprzerwanej dostępności ani braku błędów.
             </p>
             <p>
-              6.2. Uslugodawca nie ponosi odpowiedzialnosci za:
+              6.2. Usługodawca nie ponosi odpowiedzialności za:
             </p>
             <ul className="list-disc pl-6 space-y-1">
-              <li>Decyzje finansowe podjete na podstawie danych z Aplikacji</li>
-              <li>Bledy w danych pobranych z bankow (zrodlem sa systemy bankowe)</li>
-              <li>Przerwy w dzialaniu spowodowane czynnikami zewnetrznymi</li>
-              <li>Utrate danych spowodowana dzialaniem Uzytkownika</li>
-              <li>Dzialania lub zaniechania Tink AB</li>
+              <li>Decyzje finansowe podjęte na podstawie danych z Aplikacji</li>
+              <li>Błędy w danych pobranych z banków (źródłem są systemy bankowe)</li>
+              <li>Przerwy w działaniu spowodowane czynnikami zewnętrznymi</li>
+              <li>Utratę danych spowodowaną działaniem Użytkownika</li>
+              <li>Działania lub zaniechania Tink AB</li>
             </ul>
             <p>
-              6.3. Aplikacja jest udostepniana "tak jak jest" (as is). Uzytkownik korzysta z niej
-              na wlasna odpowiedzialnosc.
+              6.3. Aplikacja jest udostępniana &quot;tak jak jest&quot; (as is). Użytkownik korzysta z niej
+              na własną odpowiedzialność.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">7. Wlasnosc intelektualna</h2>
+            <h2 className="text-xl font-semibold mb-4">7. Własność intelektualna</h2>
             <p>
-              7.1. Wszelkie prawa do Aplikacji, w tym kod zrodlowy, design i znaki towarowe,
-              naleza do Uslugodawcy.
+              7.1. Wszelkie prawa do Aplikacji, w tym kod źródłowy, design i znaki towarowe,
+              należą do Usługodawcy.
             </p>
             <p>
-              7.2. Uzytkownik otrzymuje ograniczona, niewylaczna licencje na korzystanie z Aplikacji
-              do celow osobistych.
+              7.2. Użytkownik otrzymuje ograniczoną, niewyłączną licencję na korzystanie z Aplikacji
+              do celów osobistych.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">8. Ochrona danych osobowych</h2>
             <p>
-              8.1. Zasady przetwarzania danych osobowych okreslone sa w
-              <Link href="/privacy" className="text-primary"> Polityce Prywatnosci</Link>.
+              8.1. Zasady przetwarzania danych osobowych określone są w
+              <Link href="/privacy" className="text-primary"> Polityce Prywatności</Link>.
             </p>
             <p>
-              8.2. Uzytkownik ma prawo dostepu, sprostowania, usuniecia i przenoszenia swoich danych
+              8.2. Użytkownik ma prawo dostępu, sprostowania, usunięcia i przenoszenia swoich danych
               zgodnie z RODO.
             </p>
           </section>
@@ -163,59 +173,59 @@ export default function TermsOfServicePage() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">9. Zmiany Regulaminu</h2>
             <p>
-              9.1. Uslugodawca moze zmieniac niniejszy Regulamin.
+              9.1. Usługodawca może zmieniać niniejszy Regulamin.
             </p>
             <p>
-              9.2. O istotnych zmianach Uzytkownik zostanie powiadomiony drogą mailowa lub
+              9.2. O istotnych zmianach Użytkownik zostanie powiadomiony drogą mailową lub
               przez powiadomienie w Aplikacji.
             </p>
             <p>
-              9.3. Dalsze korzystanie z Aplikacji po wprowadzeniu zmian oznacza ich akceptacje.
+              9.3. Dalsze korzystanie z Aplikacji po wprowadzeniu zmian oznacza ich akceptację.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">10. Usuniecie konta</h2>
+            <h2 className="text-xl font-semibold mb-4">10. Usunięcie konta</h2>
             <p>
-              10.1. Uzytkownik moze w kazdej chwili usunac swoje konto kontaktujac sie z nami
-              lub przez funkcje w Ustawieniach (jesli dostepna).
+              10.1. Użytkownik może w każdej chwili usunąć swoje konto kontaktując się z nami
+              lub przez funkcję w Ustawieniach (jeśli dostępna).
             </p>
             <p>
-              10.2. Usuniecie konta skutkuje trwalym usunieciem wszystkich danych Uzytkownika.
+              10.2. Usunięcie konta skutkuje trwałym usunięciem wszystkich danych Użytkownika.
             </p>
             <p>
-              10.3. Uslugodawca moze usunac konto Uzytkownika w przypadku naruszenia Regulaminu.
+              10.3. Usługodawca może usunąć konto Użytkownika w przypadku naruszenia Regulaminu.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-xl font-semibold mb-4">11. Postanowienia koncowe</h2>
+            <h2 className="text-xl font-semibold mb-4">11. Postanowienia końcowe</h2>
             <p>
               11.1. Regulamin podlega prawu polskiemu.
             </p>
             <p>
-              11.2. Spory beda rozstrzygane przez sądy powszechne wlasciwe dla siedziby Uslugodawcy.
+              11.2. Spory będą rozstrzygane przez sądy powszechne właściwe dla siedziby Usługodawcy.
             </p>
             <p>
-              11.3. Jezeli jakiekolwiek postanowienie Regulaminu okaże sie niewazne, pozostale
-              postanowienia pozostaja w mocy.
+              11.3. Jeżeli jakiekolwiek postanowienie Regulaminu okaże się nieważne, pozostałe
+              postanowienia pozostają w mocy.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">12. Kontakt</h2>
             <p>
-              W sprawach zwiazanych z Regulaminem mozesz skontaktowac sie z nami:
+              W sprawach związanych z Regulaminem możesz skontaktować się z nami:
             </p>
             <ul className="list-none space-y-1 mt-2">
-              <li>Email: <a href="mailto:contact@firedup.app" className="text-primary">contact@firedup.app</a></li>
-              <li>Strona: <a href="https://firedup.app" className="text-primary">firedup.app</a></li>
+              <li>Email: <a href={`mailto:${LEGAL_ENTITY.email.contact}`} className="text-primary">{LEGAL_ENTITY.email.contact}</a></li>
+              <li>Strona: <a href={LEGAL_ENTITY.website} className="text-primary">{LEGAL_ENTITY.website.replace('https://', '')}</a></li>
             </ul>
           </section>
 
           <div className="mt-8 pt-4 border-t">
             <Link href="/" className="text-primary hover:underline">
-              ← Powrot do aplikacji
+              ← Powrót do aplikacji
             </Link>
           </div>
         </CardContent>
