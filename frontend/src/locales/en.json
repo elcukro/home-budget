@@ -2857,5 +2857,50 @@
       "tooLong": "Description is too long (max 200 characters)"
     },
     "endDateAfterStartDate": "End date must be after start date"
+  },
+  "welcome": {
+    "title": "Welcome to your free trial!",
+    "subtitle": "You have full access to all Premium features. No commitments \u2013 cancel anytime.",
+    "expired": {
+      "title": "Your trial has ended",
+      "subtitle": "You can still use basic features for free."
+    },
+    "lifetime": {
+      "title": "You have Premium access!",
+      "subtitle": "You have full access to all FiredUp features."
+    },
+    "trial": {
+      "endsLabel": "Your trial ends:",
+      "reminder": "We'll remind you 3 days before it ends"
+    },
+    "features": {
+      "heading": "What you get with Premium",
+      "unlimited": {
+        "title": "Unlimited transactions",
+        "desc": "No limits on expenses and income"
+      },
+      "bank": {
+        "title": "Bank integration",
+        "desc": "Automatic import via Tink (ING, PKO BP, mBank...)"
+      },
+      "ai": {
+        "title": "AI Insights",
+        "desc": "Smart suggestions and expense analysis"
+      },
+      "reports": {
+        "title": "Advanced reports",
+        "desc": "Export to Excel/CSV, quarterly/annual reports"
+      },
+      "all": {
+        "title": "All features right now!",
+        "desc": "Full access throughout your trial"
+      }
+    },
+    "comparison": {
+      "heading": "Plan comparison"
+    },
+    "finePrint": "After the trial ends, you'll keep access to basic features for free.",
+    "continue": "Great, continue!",
+    "skip": "Remind me later"
   }
 }

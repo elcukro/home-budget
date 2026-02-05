@@ -2809,5 +2809,50 @@
       "tooLong": "Opis jest zbyt długi (max 200 znaków)"
     },
     "endDateAfterStartDate": "Data końcowa musi być późniejsza niż data początkowa"
+  },
+  "welcome": {
+    "title": "Witaj w okresie pr\u00f3bnym!",
+    "subtitle": "Masz pe\u0142ny dost\u0119p do wszystkich funkcji Premium. \u017badnych zobowi\u0105za\u0144 \u2013 anuluj w dowolnym momencie.",
+    "expired": {
+      "title": "Tw\u00f3j trial si\u0119 zako\u0144czy\u0142",
+      "subtitle": "Mo\u017cesz nadal korzysta\u0107 z podstawowych funkcji za darmo."
+    },
+    "lifetime": {
+      "title": "Masz dost\u0119p Premium!",
+      "subtitle": "Korzystasz z pe\u0142nego dost\u0119pu do wszystkich funkcji FiredUp."
+    },
+    "trial": {
+      "endsLabel": "Tw\u00f3j trial ko\u0144czy si\u0119:",
+      "reminder": "Przypomnimy Ci na 3 dni przed ko\u0144cem"
+    },
+    "features": {
+      "heading": "Co zyskujesz z Premium?",
+      "unlimited": {
+        "title": "Nieograniczone transakcje",
+        "desc": "Brak limit\u00f3w na wydatki i przychody"
+      },
+      "bank": {
+        "title": "Integracja z bankami",
+        "desc": "Automatyczny import z Tink (ING, PKO BP, mBank...)"
+      },
+      "ai": {
+        "title": "AI Insights",
+        "desc": "Inteligentne sugestie i analiza wydatk\u00f3w"
+      },
+      "reports": {
+        "title": "Zaawansowane raporty",
+        "desc": "Eksport do Excel/CSV, raporty kwartalne/roczne"
+      },
+      "all": {
+        "title": "Wszystkie funkcje ju\u017c teraz!",
+        "desc": "Pe\u0142ny dost\u0119p przez ca\u0142y trial"
+      }
+    },
+    "comparison": {
+      "heading": "Por\u00f3wnanie plan\u00f3w"
+    },
+    "finePrint": "Po zako\u0144czeniu trialu dost\u0119p do podstawowych funkcji pozostanie darmowy.",
+    "continue": "\u015awietnie, kontynuuj!",
+    "skip": "Przypomnij mi p\u00f3\u017aniej"
   }
 }

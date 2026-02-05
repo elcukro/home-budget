@@ -1157,5 +1157,50 @@
       "savings": "Metas de ahorro",
       "unlimited": "Ilimitado"
     }
+  },
+  "welcome": {
+    "title": "\u00a1Bienvenido a tu prueba gratuita!",
+    "subtitle": "Tienes acceso completo a todas las funciones Premium. Sin compromisos \u2013 cancela en cualquier momento.",
+    "expired": {
+      "title": "Tu prueba ha terminado",
+      "subtitle": "A\u00fan puedes usar las funciones b\u00e1sicas gratis."
+    },
+    "lifetime": {
+      "title": "\u00a1Tienes acceso Premium!",
+      "subtitle": "Tienes acceso completo a todas las funciones de FiredUp."
+    },
+    "trial": {
+      "endsLabel": "Tu prueba termina:",
+      "reminder": "Te recordaremos 3 d\u00edas antes de que termine"
+    },
+    "features": {
+      "heading": "\u00bfQu\u00e9 obtienes con Premium?",
+      "unlimited": {
+        "title": "Transacciones ilimitadas",
+        "desc": "Sin l\u00edmites en gastos e ingresos"
+      },
+      "bank": {
+        "title": "Integraci\u00f3n bancaria",
+        "desc": "Importaci\u00f3n autom\u00e1tica v\u00eda Tink (ING, PKO BP, mBank...)"
+      },
+      "ai": {
+        "title": "AI Insights",
+        "desc": "Sugerencias inteligentes y an\u00e1lisis de gastos"
+      },
+      "reports": {
+        "title": "Informes avanzados",
+        "desc": "Exportar a Excel/CSV, informes trimestrales/anuales"
+      },
+      "all": {
+        "title": "\u00a1Todas las funciones ahora!",
+        "desc": "Acceso completo durante toda la prueba"
+      }
+    },
+    "comparison": {
+      "heading": "Comparaci\u00f3n de planes"
+    },
+    "finePrint": "Despu\u00e9s de la prueba, mantendr\u00e1s el acceso a las funciones b\u00e1sicas gratis.",
+    "continue": "\u00a1Genial, contin\u00faa!",
+    "skip": "Recu\u00e9rdame m\u00e1s tarde"
   }
 }

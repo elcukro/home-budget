@@ -16,7 +16,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
 
-  // Redirect first-time users to onboarding
+  // Redirect first-time users to welcome page (trial info + plan comparison)
   useEffect(() => {
     if (isLoading || !user) return;
 
@@ -25,7 +25,7 @@ export default function DashboardLayout({
     if (isOnboardingPage) return;
 
     if (user.is_first_login) {
-      router.replace('/onboarding');
+      router.replace('/welcome');
     }
   }, [user, isLoading, pathname, router]);
 
