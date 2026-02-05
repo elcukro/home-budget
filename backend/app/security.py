@@ -17,7 +17,7 @@ from functools import wraps
 from datetime import datetime, timedelta
 
 import sentry_sdk
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -483,3 +483,51 @@ def require_debug_mode():
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found"
         )
+
+
+# =============================================================================
+# Internal Endpoint Protection
+# =============================================================================
+
+def require_internal_access(request: Request) -> None:
+    """
+    Dependency that verifies the request is internal.
+
+    Internal access is granted if:
+    1. Request comes from localhost (127.0.0.1 or ::1)
+    2. X-Internal-Secret header matches INTERNAL_SERVICE_SECRET
+    3. DEBUG_ENDPOINTS_ENABLED is true (development mode)
+
+    Use on health/metrics endpoints that should not be public.
+    """
+
+    # Check if debug mode allows access
+    if is_debug_enabled():
+        return
+
+    # Check for internal secret header
+    internal_secret = os.getenv("INTERNAL_SERVICE_SECRET", "")
+    request_secret = request.headers.get("X-Internal-Secret", "")
+
+    if internal_secret and request_secret == internal_secret:
+        return
+
+    # Check if request is from localhost
+    client_host = None
+    if request.client:
+        client_host = request.client.host
+
+    # Also check X-Forwarded-For for proxied requests
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        client_host = forwarded_for.split(",")[0].strip()
+
+    localhost_addresses = ["127.0.0.1", "::1", "localhost"]
+    if client_host in localhost_addresses:
+        return
+
+    # Access denied
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Internal access required"
+    )

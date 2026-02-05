@@ -26,6 +26,7 @@ from ..dependencies import get_current_user
 from ..models import User, TinkConnection, BankTransaction
 from ..services.tink_service import tink_service
 from ..services.subscription_service import SubscriptionService
+from ..services.tink_metrics_service import tink_metrics_service
 from ..services.audit_service import (
     audit_connect_initiated,
     audit_connection_created,
@@ -35,7 +36,7 @@ from ..services.audit_service import (
     audit_data_refreshed,
     audit_token_refreshed,
 )
-from ..security import require_debug_mode, is_debug_enabled
+from ..security import require_debug_mode, is_debug_enabled, require_internal_access
 from ..logging_utils import get_secure_logger
 
 # Rate limiting
@@ -606,3 +607,50 @@ async def get_debug_data(
             "has_connection": True,
             "timestamp": datetime.now().isoformat()
         }
+
+
+# =============================================================================
+# Internal Monitoring Endpoints
+# =============================================================================
+
+@router.get("/internal/health")
+async def get_tink_health(
+    http_request: Request,
+    db: Session = Depends(get_db),
+    _internal: None = Depends(require_internal_access),
+):
+    """
+    Get Tink integration health status.
+
+    This is an internal endpoint for monitoring and alerting.
+    Returns:
+    - Overall status (healthy/degraded/unhealthy)
+    - Current metrics window (error rates, latencies)
+    - Connection pool status
+    - Recent error counts
+    - Last successful sync
+
+    Access: Internal only (localhost or X-Internal-Secret header)
+    """
+    return tink_metrics_service.get_health_status(db)
+
+
+@router.get("/internal/metrics")
+async def get_tink_metrics(
+    http_request: Request,
+    _internal: None = Depends(require_internal_access),
+):
+    """
+    Get current Tink API metrics.
+
+    Returns the current metrics window including:
+    - Total/successful/failed API calls
+    - Error rate
+    - Latency percentiles (p50, p95, p99)
+    - Errors by type
+    - Calls by endpoint
+    - Rate limit events
+
+    Access: Internal only (localhost or X-Internal-Secret header)
+    """
+    return tink_metrics_service.get_current_metrics()

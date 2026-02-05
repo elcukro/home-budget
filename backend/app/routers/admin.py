@@ -19,6 +19,7 @@ from slowapi import Limiter
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User, TinkAuditLog
+from ..services.tink_metrics_service import tink_analytics_service
 from ..logging_utils import get_secure_logger
 
 logger = get_secure_logger(__name__)
@@ -276,3 +277,139 @@ async def get_tink_audit_log_by_id(
         raise HTTPException(status_code=404, detail="Audit log entry not found")
 
     return TinkAuditLogResponse.model_validate(log_entry)
+
+
+# ============================================================================
+# Tink Analytics Endpoints
+# ============================================================================
+
+@router.get("/tink/analytics")
+async def get_tink_analytics(
+    http_request: Request,
+    period: str = Query("7d", description="Time period: 7d, 30d, or 90d"),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get comprehensive Tink analytics for monitoring dashboard.
+
+    Returns aggregated stats including:
+    - Daily operation counts and success/failure breakdown
+    - Error breakdown by category
+    - Sync performance metrics
+    - User engagement stats
+
+    Requires admin access.
+
+    Rate limit: 60/minute
+    """
+    limiter = get_limiter(http_request)
+    await limiter.check("60/minute", http_request)
+
+    # Parse period
+    period_days = {
+        "7d": 7,
+        "30d": 30,
+        "90d": 90,
+    }.get(period, 7)
+
+    return {
+        "period": period,
+        "period_days": period_days,
+        "generated_at": datetime.utcnow().isoformat(),
+        "daily_stats": tink_analytics_service.get_daily_stats(db, days=period_days),
+        "error_breakdown": tink_analytics_service.get_error_breakdown(db, days=period_days),
+        "sync_performance": tink_analytics_service.get_sync_performance(db, days=period_days),
+        "user_engagement": tink_analytics_service.get_user_engagement(db, days=period_days),
+    }
+
+
+@router.get("/tink/analytics/daily")
+async def get_tink_daily_stats(
+    http_request: Request,
+    days: int = Query(30, ge=1, le=90, description="Number of days"),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get daily aggregated Tink operation stats.
+
+    Returns list of daily summaries for trend analysis.
+
+    Requires admin access.
+
+    Rate limit: 60/minute
+    """
+    limiter = get_limiter(http_request)
+    await limiter.check("60/minute", http_request)
+
+    return {
+        "days": days,
+        "stats": tink_analytics_service.get_daily_stats(db, days=days),
+    }
+
+
+@router.get("/tink/analytics/errors")
+async def get_tink_error_breakdown(
+    http_request: Request,
+    days: int = Query(7, ge=1, le=90, description="Number of days"),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get breakdown of Tink errors by category.
+
+    Useful for identifying recurring issues.
+
+    Requires admin access.
+
+    Rate limit: 60/minute
+    """
+    limiter = get_limiter(http_request)
+    await limiter.check("60/minute", http_request)
+
+    return tink_analytics_service.get_error_breakdown(db, days=days)
+
+
+@router.get("/tink/analytics/sync")
+async def get_tink_sync_performance(
+    http_request: Request,
+    days: int = Query(7, ge=1, le=90, description="Number of days"),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get transaction sync performance metrics.
+
+    Includes sync counts, transaction volumes, and duplicate detection stats.
+
+    Requires admin access.
+
+    Rate limit: 60/minute
+    """
+    limiter = get_limiter(http_request)
+    await limiter.check("60/minute", http_request)
+
+    return tink_analytics_service.get_sync_performance(db, days=days)
+
+
+@router.get("/tink/analytics/engagement")
+async def get_tink_user_engagement(
+    http_request: Request,
+    days: int = Query(30, ge=1, le=90, description="Number of days"),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get user engagement metrics with bank sync feature.
+
+    Includes new connections, active users, etc.
+
+    Requires admin access.
+
+    Rate limit: 60/minute
+    """
+    limiter = get_limiter(http_request)
+    await limiter.check("60/minute", http_request)
+
+    return tink_analytics_service.get_user_engagement(db, days=days)

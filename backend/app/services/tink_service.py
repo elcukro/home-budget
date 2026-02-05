@@ -23,6 +23,7 @@ import base64
 import json
 import asyncio
 import random
+import time
 from datetime import datetime, timedelta
 from email.utils import parsedate_to_datetime
 from urllib.parse import urlencode
@@ -34,6 +35,17 @@ from ..logging_utils import get_secure_logger
 from .audit_service import audit_token_refreshed
 
 logger = get_secure_logger(__name__)
+
+# Late import to avoid circular dependency - will be imported when needed
+_metrics_service = None
+
+def _get_metrics_service():
+    """Lazy import of metrics service to avoid circular imports."""
+    global _metrics_service
+    if _metrics_service is None:
+        from .tink_metrics_service import tink_metrics_service
+        _metrics_service = tink_metrics_service
+    return _metrics_service
 
 
 # =============================================================================
@@ -278,6 +290,8 @@ class TinkService:
         max_retries: int = 3,
         base_delay: float = 1.0,
         max_delay: float = 30.0,
+        user_id: Optional[str] = None,
+        connection_id: Optional[int] = None,
     ) -> httpx.Response:
         """
         Make an HTTP request to Tink API with retry logic and exponential backoff.
@@ -292,6 +306,8 @@ class TinkService:
             max_retries: Maximum number of retry attempts (default: 3)
             base_delay: Base delay in seconds for exponential backoff (default: 1.0)
             max_delay: Maximum delay cap in seconds (default: 30.0)
+            user_id: Optional user ID for metrics tracking
+            connection_id: Optional connection ID for metrics tracking
 
         Returns:
             httpx.Response on success
@@ -305,8 +321,11 @@ class TinkService:
         last_response: Optional[httpx.Response] = None
         last_exception: Optional[Exception] = None
         endpoint = url.replace(self.api_url, "")  # Log relative path for clarity
+        start_time = time.time()
+        total_retry_count = 0
 
         for attempt in range(max_retries):
+            attempt_start = time.time()
             try:
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     if method.upper() == "GET":
@@ -328,6 +347,23 @@ class TinkService:
 
                 # Check if response indicates success
                 if response.status_code < 400:
+                    duration_ms = (time.time() - start_time) * 1000
+                    # Record successful metric
+                    try:
+                        metrics = _get_metrics_service()
+                        metrics.record_api_call(
+                            endpoint=endpoint,
+                            method=method.upper(),
+                            status_code=response.status_code,
+                            duration_ms=duration_ms,
+                            success=True,
+                            retry_count=total_retry_count,
+                            user_id=user_id,
+                            connection_id=connection_id,
+                        )
+                    except Exception:
+                        pass  # Never fail due to metrics
+
                     if attempt > 0:
                         logger.info(
                             f"Tink API request succeeded on attempt {attempt + 1} "
@@ -336,10 +372,28 @@ class TinkService:
                     return response
 
                 last_response = response
+                total_retry_count = attempt
 
                 # Check if this is a retryable status code
                 if not _is_retryable_status(response.status_code):
                     # Non-retryable error (4xx client error) - fail immediately
+                    duration_ms = (time.time() - start_time) * 1000
+                    # Record failed metric
+                    try:
+                        metrics = _get_metrics_service()
+                        metrics.record_api_call(
+                            endpoint=endpoint,
+                            method=method.upper(),
+                            status_code=response.status_code,
+                            duration_ms=duration_ms,
+                            success=False,
+                            retry_count=total_retry_count,
+                            user_id=user_id,
+                            connection_id=connection_id,
+                        )
+                    except Exception:
+                        pass  # Never fail due to metrics
+
                     raise TinkAPIError(
                         message=f"Tink API error: {response.text}",
                         status_code=response.status_code,
@@ -380,6 +434,7 @@ class TinkService:
 
             except httpx.TimeoutException as e:
                 last_exception = e
+                total_retry_count = attempt
                 wait_time = _calculate_backoff_delay(attempt, base_delay, max_delay)
                 logger.warning(
                     f"Tink API timeout for {method} {endpoint} "
@@ -390,6 +445,7 @@ class TinkService:
 
             except httpx.ConnectError as e:
                 last_exception = e
+                total_retry_count = attempt
                 wait_time = _calculate_backoff_delay(attempt, base_delay, max_delay)
                 logger.warning(
                     f"Tink API connection error for {method} {endpoint}: {e} "
@@ -398,7 +454,24 @@ class TinkService:
                 if attempt < max_retries - 1:
                     await asyncio.sleep(wait_time)
 
-        # All retries exhausted
+        # All retries exhausted - record failed metric
+        duration_ms = (time.time() - start_time) * 1000
+        try:
+            metrics = _get_metrics_service()
+            metrics.record_api_call(
+                endpoint=endpoint,
+                method=method.upper(),
+                status_code=last_response.status_code if last_response else None,
+                duration_ms=duration_ms,
+                success=False,
+                retry_count=max_retries,
+                user_id=user_id,
+                connection_id=connection_id,
+                exception=last_exception,
+            )
+        except Exception:
+            pass  # Never fail due to metrics
+
         if last_response is not None:
             logger.error(
                 f"Tink API request failed after {max_retries} attempts "
@@ -1105,6 +1178,7 @@ class TinkService:
         token_expires = connection.token_expires_at
         if token_expires.tzinfo is not None:
             token_expires = token_expires.replace(tzinfo=None)
+        # Use 5-minute buffer to account for potential clock skew
         if token_expires > now + timedelta(minutes=5):
             return connection.access_token
 
@@ -1113,6 +1187,7 @@ class TinkService:
 
         logger.info(f"Refreshing expired token for connection {connection.id}")
 
+        start_time = time.time()
         try:
             token_data = await self.refresh_access_token(connection.refresh_token)
 
@@ -1122,12 +1197,38 @@ class TinkService:
 
             db.commit()
 
+            # Record successful token refresh in metrics
+            duration_ms = (time.time() - start_time) * 1000
+            try:
+                metrics = _get_metrics_service()
+                metrics.record_token_refresh(
+                    user_id=connection.user_id,
+                    connection_id=connection.id,
+                    success=True,
+                    duration_ms=duration_ms,
+                )
+            except Exception:
+                pass  # Never fail due to metrics
+
             # Audit: Token refresh succeeded
             audit_token_refreshed(db, connection.user_id, connection.id, "success")
 
             return connection.access_token
 
         except Exception as e:
+            # Record failed token refresh in metrics
+            duration_ms = (time.time() - start_time) * 1000
+            try:
+                metrics = _get_metrics_service()
+                metrics.record_token_refresh(
+                    user_id=connection.user_id,
+                    connection_id=connection.id,
+                    success=False,
+                    duration_ms=duration_ms,
+                )
+            except Exception:
+                pass  # Never fail due to metrics
+
             # Audit: Token refresh failed
             audit_token_refreshed(db, connection.user_id, connection.id, "failure")
             raise
