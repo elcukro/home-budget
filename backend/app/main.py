@@ -15,7 +15,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin
 from datetime import timezone
 from .routers.stripe_billing import TRIAL_DAYS
 from .database import engine, Base
@@ -186,6 +186,8 @@ app.include_router(stripe_billing.router, prefix="/internal-api")
 # Gamification system
 app.include_router(gamification.router)
 app.include_router(gamification.router, prefix="/internal-api")
+# Admin endpoints (audit logs, etc.)
+app.include_router(admin.router)
 
 # Loan models
 VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]

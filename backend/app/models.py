@@ -762,3 +762,52 @@ class ProcessedWebhookEvent(Base):
         Index('idx_processed_webhooks_event_id', 'event_id'),
         Index('idx_processed_webhooks_processed_at', 'processed_at'),
     )
+
+
+# ==========================================
+# TINK AUDIT LOGGING
+# ==========================================
+
+class TinkAuditLog(Base):
+    """
+    Audit log for all Tink banking integration operations.
+    Provides security compliance, debugging, and data access accountability.
+    """
+    __tablename__ = "tink_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    tink_connection_id = Column(Integer, ForeignKey("tink_connections.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    # Action classification
+    # Values: connect_initiated, connection_created, connection_failed,
+    #         connection_disconnected, token_refreshed, transactions_synced,
+    #         transaction_reviewed, debug_access, data_refreshed
+    action_type = Column(String(50), nullable=False, index=True)
+
+    # Result of the action: success, failure, partial
+    result = Column(String(20), nullable=False)
+
+    # HTTP request metadata
+    request_method = Column(String(10), nullable=True)
+    request_path = Column(String(200), nullable=True)
+    status_code = Column(Integer, nullable=True)
+
+    # Client identification
+    ip_address = Column(String(45), nullable=True)  # IPv6 compatible
+    user_agent = Column(String(500), nullable=True)
+
+    # Sanitized additional context (no PII/tokens!)
+    # Examples: account_count, transactions_synced, error_category
+    details = Column(JSONB, default={})
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index('idx_tink_audit_logs_user_id', 'user_id'),
+        Index('idx_tink_audit_logs_action_type', 'action_type'),
+        Index('idx_tink_audit_logs_connection_id', 'tink_connection_id'),
+        Index('idx_tink_audit_logs_created_at', 'created_at'),
+        # Composite for common queries
+        Index('idx_tink_audit_logs_user_date', 'user_id', 'created_at'),
+    )

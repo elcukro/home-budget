@@ -17,7 +17,6 @@ IMPORTANT: We exchange the code WE generated (step 3), NOT any code from callbac
 import os
 import httpx
 import secrets
-import logging
 import hmac
 import hashlib
 import base64
@@ -28,8 +27,10 @@ from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 
 from ..models import TinkConnection, BankTransaction, TinkPendingAuth
+from ..logging_utils import get_secure_logger
+from .audit_service import audit_token_refreshed
 
-logger = logging.getLogger(__name__)
+logger = get_secure_logger(__name__)
 
 
 def sanitize_external_user_id(user_id: str) -> str:
@@ -734,15 +735,25 @@ class TinkService:
             raise Exception("Token expired and no refresh token available")
 
         logger.info(f"Refreshing expired token for connection {connection.id}")
-        token_data = await self.refresh_access_token(connection.refresh_token)
 
-        connection.access_token = token_data["access_token"]
-        connection.refresh_token = token_data.get("refresh_token", connection.refresh_token)
-        connection.token_expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
+        try:
+            token_data = await self.refresh_access_token(connection.refresh_token)
 
-        db.commit()
+            connection.access_token = token_data["access_token"]
+            connection.refresh_token = token_data.get("refresh_token", connection.refresh_token)
+            connection.token_expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
 
-        return connection.access_token
+            db.commit()
+
+            # Audit: Token refresh succeeded
+            audit_token_refreshed(db, connection.user_id, connection.id, "success")
+
+            return connection.access_token
+
+        except Exception as e:
+            # Audit: Token refresh failed
+            audit_token_refreshed(db, connection.user_id, connection.id, "failure")
+            raise
 
 
 # Singleton instance

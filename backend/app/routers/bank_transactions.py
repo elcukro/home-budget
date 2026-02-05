@@ -24,7 +24,6 @@ from datetime import datetime, timedelta, date
 from typing import List, Optional
 from pydantic import BaseModel
 from enum import Enum
-import logging
 
 # Rate limiting
 from slowapi import Limiter
@@ -34,8 +33,14 @@ from ..dependencies import get_current_user
 from ..models import User, TinkConnection, BankTransaction, Expense, Income, Settings
 from ..services.tink_service import tink_service
 from ..services.categorization_service import categorize_in_batches
+from ..services.audit_service import (
+    audit_transactions_synced,
+    audit_transaction_reviewed,
+    audit_categorization_requested,
+)
+from ..logging_utils import get_secure_logger
 
-logger = logging.getLogger(__name__)
+logger = get_secure_logger(__name__)
 
 
 # Import the limiter from main - we'll use a function to get it from app state
@@ -273,6 +278,19 @@ async def sync_transactions(
         connection.last_sync_at = datetime.now()
         db.commit()
 
+        # Audit: Transactions synced (one summary entry, not per-transaction)
+        audit_transactions_synced(
+            db=db,
+            user_id=current_user.id,
+            connection_id=connection.id,
+            synced_count=synced_count,
+            duplicate_count=duplicate_count,
+            total_fetched=total_fetched,
+            date_range_days=days,
+            result="success",
+            request=http_request,
+        )
+
         return SyncResponse(
             success=True,
             synced_count=synced_count,
@@ -283,6 +301,18 @@ async def sync_transactions(
 
     except Exception as e:
         logger.error(f"Error syncing transactions: {str(e)}")
+        # Audit sync failure
+        audit_transactions_synced(
+            db=db,
+            user_id=current_user.id,
+            connection_id=connection.id if connection else None,
+            synced_count=0,
+            duplicate_count=0,
+            total_fetched=0,
+            date_range_days=days,
+            result="failure",
+            request=http_request,
+        )
         raise HTTPException(status_code=500, detail=f"Error syncing transactions: {str(e)}")
 
 
@@ -377,6 +407,15 @@ async def categorize_transactions(
     db.commit()
 
     logger.info(f"Categorized {categorized_count}/{len(transactions)} transactions")
+
+    # Audit: AI categorization requested
+    audit_categorization_requested(
+        db=db,
+        user_id=current_user.id,
+        transaction_count=len(transactions),
+        categorized_count=categorized_count,
+        request=http_request,
+    )
 
     return CategorizeResponse(
         success=True,
@@ -591,6 +630,15 @@ async def convert_transaction(
 
     db.commit()
 
+    # Audit: Transaction reviewed (convert)
+    audit_transaction_reviewed(
+        db=db,
+        user_id=current_user.id,
+        action=f"convert_to_{request.type.value}",
+        transaction_count=1,
+        request=http_request,
+    )
+
     return ConvertResponse(
         success=True,
         transaction_id=transaction_id,
@@ -627,6 +675,15 @@ async def reject_transaction(
     bank_tx.reviewed_at = datetime.now()
     db.commit()
 
+    # Audit: Transaction reviewed (reject)
+    audit_transaction_reviewed(
+        db=db,
+        user_id=current_user.id,
+        action="reject",
+        transaction_count=1,
+        request=http_request,
+    )
+
     return {"success": True, "message": "Transaction rejected"}
 
 
@@ -659,6 +716,15 @@ async def accept_transaction(
     bank_tx.status = "accepted"
     bank_tx.reviewed_at = datetime.now()
     db.commit()
+
+    # Audit: Transaction reviewed (accept)
+    audit_transaction_reviewed(
+        db=db,
+        user_id=current_user.id,
+        action="accept",
+        transaction_count=1,
+        request=http_request,
+    )
 
     return {"success": True, "message": "Transaction accepted"}
 
@@ -727,6 +793,15 @@ async def bulk_reject_transactions(
 
     db.commit()
 
+    # Audit: Bulk transaction review (reject)
+    audit_transaction_reviewed(
+        db=db,
+        user_id=current_user.id,
+        action="bulk_reject",
+        transaction_count=updated,
+        request=http_request,
+    )
+
     return BulkActionResponse(
         success=True,
         processed_count=updated,
@@ -759,6 +834,15 @@ async def bulk_accept_transactions(
     )
 
     db.commit()
+
+    # Audit: Bulk transaction review (accept)
+    audit_transaction_reviewed(
+        db=db,
+        user_id=current_user.id,
+        action="bulk_accept",
+        transaction_count=updated,
+        request=http_request,
+    )
 
     return BulkActionResponse(
         success=True,
@@ -828,6 +912,15 @@ async def bulk_convert_transactions(
         converted_count += 1
 
     db.commit()
+
+    # Audit: Bulk transaction review (convert)
+    audit_transaction_reviewed(
+        db=db,
+        user_id=current_user.id,
+        action=f"bulk_convert_to_{request.type.value}",
+        transaction_count=converted_count,
+        request=http_request,
+    )
 
     return BulkActionResponse(
         success=True,

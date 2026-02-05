@@ -20,19 +20,28 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
-import logging
 
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User, TinkConnection, BankTransaction
 from ..services.tink_service import tink_service
 from ..services.subscription_service import SubscriptionService
+from ..services.audit_service import (
+    audit_connect_initiated,
+    audit_connection_created,
+    audit_connection_failed,
+    audit_connection_disconnected,
+    audit_debug_access,
+    audit_data_refreshed,
+    audit_token_refreshed,
+)
 from ..security import require_debug_mode, is_debug_enabled
+from ..logging_utils import get_secure_logger
 
 # Rate limiting
 from slowapi import Limiter
 
-logger = logging.getLogger(__name__)
+logger = get_secure_logger(__name__)
 
 # Import the limiter from main - we'll use a function to get it from app state
 def get_limiter(request: Request) -> Limiter:
@@ -118,6 +127,9 @@ async def initiate_connection(
         raise HTTPException(status_code=403, detail=message)
 
     try:
+        # Audit: Connection initiated
+        audit_connect_initiated(db, current_user.id, http_request)
+
         # Use simple one-time flow (recommended for testing)
         tink_link_url, state = await tink_service.generate_simple_connect_url(
             user_id=current_user.id,
@@ -132,9 +144,11 @@ async def initiate_connection(
 
     except ValueError as e:
         logger.error(f"Configuration error: {str(e)}")
+        audit_connection_failed(db, current_user.id, "configuration_error", http_request)
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"Error initiating Tink connection: {str(e)}")
+        audit_connection_failed(db, current_user.id, "initiation_error", http_request)
         raise HTTPException(status_code=500, detail=f"Error initiating connection: {str(e)}")
 
 
@@ -159,9 +173,11 @@ async def handle_callback(
         # Verify state token
         stored_user_id = tink_service.verify_state_token(request.state)
         if not stored_user_id:
+            audit_connection_failed(db, current_user.id, "invalid_state", http_request)
             raise HTTPException(status_code=400, detail="Invalid or expired state token")
 
         if stored_user_id != current_user.id:
+            audit_connection_failed(db, current_user.id, "state_mismatch", http_request)
             raise HTTPException(status_code=403, detail="State token does not match current user")
 
         # Create connection - for one-time flow, use code from callback
@@ -185,6 +201,15 @@ async def handle_callback(
                     type=details.get("type"),
                 ))
 
+        # Audit: Connection created successfully
+        audit_connection_created(
+            db,
+            current_user.id,
+            connection.id,
+            len(accounts),
+            http_request
+        )
+
         return CallbackResponse(
             success=True,
             connection_id=connection.id,
@@ -196,6 +221,7 @@ async def handle_callback(
         raise
     except Exception as e:
         logger.error(f"Error handling Tink callback: {str(e)}")
+        audit_connection_failed(db, current_user.id, "callback_error", http_request)
         raise HTTPException(status_code=500, detail=f"Error connecting bank account: {str(e)}")
 
 
@@ -298,9 +324,21 @@ async def disconnect(
         if not connection:
             raise HTTPException(status_code=404, detail="Connection not found")
 
+        # Get account count before disconnecting for audit
+        previous_account_count = len(connection.accounts) if connection.accounts else 0
+
         # Soft delete
         connection.is_active = False
         db.commit()
+
+        # Audit: Connection disconnected
+        audit_connection_disconnected(
+            db,
+            current_user.id,
+            connection_id,
+            previous_account_count,
+            http_request
+        )
 
         return DisconnectResponse(
             success=True,
@@ -318,6 +356,7 @@ async def disconnect(
 async def test_tink_api(
     http_request: Request,
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
     _debug: None = Depends(require_debug_mode),  # SECURITY: Only available in debug mode
 ):
     """
@@ -329,6 +368,10 @@ async def test_tink_api(
     # Rate limit: 10 requests per minute per user (debug endpoint)
     limiter = get_limiter(http_request)
     await limiter.check("10/minute", http_request)
+
+    # Audit: Debug endpoint access (flagged for security review)
+    audit_debug_access(db, current_user.id, "/banking/tink/test", http_request)
+
     return {
         "status": "ok",
         "message": "Tink API is configured",
@@ -429,6 +472,15 @@ async def refresh_tink_data(
         connection.last_sync_at = datetime.now()
         db.commit()
 
+        # Audit: Data refreshed
+        audit_data_refreshed(
+            db,
+            current_user.id,
+            connection.id,
+            len(accounts),
+            http_request
+        )
+
         return {
             "success": True,
             "message": "Data refreshed successfully",
@@ -459,6 +511,10 @@ async def get_debug_data(
     # Rate limit: 10 requests per minute per user (debug endpoint, heavy payload)
     limiter = get_limiter(http_request)
     await limiter.check("10/minute", http_request)
+
+    # Audit: Debug endpoint access (flagged for security review)
+    audit_debug_access(db, current_user.id, "/banking/tink/debug-data", http_request)
+
     try:
         # Get user's active Tink connection
         connection = db.query(TinkConnection).filter(
