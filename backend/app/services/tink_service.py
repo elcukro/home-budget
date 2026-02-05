@@ -21,7 +21,10 @@ import hmac
 import hashlib
 import base64
 import json
+import asyncio
+import random
 from datetime import datetime, timedelta
+from email.utils import parsedate_to_datetime
 from urllib.parse import urlencode
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
@@ -31,6 +34,144 @@ from ..logging_utils import get_secure_logger
 from .audit_service import audit_token_refreshed
 
 logger = get_secure_logger(__name__)
+
+
+# =============================================================================
+# Custom Exceptions
+# =============================================================================
+class TinkAPIError(Exception):
+    """Base exception for Tink API errors."""
+
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        endpoint: Optional[str] = None,
+        response_body: Optional[str] = None,
+    ):
+        super().__init__(message)
+        self.status_code = status_code
+        self.endpoint = endpoint
+        self.response_body = response_body
+
+    def __str__(self):
+        parts = [super().__str__()]
+        if self.status_code:
+            parts.append(f"status_code={self.status_code}")
+        if self.endpoint:
+            parts.append(f"endpoint={self.endpoint}")
+        return " | ".join(parts)
+
+
+class TinkAPIRetryExhausted(TinkAPIError):
+    """Exception raised when all retry attempts are exhausted for a Tink API call."""
+
+    def __init__(
+        self,
+        message: str,
+        status_code: Optional[int] = None,
+        endpoint: Optional[str] = None,
+        response_body: Optional[str] = None,
+        attempts: int = 0,
+    ):
+        super().__init__(message, status_code, endpoint, response_body)
+        self.attempts = attempts
+
+    def __str__(self):
+        base = super().__str__()
+        return f"{base} | attempts={self.attempts}"
+
+
+# =============================================================================
+# HTTP Status Code Classification
+# =============================================================================
+# Status codes that should trigger a retry (transient errors)
+RETRYABLE_STATUS_CODES = {
+    429,  # Too Many Requests (rate limited)
+    500,  # Internal Server Error
+    502,  # Bad Gateway
+    503,  # Service Unavailable
+    504,  # Gateway Timeout
+}
+
+# Status codes that should NOT trigger retry (client errors / bugs)
+NON_RETRYABLE_STATUS_CODES = {
+    400,  # Bad Request
+    401,  # Unauthorized
+    403,  # Forbidden
+    404,  # Not Found
+    422,  # Unprocessable Entity
+}
+
+
+def _is_retryable_status(status_code: int) -> bool:
+    """Check if HTTP status code should trigger a retry."""
+    return status_code in RETRYABLE_STATUS_CODES
+
+
+def _parse_retry_after(response: httpx.Response) -> Optional[float]:
+    """
+    Parse Retry-After header from response.
+
+    The header can be either:
+    - An integer number of seconds (e.g., "120")
+    - An HTTP-date (e.g., "Wed, 21 Oct 2015 07:28:00 GMT")
+
+    Returns seconds to wait, or None if header is missing/invalid.
+    Caps at 60 seconds to prevent unreasonably long waits.
+    """
+    retry_after = response.headers.get("Retry-After")
+    if not retry_after:
+        return None
+
+    try:
+        # Try parsing as integer seconds first
+        seconds = int(retry_after)
+        # Cap at 60 seconds
+        return min(seconds, 60.0)
+    except ValueError:
+        pass
+
+    try:
+        # Try parsing as HTTP-date
+        retry_date = parsedate_to_datetime(retry_after)
+        now = datetime.now(retry_date.tzinfo)
+        delta = (retry_date - now).total_seconds()
+        if delta > 0:
+            # Cap at 60 seconds
+            return min(delta, 60.0)
+    except (ValueError, TypeError):
+        pass
+
+    return None
+
+
+def _calculate_backoff_delay(
+    attempt: int,
+    base_delay: float = 1.0,
+    max_delay: float = 30.0,
+    jitter_factor: float = 0.25,
+) -> float:
+    """
+    Calculate exponential backoff delay with jitter.
+
+    Args:
+        attempt: Zero-based attempt number (0, 1, 2, ...)
+        base_delay: Base delay in seconds
+        max_delay: Maximum delay cap in seconds
+        jitter_factor: Jitter as fraction of delay (0.25 = ±25%)
+
+    Returns:
+        Delay in seconds with jitter applied
+    """
+    # Exponential backoff: base_delay * 2^attempt
+    delay = min(base_delay * (2 ** attempt), max_delay)
+
+    # Add jitter: ±jitter_factor of the delay
+    jitter_range = delay * jitter_factor
+    jitter = random.uniform(-jitter_range, jitter_range)
+
+    return max(0.0, delay + jitter)
 
 
 def sanitize_external_user_id(user_id: str) -> str:
@@ -122,6 +263,174 @@ class TinkService:
                 "Please set TINK_CLIENT_ID and TINK_CLIENT_SECRET in .env file."
             )
 
+    # =========================================================================
+    # Retry Logic for Tink API Requests
+    # =========================================================================
+    async def _request_with_retry(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: Optional[Dict[str, str]] = None,
+        data: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None,
+        max_retries: int = 3,
+        base_delay: float = 1.0,
+        max_delay: float = 30.0,
+    ) -> httpx.Response:
+        """
+        Make an HTTP request to Tink API with retry logic and exponential backoff.
+
+        Args:
+            method: HTTP method ("GET" or "POST")
+            url: Full URL to request
+            headers: Optional request headers
+            data: Optional form data (for application/x-www-form-urlencoded)
+            json_data: Optional JSON data (for application/json)
+            params: Optional query parameters
+            max_retries: Maximum number of retry attempts (default: 3)
+            base_delay: Base delay in seconds for exponential backoff (default: 1.0)
+            max_delay: Maximum delay cap in seconds (default: 30.0)
+
+        Returns:
+            httpx.Response on success
+
+        Raises:
+            TinkAPIRetryExhausted: When all retry attempts are exhausted
+            TinkAPIError: For non-retryable errors (4xx client errors)
+            httpx.TimeoutException: Re-raised after retry exhaustion
+            httpx.ConnectError: Re-raised after retry exhaustion
+        """
+        last_response: Optional[httpx.Response] = None
+        last_exception: Optional[Exception] = None
+        endpoint = url.replace(self.api_url, "")  # Log relative path for clarity
+
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    if method.upper() == "GET":
+                        response = await client.get(
+                            url,
+                            headers=headers,
+                            params=params,
+                        )
+                    elif method.upper() == "POST":
+                        response = await client.post(
+                            url,
+                            headers=headers,
+                            data=data,
+                            json=json_data,
+                            params=params,
+                        )
+                    else:
+                        raise ValueError(f"Unsupported HTTP method: {method}")
+
+                # Check if response indicates success
+                if response.status_code < 400:
+                    if attempt > 0:
+                        logger.info(
+                            f"Tink API request succeeded on attempt {attempt + 1} "
+                            f"for {method} {endpoint}"
+                        )
+                    return response
+
+                last_response = response
+
+                # Check if this is a retryable status code
+                if not _is_retryable_status(response.status_code):
+                    # Non-retryable error (4xx client error) - fail immediately
+                    raise TinkAPIError(
+                        message=f"Tink API error: {response.text}",
+                        status_code=response.status_code,
+                        endpoint=endpoint,
+                        response_body=response.text,
+                    )
+
+                # Retryable status code - determine wait time
+                if response.status_code == 429:
+                    # Rate limited - check Retry-After header
+                    retry_after = _parse_retry_after(response)
+                    if retry_after is not None:
+                        wait_time = retry_after
+                        logger.warning(
+                            f"Tink API rate limited (429) for {method} {endpoint}, "
+                            f"Retry-After header indicates {wait_time:.1f}s wait "
+                            f"(attempt {attempt + 1}/{max_retries})"
+                        )
+                    else:
+                        wait_time = _calculate_backoff_delay(attempt, base_delay, max_delay)
+                        logger.warning(
+                            f"Tink API rate limited (429) for {method} {endpoint}, "
+                            f"using exponential backoff {wait_time:.1f}s "
+                            f"(attempt {attempt + 1}/{max_retries})"
+                        )
+                else:
+                    # Other retryable status (5xx)
+                    wait_time = _calculate_backoff_delay(attempt, base_delay, max_delay)
+                    logger.warning(
+                        f"Tink API retry attempt {attempt + 1}/{max_retries} "
+                        f"for {method} {endpoint} (status {response.status_code}), "
+                        f"waiting {wait_time:.1f}s"
+                    )
+
+                # Don't wait on the last attempt
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+
+            except httpx.TimeoutException as e:
+                last_exception = e
+                wait_time = _calculate_backoff_delay(attempt, base_delay, max_delay)
+                logger.warning(
+                    f"Tink API timeout for {method} {endpoint} "
+                    f"(attempt {attempt + 1}/{max_retries}), waiting {wait_time:.1f}s"
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+
+            except httpx.ConnectError as e:
+                last_exception = e
+                wait_time = _calculate_backoff_delay(attempt, base_delay, max_delay)
+                logger.warning(
+                    f"Tink API connection error for {method} {endpoint}: {e} "
+                    f"(attempt {attempt + 1}/{max_retries}), waiting {wait_time:.1f}s"
+                )
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+
+        # All retries exhausted
+        if last_response is not None:
+            logger.error(
+                f"Tink API request failed after {max_retries} attempts "
+                f"for {method} {endpoint} (last status: {last_response.status_code})"
+            )
+            raise TinkAPIRetryExhausted(
+                message=f"Tink API request failed after {max_retries} attempts: {last_response.text}",
+                status_code=last_response.status_code,
+                endpoint=endpoint,
+                response_body=last_response.text,
+                attempts=max_retries,
+            )
+        elif last_exception is not None:
+            logger.error(
+                f"Tink API request failed after {max_retries} attempts "
+                f"for {method} {endpoint} due to {type(last_exception).__name__}: {last_exception}"
+            )
+            raise TinkAPIRetryExhausted(
+                message=f"Tink API request failed after {max_retries} attempts: {last_exception}",
+                status_code=None,
+                endpoint=endpoint,
+                response_body=None,
+                attempts=max_retries,
+            )
+        else:
+            # Should not happen, but handle gracefully
+            raise TinkAPIRetryExhausted(
+                message=f"Tink API request failed after {max_retries} attempts (unknown error)",
+                endpoint=endpoint,
+                attempts=max_retries,
+            )
+
     def generate_state_token(self, user_id: str) -> str:
         """Generate a signed state token containing user_id and timestamp."""
         payload = {
@@ -181,25 +490,30 @@ class TinkService:
         """Get a client access token using client_credentials grant."""
         self._check_credentials()
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.api_url}/api/v1/oauth/token",
-                data={
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                    "grant_type": "client_credentials",
-                    "scope": scope,
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"}
+        response = await self._request_with_retry(
+            method="POST",
+            url=f"{self.api_url}/api/v1/oauth/token",
+            data={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "grant_type": "client_credentials",
+                "scope": scope,
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Failed to get client token: {response.status_code} - {response.text}")
+            raise TinkAPIError(
+                message=f"Failed to get client access token: {response.text}",
+                status_code=response.status_code,
+                endpoint="/api/v1/oauth/token",
+                response_body=response.text,
             )
 
-            if response.status_code != 200:
-                logger.error(f"Failed to get client token: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to get client access token: {response.text}")
-
-            data = response.json()
-            logger.info("Successfully obtained client access token")
-            return data["access_token"]
+        data = response.json()
+        logger.info("Successfully obtained client access token")
+        return data["access_token"]
 
     # =========================================================================
     # Step 2: Create Tink User
@@ -214,12 +528,13 @@ class TinkService:
         Create a permanent Tink user.
 
         Returns dict with user_id and external_user_id.
-        If user already exists (409), that's OK.
+        If user already exists (409), that's OK - handled as non-retryable.
         """
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.api_url}/api/v1/user/create",
-                json={
+        try:
+            response = await self._request_with_retry(
+                method="POST",
+                url=f"{self.api_url}/api/v1/user/create",
+                json_data={
                     "external_user_id": external_user_id,
                     "market": market,
                     "locale": "en_US",
@@ -227,20 +542,31 @@ class TinkService:
                 headers={
                     "Authorization": f"Bearer {client_token}",
                     "Content-Type": "application/json",
-                }
+                },
             )
-
-            if response.status_code == 200:
-                data = response.json()
-                logger.info(f"Created Tink user: {data}")
-                return data
-            elif response.status_code == 409:
-                # User already exists - this is fine
+        except TinkAPIError as e:
+            # 409 Conflict means user already exists - this is OK
+            if e.status_code == 409:
                 logger.info(f"Tink user already exists for external_user_id: {external_user_id}")
                 return {"external_user_id": external_user_id, "user_id": None}
-            else:
-                logger.error(f"Failed to create Tink user: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to create Tink user: {response.text}")
+            raise
+
+        if response.status_code == 200:
+            data = response.json()
+            logger.info(f"Created Tink user: {data}")
+            return data
+        elif response.status_code == 409:
+            # User already exists - this is fine
+            logger.info(f"Tink user already exists for external_user_id: {external_user_id}")
+            return {"external_user_id": external_user_id, "user_id": None}
+        else:
+            logger.error(f"Failed to create Tink user: {response.status_code} - {response.text}")
+            raise TinkAPIError(
+                message=f"Failed to create Tink user: {response.text}",
+                status_code=response.status_code,
+                endpoint="/api/v1/user/create",
+                response_body=response.text,
+            )
 
     # =========================================================================
     # Step 3: Generate Delegated Authorization Code
@@ -268,38 +594,43 @@ class TinkService:
         - authorization:read - to read authorization status
         """
         # Prepare user identification - prefer tink_user_id
-        data = {
+        request_data = {
             "actor_client_id": self.TINK_LINK_CLIENT_ID,
             "scope": scope,
             "id_hint": id_hint,  # Required for Tink Link
         }
 
         if tink_user_id:
-            data["user_id"] = tink_user_id
+            request_data["user_id"] = tink_user_id
             user_identifier = f"tink_user_id: {tink_user_id}"
         elif external_user_id:
-            data["external_user_id"] = external_user_id
+            request_data["external_user_id"] = external_user_id
             user_identifier = f"external_user_id: {external_user_id}"
         else:
             raise ValueError("Either tink_user_id or external_user_id must be provided")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.api_url}/api/v1/oauth/authorization-grant/delegate",
-                data=data,
-                headers={
-                    "Authorization": f"Bearer {client_token}",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                }
+        response = await self._request_with_retry(
+            method="POST",
+            url=f"{self.api_url}/api/v1/oauth/authorization-grant/delegate",
+            data=request_data,
+            headers={
+                "Authorization": f"Bearer {client_token}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Failed to generate delegated auth code: {response.status_code} - {response.text}")
+            raise TinkAPIError(
+                message=f"Failed to generate authorization code: {response.text}",
+                status_code=response.status_code,
+                endpoint="/api/v1/oauth/authorization-grant/delegate",
+                response_body=response.text,
             )
 
-            if response.status_code != 200:
-                logger.error(f"Failed to generate delegated auth code: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to generate authorization code: {response.text}")
-
-            result = response.json()
-            logger.info(f"Generated delegated auth code for {user_identifier}")
-            return result["code"]
+        result = response.json()
+        logger.info(f"Generated delegated auth code for {user_identifier}")
+        return result["code"]
 
     async def generate_user_auth_code(
         self,
@@ -315,26 +646,31 @@ class TinkService:
 
         Endpoint: /api/v1/oauth/authorization-grant (NOT /delegate)
         """
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.api_url}/api/v1/oauth/authorization-grant",
-                data={
-                    "external_user_id": external_user_id,
-                    "scope": scope,
-                },
-                headers={
-                    "Authorization": f"Bearer {client_token}",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                }
+        response = await self._request_with_retry(
+            method="POST",
+            url=f"{self.api_url}/api/v1/oauth/authorization-grant",
+            data={
+                "external_user_id": external_user_id,
+                "scope": scope,
+            },
+            headers={
+                "Authorization": f"Bearer {client_token}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Failed to generate user auth code: {response.status_code} - {response.text}")
+            raise TinkAPIError(
+                message=f"Failed to generate user authorization code: {response.text}",
+                status_code=response.status_code,
+                endpoint="/api/v1/oauth/authorization-grant",
+                response_body=response.text,
             )
 
-            if response.status_code != 200:
-                logger.error(f"Failed to generate user auth code: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to generate user authorization code: {response.text}")
-
-            result = response.json()
-            logger.info(f"Generated user auth code for {external_user_id}")
-            return result["code"]
+        result = response.json()
+        logger.info(f"Generated user auth code for {external_user_id}")
+        return result["code"]
 
     # =========================================================================
     # Simple One-Time Access Flow (recommended for testing)
@@ -466,43 +802,53 @@ class TinkService:
 
         logger.info("Exchanging authorization code for user tokens...")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.api_url}/api/v1/oauth/token",
-                data={
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                    "code": code,
-                    "grant_type": "authorization_code",
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"}
+        response = await self._request_with_retry(
+            method="POST",
+            url=f"{self.api_url}/api/v1/oauth/token",
+            data={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "code": code,
+                "grant_type": "authorization_code",
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+
+        logger.info(f"Token exchange response status: {response.status_code}")
+
+        if response.status_code != 200:
+            logger.error(f"Token exchange failed: {response.status_code} - {response.text}")
+            raise TinkAPIError(
+                message=f"Failed to exchange code for tokens: {response.text}",
+                status_code=response.status_code,
+                endpoint="/api/v1/oauth/token",
+                response_body=response.text,
             )
 
-            logger.info(f"Token exchange response status: {response.status_code}")
-
-            if response.status_code != 200:
-                logger.error(f"Token exchange failed: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to exchange code for tokens: {response.text}")
-
-            return response.json()
+        return response.json()
 
     # =========================================================================
     # Step 7: Fetch Data with User Token
     # =========================================================================
     async def fetch_accounts(self, access_token: str) -> List[Dict[str, Any]]:
         """Fetch user's connected accounts from Tink."""
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.api_url}/data/v2/accounts",
-                headers={"Authorization": f"Bearer {access_token}"}
+        response = await self._request_with_retry(
+            method="GET",
+            url=f"{self.api_url}/data/v2/accounts",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch accounts: {response.status_code} - {response.text}")
+            raise TinkAPIError(
+                message=f"Failed to fetch accounts: {response.text}",
+                status_code=response.status_code,
+                endpoint="/data/v2/accounts",
+                response_body=response.text,
             )
 
-            if response.status_code != 200:
-                logger.error(f"Failed to fetch accounts: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to fetch accounts: {response.text}")
-
-            data = response.json()
-            return data.get("accounts", [])
+        data = response.json()
+        return data.get("accounts", [])
 
     async def fetch_providers(self, market: str = "PL") -> List[Dict[str, Any]]:
         """
@@ -516,18 +862,23 @@ class TinkService:
         # Get client access token (no user token needed for providers)
         client_token = await self.get_client_access_token(scope="providers:read")
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.api_url}/api/v1/providers/{market}",
-                headers={"Authorization": f"Bearer {client_token}"}
+        response = await self._request_with_retry(
+            method="GET",
+            url=f"{self.api_url}/api/v1/providers/{market}",
+            headers={"Authorization": f"Bearer {client_token}"},
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch providers: {response.status_code} - {response.text}")
+            raise TinkAPIError(
+                message=f"Failed to fetch providers: {response.text}",
+                status_code=response.status_code,
+                endpoint=f"/api/v1/providers/{market}",
+                response_body=response.text,
             )
 
-            if response.status_code != 200:
-                logger.error(f"Failed to fetch providers: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to fetch providers: {response.text}")
-
-            data = response.json()
-            return data.get("providers", [])
+        data = response.json()
+        return data.get("providers", [])
 
     async def fetch_transactions(
         self,
@@ -560,28 +911,49 @@ class TinkService:
         # Choose endpoint based on enrichment flag
         if use_enrichment:
             endpoint = f"{self.api_url}/enrichment/v1/transactions"
+            endpoint_path = "/enrichment/v1/transactions"
         else:
             endpoint = f"{self.api_url}/data/v2/transactions"
+            endpoint_path = "/data/v2/transactions"
 
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                endpoint,
+        try:
+            response = await self._request_with_retry(
+                method="GET",
+                url=endpoint,
                 params=params,
-                headers={"Authorization": f"Bearer {access_token}"}
+                headers={"Authorization": f"Bearer {access_token}"},
             )
 
             if response.status_code != 200:
                 logger.error(f"Failed to fetch transactions from {endpoint}: {response.status_code} - {response.text}")
-                # Fallback to basic endpoint if enrichment fails
+                # Fallback to basic endpoint if enrichment fails with non-retryable error
                 if use_enrichment:
                     logger.info("Falling back to basic transactions endpoint")
                     return await self.fetch_transactions(
                         access_token, account_id, from_date, to_date, page_token,
                         use_enrichment=False
                     )
-                raise Exception(f"Failed to fetch transactions: {response.text}")
+                raise TinkAPIError(
+                    message=f"Failed to fetch transactions: {response.text}",
+                    status_code=response.status_code,
+                    endpoint=endpoint_path,
+                    response_body=response.text,
+                )
 
             return response.json()
+
+        except (TinkAPIError, TinkAPIRetryExhausted) as e:
+            # Fallback to basic endpoint if enrichment fails after retries
+            if use_enrichment and not isinstance(e, TinkAPIRetryExhausted):
+                # For retryable errors that exhausted retries, also try fallback
+                pass
+            if use_enrichment:
+                logger.info(f"Enrichment endpoint failed ({e}), falling back to basic transactions endpoint")
+                return await self.fetch_transactions(
+                    access_token, account_id, from_date, to_date, page_token,
+                    use_enrichment=False
+                )
+            raise
 
     # =========================================================================
     # Connection Management
@@ -703,23 +1075,28 @@ class TinkService:
         """Refresh an expired access token."""
         self._check_credentials()
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.api_url}/api/v1/oauth/token",
-                data={
-                    "client_id": self.client_id,
-                    "client_secret": self.client_secret,
-                    "refresh_token": refresh_token,
-                    "grant_type": "refresh_token",
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"}
+        response = await self._request_with_retry(
+            method="POST",
+            url=f"{self.api_url}/api/v1/oauth/token",
+            data={
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "refresh_token": refresh_token,
+                "grant_type": "refresh_token",
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
+            raise TinkAPIError(
+                message=f"Failed to refresh token: {response.text}",
+                status_code=response.status_code,
+                endpoint="/api/v1/oauth/token",
+                response_body=response.text,
             )
 
-            if response.status_code != 200:
-                logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
-                raise Exception(f"Failed to refresh token: {response.text}")
-
-            return response.json()
+        return response.json()
 
     async def get_valid_access_token(self, connection: TinkConnection, db: Session) -> str:
         """Get a valid access token, refreshing if necessary."""
