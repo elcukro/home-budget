@@ -17,6 +17,7 @@ import {
   PolarAreaController,
   BubbleController,
   ScatterController,
+  Filler,
 } from 'chart.js';
 
 /**
@@ -48,7 +49,8 @@ export function initializeChartJS() {
     // Plugins
     Title,
     Tooltip,
-    Legend
+    Legend,
+    Filler
   );
 }
 
@@ -73,6 +75,7 @@ export function resetChartJS() {
     PointElement,
     Title,
     Tooltip,
-    Legend
+    Legend,
+    Filler
   );
-} 
+}

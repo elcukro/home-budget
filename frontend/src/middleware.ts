@@ -18,12 +18,13 @@ const securityHeaders = {
   // Note: This is a basic policy - you may need to adjust based on your specific needs
   'Content-Security-Policy': [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://*.posthog.com https://eu-assets.i.posthog.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://accounts.google.com https://firedup.app https://api.stripe.com https://*.sentry.io",
+    "connect-src 'self' https://accounts.google.com https://firedup.app https://api.stripe.com https://*.sentry.io https://eu.i.posthog.com https://eu-assets.i.posthog.com https://*.posthog.com",
     "frame-src 'self' https://accounts.google.com https://js.stripe.com https://hooks.stripe.com",
+    "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

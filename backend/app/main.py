@@ -109,6 +109,23 @@ else:
 # This ensures rate limits are applied per-user rather than per-IP
 limiter = Limiter(key_func=get_user_identifier)
 
+# Rate limiter wrapper with async check method
+class LimiterWithCheck:
+    """Wrapper around slowapi Limiter that adds an async check method."""
+    
+    def __init__(self, base_limiter: Limiter):
+        self._limiter = base_limiter
+        self._key_func = base_limiter._key_func
+    
+    async def check(self, rate_limit: str, request):
+        """Rate limit check - currently pass-through. TODO: implement properly."""
+        pass
+    def __getattr__(self, name):
+        return getattr(self._limiter, name)
+
+# Wrap the limiter with check capability
+limiter = LimiterWithCheck(limiter)
+
 
 print = make_conditional_print(__name__)
 
