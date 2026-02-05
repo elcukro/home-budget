@@ -1305,17 +1305,16 @@
       }
     },
     "onboarding": {
-      "title": "Zebranie podstawowych danych",
-      "description": "Uruchom kreator, aby zaktualizować swój profil finansowy, przychody, wydatki i cele oszczędnościowe.",
-      "runButton": "Uruchom kreator",
-      "redirectMessage": "Masz już dane w systemie. Możesz uruchomić kreator stąd, aby zaktualizować swoje informacje.",
+      "title": "Uruchom kreator ponownie",
+      "description": "Chcesz zaktualizować swój profil finansowy lub wprowadzić dane od nowa? Uruchom kreator konfiguracji ponownie.",
+      "runButton": "Uruchom kreator ponownie",
       "modeDialog": {
-        "title": "Wybierz tryb konfiguracji",
-        "description": "Masz już dane finansowe w systemie. Jak chcesz kontynuować?",
+        "title": "Wybierz sposób ponownej konfiguracji",
+        "description": "Jak chcesz uruchomić kreator? Możesz zaktualizować istniejące dane lub zacząć od czystej karty.",
         "mergeMode": "Zaktualizuj istniejące dane",
-        "mergeModeDescription": "Zachowaj obecne dane i zaktualizuj wartości z kreatora. Istniejące wpisy zostaną zmodyfikowane.",
+        "mergeModeDescription": "Zachowaj wszystkie obecne dane i uzupełnij je o nowe wartości z kreatora. Nic nie zostanie usunięte.",
         "freshStartMode": "Zacznij od nowa",
-        "freshStartModeDescription": "Utwórz kopię zapasową obecnych danych i zacznij od czystej karty. Kopia zapasowa zostanie zapisana i można ją przywrócić później.",
+        "freshStartModeDescription": "Najpierw tworzymy kopię zapasową Twoich danych, a następnie czyścimy profil. Kopię znajdziesz w zakładce Dane → Kopie zapasowe.",
         "cancel": "Anuluj",
         "continue": "Kontynuuj"
       },

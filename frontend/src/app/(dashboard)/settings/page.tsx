@@ -45,9 +45,10 @@ import {
   faBuilding,
   faDatabase,
   faKey,
-  faPlay,
+  faArrowsRotate,
+  faCodeMerge,
+  faTrashCanArrowUp,
 } from "@fortawesome/free-solid-svg-icons";
-import { Info } from "lucide-react";
 import { signOut } from "next-auth/react";
 
 // Use Next.js API proxy for all backend calls to ensure auth headers are added
@@ -165,10 +166,8 @@ export default function SettingsPage() {
       setActiveTab(tabFromUrl === 'banking' ? 'integrations' : 'general');
     }
 
-    // Show onboarding redirect message if coming from /onboarding
+    // Legacy: clean up old onboarding redirect parameter if present
     if (onboardingRedirect === 'redirect') {
-      setShowOnboardingRedirectMessage(true);
-      // Clear the URL parameter without refreshing the page
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('onboarding');
       window.history.replaceState({}, '', newUrl.toString());
@@ -182,7 +181,6 @@ export default function SettingsPage() {
   const [tinkConnecting, setTinkConnecting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [shouldClearBeforeImport, setShouldClearBeforeImport] = useState<boolean>(false);
-  const [showOnboardingRedirectMessage, setShowOnboardingRedirectMessage] = useState(false);
   const [onboardingModeDialogOpen, setOnboardingModeDialogOpen] = useState(false);
   const [onboardingBackups, setOnboardingBackups] = useState<Array<{
     id: number;
@@ -996,23 +994,14 @@ export default function SettingsPage() {
                 </Button>
               </form>
 
-              {/* Onboarding Section - always visible in settings so users can re-run it */}
+              {/* Re-run Setup Wizard - for existing users to update/reset their data */}
               <Separator className="my-6" />
 
               <div className="space-y-4">
                     <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faPlay} className="w-4 h-4 text-muted-foreground" />
+                      <FontAwesomeIcon icon={faArrowsRotate} className="w-4 h-4 text-muted-foreground" />
                       <h4 className="font-medium">{intl.formatMessage({ id: "settings.onboarding.title" })}</h4>
                     </div>
-
-                    {showOnboardingRedirectMessage && (
-                      <div className="flex items-start gap-3 rounded-lg border bg-muted/50 p-4">
-                        <Info className="h-4 w-4 mt-0.5 text-primary" />
-                        <p className="text-sm text-muted-foreground">
-                          {intl.formatMessage({ id: "settings.onboarding.redirectMessage" })}
-                        </p>
-                      </div>
-                    )}
 
                     <p className="text-sm text-muted-foreground">
                       {intl.formatMessage({ id: "settings.onboarding.description" })}
@@ -1021,7 +1010,7 @@ export default function SettingsPage() {
                     <AlertDialog open={onboardingModeDialogOpen} onOpenChange={setOnboardingModeDialogOpen}>
                       <AlertDialogTrigger asChild>
                         <Button variant="outline">
-                          <FontAwesomeIcon icon={faPlay} className="w-4 h-4 mr-2" />
+                          <FontAwesomeIcon icon={faArrowsRotate} className="w-4 h-4 mr-2" />
                           {intl.formatMessage({ id: "settings.onboarding.runButton" })}
                         </Button>
                       </AlertDialogTrigger>
@@ -1042,6 +1031,7 @@ export default function SettingsPage() {
                               router.push('/onboarding?force=true&mode=merge');
                             }}
                           >
+                            <FontAwesomeIcon icon={faCodeMerge} className="w-5 h-5 mt-0.5 text-primary" />
                             <div className="flex-1">
                               <p className="font-medium">{intl.formatMessage({ id: "settings.onboarding.modeDialog.mergeMode" })}</p>
                               <p className="text-sm text-muted-foreground">
@@ -1056,6 +1046,7 @@ export default function SettingsPage() {
                               router.push('/onboarding?force=true&mode=fresh');
                             }}
                           >
+                            <FontAwesomeIcon icon={faTrashCanArrowUp} className="w-5 h-5 mt-0.5 text-orange-500" />
                             <div className="flex-1">
                               <p className="font-medium">{intl.formatMessage({ id: "settings.onboarding.modeDialog.freshStartMode" })}</p>
                               <p className="text-sm text-muted-foreground">

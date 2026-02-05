@@ -1356,17 +1356,16 @@
       }
     },
     "onboarding": {
-      "title": "Data Collection",
-      "description": "Run the wizard to update your financial profile, income, expenses, and savings goals.",
-      "runButton": "Run Wizard",
-      "redirectMessage": "You already have data in the system. You can run the wizard from here to update your information.",
+      "title": "Re-run Setup Wizard",
+      "description": "Want to update your financial profile or re-enter your data from scratch? Re-run the setup wizard.",
+      "runButton": "Re-run Setup Wizard",
       "modeDialog": {
-        "title": "Choose Mode",
-        "description": "You already have financial data in the system. How would you like to proceed?",
+        "title": "Choose how to re-run setup",
+        "description": "How would you like to run the wizard? You can update your existing data or start with a clean slate.",
         "mergeMode": "Update existing data",
-        "mergeModeDescription": "Keep your current data and update values from the wizard. Existing entries will be modified.",
+        "mergeModeDescription": "Keep all your current data and supplement it with new values from the wizard. Nothing will be deleted.",
         "freshStartMode": "Start fresh",
-        "freshStartModeDescription": "Create a backup of your current data and start with a clean slate. Your backup will be saved and can be restored later.",
+        "freshStartModeDescription": "We'll back up your data first, then clear your profile. You can find the backup in the Data tab → Backups section.",
         "cancel": "Cancel",
         "continue": "Continue"
       },
