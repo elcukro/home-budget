@@ -115,18 +115,22 @@ class TestEndpointCoverage:
         return path.read_text()
 
     def test_all_tink_endpoints_have_rate_limiting(self, tink_router_content):
-        """Verify all 9 Tink endpoints have rate limiting calls."""
-        # Count endpoint definitions
-        post_endpoints = re.findall(r'@router\.post\("', tink_router_content)
-        get_endpoints = re.findall(r'@router\.get\("', tink_router_content)
-        delete_endpoints = re.findall(r'@router\.delete\("', tink_router_content)
+        """Verify all public Tink endpoints have rate limiting calls.
+
+        Note: Internal endpoints (/internal/*) are excluded from rate limiting
+        as they are used for health checks and monitoring.
+        """
+        # Count endpoint definitions (excluding /internal/ endpoints)
+        post_endpoints = re.findall(r'@router\.post\("(?!/internal)', tink_router_content)
+        get_endpoints = re.findall(r'@router\.get\("(?!/internal)', tink_router_content)
+        delete_endpoints = re.findall(r'@router\.delete\("(?!/internal)', tink_router_content)
 
         total_endpoints = len(post_endpoints) + len(get_endpoints) + len(delete_endpoints)
 
         # Count rate limit calls
         rate_limit_calls = tink_router_content.count('await limiter.check(')
 
-        # Should be equal (one rate limit per endpoint)
+        # Should be equal (one rate limit per public endpoint)
         assert rate_limit_calls == total_endpoints, \
             f"Expected {total_endpoints} rate limit calls, found {rate_limit_calls}"
 
