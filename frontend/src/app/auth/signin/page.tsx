@@ -31,7 +31,7 @@ export default function SignIn() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const intl = useIntl();
-  const callbackUrl = searchParams?.get("callbackUrl") || "/dashboard";
+  const callbackUrl = searchParams?.get("callbackUrl") || "/welcome";
   const error = searchParams?.get("error");
 
   useEffect(() => {
