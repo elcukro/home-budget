@@ -33,6 +33,36 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+
+def get_user_identifier(request: Request) -> str:
+    """
+    Get user identifier for rate limiting.
+    Uses X-User-ID header if available (authenticated requests),
+    otherwise falls back to IP address.
+    """
+    # Try to get user ID from header (set by NextAuth proxy)
+    user_id = request.headers.get("X-User-ID")
+    if user_id:
+        return f"user:{user_id}"
+
+    # Try to get from Authorization header (JWT token)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        try:
+            import jwt
+            token = auth_header[7:]
+            # Decode without verification just to get the subject
+            # Full verification happens in the endpoint
+            payload = jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get("sub")
+            if user_id:
+                return f"user:{user_id}"
+        except Exception:
+            pass
+
+    # Fallback to IP address
+    return f"ip:{get_remote_address(request)}"
+
 # Sentry for error tracking
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -75,8 +105,9 @@ if SENTRY_DSN:
 else:
     logger.warning("SENTRY_DSN not set. Error tracking is disabled.")
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address)
+# Initialize rate limiter with per-user identification
+# This ensures rate limits are applied per-user rather than per-IP
+limiter = Limiter(key_func=get_user_identifier)
 
 
 print = make_conditional_print(__name__)

@@ -2,9 +2,20 @@
 Tink API Router
 
 Handles Tink OAuth flow and bank connection management.
+
+Rate Limits (per user):
+- /connect: 10/hour - prevents connection abuse
+- /callback (POST): 20/hour - callback abuse prevention
+- /callback (GET): 20/hour - callback abuse prevention
+- /connections: 60/minute - read-only, reasonable access
+- /connections/{id} DELETE: 10/hour - destructive action
+- /test: 10/minute - debug endpoint
+- /providers: 30/minute - provider list fetch
+- /refresh-data: 100/day - Tink API quota protection
+- /debug-data: 10/minute - debug endpoint, heavy payload
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -18,7 +29,15 @@ from ..services.tink_service import tink_service
 from ..services.subscription_service import SubscriptionService
 from ..security import require_debug_mode, is_debug_enabled
 
+# Rate limiting
+from slowapi import Limiter
+
 logger = logging.getLogger(__name__)
+
+# Import the limiter from main - we'll use a function to get it from app state
+def get_limiter(request: Request) -> Limiter:
+    """Get the limiter instance from app state."""
+    return request.app.state.limiter
 
 router = APIRouter(
     prefix="/banking/tink",
@@ -79,6 +98,7 @@ class DisconnectResponse(BaseModel):
 @router.post("/connect", response_model=ConnectResponse)
 async def initiate_connection(
     request: ConnectRequest,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -86,7 +106,12 @@ async def initiate_connection(
     Initiate Tink Link flow to connect user's bank account.
 
     Returns a URL to redirect the user to Tink Link.
+
+    Rate limit: 10/hour per user
     """
+    # Rate limit: 10 connections per hour per user
+    limiter = get_limiter(http_request)
+    await limiter.check("10/hour", http_request)
     # Check subscription - bank integration requires premium
     can_use, message = SubscriptionService.can_use_bank_integration(current_user.id, db)
     if not can_use:
@@ -115,6 +140,7 @@ async def initiate_connection(
 
 @router.post("/callback", response_model=CallbackResponse)
 async def handle_callback(
+    http_request: Request,
     request: CallbackRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -123,7 +149,12 @@ async def handle_callback(
     Handle OAuth callback from Tink after user authorization.
 
     Exchanges the authorization code for tokens and creates the connection.
+
+    Rate limit: 20/hour per user
     """
+    # Rate limit: 20 callbacks per hour per user
+    limiter = get_limiter(http_request)
+    await limiter.check("20/hour", http_request)
     try:
         # Verify state token
         stored_user_id = tink_service.verify_state_token(request.state)
@@ -170,6 +201,7 @@ async def handle_callback(
 
 @router.get("/callback")
 async def handle_callback_redirect(
+    http_request: Request,
     code: str = Query(..., description="Authorization code from Tink"),
     state: str = Query(..., description="State token for CSRF protection"),
 ):
@@ -178,7 +210,13 @@ async def handle_callback_redirect(
 
     This endpoint is called by Tink Link after user authorization.
     The frontend should catch this redirect and call POST /callback with the code.
+
+    Rate limit: 20/hour (per IP, since unauthenticated)
     """
+    # Rate limit: 20 callbacks per hour (IP-based since no auth)
+    limiter = get_limiter(http_request)
+    await limiter.check("20/hour", http_request)
+
     # This is just a placeholder - the frontend handles the redirect
     # and calls POST /callback with proper authentication
     return {
@@ -190,12 +228,18 @@ async def handle_callback_redirect(
 
 @router.get("/connections", response_model=List[TinkConnectionResponse])
 async def get_connections(
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Get all Tink connections for the current user.
+
+    Rate limit: 60/minute per user
     """
+    # Rate limit: 60 requests per minute per user (read-only, reasonable access)
+    limiter = get_limiter(http_request)
+    await limiter.check("60/minute", http_request)
     try:
         connections = db.query(TinkConnection).filter(
             TinkConnection.user_id == current_user.id,
@@ -232,13 +276,19 @@ async def get_connections(
 
 @router.delete("/connections/{connection_id}", response_model=DisconnectResponse)
 async def disconnect(
+    http_request: Request,
     connection_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Disconnect a Tink connection (soft delete).
+
+    Rate limit: 10/hour per user (destructive action)
     """
+    # Rate limit: 10 disconnects per hour per user (destructive action)
+    limiter = get_limiter(http_request)
+    await limiter.check("10/hour", http_request)
     try:
         connection = db.query(TinkConnection).filter(
             TinkConnection.id == connection_id,
@@ -266,13 +316,19 @@ async def disconnect(
 
 @router.get("/test")
 async def test_tink_api(
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     _debug: None = Depends(require_debug_mode),  # SECURITY: Only available in debug mode
 ):
     """
     Test if the Tink API router is working.
     SECURITY: This endpoint is protected and only available in non-production environments.
+
+    Rate limit: 10/minute per user
     """
+    # Rate limit: 10 requests per minute per user (debug endpoint)
+    limiter = get_limiter(http_request)
+    await limiter.check("10/minute", http_request)
     return {
         "status": "ok",
         "message": "Tink API is configured",
@@ -285,6 +341,7 @@ async def test_tink_api(
 
 @router.get("/providers")
 async def get_providers(
+    http_request: Request,
     market: str = "PL",
     current_user: User = Depends(get_current_user),
 ):
@@ -295,7 +352,12 @@ async def get_providers(
     - displayName: Bank display name
     - financialInstitutionId: UUID for the bank
     - images: { icon: "https://cdn.tink.se/...", banner: null }
+
+    Rate limit: 30/minute per user
     """
+    # Rate limit: 30 requests per minute per user (provider list fetch)
+    limiter = get_limiter(http_request)
+    await limiter.check("30/minute", http_request)
     try:
         providers = await tink_service.fetch_providers(market)
 
@@ -323,12 +385,18 @@ async def get_providers(
 
 @router.post("/refresh-data")
 async def refresh_tink_data(
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Refresh data from Tink - re-fetches accounts and updates stored data.
+
+    Rate limit: 100/day per user (Tink API quota protection)
     """
+    # Rate limit: 100 syncs per day per user (Tink API quota protection)
+    limiter = get_limiter(http_request)
+    await limiter.check("100/day", http_request)
     try:
         connection = db.query(TinkConnection).filter(
             TinkConnection.user_id == current_user.id,
@@ -375,6 +443,7 @@ async def refresh_tink_data(
 
 @router.get("/debug-data")
 async def get_debug_data(
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     _debug: None = Depends(require_debug_mode),  # SECURITY: Only available in debug mode
@@ -384,7 +453,12 @@ async def get_debug_data(
     Returns accounts, transactions, balances, and raw API responses.
 
     SECURITY: This endpoint is protected and only available in non-production environments.
+
+    Rate limit: 10/minute per user (debug endpoint, heavy payload)
     """
+    # Rate limit: 10 requests per minute per user (debug endpoint, heavy payload)
+    limiter = get_limiter(http_request)
+    await limiter.check("10/minute", http_request)
     try:
         # Get user's active Tink connection
         connection = db.query(TinkConnection).filter(

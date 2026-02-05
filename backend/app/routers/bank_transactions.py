@@ -2,15 +2,32 @@
 Bank Transactions Router
 
 Handles syncing, viewing, and converting bank transactions from Tink.
+
+Rate Limits (per user):
+- /sync: 50/day - calls Tink API, heavy operation
+- /categorize: 100/hour - AI categorization, compute-intensive
+- / (list): 120/minute - standard read
+- /stats: 120/minute - standard read
+- /pending: 120/minute - standard read
+- /{id}/convert: 200/hour - transaction conversion
+- /{id}/reject: 200/hour - transaction update
+- /{id}/accept: 200/hour - transaction update
+- /{id}/reset: 100/hour - undo action
+- /bulk/reject: 30/hour - bulk operation
+- /bulk/accept: 30/hour - bulk operation
+- /bulk/convert: 30/hour - bulk operation
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 from typing import List, Optional
 from pydantic import BaseModel
 from enum import Enum
 import logging
+
+# Rate limiting
+from slowapi import Limiter
 
 from ..database import get_db
 from ..dependencies import get_current_user
@@ -19,6 +36,12 @@ from ..services.tink_service import tink_service
 from ..services.categorization_service import categorize_in_batches
 
 logger = logging.getLogger(__name__)
+
+
+# Import the limiter from main - we'll use a function to get it from app state
+def get_limiter(request: Request) -> Limiter:
+    """Get the limiter instance from app state."""
+    return request.app.state.limiter
 
 router = APIRouter(
     prefix="/banking/transactions",
@@ -124,6 +147,7 @@ class CategorizeResponse(BaseModel):
 
 @router.post("/sync", response_model=SyncResponse)
 async def sync_transactions(
+    http_request: Request,
     days: int = Query(default=90, ge=1, le=365, description="Number of days to sync"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -133,7 +157,12 @@ async def sync_transactions(
 
     Fetches transactions from the connected bank account and stores them
     in bank_transactions table. Duplicates are detected by tink_transaction_id.
+
+    Rate limit: 50/day per user (calls Tink API, heavy operation)
     """
+    # Rate limit: 50 syncs per day per user (calls Tink API, heavy operation)
+    limiter = get_limiter(http_request)
+    await limiter.check("50/day", http_request)
     # Get active Tink connection
     connection = db.query(TinkConnection).filter(
         TinkConnection.user_id == current_user.id,
@@ -259,6 +288,7 @@ async def sync_transactions(
 
 @router.post("/categorize", response_model=CategorizeResponse)
 async def categorize_transactions(
+    http_request: Request,
     force: bool = Query(default=False, description="Re-categorize already categorized transactions"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -272,7 +302,12 @@ async def categorize_transactions(
 
     Args:
         force: If True, re-categorize all transactions. If False, only uncategorized ones.
+
+    Rate limit: 100/hour per user (AI categorization, compute-intensive)
     """
+    # Rate limit: 100 categorizations per hour per user (AI categorization, compute-intensive)
+    limiter = get_limiter(http_request)
+    await limiter.check("100/hour", http_request)
     # Get API key from user settings
     settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
     if not settings or not settings.ai or not settings.ai.get("apiKey"):
@@ -353,6 +388,7 @@ async def categorize_transactions(
 
 @router.get("", response_model=List[BankTransactionResponse])
 async def get_transactions(
+    http_request: Request,
     status: Optional[TransactionStatus] = None,
     from_date: Optional[date] = None,
     to_date: Optional[date] = None,
@@ -366,7 +402,12 @@ async def get_transactions(
 ):
     """
     Get bank transactions with optional filtering.
+
+    Rate limit: 120/minute per user (standard read)
     """
+    # Rate limit: 120 requests per minute per user (standard read)
+    limiter = get_limiter(http_request)
+    await limiter.check("120/minute", http_request)
     query = db.query(BankTransaction).filter(
         BankTransaction.user_id == current_user.id
     )
@@ -406,12 +447,18 @@ async def get_transactions(
 
 @router.get("/stats", response_model=TransactionStats)
 async def get_transaction_stats(
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Get transaction statistics by status.
+
+    Rate limit: 120/minute per user (standard read)
     """
+    # Rate limit: 120 requests per minute per user (standard read)
+    limiter = get_limiter(http_request)
+    await limiter.check("120/minute", http_request)
     from sqlalchemy import func
 
     stats = db.query(
@@ -439,13 +486,19 @@ async def get_transaction_stats(
 
 @router.get("/pending", response_model=List[BankTransactionResponse])
 async def get_pending_transactions(
+    http_request: Request,
     limit: int = Query(default=50, ge=1, le=200),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Get only pending transactions (shortcut endpoint).
+
+    Rate limit: 120/minute per user (standard read)
     """
+    # Rate limit: 120 requests per minute per user (standard read)
+    limiter = get_limiter(http_request)
+    await limiter.check("120/minute", http_request)
     transactions = db.query(BankTransaction).filter(
         BankTransaction.user_id == current_user.id,
         BankTransaction.status == "pending"
@@ -458,6 +511,7 @@ async def get_pending_transactions(
 
 @router.post("/{transaction_id}/convert", response_model=ConvertResponse)
 async def convert_transaction(
+    http_request: Request,
     transaction_id: int,
     request: ConvertRequest,
     current_user: User = Depends(get_current_user),
@@ -467,7 +521,12 @@ async def convert_transaction(
     Convert a bank transaction to an expense or income.
 
     Creates a new expense/income record linked to this bank transaction.
+
+    Rate limit: 200/hour per user (transaction conversion)
     """
+    # Rate limit: 200 conversions per hour per user (transaction conversion)
+    limiter = get_limiter(http_request)
+    await limiter.check("200/hour", http_request)
     # Get the bank transaction
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
@@ -543,13 +602,19 @@ async def convert_transaction(
 
 @router.post("/{transaction_id}/reject")
 async def reject_transaction(
+    http_request: Request,
     transaction_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Reject a bank transaction (mark as not relevant).
+
+    Rate limit: 200/hour per user (transaction update)
     """
+    # Rate limit: 200 rejects per hour per user (transaction update)
+    limiter = get_limiter(http_request)
+    await limiter.check("200/hour", http_request)
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
         BankTransaction.user_id == current_user.id
@@ -567,6 +632,7 @@ async def reject_transaction(
 
 @router.post("/{transaction_id}/accept")
 async def accept_transaction(
+    http_request: Request,
     transaction_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -576,7 +642,12 @@ async def accept_transaction(
 
     Use this when you've already entered this transaction manually
     and want to mark the bank transaction as reviewed.
+
+    Rate limit: 200/hour per user (transaction update)
     """
+    # Rate limit: 200 accepts per hour per user (transaction update)
+    limiter = get_limiter(http_request)
+    await limiter.check("200/hour", http_request)
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
         BankTransaction.user_id == current_user.id
@@ -594,6 +665,7 @@ async def accept_transaction(
 
 @router.post("/{transaction_id}/reset")
 async def reset_transaction(
+    http_request: Request,
     transaction_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -603,7 +675,12 @@ async def reset_transaction(
 
     Note: If the transaction was converted, the linked expense/income
     will NOT be deleted - you need to delete it manually if needed.
+
+    Rate limit: 100/hour per user (undo action)
     """
+    # Rate limit: 100 resets per hour per user (undo action)
+    limiter = get_limiter(http_request)
+    await limiter.check("100/hour", http_request)
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
         BankTransaction.user_id == current_user.id
@@ -626,13 +703,19 @@ async def reset_transaction(
 
 @router.post("/bulk/reject", response_model=BulkActionResponse)
 async def bulk_reject_transactions(
+    http_request: Request,
     request: BulkActionRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Reject multiple transactions at once.
+
+    Rate limit: 30/hour per user (bulk operation)
     """
+    # Rate limit: 30 bulk rejects per hour per user (bulk operation)
+    limiter = get_limiter(http_request)
+    await limiter.check("30/hour", http_request)
     updated = db.query(BankTransaction).filter(
         BankTransaction.id.in_(request.transaction_ids),
         BankTransaction.user_id == current_user.id,
@@ -653,13 +736,19 @@ async def bulk_reject_transactions(
 
 @router.post("/bulk/accept", response_model=BulkActionResponse)
 async def bulk_accept_transactions(
+    http_request: Request,
     request: BulkActionRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Accept multiple transactions at once.
+
+    Rate limit: 30/hour per user (bulk operation)
     """
+    # Rate limit: 30 bulk accepts per hour per user (bulk operation)
+    limiter = get_limiter(http_request)
+    await limiter.check("30/hour", http_request)
     updated = db.query(BankTransaction).filter(
         BankTransaction.id.in_(request.transaction_ids),
         BankTransaction.user_id == current_user.id,
@@ -680,13 +769,19 @@ async def bulk_accept_transactions(
 
 @router.post("/bulk/convert", response_model=BulkActionResponse)
 async def bulk_convert_transactions(
+    http_request: Request,
     request: BulkConvertRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Convert multiple transactions to expense or income with the same category.
+
+    Rate limit: 30/hour per user (bulk operation)
     """
+    # Rate limit: 30 bulk converts per hour per user (bulk operation)
+    limiter = get_limiter(http_request)
+    await limiter.check("30/hour", http_request)
     transactions = db.query(BankTransaction).filter(
         BankTransaction.id.in_(request.transaction_ids),
         BankTransaction.user_id == current_user.id,
