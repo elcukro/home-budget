@@ -116,6 +116,43 @@ export default function PrivacyPolicyPage() {
             <p className="mt-2">
               Polityka prywatności Tink: <a href="https://tink.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary">tink.com/legal/privacy-policy</a>
             </p>
+
+            <h3 className="text-lg font-medium mt-6 mb-2">5.1 Cykl życia danych bankowych</h3>
+            <p>Poniżej opisujemy jak Twoje dane bankowe przepływają przez nasz system:</p>
+
+            <h4 className="font-medium mt-3 mb-1">Zbieranie danych</h4>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Autoryzujesz dostęp do banku przez bezpieczny interfejs Tink Link</li>
+              <li>Tink pobiera dane o kontach, saldach i transakcjach bezpośrednio z Twojego banku</li>
+              <li>FiredUp otrzymuje te dane przez zabezpieczone API Tink</li>
+            </ul>
+
+            <h4 className="font-medium mt-3 mb-1">Przetwarzanie danych</h4>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Transakcje bankowe są automatycznie kategoryzowane i konwertowane na wydatki/przychody w aplikacji</li>
+              <li>Możesz ręcznie edytować lub usuwać przetworzone transakcje</li>
+              <li>Oryginalne dane z banku są przechowywane oddzielnie od przetworzonych danych</li>
+            </ul>
+
+            <h4 className="font-medium mt-3 mb-1">Przechowywanie danych</h4>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Surowe dane bankowe: przechowywane do rozłączenia banku lub usunięcia konta</li>
+              <li>Przetworzone wydatki/przychody: przechowywane do ręcznego usunięcia lub usunięcia konta</li>
+              <li>Tokeny: krótkotrwałe (1 godzina), automatycznie odświeżane w tle</li>
+            </ul>
+
+            <h4 className="font-medium mt-3 mb-1">Usuwanie danych</h4>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>Przy rozłączeniu banku: surowe dane bankowe usuwane w ciągu 30 dni</li>
+              <li>Przy usunięciu konta: wszystkie dane (surowe i przetworzone) usuwane w ciągu 30 dni</li>
+              <li>Na żądanie użytkownika (RODO): wszystkie dane usuwane w ciągu 30 dni</li>
+            </ul>
+
+            <h4 className="font-medium mt-3 mb-1">Synchronizacja danych</h4>
+            <p className="mt-1">
+              Dane bankowe są synchronizowane automatycznie raz dziennie oraz na żądanie użytkownika.
+              Synchronizacja pobiera transakcje z ostatnich 90 dni (lub od ostatniej synchronizacji, jeśli krócej).
+            </p>
           </section>
 
           <section className="mb-8">
@@ -136,13 +173,59 @@ export default function PrivacyPolicyPage() {
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">7. Okres przechowywania danych</h2>
+
+            <h3 className="text-lg font-medium mt-4 mb-2">7.1 Dane konta i finansów</h3>
             <ul className="list-disc pl-6 space-y-1">
-              <li><strong>Dane konta</strong> - {DATA_RETENTION.accountData}</li>
-              <li><strong>Dane finansowe</strong> - {DATA_RETENTION.financialData}</li>
-              <li><strong>Dane bankowe z Tink</strong> - {DATA_RETENTION.bankingData}</li>
-              <li><strong>Tokeny dostępu Tink</strong> - {DATA_RETENTION.tinkTokens}</li>
+              <li><strong>Dane konta użytkownika</strong> - {DATA_RETENTION.accountData}</li>
+              <li><strong>Dane finansowe (ręcznie wprowadzone)</strong> - {DATA_RETENTION.financialData}</li>
               <li><strong>Dane analityczne</strong> - {DATA_RETENTION.analyticsData}</li>
             </ul>
+
+            <h3 className="text-lg font-medium mt-4 mb-2">7.2 Dane bankowe (Tink)</h3>
+            <div className="overflow-x-auto mt-2">
+              <table className="min-w-full border-collapse border border-border text-sm">
+                <thead>
+                  <tr className="bg-muted">
+                    <th className="border border-border px-3 py-2 text-left">Rodzaj danych</th>
+                    <th className="border border-border px-3 py-2 text-left">Okres przechowywania</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="border border-border px-3 py-2">Surowe dane bankowe (konta, transakcje, salda)</td>
+                    <td className="border border-border px-3 py-2">{DATA_RETENTION.bankingData}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-border px-3 py-2">Przetworzone transakcje (wydatki/przychody utworzone z banku)</td>
+                    <td className="border border-border px-3 py-2">{DATA_RETENTION.processedBankingData}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-border px-3 py-2">Tokeny dostępu Tink</td>
+                    <td className="border border-border px-3 py-2">{DATA_RETENTION.tinkAccessTokens}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-border px-3 py-2">Tokeny odświeżające Tink</td>
+                    <td className="border border-border px-3 py-2">{DATA_RETENTION.tinkRefreshTokens}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-border px-3 py-2">Logi operacji bankowych</td>
+                    <td className="border border-border px-3 py-2">{DATA_RETENTION.tinkAuditLogs}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3 className="text-lg font-medium mt-4 mb-2">7.3 Co wywołuje usunięcie danych bankowych</h3>
+            <ul className="list-disc pl-6 space-y-1">
+              <li><strong>Rozłączenie banku</strong> - surowe dane bankowe (konta, transakcje z Tink) są usuwane w ciągu 30 dni. Przetworzone wydatki/przychody pozostają.</li>
+              <li><strong>Usunięcie konta</strong> - wszystkie dane użytkownika, w tym dane bankowe i przetworzone transakcje, są usuwane.</li>
+              <li><strong>Żądanie użytkownika (RODO Art. 17)</strong> - {DATA_RETENTION.deletionTimeline}</li>
+            </ul>
+
+            <p className="mt-4 p-3 bg-muted rounded">
+              <strong>Uwaga:</strong> Wygaśnięcie tokenów dostępu nie oznacza usunięcia danych - oznacza jedynie,
+              że aplikacja nie może pobierać nowych danych z banku do momentu ponownej autoryzacji.
+            </p>
           </section>
 
           <section className="mb-8">
@@ -157,6 +240,41 @@ export default function PrivacyPolicyPage() {
               <li><strong>Prawo do sprzeciwu</strong> - możesz sprzeciwić się przetwarzaniu danych</li>
               <li><strong>Prawo do wycofania zgody</strong> - możesz w każdej chwili wycofać zgodę na dostęp do danych bankowych</li>
             </ul>
+
+            <h3 className="text-lg font-medium mt-6 mb-2">8.1 Eksport danych bankowych</h3>
+            <p>Możesz wyeksportować swoje dane bankowe w następujący sposób:</p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li><strong>W aplikacji:</strong> Ustawienia → Eksport danych - otrzymasz plik z wszystkimi swoimi transakcjami w formacie CSV lub JSON</li>
+              <li><strong>Na żądanie:</strong> Skontaktuj się z nami pod adresem <a href={`mailto:${LEGAL_ENTITY.email.privacy}`} className="text-primary">{LEGAL_ENTITY.email.privacy}</a> - przygotujemy pełną kopię Twoich danych w ciągu 30 dni</li>
+            </ul>
+
+            <h3 className="text-lg font-medium mt-6 mb-2">8.2 Usunięcie danych bankowych</h3>
+            <p>Masz kilka opcji usunięcia danych bankowych:</p>
+            <ul className="list-disc pl-6 space-y-1">
+              <li>
+                <strong>Rozłączenie pojedynczego banku (w aplikacji):</strong> Ustawienia → Połączenia bankowe → Rozłącz.
+                Usuwa dane tylko dla wybranego banku. Inne połączone banki pozostają bez zmian.
+              </li>
+              <li>
+                <strong>Cofnięcie zgody przez Tink:</strong> <a href="https://tink.com/consumer/revocation" target="_blank" rel="noopener noreferrer" className="text-primary">tink.com/consumer/revocation</a>.
+                Możesz cofnąć zgodę bezpośrednio u Tink, co spowoduje rozłączenie banku w naszej aplikacji.
+              </li>
+              <li>
+                <strong>Pełne usunięcie danych (RODO Art. 17):</strong> Skontaktuj się z nami pod adresem <a href={`mailto:${LEGAL_ENTITY.email.privacy}`} className="text-primary">{LEGAL_ENTITY.email.privacy}</a>.
+                Usuniemy WSZYSTKIE Twoje dane (w tym przetworzone wydatki/przychody) w ciągu 30 dni.
+              </li>
+              <li>
+                <strong>Usunięcie konta:</strong> Ustawienia → Usuń konto.
+                Powoduje usunięcie wszystkich danych użytkownika, w tym danych bankowych i przetworzonych transakcji.
+              </li>
+            </ul>
+
+            <p className="mt-4 p-3 bg-muted rounded">
+              <strong>Ważne rozróżnienie:</strong> Rozłączenie banku usuwa <em>surowe dane bankowe</em> (konta, transakcje z Tink),
+              ale <em>przetworzone wydatki i przychody</em> utworzone z tych danych pozostają w aplikacji do ręcznego usunięcia.
+              Jeśli chcesz usunąć wszystko, skorzystaj z opcji &quot;Pełne usunięcie danych&quot; lub &quot;Usuń konto&quot;.
+            </p>
+
             <p className="mt-4">
               Aby skorzystać z tych praw, skontaktuj się z nami: <a href={`mailto:${LEGAL_ENTITY.email.privacy}`} className="text-primary">{LEGAL_ENTITY.email.privacy}</a>
             </p>

@@ -34,7 +34,7 @@ export const LEGAL_ENTITY = {
   website: 'https://firedup.app',
 
   // Last updated date for legal documents (update when documents change)
-  lastUpdated: '4 lutego 2026',
+  lastUpdated: '5 lutego 2026',
 } as const;
 
 /**
@@ -70,11 +70,38 @@ export const DATA_PROCESSORS = [
 
 /**
  * Data retention periods for GDPR compliance.
+ * Detailed information required for Tink certification.
  */
 export const DATA_RETENTION = {
+  // User account data
   accountData: 'Do momentu usunięcia konta przez użytkownika',
+
+  // Manually entered financial data (expenses, incomes, loans, goals)
   financialData: 'Do momentu usunięcia konta lub na żądanie użytkownika',
-  bankingData: 'Przechowywane lokalnie, usuwane przy rozłączeniu konta bankowego',
-  tinkTokens: 'Ważne do 90 dni, automatycznie odświeżane lub usuwane',
-  analyticsData: '24 miesiące od ostatniej aktywności',
+
+  // Raw banking data from Tink (accounts, transactions, balances)
+  bankingData:
+    'Dane o kontach i transakcjach bankowych są przechowywane do momentu rozłączenia banku lub usunięcia konta. Po rozłączeniu banku surowe dane bankowe są usuwane w ciągu 30 dni.',
+
+  // Processed transactions (expenses/incomes created from bank data)
+  processedBankingData:
+    'Wydatki i przychody utworzone automatycznie z transakcji bankowych pozostają do momentu ręcznego usunięcia przez użytkownika lub usunięcia konta.',
+
+  // Tink access tokens (short-lived)
+  tinkAccessTokens: 'Tokeny dostępu: maksymalnie 1 godzina, automatycznie wygasają.',
+
+  // Tink refresh tokens (longer-lived)
+  tinkRefreshTokens:
+    'Tokeny odświeżające: do 90 dni lub do momentu rozłączenia banku przez użytkownika.',
+
+  // Audit logs for Tink operations (security and troubleshooting)
+  tinkAuditLogs:
+    'Logi operacji bankowych (synchronizacje, błędy, zmiany połączeń): 12 miesięcy dla celów bezpieczeństwa i rozwiązywania problemów.',
+
+  // Analytics data
+  analyticsData: '24 miesiące od ostatniej aktywności użytkownika',
+
+  // Data deletion timeline after user request
+  deletionTimeline:
+    'Dane są usuwane w ciągu 30 dni od otrzymania żądania usunięcia, zgodnie z Art. 17 RODO.',
 } as const;
