@@ -1,0 +1,155 @@
+FiredUp - Tink Integration Data Flow Diagram
+=============================================
+
+                                    ┌─────────────────────────────────────┐
+                                    │           USER                       │
+                                    │    (Polish Consumer)                 │
+                                    └──────────────┬──────────────────────┘
+                                                   │
+                                                   │ HTTPS
+                                                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│                           FIREDUP APPLICATION                                 │
+│                                                                               │
+│  ┌────────────────────┐    ┌────────────────────┐    ┌──────────────────┐   │
+│  │                    │    │                    │    │                  │   │
+│  │   Web Frontend     │    │   Mobile App       │    │   Backend API    │   │
+│  │   (Next.js)        │    │   (React Native)   │    │   (FastAPI)      │   │
+│  │                    │    │                    │    │                  │   │
+│  │   - Dashboard      │    │   - Dashboard      │    │   - Tink Service │   │
+│  │   - Settings       │    │   - Settings       │    │   - Auth Handler │   │
+│  │   - Bank Connect   │    │   - Bank Connect   │    │   - Data Storage │   │
+│  │                    │    │                    │    │                  │   │
+│  └──────────┬─────────┘    └──────────┬─────────┘    └────────┬─────────┘   │
+│             │                         │                        │             │
+│             │ API Proxy               │ API Direct             │             │
+│             └─────────────────────────┴────────────────────────┘             │
+│                                       │                                      │
+│  ┌────────────────────────────────────▼────────────────────────────────────┐ │
+│  │                          POSTGRESQL DATABASE                             │ │
+│  │                                                                          │ │
+│  │   ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │ │
+│  │   │TinkConnection│  │BankTransaction│  │TinkAuditLog │  │   Users    │  │ │
+│  │   │              │  │              │  │             │  │            │  │ │
+│  │   │- access_token│  │- external_id │  │- action_type│  │- id        │  │ │
+│  │   │- refresh_tkn │  │- amount      │  │- result     │  │- email     │  │ │
+│  │   │- tink_user_id│  │- category    │  │- timestamp  │  │- settings  │  │ │
+│  │   │- is_active   │  │- status      │  │- ip_address │  │            │  │ │
+│  │   └──────────────┘  └──────────────┘  └──────────────┘  └────────────┘  │ │
+│  └──────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+└───────────────────────────────────────┬───────────────────────────────────────┘
+                                        │
+                                        │ HTTPS (OAuth 2.0)
+                                        │
+                                        ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│                              TINK PLATFORM                                    │
+│                     (Licensed AISP - Visa Inc.)                              │
+│                                                                               │
+│  ┌────────────────────┐    ┌────────────────────┐    ┌──────────────────┐   │
+│  │                    │    │                    │    │                  │   │
+│  │    Tink Link       │    │    Tink API        │    │   Enrichment     │   │
+│  │    (Web UI)        │    │    (OAuth/Data)    │    │   (Categories)   │   │
+│  │                    │    │                    │    │                  │   │
+│  │  - Bank Selection  │    │  - /oauth/token    │    │  - PFM mapping   │   │
+│  │  - User Auth UI    │    │  - /accounts       │    │  - Merchants     │   │
+│  │  - Consent Screen  │    │  - /transactions   │    │  - Categories    │   │
+│  │                    │    │                    │    │                  │   │
+│  └──────────┬─────────┘    └──────────┬─────────┘    └────────┬─────────┘   │
+│             │                         │                        │             │
+│             │ PSD2 APIs               │ Bank Authentication    │             │
+│             └─────────────────────────┴────────────────────────┘             │
+│                                       │                                      │
+└───────────────────────────────────────┬───────────────────────────────────────┘
+                                        │
+                                        │ PSD2 Open Banking APIs
+                                        │
+                                        ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                               │
+│                           POLISH BANKS                                        │
+│                                                                               │
+│   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐  │
+│   │          │   │          │   │          │   │          │   │          │  │
+│   │   ING    │   │  PKO BP  │   │  mBank   │   │ Santander│   │  Others  │  │
+│   │          │   │          │   │          │   │          │   │          │  │
+│   └──────────┘   └──────────┘   └──────────┘   └──────────┘   └──────────┘  │
+│                                                                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+
+DATA FLOW LEGEND
+================
+
+→→→→  User actions (clicks, inputs)
+─────  HTTPS encrypted connections
+═════  Database operations
+
+DATA TYPES FLOWING
+==================
+
+1. USER → FIREDUP
+   - Consent to connect bank
+   - Manual expense/income entries
+   - Category selections
+
+2. FIREDUP → TINK
+   - Client credentials (OAuth)
+   - User identifiers (hashed)
+   - Data fetch requests
+
+3. TINK → FIREDUP
+   - Access/refresh tokens
+   - Account information (IBAN, name, balance)
+   - Transaction history (amount, date, merchant)
+   - Enriched categories
+
+4. FIREDUP → DATABASE
+   - Tokens (encrypted storage)
+   - Transaction records
+   - Audit logs
+
+5. BANKS → TINK
+   - Account data (via PSD2)
+   - Transaction history
+   - Balance information
+
+
+SECURITY BOUNDARIES
+===================
+
+┌─────────────────────────────────────────────────────────────────┐
+│  USER BOUNDARY                                                   │
+│  - User controls consent                                         │
+│  - Can revoke access anytime                                     │
+│  - Bank credentials stay with bank                               │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  FIREDUP BOUNDARY                                                │
+│  - Only stores tokens, not bank credentials                      │
+│  - Read-only access to bank data                                 │
+│  - No payment initiation capability                              │
+│  - All data encrypted in transit (TLS) and at rest              │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  TINK BOUNDARY (Regulated AISP)                                  │
+│  - Holds AISP license (Finansinspektionen)                       │
+│  - Manages bank authentication                                    │
+│  - SOC 2 Type II, ISO 27001 certified                           │
+│  - Part of Visa Inc.                                             │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  BANK BOUNDARY                                                   │
+│  - User credentials never leave bank                             │
+│  - User grants explicit consent                                  │
+│  - Bank controls data availability                               │
+└─────────────────────────────────────────────────────────────────┘
