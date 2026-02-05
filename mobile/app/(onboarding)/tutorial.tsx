@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
   View,
@@ -133,13 +133,18 @@ function Slide({ item, isLast, onFinish, onNext }: SlideProps) {
 
 export default function TutorialScreen() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const isFromSettings = from === 'settings';
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleFinish = () => {
-    // Always navigate to Home (Dashboard)
-    router.replace('/(tabs)');
+    if (isFromSettings) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
+    }
   };
 
   const handleNext = () => {
@@ -158,10 +163,13 @@ export default function TutorialScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Progress Bar */}
-      <View style={{ paddingTop: insets.top }}>
-        <OnboardingProgressBar currentStep={6} totalSteps={TOTAL_ONBOARDING_STEPS} />
-      </View>
+      {/* Progress Bar - only during onboarding flow */}
+      {!isFromSettings && (
+        <View style={{ paddingTop: insets.top }}>
+          <OnboardingProgressBar currentStep={6} totalSteps={TOTAL_ONBOARDING_STEPS} />
+        </View>
+      )}
+      {isFromSettings && <View style={{ paddingTop: insets.top }} />}
 
       {/* Slides */}
       <FlatList
