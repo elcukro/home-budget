@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIntl } from 'react-intl';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import { useUser } from '@/contexts/UserContext';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,8 +53,10 @@ function formatTrialDate(isoDate: string, locale: string): string {
 export default function WelcomePage() {
   const router = useRouter();
   const intl = useIntl();
-  const { status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const { subscription, isLoading, isTrial } = useSubscription();
+  const { refreshUser } = useUser();
+  const [isSkipping, setIsSkipping] = useState(false);
 
   // Redirect unauthenticated users
   if (sessionStatus === 'unauthenticated') {
@@ -77,8 +81,27 @@ export default function WelcomePage() {
     router.push('/onboarding');
   };
 
-  const handleSkip = () => {
-    router.push('/dashboard');
+  const handleSkip = async () => {
+    if (!session?.user?.email) {
+      router.push('/dashboard');
+      return;
+    }
+
+    setIsSkipping(true);
+    try {
+      const response = await fetch(
+        `/api/backend/users/${encodeURIComponent(session.user.email)}/first-login-complete`,
+        { method: 'PUT' }
+      );
+      if (!response.ok) {
+        throw new Error('Failed to complete activation');
+      }
+      await refreshUser();
+      router.push('/dashboard');
+    } catch {
+      alert(intl.formatMessage({ id: 'welcome.skip.error', defaultMessage: 'Nie udało się zakończyć aktywacji. Spróbuj ponownie.' }));
+      setIsSkipping(false);
+    }
   };
 
   // Lifetime users see a simplified version
@@ -237,7 +260,10 @@ export default function WelcomePage() {
           <Button size="lg" onClick={handleContinue}>
             {intl.formatMessage({ id: 'welcome.continue' })}
           </Button>
-          <Button variant="ghost" onClick={handleSkip}>
+          <Button variant="ghost" onClick={handleSkip} disabled={isSkipping}>
+            {isSkipping ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
             {intl.formatMessage({ id: 'welcome.skip' })}
           </Button>
         </div>

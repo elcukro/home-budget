@@ -38,6 +38,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useUser } from '@/contexts/UserContext';
 import { cn } from '@/lib/utils';
 import { type AmountTone } from './common/AnimatedAmount';
 import WelcomeStep from './steps/WelcomeStep';
@@ -1426,6 +1427,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
   const { data: session } = useSession();
   const { track, trackOnboardingStep } = useAnalytics();
   const { settings: currentSettings, formatCurrency: formatCurrencySetting, updateSettings } = useSettings();
+  const { refreshUser } = useUser();
   const formatMoney = useCallback(
     (amount: number) => formatCurrencySetting(amount || 0),
     [formatCurrencySetting]
@@ -1653,9 +1655,21 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       }
     }
 
+    // Clear first login flag so dashboard doesn't redirect back to welcome
+    if (session?.user?.email) {
+      try {
+        await fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/first-login-complete`, {
+          method: 'PUT',
+        });
+        await refreshUser();
+      } catch (error) {
+        logger.error('[Onboarding] Failed to clear first login flag:', error);
+      }
+    }
+
     setShowSkipConfirmDialog(false);
-    router.push('/');
-  }, [router, track, currentStepIndex, currentSettings, updateSettings]);
+    router.push('/dashboard');
+  }, [router, track, currentStepIndex, currentSettings, updateSettings, session?.user?.email, refreshUser]);
 
   const handleReset = useCallback(() => {
     setData(createDefaultOnboardingData(intl));
@@ -2376,9 +2390,13 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
 
       // Mark first login as complete so user won't be redirected to onboarding again
       if (session?.user?.email) {
-        await fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/first-login-complete`, {
+        const flagResponse = await fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/first-login-complete`, {
           method: 'PUT',
         });
+        if (!flagResponse.ok) {
+          throw new Error('Failed to complete activation');
+        }
+        await refreshUser();
       }
 
       localStorage.removeItem(LOCAL_STORAGE_KEY);
@@ -2386,7 +2404,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       setShowSavingDialog(false);
       setSavingDetail(null);
       track(AnalyticsEvents.ONBOARDING_COMPLETED, { steps_completed: steps.length, mode });
-      router.push('/');
+      router.push('/dashboard');
     } catch (error) {
       logger.error(error);
       setSaveStatus('idle');
@@ -2395,7 +2413,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       setActiveSavingPhase('prepare');
       alert('Nie udało się zapisać danych. Spróbuj ponownie.');
     }
-  }, [data, router, syncFinancialData, t, track, steps.length, mode, session?.user?.email]);
+  }, [data, router, syncFinancialData, t, track, steps.length, mode, session?.user?.email, refreshUser]);
 
   const setLife = (updates: Partial<OnboardingData['life']>) =>
     setData((prev) => {
