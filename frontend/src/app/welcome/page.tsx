@@ -53,18 +53,12 @@ function formatTrialDate(isoDate: string, locale: string): string {
 export default function WelcomePage() {
   const router = useRouter();
   const intl = useIntl();
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session } = useSession();
   const { subscription, isLoading, isTrial } = useSubscription();
   const { refreshUser } = useUser();
   const [isSkipping, setIsSkipping] = useState(false);
 
-  // Redirect unauthenticated users
-  if (sessionStatus === 'unauthenticated') {
-    router.replace('/');
-    return null;
-  }
-
-  if (sessionStatus === 'loading' || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
