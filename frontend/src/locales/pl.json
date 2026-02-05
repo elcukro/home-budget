@@ -2853,6 +2853,7 @@
     },
     "finePrint": "Po zako\u0144czeniu trialu dost\u0119p do podstawowych funkcji pozostanie darmowy.",
     "continue": "\u015awietnie, kontynuuj!",
-    "skip": "Przypomnij mi p\u00f3\u017aniej"
+    "skip": "Przypomnij mi p\u00f3\u017aniej",
+    "skip.error": "Nie uda\u0142o si\u0119 zako\u0144czy\u0107 aktywacji. Spr\u00f3buj ponownie."
   }
 }

@@ -2901,6 +2901,7 @@
     },
     "finePrint": "After the trial ends, you'll keep access to basic features for free.",
     "continue": "Great, continue!",
-    "skip": "Remind me later"
+    "skip": "Remind me later",
+    "skip.error": "Failed to complete activation. Please try again."
   }
 }
