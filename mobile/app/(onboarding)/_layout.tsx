@@ -4,6 +4,7 @@ export default function OnboardingLayout() {
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="welcome" />
+      <Stack.Screen name="trial-info" />
       <Stack.Screen name="about-you" />
       <Stack.Screen name="income" />
       <Stack.Screen name="expenses" />

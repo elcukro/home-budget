@@ -5,8 +5,8 @@ import { useAuthStore } from './auth';
 // Dev mode detection - skip onboarding API calls in dev mode
 const isDevToken = (token: string | null) => token === 'dev-token-for-testing';
 
-// Total onboarding steps: welcome, about-you, income, expenses, savings
-export const TOTAL_ONBOARDING_STEPS = 5;
+// Total onboarding steps: welcome, trial-info, about-you, income, expenses, savings
+export const TOTAL_ONBOARDING_STEPS = 6;
 
 // Employment status options (matching web onboarding)
 export const EMPLOYMENT_STATUS_OPTIONS = [
@@ -45,22 +45,24 @@ export interface OnboardingData {
   language: Language;
   currency: Currency;
 
-  // Personal info (Step 2: About You)
+  // Step 2: Trial Info (informational only, no data collected)
+
+  // Personal info (Step 3: About You)
   birthYear: number | null;
   childrenCount: number;
   employmentStatus: EmploymentStatus | null;
 
-  // Income (Step 3)
+  // Income (Step 4)
   netMonthlyIncome: number | null;
   uses50KUP: boolean; // 50% costs of obtaining revenue
   grossMonthlyIncome: number | null; // Only needed if uses50KUP is true
 
-  // Expenses (Step 4)
+  // Expenses (Step 5)
   housingCost: number | null;
   foodCost: number | null;
   transportCost: number | null;
 
-  // Savings (Step 5)
+  // Savings (Step 6)
   currentSavings: number | null;
 }
 
@@ -80,7 +82,7 @@ const initialData: OnboardingData = {
 };
 
 interface OnboardingState {
-  currentStep: number;           // 0-4 (5 steps total)
+  currentStep: number;           // 0-5 (6 steps total)
   isCompleted: boolean;          // Synced with backend
   isLoading: boolean;
   error: string | null;

@@ -78,7 +78,7 @@ export default function SavingsScreen() {
       >
         <View style={[styles.content, { paddingTop: insets.top }]}>
           {/* Progress Bar */}
-          <OnboardingProgressBar currentStep={4} totalSteps={TOTAL_ONBOARDING_STEPS} />
+          <OnboardingProgressBar currentStep={5} totalSteps={TOTAL_ONBOARDING_STEPS} />
 
           <ScrollView
             style={styles.scrollView}

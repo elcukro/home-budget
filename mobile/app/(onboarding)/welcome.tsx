@@ -16,7 +16,7 @@ export default function WelcomeScreen() {
   const [isSkipping, setIsSkipping] = useState(false);
 
   const handleNext = () => {
-    router.push('/(onboarding)/about-you');
+    router.push('/(onboarding)/trial-info');
   };
 
   const handleSkip = async () => {

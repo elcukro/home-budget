@@ -40,7 +40,7 @@ export default function ExpensesScreen() {
       >
         <View style={[styles.content, { paddingTop: insets.top }]}>
           {/* Progress Bar */}
-          <OnboardingProgressBar currentStep={3} totalSteps={TOTAL_ONBOARDING_STEPS} />
+          <OnboardingProgressBar currentStep={4} totalSteps={TOTAL_ONBOARDING_STEPS} />
 
           <ScrollView
             style={styles.scrollView}
