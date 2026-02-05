@@ -5,8 +5,8 @@ import { useAuthStore } from './auth';
 // Dev mode detection - skip onboarding API calls in dev mode
 const isDevToken = (token: string | null) => token === 'dev-token-for-testing';
 
-// Total onboarding steps: welcome, trial-info, about-you, income, expenses, savings
-export const TOTAL_ONBOARDING_STEPS = 6;
+// Total onboarding steps: welcome, trial-info, about-you, income, expenses, savings, tutorial
+export const TOTAL_ONBOARDING_STEPS = 7;
 
 // Employment status options (matching web onboarding)
 export const EMPLOYMENT_STATUS_OPTIONS = [
@@ -82,7 +82,7 @@ const initialData: OnboardingData = {
 };
 
 interface OnboardingState {
-  currentStep: number;           // 0-5 (6 steps total)
+  currentStep: number;           // 0-6 (7 steps total)
   isCompleted: boolean;          // Synced with backend
   isLoading: boolean;
   error: string | null;

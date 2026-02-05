@@ -12,6 +12,8 @@ import {
   NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TOTAL_ONBOARDING_STEPS } from '@/stores/onboarding';
+import OnboardingProgressBar from '@/components/onboarding/OnboardingProgressBar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -82,7 +84,7 @@ function Slide({ item, isLast, onFinish, onNext }: SlideProps) {
 
   return (
     <View style={[styles.slide, { width: SCREEN_WIDTH }]}>
-      <View style={[styles.slideContent, { paddingTop: insets.top + 20 }]}>
+      <View style={[styles.slideContent, { paddingTop: 20 }]}>
         {/* Image */}
         <View style={[styles.imageContainer, { height: imageHeight + 20 }]}>
           <Image
@@ -156,6 +158,11 @@ export default function TutorialScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Progress Bar */}
+      <View style={{ paddingTop: insets.top }}>
+        <OnboardingProgressBar currentStep={6} totalSteps={TOTAL_ONBOARDING_STEPS} />
+      </View>
+
       {/* Slides */}
       <FlatList
         ref={flatListRef}
@@ -202,7 +209,7 @@ export default function TutorialScreen() {
 
       {/* Close button - skip tutorial and go to Home */}
       <TouchableOpacity
-        style={[styles.closeButton, { top: insets.top + 10 }]}
+        style={[styles.closeButton, { top: insets.top + 8 }]}
         onPress={handleFinish}
         activeOpacity={0.7}
       >
