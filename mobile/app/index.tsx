@@ -4,6 +4,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useOnboardingStore } from '@/stores/onboarding';
 import { BiometricAuth } from '@/utils/biometric';
 
+const isDevToken = (token: string | null) => token === 'dev-token-for-testing';
+
 export default function Index() {
   const { isAuthenticated, isLoading: authLoading, isFirstLogin, biometricEnabled, signInWithBiometric, token } = useAuthStore();
   const { checkOnboardingStatus, isCompleted: onboardingCompleted } = useOnboardingStore();
@@ -55,6 +57,11 @@ export default function Index() {
   // Not authenticated - go to sign in
   if (!isAuthenticated) {
     return <Redirect href="/(auth)/sign-in" />;
+  }
+
+  // Dev mode bypasses onboarding for testing
+  if (isDevToken(token)) {
+    return <Redirect href="/(tabs)" />;
   }
 
   // Authenticated but first login or hasn't completed onboarding - go to onboarding
