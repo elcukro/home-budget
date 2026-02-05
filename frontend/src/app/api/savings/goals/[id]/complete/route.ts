@@ -10,7 +10,7 @@ const API_BASE_URL =
   'http://localhost:8000';
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
