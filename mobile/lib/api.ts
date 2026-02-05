@@ -356,14 +356,24 @@ export class ApiClient {
         access_token: string;
         token_type: string;
         expires_in: number;
-        user: { id: string; email: string; name: string | null };
+        user: { id: string; email: string; name: string | null; is_first_login: boolean };
       }>('/auth/mobile/google', {
         method: 'POST',
         body: { id_token: idToken },
       }),
 
     getCurrentUser: () =>
-      this.request<{ id: string; email: string; name: string | null }>('/auth/mobile/me'),
+      this.request<{ id: string; email: string; name: string | null; is_first_login: boolean }>('/auth/mobile/me'),
+  };
+
+  // ============== First Login ==============
+
+  users = {
+    markFirstLoginComplete: (email: string) =>
+      this.request<{ success: boolean; is_first_login: boolean }>(
+        `/users/${encodeURIComponent(email)}/first-login-complete`,
+        { method: 'PUT' }
+      ),
   };
 
   // ============== Dashboard ==============

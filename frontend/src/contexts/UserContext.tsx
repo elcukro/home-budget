@@ -18,6 +18,7 @@ interface UserData {
   id: string;
   name: string | null;
   email: string | null;
+  is_first_login: boolean;
   created_at: string;
   updated_at: string | null;
   settings?: UserSettings | null;

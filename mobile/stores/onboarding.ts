@@ -156,6 +156,10 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         onboarding_completed: true,
       });
 
+      // Mark first login as complete
+      await client.users.markFirstLoginComplete(user.email);
+      useAuthStore.getState().setFirstLoginComplete();
+
       set({ isCompleted: true, isLoading: false });
     } catch (error) {
       // If 401, the onUnauthorized callback should handle sign out
@@ -208,6 +212,10 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         currency: data.currency,
         onboarding_completed: true,
       });
+
+      // Mark first login as complete
+      await client.users.markFirstLoginComplete(user.email);
+      useAuthStore.getState().setFirstLoginComplete();
 
       set({ isCompleted: true, isLoading: false });
     } catch (error) {
@@ -328,6 +336,12 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
         });
         console.log('[Onboarding] Step 4: Savings record created');
       }
+
+      // Mark first login as complete
+      console.log('[Onboarding] Step 5: Marking first login complete...');
+      await client.users.markFirstLoginComplete(user.email);
+      useAuthStore.getState().setFirstLoginComplete();
+      console.log('[Onboarding] Step 5: First login marked complete');
 
       console.log('[Onboarding] All steps completed successfully!');
       set({ isCompleted: true, isLoading: false, data: { ...initialData } });

@@ -18,6 +18,8 @@ class User(Base):
     name = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # First login tracking (for onboarding redirect)
+    is_first_login = Column(Boolean, default=True, nullable=False, server_default="true")
     # Email tracking
     welcome_email_sent_at = Column(DateTime(timezone=True), nullable=True)
     trial_ending_email_sent_at = Column(DateTime(timezone=True), nullable=True)

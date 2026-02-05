@@ -65,6 +65,7 @@ class UserResponse(BaseModel):
     id: str
     email: EmailStr
     name: Optional[str] = None
+    is_first_login: bool = False
     created_at: datetime
     updated_at: Optional[datetime]
 

@@ -5,7 +5,7 @@ import { useOnboardingStore } from '@/stores/onboarding';
 import { BiometricAuth } from '@/utils/biometric';
 
 export default function Index() {
-  const { isAuthenticated, isLoading: authLoading, biometricEnabled, signInWithBiometric, token } = useAuthStore();
+  const { isAuthenticated, isLoading: authLoading, isFirstLogin, biometricEnabled, signInWithBiometric, token } = useAuthStore();
   const { checkOnboardingStatus, isCompleted: onboardingCompleted } = useOnboardingStore();
   const [checkingOnboarding, setCheckingOnboarding] = useState(true);
   const [checkingBiometric, setCheckingBiometric] = useState(true);
@@ -57,8 +57,8 @@ export default function Index() {
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  // Authenticated but hasn't completed onboarding - go to onboarding
-  if (!onboardingCompleted) {
+  // Authenticated but first login or hasn't completed onboarding - go to onboarding
+  if (isFirstLogin || !onboardingCompleted) {
     return <Redirect href="/(onboarding)/welcome" />;
   }
 

@@ -26,6 +26,7 @@ interface AuthState {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isFirstLogin: boolean;
   biometricEnabled: boolean;
 
   // Actions
@@ -35,6 +36,7 @@ interface AuthState {
   devLogin: () => Promise<void>;
   signOut: () => Promise<void>;
   setBiometricEnabled: (enabled: boolean) => Promise<void>;
+  setFirstLoginComplete: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -42,6 +44,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   token: null,
   isLoading: true,
   isAuthenticated: false,
+  isFirstLogin: false,
   biometricEnabled: false,
 
   initialize: async () => {
@@ -131,6 +134,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         token: response.access_token,
         user,
         isAuthenticated: true,
+        isFirstLogin: response.user.is_first_login ?? false,
         isLoading: false,
       });
     } catch (error) {
@@ -237,12 +241,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  setFirstLoginComplete: () => {
+    set({ isFirstLogin: false });
+  },
+
   signOut: async () => {
     try {
       // Clear stored credentials
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       await SecureStore.deleteItemAsync(USER_KEY);
-      
+
       // Also disable biometric on sign out
       await BiometricAuth.setEnabled(false);
 
@@ -250,6 +258,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         token: null,
         user: null,
         isAuthenticated: false,
+        isFirstLogin: false,
         biometricEnabled: false,
       });
     } catch (error) {

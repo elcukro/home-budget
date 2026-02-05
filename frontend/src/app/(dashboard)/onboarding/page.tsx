@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useUser } from '@/contexts/UserContext';
 import { Loader2 } from 'lucide-react';
 
 type OnboardingMode = 'fresh' | 'merge' | 'default';
@@ -14,6 +15,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const { settings, isLoading: settingsLoading } = useSettings();
+  const { user } = useUser();
   const fromPayment = searchParams?.get('from') === 'payment';
   const forceOnboarding = searchParams?.get('force') === 'true';
   const modeParam = searchParams?.get('mode');
@@ -29,8 +31,8 @@ export default function OnboardingPage() {
         return;
       }
 
-      // Allow forced onboarding (from settings page)
-      if (forceOnboarding) {
+      // Allow forced onboarding (from settings page) or first-login redirect
+      if (forceOnboarding || user?.is_first_login) {
         setIsChecking(false);
         return;
       }
@@ -72,7 +74,7 @@ export default function OnboardingPage() {
     if (!settingsLoading) {
       checkForExistingData();
     }
-  }, [session, settings, settingsLoading, forceOnboarding, router]);
+  }, [session, settings, settingsLoading, forceOnboarding, router, user]);
 
   // Show loading state while checking
   if (isChecking || settingsLoading) {

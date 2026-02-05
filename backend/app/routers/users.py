@@ -30,6 +30,7 @@ class UserBase(BaseModel):
 
 class User(UserBase):
     id: str
+    is_first_login: bool = False
     created_at: datetime
     updated_at: datetime | None = None
 
@@ -158,6 +159,30 @@ def update_user_settings(
         db.commit()
         db.refresh(settings)
         return settings
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/{email}/first-login-complete")
+def mark_first_login_complete(
+    email: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Mark first login as complete after user finishes onboarding.
+    Users can only update their own is_first_login status.
+    """
+    # SECURITY: Verify user can only update their own status
+    if email != current_user.email and email != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    current_user.is_first_login = False
+    try:
+        db.commit()
+        db.refresh(current_user)
+        return {"success": True, "is_first_login": False}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

@@ -2374,6 +2374,13 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         throw new Error('Failed to persist onboarding data');
       }
 
+      // Mark first login as complete so user won't be redirected to onboarding again
+      if (session?.user?.email) {
+        await fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/first-login-complete`, {
+          method: 'PUT',
+        });
+      }
+
       localStorage.removeItem(LOCAL_STORAGE_KEY);
       setSaveStatus('saved');
       setShowSavingDialog(false);
@@ -2388,7 +2395,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       setActiveSavingPhase('prepare');
       alert('Nie udało się zapisać danych. Spróbuj ponownie.');
     }
-  }, [data, router, syncFinancialData, t, track, steps.length, mode]);
+  }, [data, router, syncFinancialData, t, track, steps.length, mode, session?.user?.email]);
 
   const setLife = (updates: Partial<OnboardingData['life']>) =>
     setData((prev) => {
