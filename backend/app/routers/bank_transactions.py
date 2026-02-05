@@ -38,6 +38,11 @@ from ..services.audit_service import (
     audit_transaction_reviewed,
     audit_categorization_requested,
 )
+from ..services.duplicate_detection_service import (
+    detect_duplicate_for_new_transaction,
+    check_pending_to_booked_update,
+    create_fingerprint,
+)
 from ..logging_utils import get_secure_logger
 
 logger = get_secure_logger(__name__)
@@ -64,6 +69,7 @@ class TransactionStatus(str, Enum):
     accepted = "accepted"
     rejected = "rejected"
     converted = "converted"
+    ignored = "ignored"  # Used for confirmed duplicates
 
 
 class ConvertType(str, Enum):
@@ -87,6 +93,9 @@ class BankTransactionResponse(BaseModel):
     confidence_score: Optional[float] = None
     status: str
     is_duplicate: bool
+    duplicate_of: Optional[int] = None
+    duplicate_confidence: Optional[float] = None
+    duplicate_reason: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -96,7 +105,8 @@ class BankTransactionResponse(BaseModel):
 class SyncResponse(BaseModel):
     success: bool
     synced_count: int
-    duplicate_count: int
+    exact_duplicate_count: int  # Skipped due to same tink_transaction_id
+    fuzzy_duplicate_count: int  # Flagged as potential duplicates for review
     total_fetched: int
     message: str
 
@@ -137,6 +147,7 @@ class TransactionStats(BaseModel):
     accepted: int
     rejected: int
     converted: int
+    ignored: int = 0  # Confirmed duplicates
 
 
 class CategorizeResponse(BaseModel):
@@ -194,18 +205,19 @@ async def sync_transactions(
         transactions = transactions_response.get("transactions", [])
         total_fetched = len(transactions)
         synced_count = 0
-        duplicate_count = 0
+        exact_duplicate_count = 0
+        fuzzy_duplicate_count = 0
 
         for tx in transactions:
             tink_tx_id = tx.get("id")
 
-            # Check for existing transaction
+            # Step 1: Check for exact tink_transaction_id match (100% duplicate)
             existing = db.query(BankTransaction).filter(
                 BankTransaction.tink_transaction_id == tink_tx_id
             ).first()
 
             if existing:
-                duplicate_count += 1
+                exact_duplicate_count += 1
                 continue
 
             # Parse transaction data
@@ -249,11 +261,73 @@ async def sync_transactions(
             # Map Tink category to our category (basic mapping)
             suggested_category = map_tink_category(tink_category_id, suggested_type)
 
+            # Step 2: Check for pending → booked update scenario
+            tink_account_id = tx.get("accountId", "")
+            fingerprint = create_fingerprint(
+                amount=amount,
+                currency=currency,
+                tx_date=tx_date,
+                description=description_display,
+                merchant_category_code=merchant_category_code,
+                tink_account_id=tink_account_id,
+            )
+
+            # Check if this is a booked version of a pending transaction
+            pending_tx_id = check_pending_to_booked_update(
+                db=db,
+                user_id=current_user.id,
+                fingerprint=fingerprint,
+                raw_data=tx,
+            )
+
+            if pending_tx_id:
+                # Update existing pending transaction instead of creating new one
+                pending_tx = db.query(BankTransaction).filter(
+                    BankTransaction.id == pending_tx_id
+                ).first()
+                if pending_tx:
+                    pending_tx.tink_transaction_id = tink_tx_id
+                    pending_tx.raw_data = tx
+                    # Don't count as synced or duplicate
+                    logger.info(f"Updated pending transaction {pending_tx_id} to booked status")
+                    continue
+
+            # Step 3: Check for fuzzy duplicates (fingerprint matching)
+            is_fuzzy_duplicate = False
+            duplicate_of_id = None
+            duplicate_confidence = None
+            duplicate_reason = None
+
+            fuzzy_match = detect_duplicate_for_new_transaction(
+                db=db,
+                user_id=current_user.id,
+                tink_transaction_id=tink_tx_id,
+                amount=amount,
+                currency=currency,
+                tx_date=tx_date,
+                description=description_display,
+                merchant_category_code=merchant_category_code,
+                tink_account_id=tink_account_id,
+            )
+
+            if fuzzy_match:
+                # Skip exact matches that somehow weren't caught above
+                if fuzzy_match.confidence >= 1.0:
+                    exact_duplicate_count += 1
+                    continue
+
+                # Flag as fuzzy duplicate for user review
+                is_fuzzy_duplicate = True
+                duplicate_of_id = fuzzy_match.original_transaction_id
+                duplicate_confidence = fuzzy_match.confidence
+                duplicate_reason = fuzzy_match.match_reason
+                fuzzy_duplicate_count += 1
+
             # Create bank transaction record
             bank_tx = BankTransaction(
                 user_id=current_user.id,
                 tink_transaction_id=tink_tx_id,
-                tink_account_id=tx.get("accountId", ""),
+                tink_account_id=tink_account_id,
                 provider_transaction_id=tx.get("identifiers", {}).get("providerTransactionId"),
                 amount=amount,
                 currency=currency,
@@ -269,6 +343,11 @@ async def sync_transactions(
                 suggested_category=suggested_category,
                 status="pending",
                 raw_data=tx,
+                # Duplicate detection fields
+                is_duplicate=is_fuzzy_duplicate,
+                duplicate_of=duplicate_of_id,
+                duplicate_confidence=duplicate_confidence,
+                duplicate_reason=duplicate_reason,
             )
 
             db.add(bank_tx)
@@ -284,19 +363,28 @@ async def sync_transactions(
             user_id=current_user.id,
             connection_id=connection.id,
             synced_count=synced_count,
-            duplicate_count=duplicate_count,
+            exact_duplicate_count=exact_duplicate_count,
+            fuzzy_duplicate_count=fuzzy_duplicate_count,
             total_fetched=total_fetched,
             date_range_days=days,
             result="success",
             request=http_request,
         )
 
+        # Build message
+        message_parts = [f"Synced {synced_count} new transactions"]
+        if exact_duplicate_count > 0:
+            message_parts.append(f"{exact_duplicate_count} exact duplicates skipped")
+        if fuzzy_duplicate_count > 0:
+            message_parts.append(f"{fuzzy_duplicate_count} potential duplicates flagged for review")
+
         return SyncResponse(
             success=True,
             synced_count=synced_count,
-            duplicate_count=duplicate_count,
+            exact_duplicate_count=exact_duplicate_count,
+            fuzzy_duplicate_count=fuzzy_duplicate_count,
             total_fetched=total_fetched,
-            message=f"Synced {synced_count} new transactions ({duplicate_count} duplicates skipped)"
+            message=", ".join(message_parts)
         )
 
     except Exception as e:
@@ -307,7 +395,8 @@ async def sync_transactions(
             user_id=current_user.id,
             connection_id=connection.id if connection else None,
             synced_count=0,
-            duplicate_count=0,
+            exact_duplicate_count=0,
+            fuzzy_duplicate_count=0,
             total_fetched=0,
             date_range_days=days,
             result="failure",
@@ -513,6 +602,7 @@ async def get_transaction_stats(
         "accepted": 0,
         "rejected": 0,
         "converted": 0,
+        "ignored": 0,
     }
 
     for status, count in stats:
@@ -761,6 +851,151 @@ async def reset_transaction(
     db.commit()
 
     return {"success": True, "message": "Transaction reset to pending"}
+
+
+# ============================================================================
+# Duplicate Handling Endpoints
+# ============================================================================
+
+@router.post("/{transaction_id}/confirm-duplicate")
+async def confirm_duplicate(
+    http_request: Request,
+    transaction_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Confirm a flagged transaction is indeed a duplicate.
+
+    When user confirms a fuzzy duplicate, the transaction is marked as 'ignored'
+    and the is_duplicate flag remains True.
+
+    Rate limit: 200/hour per user (transaction update)
+    """
+    # Rate limit: 200 per hour per user
+    limiter = get_limiter(http_request)
+    await limiter.check("200/hour", http_request)
+
+    bank_tx = db.query(BankTransaction).filter(
+        BankTransaction.id == transaction_id,
+        BankTransaction.user_id == current_user.id
+    ).first()
+
+    if not bank_tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    if not bank_tx.is_duplicate:
+        raise HTTPException(
+            status_code=400,
+            detail="Transaction is not flagged as a potential duplicate"
+        )
+
+    # Mark as ignored (confirmed duplicate)
+    bank_tx.status = "ignored"
+    bank_tx.reviewed_at = datetime.now()
+    # Keep is_duplicate=True and duplicate_of intact
+    db.commit()
+
+    # Audit: Transaction reviewed (confirm duplicate)
+    audit_transaction_reviewed(
+        db=db,
+        user_id=current_user.id,
+        action="confirm_duplicate",
+        transaction_count=1,
+        request=http_request,
+    )
+
+    return {
+        "success": True,
+        "message": "Transaction confirmed as duplicate and marked as ignored",
+        "duplicate_of": bank_tx.duplicate_of
+    }
+
+
+@router.post("/{transaction_id}/not-duplicate")
+async def mark_not_duplicate(
+    http_request: Request,
+    transaction_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Mark a flagged transaction as NOT a duplicate.
+
+    When user indicates a transaction is not a duplicate, clear the duplicate
+    flags and treat it as a normal pending transaction.
+
+    Rate limit: 200/hour per user (transaction update)
+    """
+    # Rate limit: 200 per hour per user
+    limiter = get_limiter(http_request)
+    await limiter.check("200/hour", http_request)
+
+    bank_tx = db.query(BankTransaction).filter(
+        BankTransaction.id == transaction_id,
+        BankTransaction.user_id == current_user.id
+    ).first()
+
+    if not bank_tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    if not bank_tx.is_duplicate:
+        raise HTTPException(
+            status_code=400,
+            detail="Transaction is not flagged as a potential duplicate"
+        )
+
+    # Clear duplicate flags
+    bank_tx.is_duplicate = False
+    bank_tx.duplicate_of = None
+    bank_tx.duplicate_confidence = None
+    bank_tx.duplicate_reason = None
+    bank_tx.reviewed_at = datetime.now()
+    # Keep status as "pending" so user can still convert/accept/reject
+    db.commit()
+
+    # Audit: Transaction reviewed (not duplicate)
+    audit_transaction_reviewed(
+        db=db,
+        user_id=current_user.id,
+        action="mark_not_duplicate",
+        transaction_count=1,
+        request=http_request,
+    )
+
+    return {
+        "success": True,
+        "message": "Transaction marked as not a duplicate, now pending review"
+    }
+
+
+@router.get("/duplicates", response_model=List[BankTransactionResponse])
+async def get_potential_duplicates(
+    http_request: Request,
+    limit: int = Query(default=50, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get all transactions flagged as potential duplicates.
+
+    Returns transactions where is_duplicate=True and status="pending".
+
+    Rate limit: 120/minute per user (standard read)
+    """
+    # Rate limit: 120 requests per minute per user
+    limiter = get_limiter(http_request)
+    await limiter.check("120/minute", http_request)
+
+    transactions = db.query(BankTransaction).filter(
+        BankTransaction.user_id == current_user.id,
+        BankTransaction.is_duplicate == True,
+        BankTransaction.status == "pending"
+    ).order_by(
+        BankTransaction.date.desc()
+    ).limit(limit).all()
+
+    return transactions
 
 
 # ============================================================================

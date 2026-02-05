@@ -313,13 +313,35 @@ def audit_transactions_synced(
     user_id: str,
     connection_id: Optional[int],
     synced_count: int,
-    duplicate_count: int,
     total_fetched: int,
     date_range_days: int,
     result: str = "success",
     request: Optional[Request] = None,
+    # New parameters for enhanced duplicate detection
+    exact_duplicate_count: int = 0,
+    fuzzy_duplicate_count: int = 0,
+    # Legacy parameter (for backwards compatibility)
+    duplicate_count: Optional[int] = None,
 ) -> None:
-    """Log when transactions are synced from Tink."""
+    """Log when transactions are synced from Tink.
+
+    Args:
+        db: Database session
+        user_id: User ID
+        connection_id: Tink connection ID
+        synced_count: Number of new transactions synced
+        total_fetched: Total transactions fetched from Tink
+        date_range_days: Date range for the sync
+        result: Operation result (success/failure)
+        request: HTTP request for metadata
+        exact_duplicate_count: Transactions skipped due to exact tink_transaction_id match
+        fuzzy_duplicate_count: Transactions flagged as potential duplicates for review
+        duplicate_count: Legacy parameter (deprecated, use exact_duplicate_count)
+    """
+    # Handle legacy duplicate_count parameter
+    if duplicate_count is not None and exact_duplicate_count == 0:
+        exact_duplicate_count = duplicate_count
+
     log_tink_audit_sync(
         db=db,
         action_type="transactions_synced",
@@ -329,7 +351,8 @@ def audit_transactions_synced(
         request=request,
         details={
             "synced_count": synced_count,
-            "duplicate_count": duplicate_count,
+            "exact_duplicate_count": exact_duplicate_count,
+            "fuzzy_duplicate_count": fuzzy_duplicate_count,
             "total_fetched": total_fetched,
             "date_range_days": date_range_days,
         },

@@ -476,6 +476,8 @@ class BankTransaction(Base):
     # Metadata
     is_duplicate = Column(Boolean, default=False)
     duplicate_of = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
+    duplicate_confidence = Column(Float, nullable=True)  # 0.0-1.0, confidence that this is a duplicate
+    duplicate_reason = Column(String, nullable=True)  # Reason for duplicate flag (e.g., "same_account_exact_match")
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -489,6 +491,9 @@ class BankTransaction(Base):
         Index('idx_bank_transactions_user_id', 'user_id'),
         Index('idx_bank_transactions_status', 'status'),
         Index('idx_bank_transactions_date', 'date'),
+        # Composite index for duplicate detection performance
+        Index('idx_bank_tx_duplicate_lookup', 'user_id', 'date', 'currency'),
+        Index('idx_bank_transactions_is_duplicate', 'is_duplicate'),
     )
 
 
