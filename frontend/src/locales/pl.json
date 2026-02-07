@@ -289,6 +289,52 @@
     "noData": "Brak dostępnych danych",
     "loadError": "Nie udało się załadować danych panelu. Spróbuj ponownie później.",
     "subtitle": "Monitoruj przepływy gotówki, spłaty zobowiązań i zarządzaj każdą złotówką świadomie.",
+    "hero": {
+      "greeting": "Cześć, {name}!",
+      "greetingDefault": "Cześć!",
+      "situationGood": "Masz bardzo dobrą sytuację – warto już przejść do budowania bogactwa.",
+      "netIncome": "Koszty życia miesięcznie",
+      "expenses": "Twój dochód",
+      "balance": "Nadwyżka",
+      "vsLastMonth": "vs zeszły miesiąc",
+      "fireNumber": "Cele FIRE"
+    },
+    "aiInsightsSection": {
+      "title": "Realna Sytuacja Budżetowa",
+      "viewFull": "Zobacz pełną analizę",
+      "loading": "Ładowanie wyników analizy...",
+      "error": "Nie udało się załadować analizy. Spróbuj ponownie.",
+      "retry": "Ponów",
+      "noData": "Brak danych do analizy. Dodaj przychody i wydatki.",
+      "configureKey": "Skonfiguruj klucz API Claude w Ustawieniach",
+      "cachedLabel": "Z pamięci podręcznej",
+      "lastUpdated": "Ostatnia aktualizacja: {date}",
+      "problemTitle": "Problem & Rozwiązanie",
+      "topMovesTitle": "Top 3 Ruchy Finansowe",
+      "categories": {
+        "savings": "Oszczędności",
+        "baby_steps": "Baby Steps",
+        "fire": "Droga do FIRE",
+        "debt": "Spłata długów",
+        "tax_optimization": "Optymalizacja"
+      }
+    },
+    "fireMetrics": {
+      "title": "Wskaźniki FIRE",
+      "fireGauge": "Liczba FIRE",
+      "savingsRate": "Stopa oszczędności",
+      "babySteps": "Baby Steps",
+      "timeToFire": "Czas do FIRE",
+      "years": "{count} lat",
+      "months": "{count} mies.",
+      "targetSavings": "Cel: {amount}",
+      "noFireGoal": "Ustaw swoje cele FIRE",
+      "setupFire": "Skonfiguruj cele",
+      "overpaymentSim": "Symulator Nadpłaty",
+      "loanOverpayment": "Nadpłata kredytu",
+      "savingsGoal": "Oszczędności",
+      "investmentGoal": "Inwestycje"
+    },
     "sections": {
       "summary": {
         "title": "Podsumowanie miesiąca",

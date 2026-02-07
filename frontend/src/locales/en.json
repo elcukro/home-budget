@@ -339,6 +339,52 @@
     "noData": "No dashboard data available",
     "loadError": "Failed to load dashboard data. Please try again later.",
     "subtitle": "Monitor your cashflow, track repayments, and stay purposeful with every złoty.",
+    "hero": {
+      "greeting": "Hi, {name}!",
+      "greetingDefault": "Hi there!",
+      "situationGood": "You're in great shape – time to start building wealth.",
+      "netIncome": "Monthly living costs",
+      "expenses": "Your income",
+      "balance": "Surplus",
+      "vsLastMonth": "vs last month",
+      "fireNumber": "FIRE Goals"
+    },
+    "aiInsightsSection": {
+      "title": "Your Budget Reality",
+      "viewFull": "View full analysis",
+      "loading": "Loading analysis results...",
+      "error": "Failed to load analysis. Please try again.",
+      "retry": "Retry",
+      "noData": "No data to analyze. Add income and expenses first.",
+      "configureKey": "Configure Claude API key in Settings",
+      "cachedLabel": "Cached",
+      "lastUpdated": "Last updated: {date}",
+      "problemTitle": "Problem & Solution",
+      "topMovesTitle": "Top 3 Financial Moves",
+      "categories": {
+        "savings": "Savings",
+        "baby_steps": "Baby Steps",
+        "fire": "Path to FIRE",
+        "debt": "Debt Payoff",
+        "tax_optimization": "Optimization"
+      }
+    },
+    "fireMetrics": {
+      "title": "FIRE Metrics",
+      "fireGauge": "FIRE Number",
+      "savingsRate": "Savings Rate",
+      "babySteps": "Baby Steps",
+      "timeToFire": "Time to FIRE",
+      "years": "{count} years",
+      "months": "{count} mo.",
+      "targetSavings": "Target: {amount}",
+      "noFireGoal": "Set your FIRE goals",
+      "setupFire": "Configure goals",
+      "overpaymentSim": "Overpayment Simulator",
+      "loanOverpayment": "Loan overpayment",
+      "savingsGoal": "Savings",
+      "investmentGoal": "Investments"
+    },
     "sections": {
       "summary": {
         "title": "Monthly summary",
