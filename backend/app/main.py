@@ -2955,10 +2955,26 @@ async def generate_insights(user_data: dict, api_key: str):
         total_loan_payments = sum(loan["monthly_payment"] for loan in loans)
         total_loan_balance = sum(loan["remaining_balance"] for loan in loans)
 
+        # Calculate recurring vs one-time breakdown
+        recurring_income = sum(i["amount"] for i in incomes if i.get("is_recurring"))
+        one_time_income = sum(i["amount"] for i in incomes if not i.get("is_recurring"))
+        recurring_expenses = sum(e["amount"] for e in expenses if e.get("is_recurring"))
+        one_time_expenses = sum(e["amount"] for e in expenses if not e.get("is_recurring"))
+
+        # One-time expense details for sinking fund analysis
+        one_time_expense_details = [
+            {"category": e["category"], "description": e.get("description", ""), "amount": e["amount"]}
+            for e in expenses if not e.get("is_recurring")
+        ]
+
+        # Real monthly surplus based on recurring only
+        recurring_monthly_surplus = recurring_income - recurring_expenses - total_loan_payments
+        real_savings_rate = (recurring_monthly_surplus / recurring_income * 100) if recurring_income > 0 else 0
+
         # Calculate monthly balance
         monthly_balance = total_income - total_expenses - total_loan_payments
 
-        # Calculate savings rate
+        # Calculate savings rate (total, including one-time)
         savings_rate = (monthly_balance / total_income * 100) if total_income > 0 else 0
 
         # Calculate debt-to-income ratio
@@ -2997,7 +3013,8 @@ async def generate_insights(user_data: dict, api_key: str):
         # Baby Step 3: Full emergency fund (3-6 months of expenses)
         emergency_fund_months = settings.get("emergency_fund_months", 3)
         emergency_fund_current = savings_by_category.get("emergency_fund", 0)
-        baby_step_3_target = total_expenses * emergency_fund_months if total_expenses > 0 else baby_step_1_target * emergency_fund_months
+        # Use RECURRING expenses for emergency fund target (not total which includes one-time)
+        baby_step_3_target = recurring_expenses * emergency_fund_months if recurring_expenses > 0 else baby_step_1_target * emergency_fund_months
 
         # Pre-calculate differences for BOTH Baby Steps to avoid AI math errors
         baby_step_1_difference = emergency_fund_current - baby_step_1_target
@@ -3064,9 +3081,11 @@ async def generate_insights(user_data: dict, api_key: str):
         ike_remaining = max(0, ike_limit_2026 - ike_ytd)
         ikze_remaining = max(0, ikze_applicable_limit - ikze_ytd)
 
-        # Calculate FIRE number (25x annual expenses = 4% withdrawal rate)
-        annual_expenses = total_expenses * 12
-        fire_number = annual_expenses * 25 if annual_expenses > 0 else 0
+        # Calculate FIRE number (25x annual RECURRING expenses = 4% withdrawal rate)
+        annual_recurring_expenses = recurring_expenses * 12
+        annual_total_expenses = total_expenses * 12
+        fire_number = annual_recurring_expenses * 25 if annual_recurring_expenses > 0 else 0
+        fire_number_total = annual_total_expenses * 25 if annual_total_expenses > 0 else 0
 
         # Map language codes
         language_names = {"en": "English", "pl": "Polish", "es": "Spanish"}
@@ -3201,7 +3220,7 @@ USER CONTEXT (Polish market):
 - Age: {user_age if user_age else "UNKNOWN"}
 - Employment: {employment_status or "UNKNOWN"} ({tax_form or "Unknown"} tax form)
 - PPK enrolled: {ppk_enrolled if ppk_enrolled is not None else "UNKNOWN"}
-- Uses author's costs (50% KUP): {use_authors_costs}
+- Uses author's costs (50% KUP, UoP/Dzieło only): {use_authors_costs}{"" if not is_self_employed else " (NOTE: 50% KUP does NOT apply to B2B - user should deduct actual business expenses via invoices)"}
 - Children: {children_count}
 - Currency: {currency}
 - Has variable/self-employed income: {"YES - recommend higher emergency fund (6-12 months)" if has_variable_income else "NO"}
@@ -3216,14 +3235,25 @@ POLISH TAX OPTIMIZATION OPPORTUNITIES:
 - IKE (Individual Retirement Account): 2026 limit = {ike_limit_2026} PLN, tax-free capital gains
 - IKZE (Individual Retirement Security Account): 2026 limit = {ikze_applicable_limit} PLN {"(B2B higher limit)" if is_self_employed else "(standard limit)"}, tax-deductible contributions
 - PPK: Employer matches contributions, free money if enrolled
-- Author's costs (KUP 50%): 50% of income tax-deductible for creative work
+{"- Author's costs (KUP 50%): 50% of income tax-deductible for creative work (UoP/Umowa o dzieło ONLY)" if not is_self_employed else ""}
+
+TAX OPTIMIZATION RULES BY EMPLOYMENT TYPE:
+- B2B (linear tax / ryczałt): NO "50% KUP" — that applies ONLY to UoP/Umowa o dzieło. On B2B, deduct actual business expenses from invoices (koszty uzyskania przychodu z faktur). Suggest checking if personal car expenses, equipment, home office, phone, internet could be legitimate business costs (potential ~23% VAT + income tax recovery).
+- B2B health insurance: 9% of average salary base, partially deductible from tax (4.9% for linear tax)
+- UoP (employment contract): Standard KUP 250 PLN/month or 300 PLN if commuting. 50% KUP available for creative/IP work.
+- If user has children: Joint filing (rozliczenie wspólne) NOT possible on linear tax (podatek liniowy). If beneficial, mention considering switching to skala podatkowa next year.
+- Tax leak detection: If user has B2B AND personal transportation/equipment/subscriptions expenses, ask whether these are already classified as business costs.
+
+SINKING FUNDS DETECTION:
+When you see large one-time expenses (vacations, car service/repairs, insurance, medical, gifts), calculate their estimated annual cost and suggest a monthly "sinking fund" amount. Example: "You spent X PLN on one-time expenses this month. If these recur annually, setting aside Y PLN/month to a dedicated sub-account would smooth out cash flow and avoid surprises."
+This helps the user plan for predictable irregular expenses instead of being surprised by them each time.
 
 FINANCIAL SUMMARY (PRE-CALCULATED - use these exact numbers):
 - Monthly Income (net): {total_income:,.2f} {currency}
 - Monthly Expenses: {total_expenses:,.2f} {currency}
 - Monthly Loan Payments (all): {total_loan_payments:,.2f} {currency}
 - Monthly Balance (income - expenses - loan payments): {monthly_balance:,.2f} {currency}
-- Cash Savings Rate: {savings_rate:.1f}% (this is CASH savings only, does NOT include debt principal paydown)
+- Cash Savings Rate (this month, incl. one-time): {savings_rate:.1f}%
 - Note: Debt principal payments of ~{total_loan_payments:,.0f} {currency}/month also build net worth by reducing debt, but are not counted in savings rate.
 - Baby Step 2 DTI (consumer debt only): {baby_step_2_dti:.1f}% (only non-mortgage, non-leasing debt payments / income)
 - Total DTI (all debt): {total_dti:.1f}% (all loan payments / income)
@@ -3231,7 +3261,22 @@ FINANCIAL SUMMARY (PRE-CALCULATED - use these exact numbers):
 - Baby Step 2 Debt (to pay off now): {baby_step_2_debt_total:,.2f} {currency}
 - Mortgage Debt (Baby Step 6): {mortgage_debt_total:,.2f} {currency}
 - Leasing Debt (fixed contracts, CANNOT prepay): {leasing_debt_total:,.2f} {currency}
-- FIRE Number (25x annual expenses): {fire_number:,.0f} {currency}
+- FIRE Number (25x annual RECURRING expenses): {fire_number:,.0f} {currency}
+- FIRE Number reference (25x ALL expenses incl. one-time): {fire_number_total:,.0f} {currency}
+
+REAL MONTHLY BUDGET (excluding one-time expenses):
+- Recurring Income: {recurring_income:,.2f} {currency}
+- Recurring Expenses: {recurring_expenses:,.2f} {currency}
+- One-Time Income this month: {one_time_income:,.2f} {currency}
+- One-Time Expenses this month: {one_time_expenses:,.2f} {currency}
+- Real Monthly Surplus (recurring income - recurring expenses - loan payments): {recurring_monthly_surplus:,.2f} {currency}
+- Real Savings Rate (based on recurring only): {real_savings_rate:.1f}%
+IMPORTANT: Use RECURRING expenses for emergency fund calculation, Baby Steps progress, and FIRE number.
+Use TOTAL expenses only for current month snapshot. When savings rate differs significantly between total and recurring,
+explain that one-time expenses distort the current month picture.
+
+ONE-TIME EXPENSES THIS MONTH (for sinking fund analysis):
+{json.dumps(one_time_expense_details, indent=2) if one_time_expense_details else "None"}
 
 EMERGENCY FUND STATUS (PRE-CALCULATED - use these EXACT values, do NOT recalculate):
 - BABY STEP 1 (starter emergency fund):
@@ -3240,7 +3285,8 @@ EMERGENCY FUND STATUS (PRE-CALCULATED - use these EXACT values, do NOT recalcula
   Status: {baby_step_1_status}
   Complete: {"YES ✓" if baby_step_1_complete else "NO - needs " + f"{abs(baby_step_1_difference):,.0f}" + " " + currency + " more"}
 
-- BABY STEP 3 (full emergency fund = {emergency_fund_months} months expenses):
+- BABY STEP 3 (full emergency fund = {emergency_fund_months} months of RECURRING expenses):
+  Based on: {recurring_expenses:,.0f} {currency}/month RECURRING expenses (NOT {total_expenses:,.0f} total)
   Target: {baby_step_3_target:,.0f} {currency}
   Current: {emergency_fund_current:,.0f} {currency}
   Status: {baby_step_3_status}
@@ -3342,7 +3388,8 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
   }},
   "currentBabyStep": {current_baby_step},
   "fireNumber": {fire_number},
-  "savingsRate": {savings_rate:.1f}
+  "savingsRate": {savings_rate:.1f},
+  "realSavingsRate": {real_savings_rate:.1f}
 }}"""
 
         # Make the API call to Anthropic Claude API with retry for 529 errors
@@ -3366,7 +3413,7 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
                                 "content": prompt
                             }
                         ],
-                        "system": "You are a FIRE (Financial Independence, Retire Early) coach specializing in Dave Ramsey's Baby Steps methodology and Polish financial regulations. You provide direct, actionable insights focused on debt elimination, emergency fund building, and wealth accumulation. CRITICAL: 1) Respond with valid JSON ONLY - no markdown code blocks, no explanatory text. 2) Do NOT perform any mathematical calculations - all numbers are pre-calculated in the prompt, use them exactly. 3) Never recommend debt avalanche - only debt snowball. 4) Place links in actionItems arrays, never in description text."
+                        "system": "You are a FIRE (Financial Independence, Retire Early) coach specializing in Dave Ramsey's Baby Steps methodology and Polish financial regulations. You provide direct, actionable insights focused on debt elimination, emergency fund building, and wealth accumulation. CRITICAL: 1) Respond with valid JSON ONLY - no markdown code blocks, no explanatory text. 2) Do NOT perform any mathematical calculations - all numbers are pre-calculated in the prompt, use them exactly. 3) Never recommend debt avalanche - only debt snowball. 4) Place links in actionItems arrays, never in description text. 5) ALWAYS distinguish between recurring and one-time expenses in your analysis. Emergency fund targets and FIRE numbers are based on RECURRING expenses only. 6) For B2B users, NEVER suggest '50% KUP' - that's for UoP/Dzieło only. B2B deducts actual business costs from invoices."
                     },
                 )
 
@@ -3440,6 +3487,8 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
                 insights_data["fireNumber"] = fire_number
             if "savingsRate" not in insights_data:
                 insights_data["savingsRate"] = round(savings_rate, 1)
+            if "realSavingsRate" not in insights_data:
+                insights_data["realSavingsRate"] = round(real_savings_rate, 1)
 
             # Add metadata
             insights_data["metadata"] = {
