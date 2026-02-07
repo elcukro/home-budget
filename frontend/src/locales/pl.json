@@ -278,6 +278,72 @@
       "currentStep": "Aktualny krok",
       "fireNumber": "Liczba FIRE",
       "savingsRate": "Stopa oszczędności"
+    },
+    "simulators": {
+      "title": "Symulatory finansowe",
+      "subtitle": "Sprawdź, jak Twoje decyzje wpłyną na przyszłość",
+      "years": "{count} lat",
+      "months": "{count} mies.",
+      "loanOverpayment": {
+        "title": "Symulator nadpłaty kredytu",
+        "selectLoan": "Wybierz kredyt",
+        "extraMonthly": "Dodatkowa miesięczna nadpłata",
+        "oneTime": "Jednorazowa nadpłata",
+        "results": "Wyniki symulacji",
+        "interestSaved": "Zaoszczędzone odsetki",
+        "monthsSaved": "Zaoszczędzone miesiące",
+        "newPayoffDate": "Nowa data spłaty",
+        "originalPlan": "Plan oryginalny",
+        "withOverpayment": "Z nadpłatą",
+        "noLoans": "Brak aktywnych kredytów. Dodaj kredyt, aby skorzystać z symulatora.",
+        "paysOffEntirely": "Ta nadpłata spłaci kredyt w całości!"
+      },
+      "fire": {
+        "title": "Kalkulator FIRE",
+        "annualExpenses": "Roczne wydatki",
+        "withdrawalRate": "Stopa wypłaty",
+        "currentSavings": "Aktualne oszczędności",
+        "monthlySavings": "Miesięczne oszczędności",
+        "expectedReturn": "Oczekiwana stopa zwrotu",
+        "results": "Wyniki kalkulacji",
+        "fireNumberLabel": "Liczba FIRE",
+        "progress": "Postęp",
+        "yearsToFire": "Lat do FIRE",
+        "congratulations": "Gratulacje!",
+        "reachedFire": "Osiągnąłeś swoją liczbę FIRE!"
+      },
+      "savings": {
+        "title": "Symulator celu oszczędnościowego",
+        "goalAmount": "Kwota celu",
+        "targetMonths": "Horyzont czasowy",
+        "monthsLabel": "mies.",
+        "currentSaved": "Już zaoszczędzone",
+        "annualReturn": "Roczna stopa zwrotu",
+        "results": "Wyniki symulacji",
+        "monthlyRequired": "Wymagana miesięczna kwota",
+        "interestEarned": "Zysk z odsetek",
+        "halfwayMilestone": "Połowa celu",
+        "milestones": "Kamienie milowe",
+        "month": "Miesiąc",
+        "goalReached": "Cel już osiągnięty!"
+      }
+    },
+    "insightCards": {
+      "biggestOpportunity": {
+        "title": "Największa szansa",
+        "runSimulator": "Uruchom symulator"
+      },
+      "quickWins": {
+        "title": "Szybkie wygrane"
+      },
+      "healthMeters": {
+        "title": "Zdrowie finansowe"
+      },
+      "difficulty": {
+        "low": "Łatwe",
+        "medium": "Średnie",
+        "high": "Trudne"
+      }
     }
   },
   "dashboard": {

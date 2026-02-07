@@ -328,6 +328,72 @@
       "currentStep": "Current Step",
       "fireNumber": "FIRE Number",
       "savingsRate": "Savings Rate"
+    },
+    "simulators": {
+      "title": "Financial Simulators",
+      "subtitle": "See how your decisions impact your future",
+      "years": "{count} years",
+      "months": "{count} mo.",
+      "loanOverpayment": {
+        "title": "Loan Overpayment Simulator",
+        "selectLoan": "Select loan",
+        "extraMonthly": "Extra monthly payment",
+        "oneTime": "One-time payment",
+        "results": "Simulation results",
+        "interestSaved": "Interest saved",
+        "monthsSaved": "Months saved",
+        "newPayoffDate": "New payoff date",
+        "originalPlan": "Original plan",
+        "withOverpayment": "With overpayment",
+        "noLoans": "No active loans. Add a loan to use this simulator.",
+        "paysOffEntirely": "This overpayment would pay off the loan entirely!"
+      },
+      "fire": {
+        "title": "FIRE Calculator",
+        "annualExpenses": "Annual expenses",
+        "withdrawalRate": "Withdrawal rate",
+        "currentSavings": "Current savings",
+        "monthlySavings": "Monthly savings",
+        "expectedReturn": "Expected annual return",
+        "results": "Calculation results",
+        "fireNumberLabel": "FIRE Number",
+        "progress": "Progress",
+        "yearsToFire": "Years to FIRE",
+        "congratulations": "Congratulations!",
+        "reachedFire": "You've reached your FIRE number!"
+      },
+      "savings": {
+        "title": "Savings Goal Simulator",
+        "goalAmount": "Goal amount",
+        "targetMonths": "Time horizon",
+        "monthsLabel": "months",
+        "currentSaved": "Already saved",
+        "annualReturn": "Annual return rate",
+        "results": "Simulation results",
+        "monthlyRequired": "Required monthly savings",
+        "interestEarned": "Interest earned",
+        "halfwayMilestone": "Halfway point",
+        "milestones": "Milestones",
+        "month": "Month",
+        "goalReached": "Goal already reached!"
+      }
+    },
+    "insightCards": {
+      "biggestOpportunity": {
+        "title": "Biggest Opportunity",
+        "runSimulator": "Run Simulator"
+      },
+      "quickWins": {
+        "title": "Quick Wins"
+      },
+      "healthMeters": {
+        "title": "Financial Health"
+      },
+      "difficulty": {
+        "low": "Easy",
+        "medium": "Medium",
+        "high": "Hard"
+      }
     }
   },
   "dashboard": {

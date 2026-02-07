@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useIntl } from 'react-intl';
 import { useSession } from 'next-auth/react';
 import { useSettings } from '@/contexts/SettingsContext';
@@ -17,11 +17,17 @@ import {
   ChevronUpIcon,
   Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
-import { Flame, Target, Wallet, PiggyBank, Receipt } from 'lucide-react';
+import { Flame, Target, Wallet, PiggyBank, Receipt, Calculator } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Insight, InsightStatus } from '@/types/insights';
+import { Insight, InsightStatus, InsightCategoryKey } from '@/types/insights';
 import { EnhancedInsightsResponse, InsightsMetadata } from '@/types/cache';
 import { cn } from '@/lib/utils';
+import LoanOverpaymentSim from '@/components/ai/LoanOverpaymentSim';
+import FireCalculatorSim from '@/components/ai/FireCalculatorSim';
+import SavingsGoalSim from '@/components/ai/SavingsGoalSim';
+import BiggestOpportunityCard from '@/components/ai/BiggestOpportunityCard';
+import QuickWinsSection from '@/components/ai/QuickWinsSection';
+import CategoryHealthMeter from '@/components/ai/CategoryHealthMeter';
 
 // Parse markdown links and render as Next.js Link components
 const parseMarkdownLinks = (text: string): React.ReactNode => {
@@ -417,6 +423,10 @@ const MetadataBanner: React.FC<{
   );
 };
 
+const CATEGORY_ORDER: InsightCategoryKey[] = [
+  'savings', 'baby_steps', 'fire', 'debt', 'tax_optimization',
+];
+
 // Main AI Analysis Page
 const AIAnalysisPage = () => {
   const intl = useIntl();
@@ -426,6 +436,8 @@ const AIAnalysisPage = () => {
   const [insights, setInsights] = useState<EnhancedInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
+  const [activeSimulator, setActiveSimulator] = useState<'loan' | 'fire' | 'savings'>('loan');
+  const simulatorRef = useRef<HTMLDivElement>(null);
 
   const fetchInsights = async (forceRefresh = false) => {
     if (!session?.user?.email) return;
@@ -475,6 +487,30 @@ const AIAnalysisPage = () => {
       fetchInsights();
     }
   }, [session?.user?.email]);
+
+  // Extract all insights into a flat list for insight cards
+  const allInsights = useMemo(() => {
+    if (!insights?.categories) return [];
+    const all: Insight[] = [];
+    for (const catKey of CATEGORY_ORDER) {
+      const items = insights.categories[catKey];
+      if (items) all.push(...items);
+    }
+    return all;
+  }, [insights]);
+
+  // Find the highest-impact opportunity
+  const biggestOpportunity = useMemo(() => {
+    // Prefer high-priority recommendations
+    const highPrio = allInsights.find(i => i.type === 'recommendation' && i.priority === 'high');
+    if (highPrio) return highPrio;
+    // Fallback: any recommendation
+    return allInsights.find(i => i.type === 'recommendation') ?? null;
+  }, [allInsights]);
+
+  const scrollToSimulator = () => {
+    simulatorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div className="space-y-6">
@@ -576,6 +612,90 @@ const AIAnalysisPage = () => {
             formatCurrency={formatCurrency}
             intl={intl}
           />
+
+          {/* Biggest Opportunity + Category Health */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              {biggestOpportunity && (
+                <BiggestOpportunityCard
+                  insight={biggestOpportunity}
+                  onRunSimulator={scrollToSimulator}
+                />
+              )}
+            </div>
+            <div>
+              <Card className="rounded-2xl border border-default shadow-sm h-full">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold text-primary">
+                    {intl.formatMessage({ id: 'aiAnalysis.insightCards.healthMeters.title' })}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CategoryHealthMeter
+                    categories={CATEGORY_ORDER}
+                    statusMap={insights.status}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Quick Wins */}
+          <QuickWinsSection insights={allInsights} />
+
+          {/* Interactive Simulators */}
+          <div ref={simulatorRef}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Calculator className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-primary">
+                  {intl.formatMessage({ id: 'aiAnalysis.simulators.title' })}
+                </h2>
+                <p className="text-xs text-secondary">
+                  {intl.formatMessage({ id: 'aiAnalysis.simulators.subtitle' })}
+                </p>
+              </div>
+            </div>
+
+            {/* Simulator tabs */}
+            <div className="flex gap-2 mb-4">
+              {(['loan', 'fire', 'savings'] as const).map((tab) => {
+                const labels: Record<string, string> = {
+                  loan: intl.formatMessage({ id: 'aiAnalysis.simulators.loanOverpayment.title' }),
+                  fire: intl.formatMessage({ id: 'aiAnalysis.simulators.fire.title' }),
+                  savings: intl.formatMessage({ id: 'aiAnalysis.simulators.savings.title' }),
+                };
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveSimulator(tab)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                      activeSimulator === tab
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-secondary hover:bg-muted/80',
+                    )}
+                  >
+                    {labels[tab]}
+                  </button>
+                );
+              })}
+            </div>
+
+            {activeSimulator === 'loan' && (
+              <LoanOverpaymentSim />
+            )}
+            {activeSimulator === 'fire' && (
+              <FireCalculatorSim
+                prefillAnnualExpenses={insights.fireNumber ? Math.round(insights.fireNumber * 0.04) : undefined}
+              />
+            )}
+            {activeSimulator === 'savings' && (
+              <SavingsGoalSim />
+            )}
+          </div>
 
           {/* Category Sections */}
           <div className="space-y-4">
