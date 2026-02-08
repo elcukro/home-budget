@@ -458,7 +458,7 @@ const AIAnalysisPage = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const detail = typeof errorData.detail === 'string' ? errorData.detail : '';
+        const _detail = typeof errorData.detail === 'string' ? errorData.detail : '';
 
         setErrorMessageId('dashboard.summary.aiInsights.apiErrors.generic');
         setInsights(null);

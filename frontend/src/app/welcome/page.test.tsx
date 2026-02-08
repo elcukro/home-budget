@@ -118,7 +118,7 @@ vi.mock('@/lib/logger', () => ({
 
 // Mock FontAwesome
 vi.mock('@fortawesome/react-fontawesome', () => ({
-  FontAwesomeIcon: ({ icon, className }: { icon: unknown; className?: string }) => (
+  FontAwesomeIcon: ({ icon: _icon, className }: { icon: unknown; className?: string }) => (
     <span data-testid="fa-icon" className={className} />
   ),
 }))

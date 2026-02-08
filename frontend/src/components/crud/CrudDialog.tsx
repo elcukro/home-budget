@@ -118,7 +118,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
   isSubmitting = false,
 }: CrudDialogProps<TFormValues>) {
   const intl = useIntl();
-  const { settings } = useSettings();
+  const { settings: _settings } = useSettings();
 
   const form = useForm<TFormValues>({
     resolver: zodResolver(schema as any) as Resolver<TFormValues>,
@@ -145,6 +145,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
     });
   };
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- form.watch() is needed for conditional field rendering
   const watchedValues = form.watch();
 
   const groupedFields = React.useMemo(() => {

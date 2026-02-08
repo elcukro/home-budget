@@ -11,7 +11,7 @@ interface FireGaugeProps {
   formatCurrency: (value: number) => string;
 }
 
-const FireGauge: React.FC<FireGaugeProps> = ({ currentSavings, fireNumber, formatCurrency }) => {
+const FireGauge: React.FC<FireGaugeProps> = ({ currentSavings, fireNumber, formatCurrency: _formatCurrency }) => {
   const percentage = fireNumber > 0 ? Math.min(100, (currentSavings / fireNumber) * 100) : 0;
   const remaining = Math.max(0, 100 - percentage);
 
