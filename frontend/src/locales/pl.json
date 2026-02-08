@@ -344,6 +344,28 @@
         "medium": "Średnie",
         "high": "Trudne"
       }
+    },
+    "hero": {
+      "costOfLiving": "Koszt życia miesięcznie",
+      "income": "Twój dochód",
+      "surplus": "Nadwyżka",
+      "recurringOnly": "tylko stałe",
+      "fireProgress": "Postęp FIRE",
+      "fireTarget": "Cel: {target}",
+      "budgetDistortion": {
+        "title": "Co psuje obraz budżetu",
+        "explanation": "Jednorazowe wydatki {amount} wpływają na obraz tego miesiąca",
+        "correctedSurplus": "Realna nadwyżka (bez jednorazowych): {amount}",
+        "toggle": "Pokaż skorygowane"
+      },
+      "top3Moves": "Top 3 Ruchy Finansowe",
+      "detailedAnalysis": "Szczegółowa analiza",
+      "healthStatus": {
+        "excellent": "Doskonała",
+        "good": "Dobra",
+        "warning": "Wymaga uwagi",
+        "critical": "Krytyczna"
+      }
     }
   },
   "dashboard": {

@@ -57,7 +57,7 @@ const HeroCards: React.FC<HeroCardsProps> = ({
   const cards = [
     {
       key: 'expenses',
-      label: intl.formatMessage({ id: 'dashboard.hero.netIncome' }),
+      label: intl.formatMessage({ id: 'dashboard.hero.expenses' }),
       value: totalExpenses,
       delta: deltas.expenses,
       trend: 'negative' as const,
@@ -68,7 +68,7 @@ const HeroCards: React.FC<HeroCardsProps> = ({
     },
     {
       key: 'income',
-      label: intl.formatMessage({ id: 'dashboard.hero.expenses' }),
+      label: intl.formatMessage({ id: 'dashboard.hero.netIncome' }),
       value: totalIncome,
       delta: deltas.income,
       trend: 'positive' as const,

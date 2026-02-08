@@ -3482,6 +3482,24 @@ Generate insights in these 5 categories based on the user's current Baby Step:
 4. **fire** - FIRE number, savings rate analysis, time to financial independence
 5. **tax_optimization** - Polish-specific tax opportunities based on their situation
 
+HERO DASHBOARD (generate this object alongside categories):
+Generate a "hero_dashboard" object with:
+- greeting: One warm sentence summarizing the user's financial health (max 20 words, in response language)
+- health_status: "excellent" if real surplus >30% of income, "good" if >10%, "warning" if >0%, "critical" if negative
+- monthly_cost_of_living: RECURRING expenses only (use {recurring_expenses:,.2f} {currency})
+- monthly_income: recurring income (use {recurring_income:,.2f} {currency})
+- monthly_surplus: recurring income - recurring expenses - loan payments (use {recurring_monthly_surplus:,.2f} {currency})
+- fire_progress_percent: (current savings / FIRE number) * 100, rounded to 1 decimal
+- fire_target: FIRE number (use {fire_number:,.0f} {currency})
+- budget_distortion: If one-time expenses > 30% of total expenses this month, set is_distorted=true. Include one_time_total, explanation (why this month looks different), and corrected_surplus (what surplus would be without one-time expenses)
+- top3_moves: The 3 most impactful financial actions, specific to this user's data, with concrete {currency} amounts. Each must have: title (short), description (1-2 sentences), impact (specific savings/gain like "Oszczędzisz X PLN rocznie"), icon_type (one of: mortgage, savings, investment, budget, tax, emergency)
+
+TOP 3 MOVES RULES:
+- Each move MUST have a specific {currency} impact calculated from the user's data (not generic advice)
+- Prioritize by impact: highest {currency} savings/gain first
+- Good: "Nadpłać hipotekę 3000 zł/mies → oszczędność 22k odsetek" — Bad: "Śledź wydatki"
+- Never suggest generic things like "track expenses" or "read a book"
+
 CRITICAL GUIDELINES:
 - Be specific and actionable - tell them EXACTLY what to do next
 - Reference the pre-calculated numbers exactly as provided - do NOT recalculate anything
@@ -3535,7 +3553,30 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
   "currentBabyStep": {current_baby_step},
   "fireNumber": {fire_number},
   "savingsRate": {savings_rate:.1f},
-  "realSavingsRate": {real_savings_rate:.1f}
+  "realSavingsRate": {real_savings_rate:.1f},
+  "hero_dashboard": {{
+    "greeting": "One warm sentence about financial health",
+    "health_status": "excellent|good|warning|critical",
+    "monthly_cost_of_living": 0,
+    "monthly_income": 0,
+    "monthly_surplus": 0,
+    "fire_progress_percent": 0.0,
+    "fire_target": 0,
+    "budget_distortion": {{
+      "is_distorted": false,
+      "one_time_total": 0,
+      "explanation": "Why this month looks different (or empty if not distorted)",
+      "corrected_surplus": 0
+    }},
+    "top3_moves": [
+      {{
+        "title": "Short action title",
+        "description": "1-2 sentence description",
+        "impact": "Specific PLN impact",
+        "icon_type": "mortgage|savings|investment|budget|tax|emergency"
+      }}
+    ]
+  }}
 }}"""
 
         # Make the API call to OpenAI API with retry for transient errors
@@ -3553,7 +3594,7 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
                     },
                     json={
                         "model": "gpt-4.1-mini",
-                        "max_tokens": 4096,
+                        "max_tokens": 5000,
                         "response_format": {"type": "json_object"},
                         "messages": [
                             {"role": "system", "content": system_prompt},

@@ -394,6 +394,28 @@
         "medium": "Medium",
         "high": "Hard"
       }
+    },
+    "hero": {
+      "costOfLiving": "Cost of Living",
+      "income": "Your Income",
+      "surplus": "Surplus",
+      "recurringOnly": "recurring only",
+      "fireProgress": "FIRE Progress",
+      "fireTarget": "Target: {target}",
+      "budgetDistortion": {
+        "title": "What distorts the picture",
+        "explanation": "One-time expenses of {amount} affect this month's view",
+        "correctedSurplus": "Real surplus (without one-time): {amount}",
+        "toggle": "Show corrected"
+      },
+      "top3Moves": "Top 3 Financial Moves",
+      "detailedAnalysis": "Detailed Analysis",
+      "healthStatus": {
+        "excellent": "Excellent",
+        "good": "Good",
+        "warning": "Needs Attention",
+        "critical": "Critical"
+      }
     }
   },
   "dashboard": {
