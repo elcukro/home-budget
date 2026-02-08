@@ -5,6 +5,7 @@ import { useIntl, FormattedMessage } from 'react-intl';
 import { Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -105,24 +106,24 @@ export default function LoanCalculator({
   const { formatCurrency } = useSettings();
   const [open, setOpen] = useState(false);
 
-  const [principal, setPrincipal] = useState(initialValues?.principal?.toString() ?? '');
+  const [principal, setPrincipal] = useState(initialValues?.principal ?? 0);
   const [interestRate, setInterestRate] = useState(initialValues?.interestRate?.toString() ?? '');
   const [termMonths, setTermMonths] = useState(initialValues?.termMonths?.toString() ?? '');
-  const [monthlyPayment, setMonthlyPayment] = useState(initialValues?.monthlyPayment?.toString() ?? '');
+  const [monthlyPayment, setMonthlyPayment] = useState(initialValues?.monthlyPayment ?? 0);
 
   const [calculateTarget, setCalculateTarget] = useState<CalculationTarget>('monthlyPayment');
   const [calculatedValue, setCalculatedValue] = useState<number | null>(null);
 
-  const parseNum = (value: string): number => {
+  const parseStr = (value: string): number => {
     const parsed = parseFloat(value.replace(',', '.'));
     return isNaN(parsed) ? 0 : parsed;
   };
 
   const calculate = useCallback(() => {
-    const p = parseNum(principal);
-    const r = parseNum(interestRate);
-    const n = parseNum(termMonths);
-    const m = parseNum(monthlyPayment);
+    const p = principal;
+    const r = parseStr(interestRate);
+    const n = parseStr(termMonths);
+    const m = monthlyPayment;
 
     let result: number | null = null;
 
@@ -155,10 +156,10 @@ export default function LoanCalculator({
     if (calculatedValue === null) return;
 
     const values: CalculatedValues = {
-      principal: calculateTarget === 'principal' ? calculatedValue : parseNum(principal),
-      interestRate: parseNum(interestRate),
-      termMonths: calculateTarget === 'termMonths' ? Math.round(calculatedValue) : parseNum(termMonths),
-      monthlyPayment: calculateTarget === 'monthlyPayment' ? calculatedValue : parseNum(monthlyPayment),
+      principal: calculateTarget === 'principal' ? calculatedValue : principal,
+      interestRate: parseStr(interestRate),
+      termMonths: calculateTarget === 'termMonths' ? Math.round(calculatedValue) : parseStr(termMonths),
+      monthlyPayment: calculateTarget === 'monthlyPayment' ? calculatedValue : monthlyPayment,
     };
 
     onApply?.(values);
@@ -185,15 +186,15 @@ export default function LoanCalculator({
   };
 
   const totalCost = calculatedValue !== null && calculateTarget === 'monthlyPayment'
-    ? calculatedValue * parseNum(termMonths)
+    ? calculatedValue * parseStr(termMonths)
     : calculatedValue !== null && calculateTarget === 'termMonths'
-    ? parseNum(monthlyPayment) * calculatedValue
+    ? monthlyPayment * calculatedValue
     : calculatedValue !== null && calculateTarget === 'principal'
-    ? parseNum(monthlyPayment) * parseNum(termMonths)
+    ? monthlyPayment * parseStr(termMonths)
     : null;
 
   const totalInterest = totalCost !== null
-    ? totalCost - (calculateTarget === 'principal' && calculatedValue !== null ? calculatedValue : parseNum(principal))
+    ? totalCost - (calculateTarget === 'principal' && calculatedValue !== null ? calculatedValue : principal)
     : null;
 
   return (
@@ -246,14 +247,10 @@ export default function LoanCalculator({
                 <Label htmlFor="calc-principal">
                   <FormattedMessage id="loans.form.principalAmount" />
                 </Label>
-                <Input
+                <CurrencyInput
                   id="calc-principal"
-                  type="number"
                   value={principal}
-                  onChange={(e) => setPrincipal(e.target.value)}
-                  placeholder="100000"
-                  min={0}
-                  step="1000"
+                  onValueChange={setPrincipal}
                 />
               </div>
             )}
@@ -296,14 +293,10 @@ export default function LoanCalculator({
                 <Label htmlFor="calc-payment">
                   <FormattedMessage id="loans.form.monthlyPayment" />
                 </Label>
-                <Input
+                <CurrencyInput
                   id="calc-payment"
-                  type="number"
                   value={monthlyPayment}
-                  onChange={(e) => setMonthlyPayment(e.target.value)}
-                  placeholder="1500"
-                  min={0}
-                  step="100"
+                  onValueChange={setMonthlyPayment}
                 />
               </div>
             )}

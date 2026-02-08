@@ -353,15 +353,18 @@ export default function ExpensesPage() {
 
   // Expanded groups state (for showing history within category)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  // Expanded categories state (foldable categories)
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
   const userEmail = session?.user?.email ?? null;
 
-  const [sortKey, setSortKey] = useState<"date" | "amount" | "description">("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [recurringFilter, setRecurringFilter] = useState<"all" | "recurring" | "oneoff">("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
 
   const monthlyTotals = useMemo(() => {
+    const now = new Date();
+    const curYear = now.getFullYear();
     const map = new Map<
       string,
       {
@@ -381,6 +384,26 @@ export default function ExpensesPage() {
       const existing = map.get(key) ?? { key, date: monthDate, total: 0 };
       existing.total += expense.amount;
       map.set(key, existing);
+
+      // For recurring expenses, also generate entries through end of current year
+      if (expense.is_recurring) {
+        const endDate = expense.end_date ? new Date(expense.end_date) : null;
+        const endYear = endDate ? endDate.getFullYear() : curYear;
+        const endMonth = endDate ? endDate.getMonth() : 11;
+        const limitYear = Math.min(endYear, curYear);
+        const limitMonth = limitYear < curYear ? endMonth : (endYear > curYear ? 11 : Math.min(endMonth, 11));
+
+        let y = parsed.getFullYear();
+        let m = parsed.getMonth();
+        while (y < limitYear || (y === limitYear && m <= limitMonth)) {
+          const rKey = getMonthKey(new Date(y, m, 1));
+          if (!map.has(rKey)) {
+            map.set(rKey, { key: rKey, date: new Date(y, m, 1), total: expense.amount });
+          }
+          m++;
+          if (m > 11) { m = 0; y++; }
+        }
+      }
     });
 
     return Array.from(map.values()).sort(
@@ -412,6 +435,12 @@ export default function ExpensesPage() {
     setSelectedMonth((prev) => {
       if (prev !== "all" && monthlyTotals.some((entry) => entry.key === prev)) {
         return prev;
+      }
+      // Default to current month if available, otherwise latest month with data
+      const now = new Date();
+      const currentKey = getMonthKey(now);
+      if (monthlyTotals.some((entry) => entry.key === currentKey)) {
+        return currentKey;
       }
       return monthlyTotals[monthlyTotals.length - 1]?.key ?? "all";
     });
@@ -454,66 +483,6 @@ export default function ExpensesPage() {
     void loadExpenses();
   }, [userEmail, intl]);
 
-  // Filter expenses based on selected month
-  // - Recurring items: show if start_date <= selected_month <= end_date (or forever if no end_date)
-  // - One-off items: show only if date matches selected month
-  const _filteredExpenses = useMemo(() => {
-    const filtered = expenses.filter((expense) => {
-      if (selectedMonth !== "all") {
-        const expenseDate = new Date(expense.date);
-        if (Number.isNaN(expenseDate.getTime())) {
-          return false;
-        }
-
-        const [filterYear, filterMonth] = selectedMonth.split("-").map(Number);
-        const filterDate = new Date(filterYear, filterMonth - 1, 1);
-
-        if (expense.is_recurring) {
-          // Recurring: check if filter month is between start_date and end_date
-          const startDate = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), 1);
-
-          // Filter month must be >= start month
-          if (filterDate < startDate) {
-            return false;
-          }
-
-          // If there's an end_date, filter month must be <= end month
-          if (expense.end_date) {
-            const endDate = new Date(expense.end_date);
-            const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
-            if (filterDate > endMonth) {
-              return false;
-            }
-          }
-        } else {
-          // One-off: check if date matches the selected month
-          if (getMonthKey(expenseDate) !== selectedMonth) {
-            return false;
-          }
-        }
-      }
-
-      if (recurringFilter === "recurring") return expense.is_recurring;
-      if (recurringFilter === "oneoff") return !expense.is_recurring;
-      return true;
-    });
-
-    const sorted = [...filtered].sort((a, b) => {
-      const direction = sortDirection === "asc" ? 1 : -1;
-      if (sortKey === "amount") {
-        return direction * (a.amount - b.amount);
-      }
-      if (sortKey === "description") {
-        return direction * a.description.localeCompare(b.description, intl.locale, { sensitivity: "base" });
-      }
-
-      const timeA = new Date(a.date).getTime();
-      const timeB = new Date(b.date).getTime();
-      return direction * (timeA - timeB);
-    });
-
-    return sorted;
-  }, [expenses, recurringFilter, sortDirection, sortKey, intl.locale, selectedMonth]);
 
   // Helper to check if expense is active in selected month
   const isExpenseActiveInMonth = (expense: Expense, monthKey: string): boolean => {
@@ -540,14 +509,15 @@ export default function ExpensesPage() {
     }
   };
 
-  // Filter expenses only by recurring filter (not by month - we want to show all items for grouping)
+  // Filter expenses by selected month and recurring filter
   const expensesForDisplay = useMemo(() => {
     return expenses.filter((expense) => {
+      if (!isExpenseActiveInMonth(expense, selectedMonth)) return false;
       if (recurringFilter === "recurring") return expense.is_recurring;
       if (recurringFilter === "oneoff") return !expense.is_recurring;
       return true;
     });
-  }, [expenses, recurringFilter]);
+  }, [expenses, recurringFilter, selectedMonth]);
 
   const expensesByCategory = useMemo(() => {
     const grouped = expensesForDisplay.reduce<Record<string, { items: Expense[]; total: number; activeTotal: number }>>(
@@ -567,9 +537,7 @@ export default function ExpensesPage() {
     );
 
     Object.values(grouped).forEach((group) => {
-      group.items.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
+      group.items.sort((a, b) => b.amount - a.amount);
     });
 
     return grouped;
@@ -577,10 +545,9 @@ export default function ExpensesPage() {
 
   const groupedCategories = useMemo(() => {
     const entries = Object.entries(expensesByCategory);
-    return entries.sort(([categoryA], [categoryB]) => {
-      return categoryA.localeCompare(categoryB);
-    });
-  }, [expensesByCategory]);
+    const dir = sortDirection === "asc" ? 1 : -1;
+    return entries.sort(([, a], [, b]) => dir * (a.activeTotal - b.activeTotal));
+  }, [expensesByCategory, sortDirection]);
 
   // Group expenses within each category by description
   interface ExpenseDescriptionGroup {
@@ -640,6 +607,18 @@ export default function ExpensesPage() {
         next.delete(key);
       } else {
         next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const toggleCategoryExpanded = (category: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
       }
       return next;
     });
@@ -745,6 +724,10 @@ export default function ExpensesPage() {
       },
     };
   }, [selectedMonthEntry, previousMonthEntry, intl, selectedMonth]);
+
+  const currentMonthKey = getMonthKey(new Date());
+  const isCurrentMonth = selectedMonth === "all" || selectedMonth === currentMonthKey;
+  const isFutureMonth = !isCurrentMonth && selectedMonth > currentMonthKey;
 
   const unitKey = selectedMonth === "all" ? "period" : "month";
   const _unitLabel = intl.formatMessage({
@@ -1126,41 +1109,20 @@ export default function ExpensesPage() {
             <FormattedMessage id="expenses.subtitle" />
           </p>
         </div>
-        <Button onClick={handleOpenCreate}>
+        <Button onClick={handleOpenCreate} disabled={!isCurrentMonth} className={!isCurrentMonth ? "opacity-50" : ""}>
           <Plus className="mr-2 h-4 w-4" />
           <FormattedMessage id="expenses.actions.add" />
         </Button>
       </div>
 
       {/* Chart */}
-      <ExpenseChart expenses={expenses} />
+      <ExpenseChart expenses={expenses} selectedMonth={selectedMonth} onMonthSelect={setSelectedMonth} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-muted/60 bg-muted/20 px-5 py-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <label htmlFor="expenses-sort-by" className="text-xs uppercase tracking-wide">
-            <FormattedMessage id="expenses.filters.sortLabel" defaultMessage="Sort by" />
-          </label>
-          <select
-            id="expenses-sort-by"
-            value={sortKey}
-            onChange={(event) => setSortKey(event.target.value as typeof sortKey)}
-            className="rounded-md border border-muted bg-card px-2 py-1 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            <option value="date">
-              {intl.formatMessage({ id: "expenses.filters.sort.date", defaultMessage: "Date" })}
-            </option>
-            <option value="amount">
-              {intl.formatMessage({ id: "expenses.filters.sort.amount", defaultMessage: "Amount" })}
-            </option>
-            <option value="description">
-              {intl.formatMessage({ id: "expenses.filters.sort.description", defaultMessage: "Description" })}
-            </option>
-          </select>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <label htmlFor="expenses-sort-direction" className="text-xs uppercase tracking-wide">
-            <FormattedMessage id="expenses.filters.directionLabel" defaultMessage="Direction" />
+            <FormattedMessage id="expenses.filters.categorySortLabel" defaultMessage="Categories" />
           </label>
           <select
             id="expenses-sort-direction"
@@ -1169,10 +1131,10 @@ export default function ExpensesPage() {
             className="rounded-md border border-muted bg-card px-2 py-1 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             <option value="desc">
-              {intl.formatMessage({ id: "expenses.filters.direction.desc", defaultMessage: "Newest first" })}
+              {intl.formatMessage({ id: "expenses.filters.categorySort.desc", defaultMessage: "Highest first" })}
             </option>
             <option value="asc">
-              {intl.formatMessage({ id: "expenses.filters.direction.asc", defaultMessage: "Oldest first" })}
+              {intl.formatMessage({ id: "expenses.filters.categorySort.asc", defaultMessage: "Lowest first" })}
             </option>
           </select>
         </div>
@@ -1210,8 +1172,19 @@ export default function ExpensesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-medium">
-            <FormattedMessage id="expenses.expenseHistory" />
+            {isCurrentMonth
+              ? intl.formatMessage({ id: "expenses.expenseHistory.current" })
+              : intl.formatMessage(
+                  { id: isFutureMonth ? "expenses.expenseHistory.predicted" : "expenses.expenseHistory.month" },
+                  { month: intl.formatDate(monthKeyToDate(selectedMonth), { month: "long", year: "numeric" }) }
+                )
+            }
           </CardTitle>
+          {!isCurrentMonth && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {intl.formatMessage({ id: isFutureMonth ? "expenses.expenseHistory.readOnlyFuture" : "expenses.expenseHistory.readOnly" })}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           {!hasExpenses ? (
@@ -1223,13 +1196,25 @@ export default function ExpensesPage() {
               {groupedCategories.map(([category, group]) => {
                 const meta = CATEGORY_META[category] ?? DEFAULT_CATEGORY_META;
                 const Icon = meta.Icon;
+                const isCategoryExpanded = expandedCategories.has(category);
                 return (
                   <div
                     key={category}
                     className="group rounded-3xl border border-muted/50 bg-card shadow-sm transition-shadow hover:shadow-lg"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-emerald-100/60 bg-gradient-to-r from-emerald-50/80 via-white to-white px-6 py-5 shadow-sm">
+                    <button
+                      type="button"
+                      onClick={() => toggleCategoryExpanded(category)}
+                      className="flex w-full flex-wrap items-center justify-between gap-4 rounded-t-3xl border-b border-emerald-100/60 bg-gradient-to-r from-emerald-50/80 via-white to-white px-6 py-5 shadow-sm text-left cursor-pointer transition-colors hover:from-emerald-100/80"
+                    >
                       <div className="flex items-center gap-3">
+                        <span className="flex h-6 w-6 items-center justify-center text-muted-foreground">
+                          {isCategoryExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </span>
                         <span
                           className={cn(
                             "flex h-12 w-12 items-center justify-center rounded-full text-base transition-transform duration-300 group-hover:scale-105",
@@ -1247,7 +1232,7 @@ export default function ExpensesPage() {
                             />
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            <FormattedMessage id={meta.descriptionId} defaultMessage="" />
+                            {group.items.length} {group.items.length === 1 ? "item" : "items"}
                           </p>
                         </div>
                       </div>
@@ -1259,17 +1244,17 @@ export default function ExpensesPage() {
                           {formatCurrency(group.activeTotal)}
                         </p>
                       </div>
-                    </div>
+                    </button>
 
-                    <div className="max-h-[280px] px-6 pb-6 pt-4 overflow-x-hidden">
-                      <div className="max-h-[280px] overflow-y-auto overflow-x-hidden pr-2">
+                    {isCategoryExpanded && (
+                    <div className="px-6 pb-6 pt-4">
                         <Table className="w-full table-auto">
                           <TableHeader className="bg-card">
                             <TableRow className="border-b border-muted/40">
                               <TableHead
                                 className={cn(
                                   columnClasses.description,
-                                  "sticky top-0 z-10 bg-card text-xs uppercase tracking-wide text-muted-foreground",
+                                  "text-xs uppercase tracking-wide text-muted-foreground",
                                 )}
                               >
                                 <FormattedMessage id="expenses.table.description" />
@@ -1277,7 +1262,7 @@ export default function ExpensesPage() {
                               <TableHead
                                 className={cn(
                                   columnClasses.amount,
-                                  "sticky top-0 z-10 bg-card text-right text-xs uppercase tracking-wide text-muted-foreground",
+                                  "text-right text-xs uppercase tracking-wide text-muted-foreground",
                                 )}
                               >
                                 <FormattedMessage id="expenses.table.amount" />
@@ -1285,7 +1270,7 @@ export default function ExpensesPage() {
                               <TableHead
                                 className={cn(
                                   columnClasses.date,
-                                  "sticky top-0 z-10 bg-card text-xs uppercase tracking-wide text-muted-foreground",
+                                  "text-xs uppercase tracking-wide text-muted-foreground",
                                 )}
                               >
                                 <FormattedMessage id="expenses.table.date" />
@@ -1293,7 +1278,7 @@ export default function ExpensesPage() {
                               <TableHead
                                 className={cn(
                                   columnClasses.recurring,
-                                  "sticky top-0 z-10 bg-card text-xs uppercase tracking-wide text-muted-foreground",
+                                  "text-xs uppercase tracking-wide text-muted-foreground",
                                 )}
                               >
                                 <FormattedMessage id="expenses.table.recurring" />
@@ -1301,7 +1286,7 @@ export default function ExpensesPage() {
                               <TableHead
                                 className={cn(
                                   columnClasses.actions,
-                                  "sticky top-0 z-10 bg-card text-right text-xs uppercase tracking-wide text-muted-foreground",
+                                  "text-right text-xs uppercase tracking-wide text-muted-foreground",
                                 )}
                               >
                                 <FormattedMessage id="expenses.table.actions" />
@@ -1327,7 +1312,7 @@ export default function ExpensesPage() {
                                     isHistorical && "bg-slate-50/50 opacity-70",
                                     !isMain && "bg-amber-50/30"
                                   )}
-                                  onDoubleClick={() => handleOpenEdit(expense)}
+                                  onDoubleClick={() => isCurrentMonth && handleOpenEdit(expense)}
                                 >
                                   <TableCell
                                     className={cn(
@@ -1433,7 +1418,7 @@ export default function ExpensesPage() {
                                     )}
                                   >
                                     <div className="flex justify-end gap-2">
-                                      {expense.is_recurring && !isHistorical && (
+                                      {expense.is_recurring && !isHistorical && isCurrentMonth && (
                                         <Button
                                           variant="outline"
                                           size="icon"
@@ -1448,7 +1433,8 @@ export default function ExpensesPage() {
                                         variant="outline"
                                         size="icon"
                                         onClick={() => handleOpenEdit(expense)}
-                                        className="h-9 w-9 border-primary/10 hover:bg-primary/10 hover:text-primary"
+                                        disabled={!isCurrentMonth}
+                                        className={`h-9 w-9 border-primary/10 hover:bg-primary/10 hover:text-primary ${!isCurrentMonth ? "opacity-50" : ""}`}
                                         aria-label={intl.formatMessage({ id: "expenses.actions.edit" })}
                                       >
                                         <Pencil className="h-4 w-4" />
@@ -1463,7 +1449,8 @@ export default function ExpensesPage() {
                                           setPendingDelete(expense);
                                           setConfirmOpen(true);
                                         }}
-                                        className="h-9 w-9 border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
+                                        disabled={!isCurrentMonth}
+                                        className={`h-9 w-9 border-destructive/20 hover:bg-destructive/10 hover:text-destructive ${!isCurrentMonth ? "opacity-50" : ""}`}
                                         aria-label={intl.formatMessage({ id: "expenses.actions.delete" })}
                                       >
                                         <Trash2 className="h-4 w-4" />
@@ -1497,8 +1484,8 @@ export default function ExpensesPage() {
                           </TableRow>
                         </TableBody>
                         </Table>
-                      </div>
                     </div>
+                    )}
                   </div>
                 );
               })}
@@ -1509,7 +1496,7 @@ export default function ExpensesPage() {
 
       {hasExpenses && (
         <div className="flex justify-center pt-2">
-          <Button variant="outline" onClick={handleOpenCreate} className="px-6">
+          <Button variant="outline" onClick={handleOpenCreate} disabled={!isCurrentMonth} className={`px-6 ${!isCurrentMonth ? "opacity-50" : ""}`}>
             <Plus className="mr-2 h-4 w-4" />
             <FormattedMessage id="expenses.actions.add" />
           </Button>
@@ -1518,7 +1505,8 @@ export default function ExpensesPage() {
 
       <Button
         onClick={handleOpenCreate}
-        className="fixed bottom-6 right-6 shadow-lg sm:hidden"
+        disabled={!isCurrentMonth}
+        className={`fixed bottom-6 right-6 shadow-lg sm:hidden ${!isCurrentMonth ? "opacity-50" : ""}`}
         variant="default"
         size="lg"
         aria-label={intl.formatMessage({ id: "expenses.actions.add" })}

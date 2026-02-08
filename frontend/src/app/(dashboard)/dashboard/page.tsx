@@ -6,6 +6,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { DashboardSkeleton } from '@/components/LoadingSkeleton';
 import MonthlySummary from '@/components/dashboard/MonthlySummary';
+import HeroCards from '@/components/dashboard/HeroCards';
+import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
+import FireMetricsPanel from '@/components/dashboard/FireMetricsPanel';
 import DistributionChart from '@/components/dashboard/DistributionChart';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
 import SpendingTrendChart from '@/components/dashboard/SpendingTrendChart';
@@ -146,14 +149,16 @@ function ActivityCard(props: {
     return (
       <div className={`mt-2 text-xs text-secondary space-y-1 transition-all duration-200 ${props.isExpanded ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
         {props.changes.map((change, index) => {
-          const isMonetary = ['amount', 'principal_amount', 'remaining_balance', 'monthly_payment'].includes(change.field);
-          const oldValue = isMonetary ? props.formatCurrency(Number(change.oldValue) || 0) : change.oldValue;
-          const newValue = isMonetary ? props.formatCurrency(Number(change.newValue) || 0) : change.newValue;
-          
+          const isMonetary = ['amount', 'principal_amount', 'remaining_balance', 'monthly_payment', 'target_amount'].includes(change.field);
+          const oldValue = isMonetary ? props.formatCurrency(Number(change.oldValue) || 0) : String(change.oldValue ?? '—');
+          const newValue = isMonetary ? props.formatCurrency(Number(change.newValue) || 0) : String(change.newValue ?? '—');
+          // Humanize field name as fallback (loan_type → Loan type)
+          const fallbackLabel = change.field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+
           return (
             <div key={index} className="flex items-center gap-2">
               <span className="font-medium">
-                {intl.formatMessage({ id: `dashboard.activity.${change.field}` })}:
+                {intl.formatMessage({ id: `dashboard.activity.${change.field}`, defaultMessage: fallbackLabel })}:
               </span>
               <span className="text-destructive line-through">{oldValue}</span>
               <span className="text-success">{newValue}</span>
@@ -276,6 +281,11 @@ export default function Home() {
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all');
   const [loading, setLoading] = useState(true);
   const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
+  const [insightsMetrics, setInsightsMetrics] = useState<{
+    fireNumber?: number;
+    savingsRate?: number;
+    currentBabyStep?: number;
+  }>({});
   const { data: session } = useSession();
 
   const summaryComparisons = useMemo(() => {
@@ -504,34 +514,73 @@ export default function Home() {
     );
   }
 
+  const userName = session?.user?.name?.split(' ')[0] || '';
+
   return (
     <ProtectedPage>
-      <div className="container mx-auto px-4 py-10 space-y-10">
-        <header className="flex flex-col gap-2">
-          <h1 className="text-3xl font-semibold text-primary">
-            {intl.formatMessage({ id: 'dashboard.title' })}
-          </h1>
-          <p className="text-sm text-secondary">
-            {intl.formatMessage({ id: 'dashboard.subtitle' })}
-          </p>
-        </header>
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        {/* Hero Section: Greeting + Hero Cards */}
+        <section className="space-y-5">
+          <header className="flex flex-col gap-1">
+            <h1 className="text-2xl font-bold text-primary">
+              {userName
+                ? intl.formatMessage({ id: 'dashboard.hero.greeting' }, { name: userName })
+                : intl.formatMessage({ id: 'dashboard.hero.greetingDefault' })}
+            </h1>
+            <p className="text-sm text-secondary">
+              {intl.formatMessage({ id: 'dashboard.hero.situationGood' })}
+            </p>
+          </header>
 
+          <HeroCards
+            totalIncome={dashboardData.summary.totalIncome}
+            totalExpenses={dashboardData.summary.totalExpenses}
+            netCashflow={dashboardData.summary.netCashflow}
+            deltas={{
+              income: summaryComparisons.deltas.income,
+              expenses: summaryComparisons.deltas.expenses,
+              netCashflow: summaryComparisons.deltas.netCashflow,
+            }}
+            formatCurrency={formatCurrency}
+          />
+        </section>
+
+        {/* AI Insights Panel */}
+        <AIInsightsPanel
+          onInsightsLoaded={(data) => {
+            setInsightsMetrics({
+              fireNumber: data.fireNumber,
+              savingsRate: data.savingsRate,
+              currentBabyStep: data.currentBabyStep,
+            });
+          }}
+        />
+
+        {/* FIRE Metrics Widgets */}
+        <FireMetricsPanel
+          fireNumber={insightsMetrics.fireNumber}
+          currentSavings={dashboardData.savings.totalBalance}
+          savingsRate={insightsMetrics.savingsRate ?? (dashboardData.summary.savingsRate * 100)}
+          currentBabyStep={insightsMetrics.currentBabyStep}
+          formatCurrency={formatCurrency}
+        />
+
+        {/* Full Monthly Summary (detailed metrics) */}
         <section className="space-y-4">
           <SectionHeader
             icon={<TrendingUp className="h-5 w-5" />}
             title={intl.formatMessage({ id: 'dashboard.sections.summary.title' })}
             description={intl.formatMessage({ id: 'dashboard.sections.summary.description' })}
           />
-          <div className="sticky top-16 z-20">
-            <MonthlySummary
-              data={dashboardData.summary}
-              deltas={summaryComparisons.deltas}
-              referenceLabel={summaryComparisons.referenceLabel}
-              formatCurrency={formatCurrency}
-            />
-          </div>
+          <MonthlySummary
+            data={dashboardData.summary}
+            deltas={summaryComparisons.deltas}
+            referenceLabel={summaryComparisons.referenceLabel}
+            formatCurrency={formatCurrency}
+          />
         </section>
 
+        {/* Distribution Charts */}
         <section className="space-y-4">
           <SectionHeader
             icon={<PieChart className="h-5 w-5" />}
@@ -554,6 +603,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Spending Trend */}
         <section className="space-y-4">
           <SectionHeader
             icon={<LineChart className="h-5 w-5" />}
@@ -572,6 +622,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Budget vs Actual */}
         <section className="space-y-4">
           <SectionHeader
             icon={<Target className="h-5 w-5" />}
@@ -585,6 +636,7 @@ export default function Home() {
           />
         </section>
 
+        {/* Cash Flow */}
         <section className="space-y-4">
           <SectionHeader
             icon={<BarChart2 className="h-5 w-5" />}
@@ -598,6 +650,7 @@ export default function Home() {
           />
         </section>
 
+        {/* Loans */}
         <section className="space-y-4">
           <SectionHeader
             icon={<Landmark className="h-5 w-5" />}
@@ -607,14 +660,13 @@ export default function Home() {
           <LoanOverview loans={dashboardData.loans} formatCurrency={formatCurrency} />
         </section>
 
-        {/* Savings Section */}
+        {/* Savings */}
         <section className="space-y-4">
           <SectionHeader
             icon={<PiggyBank className="h-5 w-5" />}
             title={intl.formatMessage({ id: 'dashboard.sections.savings.title' })}
             description={intl.formatMessage({ id: 'dashboard.sections.savings.description' })}
           />
-          {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-1">
@@ -639,13 +691,13 @@ export default function Home() {
               </p>
             </div>
           </div>
-          {/* Goals Progress Chart */}
           <SavingsGoalProgressChart
             goals={savingsGoals}
             formatCurrency={formatCurrency}
           />
         </section>
 
+        {/* Activity Feed */}
         <section className="space-y-4">
           <SectionHeader
             icon={<ActivityIcon className="h-5 w-5" />}

@@ -1,5 +1,5 @@
 """
-AI-powered transaction categorization service using Claude Haiku.
+AI-powered transaction categorization service using OpenAI.
 """
 
 import os
@@ -55,7 +55,7 @@ async def categorize_transactions(
     api_key: Optional[str] = None
 ) -> List[Dict]:
     """
-    Categorize a batch of transactions using Claude Haiku.
+    Categorize a batch of transactions using OpenAI.
 
     Args:
         transactions: List of transaction dicts with fields:
@@ -64,7 +64,7 @@ async def categorize_transactions(
             - merchant_name: merchant name (optional)
             - amount: transaction amount (negative = expense, positive = income)
             - tink_category: Tink's category (optional, for context)
-        api_key: Anthropic API key (uses env var if not provided)
+        api_key: OpenAI API key (uses env var if not provided)
 
     Returns:
         List of categorization results with fields:
@@ -74,10 +74,10 @@ async def categorize_transactions(
             - confidence: 0.0 to 1.0
     """
     if not api_key:
-        api_key = os.getenv("ANTHROPIC_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY")
 
     if not api_key:
-        logger.warning("No Anthropic API key available for categorization")
+        logger.warning("No OpenAI API key available for categorization")
         return []
 
     if not transactions:
@@ -141,35 +141,35 @@ Rules:
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                "https://api.anthropic.com/v1/messages",
+                "https://api.openai.com/v1/chat/completions",
                 headers={
-                    "x-api-key": api_key,
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
-                    "anthropic-version": "2023-06-01",
                 },
                 json={
-                    "model": "claude-3-haiku-20240307",
+                    "model": "gpt-4.1-mini",
                     "max_tokens": 4096,
                     "messages": [
+                        {"role": "system", "content": "You are a transaction categorization engine. Respond with valid JSON only."},
                         {"role": "user", "content": prompt}
                     ]
                 }
             )
 
         if response.status_code != 200:
-            logger.error(f"Anthropic API error: {response.status_code} - {response.text}")
+            logger.error(f"OpenAI API error: {response.status_code} - {response.text}")
             return []
 
         # Parse response
         data = response.json()
-        content = data.get("content", [])
+        choices = data.get("choices", [])
 
-        if not content:
-            logger.error("Empty response from Anthropic")
+        if not choices:
+            logger.error("Empty response from OpenAI")
             return []
 
-        # Extract text and parse JSON
-        text = content[0].get("text", "")
+        # Extract text from the first choice
+        text = choices[0].get("message", {}).get("content", "")
 
         # Try to extract JSON from response
         try:
@@ -187,10 +187,10 @@ Rules:
             return []
 
     except httpx.TimeoutException:
-        logger.error("Timeout calling Anthropic API")
+        logger.error("Timeout calling OpenAI API")
         return []
     except Exception as e:
-        logger.error(f"Error calling Anthropic API: {e}")
+        logger.error(f"Error calling OpenAI API: {e}")
         return []
 
 
@@ -205,7 +205,7 @@ async def categorize_in_batches(
     Args:
         transactions: List of all transactions to categorize
         batch_size: Number of transactions per API call
-        api_key: Anthropic API key
+        api_key: OpenAI API key
 
     Returns:
         Combined list of all categorization results

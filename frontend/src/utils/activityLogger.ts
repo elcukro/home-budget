@@ -40,8 +40,7 @@ export const logActivity = async (activity: ActivityLog): Promise<void> => {
       new_values: cleanActivity.new_values
     });
 
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const url = `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/activities`;
+    const url = `/api/backend/users/${encodeURIComponent(session.user.email)}/activities`;
     logger.debug('[ActivityLogger] Making request to:', url);
     
     const requestBody = JSON.stringify(cleanActivity);

@@ -1,14 +1,15 @@
 import { logger } from '@/lib/logger';
 
 /**
- * Formats a number as a currency string based on the provided currency code
+ * Formats a number as a currency string based on the provided currency code and locale.
  * @param amount - The amount to format
- * @param currency - The ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP')
+ * @param currency - The ISO 4217 currency code (e.g., 'USD', 'EUR', 'PLN')
+ * @param locale - The BCP 47 locale tag (e.g., 'pl', 'en'). Defaults to browser locale.
  * @returns A formatted currency string
  */
-export const formatCurrency = (amount: number, currency: string): string => {
+export const formatCurrency = (amount: number, currency: string, locale?: string): string => {
   try {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat(locale || navigator?.language || 'en', {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 2,

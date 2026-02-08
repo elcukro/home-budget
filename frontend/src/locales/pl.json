@@ -261,14 +261,14 @@
       "syncError": "Błąd synchronizacji",
       "categorizeSuccess": "Skategoryzowano {count} transakcji przez AI",
       "categorizeError": "Błąd kategoryzacji AI",
-      "categorizeNoApiKey": "Dodaj klucz API Anthropic w Ustawieniach"
+      "categorizeNoApiKey": "Kategoryzacja AI jest dostępna dla użytkowników trial i płatnych"
     }
   },
   "aiAnalysis": {
     "title": "Analiza AI",
     "subtitle": "Spersonalizowane porady zgodne z metodą FIRE i Baby Steps",
     "noApiKey": {
-      "title": "Wymagany klucz API"
+      "title": "AI niedostępne"
     },
     "status": {
       "cached": "Używanie zapisanej analizy",
@@ -278,6 +278,72 @@
       "currentStep": "Aktualny krok",
       "fireNumber": "Liczba FIRE",
       "savingsRate": "Stopa oszczędności"
+    },
+    "simulators": {
+      "title": "Symulatory finansowe",
+      "subtitle": "Sprawdź, jak Twoje decyzje wpłyną na przyszłość",
+      "years": "{count} lat",
+      "months": "{count} mies.",
+      "loanOverpayment": {
+        "title": "Symulator nadpłaty kredytu",
+        "selectLoan": "Wybierz kredyt",
+        "extraMonthly": "Dodatkowa miesięczna nadpłata",
+        "oneTime": "Jednorazowa nadpłata",
+        "results": "Wyniki symulacji",
+        "interestSaved": "Zaoszczędzone odsetki",
+        "monthsSaved": "Zaoszczędzone miesiące",
+        "newPayoffDate": "Nowa data spłaty",
+        "originalPlan": "Plan oryginalny",
+        "withOverpayment": "Z nadpłatą",
+        "noLoans": "Brak aktywnych kredytów. Dodaj kredyt, aby skorzystać z symulatora.",
+        "paysOffEntirely": "Ta nadpłata spłaci kredyt w całości!"
+      },
+      "fire": {
+        "title": "Kalkulator FIRE",
+        "annualExpenses": "Roczne wydatki",
+        "withdrawalRate": "Stopa wypłaty",
+        "currentSavings": "Aktualne oszczędności",
+        "monthlySavings": "Miesięczne oszczędności",
+        "expectedReturn": "Oczekiwana stopa zwrotu",
+        "results": "Wyniki kalkulacji",
+        "fireNumberLabel": "Liczba FIRE",
+        "progress": "Postęp",
+        "yearsToFire": "Lat do FIRE",
+        "congratulations": "Gratulacje!",
+        "reachedFire": "Osiągnąłeś swoją liczbę FIRE!"
+      },
+      "savings": {
+        "title": "Symulator celu oszczędnościowego",
+        "goalAmount": "Kwota celu",
+        "targetMonths": "Horyzont czasowy",
+        "monthsLabel": "mies.",
+        "currentSaved": "Już zaoszczędzone",
+        "annualReturn": "Roczna stopa zwrotu",
+        "results": "Wyniki symulacji",
+        "monthlyRequired": "Wymagana miesięczna kwota",
+        "interestEarned": "Zysk z odsetek",
+        "halfwayMilestone": "Połowa celu",
+        "milestones": "Kamienie milowe",
+        "month": "Miesiąc",
+        "goalReached": "Cel już osiągnięty!"
+      }
+    },
+    "insightCards": {
+      "biggestOpportunity": {
+        "title": "Największa szansa",
+        "runSimulator": "Uruchom symulator"
+      },
+      "quickWins": {
+        "title": "Szybkie wygrane"
+      },
+      "healthMeters": {
+        "title": "Zdrowie finansowe"
+      },
+      "difficulty": {
+        "low": "Łatwe",
+        "medium": "Średnie",
+        "high": "Trudne"
+      }
     }
   },
   "dashboard": {
@@ -289,6 +355,52 @@
     "noData": "Brak dostępnych danych",
     "loadError": "Nie udało się załadować danych panelu. Spróbuj ponownie później.",
     "subtitle": "Monitoruj przepływy gotówki, spłaty zobowiązań i zarządzaj każdą złotówką świadomie.",
+    "hero": {
+      "greeting": "Cześć, {name}!",
+      "greetingDefault": "Cześć!",
+      "situationGood": "Masz bardzo dobrą sytuację – warto już przejść do budowania bogactwa.",
+      "netIncome": "Koszty życia miesięcznie",
+      "expenses": "Twój dochód",
+      "balance": "Nadwyżka",
+      "vsLastMonth": "vs zeszły miesiąc",
+      "fireNumber": "Cele FIRE"
+    },
+    "aiInsightsSection": {
+      "title": "Realna Sytuacja Budżetowa",
+      "viewFull": "Zobacz pełną analizę",
+      "loading": "Ładowanie wyników analizy...",
+      "error": "Nie udało się załadować analizy. Spróbuj ponownie.",
+      "retry": "Ponów",
+      "noData": "Brak danych do analizy. Dodaj przychody i wydatki.",
+      "configureKey": "Skonfiguruj klucz API Claude w Ustawieniach",
+      "cachedLabel": "Z pamięci podręcznej",
+      "lastUpdated": "Ostatnia aktualizacja: {date}",
+      "problemTitle": "Problem & Rozwiązanie",
+      "topMovesTitle": "Top 3 Ruchy Finansowe",
+      "categories": {
+        "savings": "Oszczędności",
+        "baby_steps": "Baby Steps",
+        "fire": "Droga do FIRE",
+        "debt": "Spłata długów",
+        "tax_optimization": "Optymalizacja"
+      }
+    },
+    "fireMetrics": {
+      "title": "Wskaźniki FIRE",
+      "fireGauge": "Liczba FIRE",
+      "savingsRate": "Stopa oszczędności",
+      "babySteps": "Baby Steps",
+      "timeToFire": "Czas do FIRE",
+      "years": "{count} lat",
+      "months": "{count} mies.",
+      "targetSavings": "Cel: {amount}",
+      "noFireGoal": "Ustaw swoje cele FIRE",
+      "setupFire": "Skonfiguruj cele",
+      "overpaymentSim": "Symulator Nadpłaty",
+      "loanOverpayment": "Nadpłata kredytu",
+      "savingsGoal": "Oszczędności",
+      "investmentGoal": "Inwestycje"
+    },
     "sections": {
       "summary": {
         "title": "Podsumowanie miesiąca",
@@ -429,7 +541,7 @@
         "usingCached": "Używanie zapisanej analizy",
         "apiErrors": {
           "overloaded": "Serwis AI jest obecnie przeciążony. Spróbuj ponownie później.",
-          "invalidKey": "Nieprawidłowy klucz API. Sprawdź swój klucz API Anthropic w ustawieniach.",
+          "invalidKey": "Błąd usługi AI. Spróbuj ponownie później.",
           "forbidden": "Twój klucz API nie ma uprawnień do korzystania z tego modelu.",
           "rateLimit": "Przekroczono limit zapytań. Spróbuj ponownie później.",
           "generic": "Wystąpił błąd podczas generowania analizy. Spróbuj ponownie później."
@@ -593,7 +705,29 @@
         "payment": "Płatności"
       },
       "emptyState": "Brak ostatniej aktywności.",
-      "emptyStateFiltered": "Brak aktywności dla wybranego filtra."
+      "emptyStateFiltered": "Brak aktywności dla wybranego filtra.",
+      "amount": "Kwota",
+      "description": "Opis",
+      "category": "Kategoria",
+      "date": "Data",
+      "principal_amount": "Kwota kredytu",
+      "remaining_balance": "Pozostałe saldo",
+      "monthly_payment": "Rata miesięczna",
+      "interest_rate": "Oprocentowanie",
+      "loan_type": "Typ kredytu",
+      "start_date": "Data rozpoczęcia",
+      "term_months": "Okres (miesiące)",
+      "due_day": "Dzień płatności",
+      "overpayment_fee_percent": "Opłata za nadpłatę (%)",
+      "overpayment_fee_waived_until": "Zwolnienie z opłaty do",
+      "target_amount": "Kwota docelowa",
+      "saving_type": "Typ oszczędności",
+      "notes": "Notatki",
+      "currency": "Waluta",
+      "is_recurring": "Cykliczny",
+      "recurring_day": "Dzień cyklu",
+      "user_id": "Użytkownik",
+      "id": "ID"
     },
     "categories": {
       "income": {
@@ -678,7 +812,20 @@
       "isGross": "Kwota brutto",
       "isGrossHint": "Włącz, jeśli podajesz kwotę przed opodatkowaniem (brutto). Wyłącz dla kwoty netto (na rękę).",
       "employmentType": "Forma zatrudnienia",
-      "employmentTypeHint": "Wybierz typ umowy, aby uzyskać dokładniejsze obliczenia podatkowe."
+      "employmentTypeHint": "Wybierz typ umowy, aby uzyskać dokładniejsze obliczenia podatkowe.",
+      "computedNet": "Obliczone netto (na rękę)",
+      "selectEmploymentFirst": "Wybierz formę zatrudnienia powyżej, aby obliczyć netto.",
+      "b2bDisclaimer": "Uproszczona kalkulacja (19% liniowy)",
+      "taxBreakdown": {
+        "zus": "ZUS",
+        "health": "Zdrowotna",
+        "kup": "KUP",
+        "pit": "PIT",
+        "ppk": "PPK"
+      }
+    },
+    "validation": {
+      "employmentTypeRequiredForGross": "Wybierz formę zatrudnienia, aby podać kwotę brutto."
     },
     "employmentTypes": {
       "uop": "Umowa o pracę (UoP)",
@@ -721,6 +868,11 @@
     "title": "Zarządzanie Wydatkami",
     "subtitle": "Rejestruj regularne rachunki oraz jednorazowe wydatki.",
     "expenseHistory": "Lista wydatków",
+    "expenseHistory.current": "Lista wydatków - bieżący miesiąc",
+    "expenseHistory.month": "Lista wydatków - {month}",
+    "expenseHistory.predicted": "Lista przewidywanych wydatków - {month}",
+    "expenseHistory.readOnly": "Przeglądasz dane historyczne. Edycja możliwa tylko w bieżącym miesiącu.",
+    "expenseHistory.readOnlyFuture": "Prognoza na podstawie aktywnych wydatków cyklicznych. Edycja możliwa tylko w bieżącym miesiącu.",
     "noEntries": "Brak wpisów wydatków",
     "loadError": "Nie udało się załadować wydatków. Spróbuj ponownie później.",
     "actions": {
@@ -736,7 +888,9 @@
       "totalWithPeriod": "Suma ({period})",
       "average": "Średnia/mies.",
       "activeMonths": "Aktywne mies.",
-      "monthsInPeriod": "Miesięcy"
+      "monthsInPeriod": "Miesięcy",
+      "predicted": "prognoza",
+      "predictedNote": "Prognoza na podstawie aktywnych wydatków cyklicznych"
     },
     "categories": {
       "housing": "Mieszkanie",
@@ -770,18 +924,12 @@
       "comparisonUnavailable": "Wybierz miesiąc, aby zobaczyć porównanie."
     },
     "filters": {
-      "sortLabel": "Sortuj według",
+      "categorySortLabel": "Kategorie",
       "periodLabel": "Okres",
-      "directionLabel": "Kierunek",
       "recurringLabel": "Typ",
-      "sort": {
-        "date": "Data",
-        "amount": "Kwota",
-        "description": "Opis"
-      },
-      "direction": {
-        "asc": "Od najstarszych",
-        "desc": "Od najnowszych"
+      "categorySort": {
+        "desc": "Największe pierwsze",
+        "asc": "Najmniejsze pierwsze"
       },
       "recurring": {
         "all": "Wszystkie",
@@ -1176,8 +1324,8 @@
     },
     "ai": {
       "title": "Konfiguracja AI Insights",
-      "apiKey": "Klucz API Anthropic",
-      "apiKeyDescription": "Wprowadź klucz API Anthropic, aby włączyć spersonalizowane analizy",
+      "apiKey": "Analizy AI",
+      "apiKeyDescription": "Analizy AI są dostępne w ramach Twojego planu",
       "frequency": {
         "label": "Częstotliwość odświeżania analiz",
         "daily": "Codziennie",
@@ -1188,7 +1336,7 @@
       "lastGenerated": "Ostatnio wygenerowano: {date}",
       "saveSuccess": "Ustawienia AI zostały zapisane pomyślnie",
       "testConnection": "Testuj połączenie",
-      "connectionSuccess": "Pomyślnie połączono z Anthropic",
+      "connectionSuccess": "Usługa AI połączona pomyślnie",
       "connectionError": "Błąd połączenia: {error}"
     },
     "tabs": {
@@ -1244,7 +1392,7 @@
     "tooltips": {
       "language": "Wybierz preferowany język aplikacji",
       "currency": "Wybierz preferowaną walutę dla obliczeń finansowych",
-      "claudeApiKey": "Wprowadź swój klucz API Anthropic, aby włączyć analizy AI",
+      "claudeApiKey": "Analizy AI są dostępne w ramach Twojego planu",
       "export": "Eksportuj swoje dane w formacie JSON, CSV lub Excel do kopii zapasowej lub analizy",
       "import": "Importuj wcześniej wyeksportowane dane, aby przywrócić lub połączyć je z bieżącymi rekordami",
       "emergencyFundTarget": "Ustaw kwotę docelową dla Kroku 1 (Początkowy Fundusz Awaryjny)",
@@ -1254,8 +1402,8 @@
       "language": "Język",
       "currency": "Waluta",
       "submit": "Zapisz ustawienia",
-      "claudeApiKey": "Klucz API Anthropic",
-      "claudeApiKeyPlaceholder": "Wprowadź swój klucz API Anthropic"
+      "claudeApiKey": "Klucz API AI",
+      "claudeApiKeyPlaceholder": "AI jest zarządzane po stronie serwera"
     },
     "messages": {
       "success": "Ustawienia zostały zaktualizowane",
@@ -1265,7 +1413,7 @@
       "exportSuccess": "Dane zostały wyeksportowane",
       "exportError": "Nie udało się wyeksportować danych",
       "downloadError": "Nie udało się pobrać pliku",
-      "claudeApiKeyRequired": "Klucz API Anthropic jest wymagany do analiz AI",
+      "claudeApiKeyRequired": "Analizy AI są dostępne dla użytkowników trial i płatnych",
       "importSuccess": "Dane zostały zaimportowane pomyślnie",
       "importError": "Nie udało się zaimportować danych. Sprawdź format pliku i spróbuj ponownie.",
       "currencyConverted": "Twój docelowy fundusz awaryjny został przeliczony z {oldCurrency} na {newCurrency}: {amount}",

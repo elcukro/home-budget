@@ -311,14 +311,14 @@
       "syncError": "Sync error",
       "categorizeSuccess": "Categorized {count} transactions with AI",
       "categorizeError": "AI categorization error",
-      "categorizeNoApiKey": "Add Anthropic API key in Settings"
+      "categorizeNoApiKey": "AI categorization is available for trial and paid users"
     }
   },
   "aiAnalysis": {
     "title": "AI Analysis",
     "subtitle": "Personalized advice aligned with FIRE and Baby Steps methodology",
     "noApiKey": {
-      "title": "API Key Required"
+      "title": "AI Not Available"
     },
     "status": {
       "cached": "Using cached analysis",
@@ -328,6 +328,72 @@
       "currentStep": "Current Step",
       "fireNumber": "FIRE Number",
       "savingsRate": "Savings Rate"
+    },
+    "simulators": {
+      "title": "Financial Simulators",
+      "subtitle": "See how your decisions impact your future",
+      "years": "{count} years",
+      "months": "{count} mo.",
+      "loanOverpayment": {
+        "title": "Loan Overpayment Simulator",
+        "selectLoan": "Select loan",
+        "extraMonthly": "Extra monthly payment",
+        "oneTime": "One-time payment",
+        "results": "Simulation results",
+        "interestSaved": "Interest saved",
+        "monthsSaved": "Months saved",
+        "newPayoffDate": "New payoff date",
+        "originalPlan": "Original plan",
+        "withOverpayment": "With overpayment",
+        "noLoans": "No active loans. Add a loan to use this simulator.",
+        "paysOffEntirely": "This overpayment would pay off the loan entirely!"
+      },
+      "fire": {
+        "title": "FIRE Calculator",
+        "annualExpenses": "Annual expenses",
+        "withdrawalRate": "Withdrawal rate",
+        "currentSavings": "Current savings",
+        "monthlySavings": "Monthly savings",
+        "expectedReturn": "Expected annual return",
+        "results": "Calculation results",
+        "fireNumberLabel": "FIRE Number",
+        "progress": "Progress",
+        "yearsToFire": "Years to FIRE",
+        "congratulations": "Congratulations!",
+        "reachedFire": "You've reached your FIRE number!"
+      },
+      "savings": {
+        "title": "Savings Goal Simulator",
+        "goalAmount": "Goal amount",
+        "targetMonths": "Time horizon",
+        "monthsLabel": "months",
+        "currentSaved": "Already saved",
+        "annualReturn": "Annual return rate",
+        "results": "Simulation results",
+        "monthlyRequired": "Required monthly savings",
+        "interestEarned": "Interest earned",
+        "halfwayMilestone": "Halfway point",
+        "milestones": "Milestones",
+        "month": "Month",
+        "goalReached": "Goal already reached!"
+      }
+    },
+    "insightCards": {
+      "biggestOpportunity": {
+        "title": "Biggest Opportunity",
+        "runSimulator": "Run Simulator"
+      },
+      "quickWins": {
+        "title": "Quick Wins"
+      },
+      "healthMeters": {
+        "title": "Financial Health"
+      },
+      "difficulty": {
+        "low": "Easy",
+        "medium": "Medium",
+        "high": "Hard"
+      }
     }
   },
   "dashboard": {
@@ -339,6 +405,52 @@
     "noData": "No dashboard data available",
     "loadError": "Failed to load dashboard data. Please try again later.",
     "subtitle": "Monitor your cashflow, track repayments, and stay purposeful with every złoty.",
+    "hero": {
+      "greeting": "Hi, {name}!",
+      "greetingDefault": "Hi there!",
+      "situationGood": "You're in great shape – time to start building wealth.",
+      "netIncome": "Monthly living costs",
+      "expenses": "Your income",
+      "balance": "Surplus",
+      "vsLastMonth": "vs last month",
+      "fireNumber": "FIRE Goals"
+    },
+    "aiInsightsSection": {
+      "title": "Your Budget Reality",
+      "viewFull": "View full analysis",
+      "loading": "Loading analysis results...",
+      "error": "Failed to load analysis. Please try again.",
+      "retry": "Retry",
+      "noData": "No data to analyze. Add income and expenses first.",
+      "configureKey": "Configure Claude API key in Settings",
+      "cachedLabel": "Cached",
+      "lastUpdated": "Last updated: {date}",
+      "problemTitle": "Problem & Solution",
+      "topMovesTitle": "Top 3 Financial Moves",
+      "categories": {
+        "savings": "Savings",
+        "baby_steps": "Baby Steps",
+        "fire": "Path to FIRE",
+        "debt": "Debt Payoff",
+        "tax_optimization": "Optimization"
+      }
+    },
+    "fireMetrics": {
+      "title": "FIRE Metrics",
+      "fireGauge": "FIRE Number",
+      "savingsRate": "Savings Rate",
+      "babySteps": "Baby Steps",
+      "timeToFire": "Time to FIRE",
+      "years": "{count} years",
+      "months": "{count} mo.",
+      "targetSavings": "Target: {amount}",
+      "noFireGoal": "Set your FIRE goals",
+      "setupFire": "Configure goals",
+      "overpaymentSim": "Overpayment Simulator",
+      "loanOverpayment": "Loan overpayment",
+      "savingsGoal": "Savings",
+      "investmentGoal": "Investments"
+    },
     "sections": {
       "summary": {
         "title": "Monthly summary",
@@ -476,7 +588,7 @@
         "upToDate": "Insights are up to date with your current financial data.",
         "apiErrors": {
           "overloaded": "AI service is currently experiencing high demand. Please try again later.",
-          "invalidKey": "Invalid API key. Please check your Anthropic API key in settings.",
+          "invalidKey": "AI service error. Please try again later.",
           "forbidden": "Your API key doesn't have permission to use this model.",
           "rateLimit": "Rate limit exceeded. Please try again later.",
           "generic": "An error occurred while generating insights. Please try again later."
@@ -640,7 +752,29 @@
         "payment": "Payment"
       },
       "emptyState": "No recent activity.",
-      "emptyStateFiltered": "No activity matches this filter yet."
+      "emptyStateFiltered": "No activity matches this filter yet.",
+      "amount": "Amount",
+      "description": "Description",
+      "category": "Category",
+      "date": "Date",
+      "principal_amount": "Principal amount",
+      "remaining_balance": "Remaining balance",
+      "monthly_payment": "Monthly payment",
+      "interest_rate": "Interest rate",
+      "loan_type": "Loan type",
+      "start_date": "Start date",
+      "term_months": "Term (months)",
+      "due_day": "Due day",
+      "overpayment_fee_percent": "Overpayment fee (%)",
+      "overpayment_fee_waived_until": "Fee waived until",
+      "target_amount": "Target amount",
+      "saving_type": "Saving type",
+      "notes": "Notes",
+      "currency": "Currency",
+      "is_recurring": "Recurring",
+      "recurring_day": "Recurring day",
+      "user_id": "User",
+      "id": "ID"
     },
     "categories": {
       "income": {
@@ -725,7 +859,20 @@
       "isGross": "Gross amount",
       "isGrossHint": "Enable if entering pre-tax (gross) amount. Disable for net (take-home) amount.",
       "employmentType": "Employment type",
-      "employmentTypeHint": "Select your contract type for more accurate tax calculations."
+      "employmentTypeHint": "Select your contract type for more accurate tax calculations.",
+      "computedNet": "Calculated net (take-home)",
+      "selectEmploymentFirst": "Select employment type above to calculate net amount.",
+      "b2bDisclaimer": "Simplified calculation (19% flat)",
+      "taxBreakdown": {
+        "zus": "Social security",
+        "health": "Health insurance",
+        "kup": "Tax-deductible costs",
+        "pit": "Income tax",
+        "ppk": "PPK"
+      }
+    },
+    "validation": {
+      "employmentTypeRequiredForGross": "Select employment type to enter gross amount."
     },
     "employmentTypes": {
       "uop": "Employment Contract",
@@ -764,6 +911,11 @@
     "title": "Expense Management",
     "subtitle": "Capture recurring bills and one-off purchases in one place.",
     "expenseHistory": "List of expenses",
+    "expenseHistory.current": "Expense list - current month",
+    "expenseHistory.month": "Expense list - {month}",
+    "expenseHistory.predicted": "Predicted expenses - {month}",
+    "expenseHistory.readOnly": "Viewing historical data. Editing is only available for the current month.",
+    "expenseHistory.readOnlyFuture": "Forecast based on active recurring expenses. Editing is only available for the current month.",
     "noEntries": "No expense entries yet",
     "loadError": "Failed to load expenses. Please try again later.",
     "actions": {
@@ -779,7 +931,9 @@
       "totalWithPeriod": "Total ({period})",
       "average": "Average/mo.",
       "activeMonths": "Active months",
-      "monthsInPeriod": "Months"
+      "monthsInPeriod": "Months",
+      "predicted": "forecast",
+      "predictedNote": "Forecast based on active recurring expenses"
     },
     "categories": {
       "housing": "Housing",
@@ -813,18 +967,12 @@
       "comparisonUnavailable": "Select a month to compare monthly changes."
     },
     "filters": {
-      "sortLabel": "Sort by",
+      "categorySortLabel": "Categories",
       "periodLabel": "Period",
-      "directionLabel": "Direction",
       "recurringLabel": "Type",
-      "sort": {
-        "date": "Date",
-        "amount": "Amount",
-        "description": "Description"
-      },
-      "direction": {
-        "asc": "Oldest first",
-        "desc": "Newest first"
+      "categorySort": {
+        "desc": "Highest first",
+        "asc": "Lowest first"
       },
       "recurring": {
         "all": "All",
@@ -1263,8 +1411,8 @@
     },
     "ai": {
       "title": "AI Insights Configuration",
-      "apiKey": "Anthropic API Key",
-      "apiKeyDescription": "Enter your Anthropic API key to enable personalized insights",
+      "apiKey": "AI Insights",
+      "apiKeyDescription": "AI-powered insights are included with your plan",
       "frequency": {
         "label": "Insights Refresh Frequency",
         "daily": "Daily",
@@ -1275,13 +1423,13 @@
       "lastGenerated": "Last generated: {date}",
       "saveSuccess": "AI settings saved successfully",
       "testConnection": "Test Connection",
-      "connectionSuccess": "Successfully connected to Anthropic",
+      "connectionSuccess": "AI service connected successfully",
       "connectionError": "Failed to connect: {error}"
     },
     "tooltips": {
       "language": "Select your preferred language for the application",
       "currency": "Select your preferred currency for financial calculations",
-      "claudeApiKey": "Enter your Anthropic API key to enable AI-powered insights",
+      "claudeApiKey": "AI-powered insights are included with your plan",
       "export": "Export your data in JSON, CSV, or Excel format for backup or analysis",
       "import": "Import your previously exported data to restore or merge with your current records",
       "emergencyFundTarget": "Set your target amount for Baby Step 1 (Initial Emergency Fund)",
@@ -1291,8 +1439,8 @@
       "language": "Language",
       "currency": "Currency",
       "submit": "Save Settings",
-      "claudeApiKey": "Anthropic API Key",
-      "claudeApiKeyPlaceholder": "Enter your Anthropic API key"
+      "claudeApiKey": "AI API Key",
+      "claudeApiKeyPlaceholder": "AI is managed server-side"
     },
     "messages": {
       "success": "Settings updated successfully",
@@ -1302,7 +1450,7 @@
       "exportSuccess": "Data exported successfully",
       "exportError": "Failed to export data",
       "downloadError": "Failed to download file",
-      "claudeApiKeyRequired": "Anthropic API key is required for AI insights",
+      "claudeApiKeyRequired": "AI insights are available for trial and paid users",
       "importSuccess": "Data imported successfully",
       "importError": "Failed to import data. Please check the file format and try again.",
       "currencyConverted": "Your emergency fund target has been converted from {oldCurrency} to {newCurrency}: {amount}",

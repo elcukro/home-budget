@@ -5,6 +5,7 @@ import { useIntl, FormattedMessage } from 'react-intl';
 import { useSettings } from '@/contexts/SettingsContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Flame, TrendingUp, Calendar, PiggyBank } from 'lucide-react';
 
@@ -110,39 +111,33 @@ export default function FIRECalculator({
             <Label htmlFor="monthly-expenses" className="text-sm font-medium">
               <FormattedMessage id="fireCalculator.monthlyExpenses" defaultMessage="Monthly Expenses" />
             </Label>
-            <Input
+            <CurrencyInput
               id="monthly-expenses"
-              type="number"
               value={monthlyExpenses}
-              onChange={(e) => setMonthlyExpenses(Number(e.target.value))}
+              onValueChange={setMonthlyExpenses}
               className="rounded-xl"
-              min={0}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="current-savings" className="text-sm font-medium">
               <FormattedMessage id="fireCalculator.currentSavings" defaultMessage="Current Savings" />
             </Label>
-            <Input
+            <CurrencyInput
               id="current-savings"
-              type="number"
               value={currentSavings}
-              onChange={(e) => setCurrentSavings(Number(e.target.value))}
+              onValueChange={setCurrentSavings}
               className="rounded-xl"
-              min={0}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="monthly-investment" className="text-sm font-medium">
               <FormattedMessage id="fireCalculator.monthlyInvestment" defaultMessage="Monthly Investment" />
             </Label>
-            <Input
+            <CurrencyInput
               id="monthly-investment"
-              type="number"
               value={monthlyInvestment}
-              onChange={(e) => setMonthlyInvestment(Number(e.target.value))}
+              onValueChange={setMonthlyInvestment}
               className="rounded-xl"
-              min={0}
             />
           </div>
           <div className="space-y-2">

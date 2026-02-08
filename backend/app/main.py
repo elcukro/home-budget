@@ -1224,6 +1224,153 @@ def delete_income(
         print(f"[FastAPI] Error in delete_income: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Tax calculation (stateless utility, no auth required) ──────────────────────
+
+class TaxCalculationRequest(BaseModel):
+    gross_monthly: float = Field(gt=0)
+    employment_type: str  # uop, b2b, zlecenie, dzielo, other
+    use_authors_costs: bool = False
+    ppk_employee_rate: float = 0.0  # 0 if not enrolled
+
+class TaxBreakdown(BaseModel):
+    zus: float
+    ppk: float
+    kup: float
+    health: float
+    pit: float
+
+class TaxCalculationResponse(BaseModel):
+    gross: float
+    net: float
+    breakdown: TaxBreakdown
+
+
+def calculate_net_from_gross(
+    gross_monthly: float,
+    employment_type: str,
+    use_authors_costs: bool = False,
+    ppk_employee_rate: float = 0.0,
+) -> TaxCalculationResponse:
+    """
+    Calculate monthly net income from gross for Polish employment types.
+    Constants based on 2026 Polish tax law.
+    """
+    # Tax constants
+    ZUS_PENSION = 0.0976
+    ZUS_DISABILITY = 0.015
+    ZUS_SICKNESS = 0.0245
+    ZUS_TOTAL = ZUS_PENSION + ZUS_DISABILITY + ZUS_SICKNESS  # 13.71%
+    HEALTH_RATE = 0.09
+    KUP_STANDARD_UOP = 250.0  # PLN/month
+    KUP_AUTHORS_CAP_MONTHLY = 10000.0  # 120,000/year
+    PIT_RATE_1 = 0.12
+    PIT_RATE_2 = 0.32
+    PIT_THRESHOLD_MONTHLY = 10000.0  # 120,000/year
+    TAX_FREE_MONTHLY = 2500.0  # 30,000/year
+    B2B_LINEAR_RATE = 0.19
+
+    zus = 0.0
+    ppk = 0.0
+    kup = 0.0
+    health = 0.0
+    pit = 0.0
+
+    if employment_type == "other":
+        # No deductions — gross equals net
+        return TaxCalculationResponse(
+            gross=round(gross_monthly, 2),
+            net=round(gross_monthly, 2),
+            breakdown=TaxBreakdown(zus=0, ppk=0, kup=0, health=0, pit=0),
+        )
+
+    if employment_type == "b2b":
+        # Simplified: 19% linear tax, no ZUS/health detail
+        pit = round(gross_monthly * B2B_LINEAR_RATE, 2)
+        net = round(gross_monthly - pit, 2)
+        return TaxCalculationResponse(
+            gross=round(gross_monthly, 2),
+            net=net,
+            breakdown=TaxBreakdown(zus=0, ppk=0, kup=0, health=0, pit=pit),
+        )
+
+    if employment_type == "dzielo":
+        # Umowa o dzieło: no ZUS, no health
+        if use_authors_costs:
+            kup = min(gross_monthly * 0.5, KUP_AUTHORS_CAP_MONTHLY)
+        else:
+            kup = gross_monthly * 0.2
+        taxable = max(gross_monthly - kup, 0)
+        # Progressive PIT
+        if taxable <= PIT_THRESHOLD_MONTHLY:
+            pit = max(taxable * PIT_RATE_1 - TAX_FREE_MONTHLY * PIT_RATE_1, 0)
+        else:
+            pit_below = PIT_THRESHOLD_MONTHLY * PIT_RATE_1 - TAX_FREE_MONTHLY * PIT_RATE_1
+            pit_above = (taxable - PIT_THRESHOLD_MONTHLY) * PIT_RATE_2
+            pit = max(pit_below + pit_above, 0)
+        pit = round(pit, 2)
+        kup = round(kup, 2)
+        net = round(gross_monthly - pit, 2)
+        return TaxCalculationResponse(
+            gross=round(gross_monthly, 2),
+            net=net,
+            breakdown=TaxBreakdown(zus=0, ppk=0, kup=kup, health=0, pit=pit),
+        )
+
+    # UoP and Zlecenie: ZUS + health + KUP + PIT
+    zus = round(gross_monthly * ZUS_TOTAL, 2)
+    ppk = round(gross_monthly * ppk_employee_rate, 2)
+    base_after_zus = gross_monthly - zus
+
+    health = round(base_after_zus * HEALTH_RATE, 2)
+
+    if employment_type == "uop":
+        if use_authors_costs:
+            kup = min(base_after_zus * 0.5, KUP_AUTHORS_CAP_MONTHLY)
+        else:
+            kup = KUP_STANDARD_UOP
+    elif employment_type == "zlecenie":
+        if use_authors_costs:
+            kup = min(base_after_zus * 0.5, KUP_AUTHORS_CAP_MONTHLY)
+        else:
+            kup = base_after_zus * 0.2
+
+    kup = round(kup, 2)
+    taxable = max(base_after_zus - kup, 0)
+
+    # Progressive PIT
+    if taxable <= PIT_THRESHOLD_MONTHLY:
+        pit = max(taxable * PIT_RATE_1 - TAX_FREE_MONTHLY * PIT_RATE_1, 0)
+    else:
+        pit_below = PIT_THRESHOLD_MONTHLY * PIT_RATE_1 - TAX_FREE_MONTHLY * PIT_RATE_1
+        pit_above = (taxable - PIT_THRESHOLD_MONTHLY) * PIT_RATE_2
+        pit = max(pit_below + pit_above, 0)
+
+    pit = round(pit, 2)
+    net = round(gross_monthly - zus - ppk - health - pit, 2)
+
+    return TaxCalculationResponse(
+        gross=round(gross_monthly, 2),
+        net=net,
+        breakdown=TaxBreakdown(zus=zus, ppk=ppk, kup=kup, health=health, pit=pit),
+    )
+
+
+@app.post("/api/tax/calculate", response_model=TaxCalculationResponse, tags=["Tax"])
+async def tax_calculate(req: TaxCalculationRequest):
+    """
+    Stateless tax calculator: gross → net for Polish employment types.
+    No authentication required.
+    """
+    if req.employment_type not in EMPLOYMENT_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid employment_type: {req.employment_type}")
+    return calculate_net_from_gross(
+        gross_monthly=req.gross_monthly,
+        employment_type=req.employment_type,
+        use_authors_costs=req.use_authors_costs,
+        ppk_employee_rate=req.ppk_employee_rate,
+    )
+
+
 @app.get("/users/{user_id}/summary")
 async def get_user_summary(
     user_id: str,
@@ -2666,10 +2813,9 @@ async def get_user_insights(
     validate_user_access(user_id, current_user)
 
     try:
-        # Get user settings for AI API key
-        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
-        if not settings or not settings.ai or not settings.ai.get("apiKey"):
-            raise HTTPException(status_code=400, detail="AI API key not found")
+        # Check for server-side OpenAI API key
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise HTTPException(status_code=500, detail="AI service not configured")
 
         # If manual refresh requested, bypass cache
         if refresh:
@@ -2754,10 +2900,10 @@ async def refresh_user_insights(
 async def _refresh_insights_internal(user_id: str, db: Session):
     """Internal function to refresh insights for a user."""
     try:
-        # Get user settings for AI API key
-        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
-        if not settings or not settings.ai or not settings.ai.get("apiKey"):
-            raise HTTPException(status_code=400, detail="AI API key not found")
+        # Check for server-side OpenAI API key
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="AI service not configured")
 
         # Get user's financial data
         user_data = await get_user_financial_data(user_id, db)
@@ -2771,7 +2917,7 @@ async def _refresh_insights_internal(user_id: str, db: Session):
         total_loans = sum(loan["remaining_balance"] for loan in user_data["loans"])
 
         # Generate new insights
-        insights = await generate_insights(user_data, settings.ai["apiKey"])
+        insights = await generate_insights(user_data, api_key)
 
         # Mark existing cache entries as stale for this language
         db.query(models.InsightsCache).filter(
@@ -2925,13 +3071,13 @@ async def get_user_financial_data(user_id: str, db: Session):
 
 async def generate_insights(user_data: dict, api_key: str):
     """
-    Generate financial insights using the Anthropic Claude API.
+    Generate financial insights using the OpenAI API.
     Aligned with FIRE (Financial Independence, Retire Early) philosophy
     and Dave Ramsey's Baby Steps methodology.
 
     Args:
         user_data: Dictionary containing user's complete financial data
-        api_key: Anthropic API key from user settings
+        api_key: OpenAI API key from environment
 
     Returns:
         InsightsResponse object with AI-generated insights
@@ -2955,10 +3101,26 @@ async def generate_insights(user_data: dict, api_key: str):
         total_loan_payments = sum(loan["monthly_payment"] for loan in loans)
         total_loan_balance = sum(loan["remaining_balance"] for loan in loans)
 
+        # Calculate recurring vs one-time breakdown
+        recurring_income = sum(i["amount"] for i in incomes if i.get("is_recurring"))
+        one_time_income = sum(i["amount"] for i in incomes if not i.get("is_recurring"))
+        recurring_expenses = sum(e["amount"] for e in expenses if e.get("is_recurring"))
+        one_time_expenses = sum(e["amount"] for e in expenses if not e.get("is_recurring"))
+
+        # One-time expense details for sinking fund analysis
+        one_time_expense_details = [
+            {"category": e["category"], "description": e.get("description", ""), "amount": e["amount"]}
+            for e in expenses if not e.get("is_recurring")
+        ]
+
+        # Real monthly surplus based on recurring only
+        recurring_monthly_surplus = recurring_income - recurring_expenses - total_loan_payments
+        real_savings_rate = (recurring_monthly_surplus / recurring_income * 100) if recurring_income > 0 else 0
+
         # Calculate monthly balance
         monthly_balance = total_income - total_expenses - total_loan_payments
 
-        # Calculate savings rate
+        # Calculate savings rate (total, including one-time)
         savings_rate = (monthly_balance / total_income * 100) if total_income > 0 else 0
 
         # Calculate debt-to-income ratio
@@ -2992,16 +3154,24 @@ async def generate_insights(user_data: dict, api_key: str):
                 savings_by_account_type[acc_type] = savings_by_account_type.get(acc_type, 0) + saving["amount"]
 
         # Calculate emergency fund status
-        emergency_fund_target = settings.get("emergency_fund_target", 1000)
+        # Baby Step 1: Starter emergency fund (fixed target, typically 1000 PLN/USD)
+        baby_step_1_target = settings.get("emergency_fund_target", 1000)
+        # Baby Step 3: Full emergency fund (3-6 months of expenses)
         emergency_fund_months = settings.get("emergency_fund_months", 3)
         emergency_fund_current = savings_by_category.get("emergency_fund", 0)
-        full_emergency_target = total_expenses * emergency_fund_months if total_expenses > 0 else emergency_fund_target * emergency_fund_months
+        # Use RECURRING expenses for emergency fund target (not total which includes one-time)
+        baby_step_3_target = recurring_expenses * emergency_fund_months if recurring_expenses > 0 else baby_step_1_target * emergency_fund_months
 
-        # Pre-calculate emergency fund difference to avoid AI math errors
-        emergency_fund_difference = emergency_fund_current - full_emergency_target
-        emergency_fund_status = "surplus" if emergency_fund_difference > 0 else "deficit" if emergency_fund_difference < 0 else "exact"
-        baby_step_1_complete = emergency_fund_current >= emergency_fund_target
-        baby_step_3_complete = emergency_fund_current >= full_emergency_target
+        # Pre-calculate differences for BOTH Baby Steps to avoid AI math errors
+        baby_step_1_difference = emergency_fund_current - baby_step_1_target
+        baby_step_1_complete = emergency_fund_current >= baby_step_1_target
+        baby_step_1_status = "complete" if baby_step_1_complete else f"needs {abs(baby_step_1_difference):,.0f} more"
+
+        baby_step_3_difference = emergency_fund_current - baby_step_3_target
+        baby_step_3_complete = emergency_fund_current >= baby_step_3_target
+        baby_step_3_status = "complete" if baby_step_3_complete else f"needs {abs(baby_step_3_difference):,.0f} more"
+
+        emergency_fund_surplus = baby_step_3_difference if baby_step_3_complete else 0
 
         # Determine current Baby Step
         baby_steps = financial_freedom.get("steps", []) if financial_freedom else []
@@ -3021,10 +3191,9 @@ async def generate_insights(user_data: dict, api_key: str):
             if not is_completed and current_baby_step == 0:
                 current_baby_step = step_num
 
-        # Sort loans by balance for debt snowball analysis
+        # Sort loans by balance for debt snowball analysis (smallest first)
+        # NOTE: Only snowball order - avalanche data intentionally excluded per Dave Ramsey methodology
         loans_sorted_by_balance = sorted(loans, key=lambda x: x.get("remaining_balance", 0))
-        # Sort loans by interest rate for debt avalanche analysis
-        loans_sorted_by_rate = sorted(loans, key=lambda x: x.get("interest_rate", 0), reverse=True)
 
         # Polish tax context
         user_age = settings.get("user_age")
@@ -3039,9 +3208,30 @@ async def generate_insights(user_data: dict, api_key: str):
         ikze_limit_2026 = 11304  # PLN (16956 for self-employed)
         ikze_limit_b2b = 16956  # PLN
 
-        # Calculate FIRE number (25x annual expenses = 4% withdrawal rate)
-        annual_expenses = total_expenses * 12
-        fire_number = annual_expenses * 25 if annual_expenses > 0 else 0
+        # Calculate IKE/IKZE year-to-date contributions
+        current_year = datetime.now().year
+        ike_ytd = sum(
+            s["amount"] for s in savings
+            if s.get("saving_type") == "deposit"
+            and s.get("account_type") == "ike"
+            and s.get("date", "")[:4] == str(current_year)
+        )
+        ikze_ytd = sum(
+            s["amount"] for s in savings
+            if s.get("saving_type") == "deposit"
+            and s.get("account_type") == "ikze"
+            and s.get("date", "")[:4] == str(current_year)
+        )
+        is_self_employed = employment_status in ("b2b", "self_employed", "self-employed")
+        ikze_applicable_limit = ikze_limit_b2b if is_self_employed else ikze_limit_2026
+        ike_remaining = max(0, ike_limit_2026 - ike_ytd)
+        ikze_remaining = max(0, ikze_applicable_limit - ikze_ytd)
+
+        # Calculate FIRE number (25x annual RECURRING expenses = 4% withdrawal rate)
+        annual_recurring_expenses = recurring_expenses * 12
+        annual_total_expenses = total_expenses * 12
+        fire_number = annual_recurring_expenses * 25 if annual_recurring_expenses > 0 else 0
+        fire_number_total = annual_total_expenses * 25 if annual_total_expenses > 0 else 0
 
         # Map language codes
         language_names = {"en": "English", "pl": "Polish", "es": "Spanish"}
@@ -3050,30 +3240,122 @@ async def generate_insights(user_data: dict, api_key: str):
         # Categorize loans for proper Baby Steps handling
         mortgage_loans = [l for l in loans if l.get("loan_type") == "mortgage"]
         leasing_loans = [l for l in loans if l.get("loan_type") == "leasing"]
-        baby_step_2_debts = [l for l in loans if l.get("loan_type") not in ("mortgage", "leasing")]
+        baby_step_2_debts = sorted(
+            [l for l in loans if l.get("loan_type") not in ("mortgage", "leasing")],
+            key=lambda x: x.get("remaining_balance", 0)
+        )
         high_interest_loans = [l for l in loans if l.get("interest_rate", 0) >= 5 and l.get("loan_type") not in ("mortgage", "leasing")]
 
         # Calculate debt totals by category
         baby_step_2_debt_total = sum(l.get("remaining_balance", 0) for l in baby_step_2_debts)
+        baby_step_2_payments = sum(l.get("monthly_payment", 0) for l in baby_step_2_debts)
         mortgage_debt_total = sum(l.get("remaining_balance", 0) for l in mortgage_loans)
+        mortgage_payments = sum(l.get("monthly_payment", 0) for l in mortgage_loans)
         leasing_debt_total = sum(l.get("remaining_balance", 0) for l in leasing_loans)
+        leasing_payments = sum(l.get("monthly_payment", 0) for l in leasing_loans)
+
+        # Calculate two DTI ratios: Baby Step 2 only vs total
+        baby_step_2_dti = (baby_step_2_payments / total_income * 100) if total_income > 0 else 0
+        total_dti = (total_loan_payments / total_income * 100) if total_income > 0 else 0
+
+        # Pre-calculate interest savings for high-interest debts (AC4)
+        high_interest_savings = []
+        for loan in high_interest_loans:
+            balance = loan.get("remaining_balance", 0)
+            rate = loan.get("interest_rate", 0)
+            monthly_payment = loan.get("monthly_payment", 0)
+            term_months = loan.get("term_months", 0)
+
+            if balance > 0 and rate > 0 and monthly_payment > 0:
+                # Calculate remaining interest at current payment
+                monthly_rate = rate / 100 / 12
+                remaining_balance = balance
+                total_interest_normal = 0
+                for _ in range(term_months if term_months > 0 else 360):
+                    if remaining_balance <= 0:
+                        break
+                    interest_payment = remaining_balance * monthly_rate
+                    total_interest_normal += interest_payment
+                    principal_payment = monthly_payment - interest_payment
+                    if principal_payment <= 0:
+                        break
+                    remaining_balance -= principal_payment
+
+                # Calculate with extra 200 and 500 overpayment
+                overpayment_scenarios = []
+                for extra in [200, 500]:
+                    remaining_balance = balance
+                    total_interest_extra = 0
+                    months_extra = 0
+                    for _ in range(term_months if term_months > 0 else 360):
+                        if remaining_balance <= 0:
+                            break
+                        interest_payment = remaining_balance * monthly_rate
+                        total_interest_extra += interest_payment
+                        principal_payment = (monthly_payment + extra) - interest_payment
+                        if principal_payment <= 0:
+                            break
+                        remaining_balance -= principal_payment
+                        months_extra += 1
+                    savings_amount = total_interest_normal - total_interest_extra
+                    overpayment_scenarios.append({
+                        "extra_monthly": extra,
+                        "interest_saved": round(savings_amount, 0),
+                        "months_to_payoff": months_extra
+                    })
+
+                high_interest_savings.append({
+                    "description": loan.get("description", ""),
+                    "loan_type": loan.get("loan_type", ""),
+                    "balance": balance,
+                    "rate": rate,
+                    "total_interest_remaining": round(total_interest_normal, 0),
+                    "overpayment_scenarios": overpayment_scenarios
+                })
+
+        # Build missing data links (AC5 - strict mapping of which links are required)
+        missing_data_links = []
+        required_links_by_category = {"tax_optimization": [], "savings": [], "baby_steps": [], "fire": []}
+        if not user_age:
+            missing_data_links.append("age")
+            required_links_by_category["tax_optimization"].append("[Uzupełnij profil podatkowy](/settings)")
+        if ppk_enrolled is None:
+            missing_data_links.append("ppk_status")
+            required_links_by_category["tax_optimization"].append("[Uzupełnij profil podatkowy](/settings)")
+        if not employment_status:
+            missing_data_links.append("employment_status")
+            required_links_by_category["tax_optimization"].append("[Uzupełnij profil podatkowy](/settings)")
+        if not baby_steps_summary:
+            required_links_by_category["baby_steps"].append("[Skonfiguruj Baby Steps](/financial-freedom)")
+        # Deduplicate links per category
+        for cat in required_links_by_category:
+            required_links_by_category[cat] = list(dict.fromkeys(required_links_by_category[cat]))
+
+        # Determine if user has variable/self-employed income (edge case 4)
+        has_variable_income = is_self_employed or employment_status in ("freelance", "contract")
+        recommended_emergency_months = "6-12" if has_variable_income else f"{emergency_fund_months}"
 
         # Build comprehensive prompt
         prompt = f"""You are a FIRE (Financial Independence, Retire Early) coach and financial advisor specializing in Dave Ramsey's Baby Steps methodology, with expertise in Polish financial regulations.
 
 PHILOSOPHY:
 - Focus on building wealth through intentional living, not deprivation
-- Follow the Baby Steps: (1) $1000 starter emergency fund, (2) Pay off all debt (EXCEPT mortgage) using debt snowball, (3) 3-6 months emergency fund, (4) Invest 15% for retirement, (5) College savings, (6) Pay off home early, (7) Build wealth and give
-- Use DEBT SNOWBALL method ONLY (smallest balance first) - this is non-negotiable for Baby Steps. Do NOT recommend debt avalanche.
+- Follow the Baby Steps: (1) Starter emergency fund, (2) Pay off all debt (EXCEPT mortgage) using debt snowball, (3) 3-6 months emergency fund, (4) Invest 15% for retirement, (5) College savings, (6) Pay off home early, (7) Build wealth and give
+- Use DEBT SNOWBALL method ONLY (smallest balance first) - this is NON-NEGOTIABLE. Do NOT mention or recommend debt avalanche method.
 - Savings rate is king - the higher the better for reaching FIRE
 
-CRITICAL DEBT RULES:
+CRITICAL RULES - YOU MUST FOLLOW THESE:
+1. Do NOT perform any mathematical calculations. ALL numbers are pre-calculated below. Use them exactly as provided.
+2. Do NOT recommend debt avalanche. Only debt snowball (smallest balance first).
+3. Do NOT suggest paying off leasing early - it's a fixed contract that cannot be prepaid.
+4. ALL monetary values, percentages, and differences are pre-calculated. Just reference them in your narrative.
+
+DEBT RULES:
 1. **Baby Step 2 debts** (pay off now, smallest to largest): Consumer loans, cash loans, car loans, credit cards, personal loans, installment loans
-2. **NEVER include in Baby Step 2**: Mortgages (Baby Step 6), Leasing (fixed contracts)
-3. **Leasing (0% or any rate)**: These are FIXED CONTRACTS - user CANNOT prepay them early. Never suggest paying off leasing early - it's not possible and doesn't make financial sense.
-4. **Mortgage**: Only addressed in Baby Step 6 AFTER completing Baby Steps 1-5. If user is on Baby Step 2-5, ignore mortgage for now.
-5. **High-interest loans (>5%)**: For Baby Step 2 debts with high interest, strongly recommend OVERPAYMENT to minimize total interest paid. Calculate potential interest savings.
-6. **Overpayment fees**: In Poland, since 2022 banks cannot charge prepayment fees for first 3 years. Check overpayment_fee_percent and overpayment_fee_waived_until fields.
+2. **NEVER include in Baby Step 2**: Mortgages (Baby Step 6), Leasing (fixed contracts that CANNOT be prepaid early)
+3. **Leasing**: These are FIXED CONTRACTS. The user CANNOT prepay them early. Never suggest paying off leasing early. Explain: "fixed contract, cannot be prepaid early."
+4. **Mortgage**: Only addressed in Baby Step 6 AFTER completing Baby Steps 1-5. If user is on Baby Step 2-5, do NOT discuss mortgage payoff.
+5. **Overpayment fees**: In Poland, since 2022 banks cannot charge prepayment fees for first 3 years. Check overpayment_fee_percent and overpayment_fee_waived_until fields.
 
 CURRENT BABY STEP: {current_baby_step if current_baby_step > 0 else "Not started or data unavailable"}
 
@@ -3081,45 +3363,82 @@ BABY STEPS PROGRESS:
 {json.dumps(baby_steps_summary, indent=2) if baby_steps_summary else "No Baby Steps data available"}
 
 USER CONTEXT (Polish market):
-- Age: {user_age if user_age else "MISSING → link to /settings"}
-- Employment: {employment_status or "MISSING → link to /settings"} ({tax_form or "Unknown"} tax form)
-- PPK enrolled: {ppk_enrolled if ppk_enrolled is not None else "MISSING → link to /settings"}
-- Uses author's costs (50% KUP): {use_authors_costs}
+- Age: {user_age if user_age else "UNKNOWN"}
+- Employment: {employment_status or "UNKNOWN"} ({tax_form or "Unknown"} tax form)
+- PPK enrolled: {ppk_enrolled if ppk_enrolled is not None else "UNKNOWN"}
+- Uses author's costs (50% KUP, UoP/Dzieło only): {use_authors_costs}{"" if not is_self_employed else " (NOTE: 50% KUP does NOT apply to B2B - user should deduct actual business expenses via invoices)"}
 - Children: {children_count}
 - Currency: {currency}
+- Has variable/self-employed income: {"YES - recommend higher emergency fund (6-12 months)" if has_variable_income else "NO"}
 
-MISSING DATA - INCLUDE THESE LINKS IN INSIGHTS:
-{"- Age unknown: Include markdown link [Uzupełnij profil podatkowy](/settings) to check youth tax relief eligibility" if not user_age else ""}
-{"- PPK status unknown: Include markdown link [Uzupełnij profil podatkowy](/settings)" if ppk_enrolled is None else ""}
-{"- Employment status unknown: Include markdown link [Uzupełnij profil podatkowy](/settings) for better tax optimization" if not employment_status else ""}
+MISSING DATA - MANDATORY LINKS (you MUST include these links in actionItems of the specified categories):
+{json.dumps(required_links_by_category, indent=2)}
+When any of these links apply, add them to the actionItems array of insights in that category. Do NOT put links inside description text.
 
 POLISH TAX OPTIMIZATION OPPORTUNITIES:
 - Youth tax relief (ulga dla młodych): Available if under 26 years old, income up to 85,528 PLN/year tax-free
+{"- ⚠️ User is " + str(user_age) + " years old - youth tax relief EXPIRES at 26! Prominently feature this." if user_age and user_age <= 26 else ""}
 - IKE (Individual Retirement Account): 2026 limit = {ike_limit_2026} PLN, tax-free capital gains
-- IKZE (Individual Retirement Security Account): 2026 limit = {ikze_limit_2026} PLN (or {ikze_limit_b2b} PLN for B2B), tax-deductible contributions
+- IKZE (Individual Retirement Security Account): 2026 limit = {ikze_applicable_limit} PLN {"(B2B higher limit)" if is_self_employed else "(standard limit)"}, tax-deductible contributions
 - PPK: Employer matches contributions, free money if enrolled
-- Author's costs (KUP 50%): 50% of income tax-deductible for creative work
+{"- Author's costs (KUP 50%): 50% of income tax-deductible for creative work (UoP/Umowa o dzieło ONLY)" if not is_self_employed else ""}
 
-FINANCIAL SUMMARY:
-- Monthly Income (net): {total_income} {currency}
-- Monthly Expenses: {total_expenses} {currency}
-- Monthly Loan Payments: {total_loan_payments} {currency}
-- Monthly Balance: {monthly_balance} {currency}
-- Savings Rate: {savings_rate:.1f}%
-- Debt-to-Income Ratio: {debt_to_income:.1f}%
-- Total All Debt: {total_loan_balance} {currency}
-- Baby Step 2 Debt (to pay off now): {baby_step_2_debt_total} {currency}
-- Mortgage Debt (Baby Step 6): {mortgage_debt_total} {currency}
-- Leasing Debt (fixed contracts, ignore): {leasing_debt_total} {currency}
-- FIRE Number (25x annual expenses): {fire_number:,.0f} {currency}
+TAX OPTIMIZATION RULES BY EMPLOYMENT TYPE:
+- B2B (linear tax / ryczałt): NO "50% KUP" — that applies ONLY to UoP/Umowa o dzieło. On B2B, deduct actual business expenses from invoices (koszty uzyskania przychodu z faktur). Suggest checking if personal car expenses, equipment, home office, phone, internet could be legitimate business costs (potential ~23% VAT + income tax recovery).
+- B2B health insurance: 9% of average salary base, partially deductible from tax (4.9% for linear tax)
+- UoP (employment contract): Standard KUP 250 PLN/month or 300 PLN if commuting. 50% KUP available for creative/IP work.
+- If user has children: Joint filing (rozliczenie wspólne) NOT possible on linear tax (podatek liniowy). If beneficial, mention considering switching to skala podatkowa next year.
+- Tax leak detection: If user has B2B AND personal transportation/equipment/subscriptions expenses, ask whether these are already classified as business costs.
 
-EMERGENCY FUND STATUS (PRE-CALCULATED - use these values, do NOT recalculate):
-- Baby Step 1 Target: {emergency_fund_target} {currency}
-- Baby Step 3 Target ({emergency_fund_months} months expenses): {full_emergency_target:,.0f} {currency}
-- Current Emergency Fund: {emergency_fund_current} {currency}
-- DIFFERENCE: {abs(emergency_fund_difference):,.0f} {currency} {"SURPLUS (user has MORE than needed)" if emergency_fund_status == "surplus" else "DEFICIT (user needs MORE)" if emergency_fund_status == "deficit" else "EXACT (perfect match)"}
-- Baby Step 1 Complete: {"YES" if baby_step_1_complete else "NO"}
-- Baby Step 3 Complete: {"YES" if baby_step_3_complete else "NO"}
+SINKING FUNDS DETECTION:
+When you see large one-time expenses (vacations, car service/repairs, insurance, medical, gifts), calculate their estimated annual cost and suggest a monthly "sinking fund" amount. Example: "You spent X PLN on one-time expenses this month. If these recur annually, setting aside Y PLN/month to a dedicated sub-account would smooth out cash flow and avoid surprises."
+This helps the user plan for predictable irregular expenses instead of being surprised by them each time.
+
+FINANCIAL SUMMARY (PRE-CALCULATED - use these exact numbers):
+- Monthly Income (net): {total_income:,.2f} {currency}
+- Monthly Expenses: {total_expenses:,.2f} {currency}
+- Monthly Loan Payments (all): {total_loan_payments:,.2f} {currency}
+- Monthly Balance (income - expenses - loan payments): {monthly_balance:,.2f} {currency}
+- Cash Savings Rate (this month, incl. one-time): {savings_rate:.1f}%
+- Note: Debt principal payments of ~{total_loan_payments:,.0f} {currency}/month also build net worth by reducing debt, but are not counted in savings rate.
+- Baby Step 2 DTI (consumer debt only): {baby_step_2_dti:.1f}% (only non-mortgage, non-leasing debt payments / income)
+- Total DTI (all debt): {total_dti:.1f}% (all loan payments / income)
+- Total All Debt: {total_loan_balance:,.2f} {currency}
+- Baby Step 2 Debt (to pay off now): {baby_step_2_debt_total:,.2f} {currency}
+- Mortgage Debt (Baby Step 6): {mortgage_debt_total:,.2f} {currency}
+- Leasing Debt (fixed contracts, CANNOT prepay): {leasing_debt_total:,.2f} {currency}
+- FIRE Number (25x annual RECURRING expenses): {fire_number:,.0f} {currency}
+- FIRE Number reference (25x ALL expenses incl. one-time): {fire_number_total:,.0f} {currency}
+
+REAL MONTHLY BUDGET (excluding one-time expenses):
+- Recurring Income: {recurring_income:,.2f} {currency}
+- Recurring Expenses: {recurring_expenses:,.2f} {currency}
+- One-Time Income this month: {one_time_income:,.2f} {currency}
+- One-Time Expenses this month: {one_time_expenses:,.2f} {currency}
+- Real Monthly Surplus (recurring income - recurring expenses - loan payments): {recurring_monthly_surplus:,.2f} {currency}
+- Real Savings Rate (based on recurring only): {real_savings_rate:.1f}%
+IMPORTANT: Use RECURRING expenses for emergency fund calculation, Baby Steps progress, and FIRE number.
+Use TOTAL expenses only for current month snapshot. When savings rate differs significantly between total and recurring,
+explain that one-time expenses distort the current month picture.
+
+ONE-TIME EXPENSES THIS MONTH (for sinking fund analysis):
+{json.dumps(one_time_expense_details, indent=2) if one_time_expense_details else "None"}
+
+EMERGENCY FUND STATUS (PRE-CALCULATED - use these EXACT values, do NOT recalculate):
+- BABY STEP 1 (starter emergency fund):
+  Target: {baby_step_1_target:,.0f} {currency}
+  Current: {emergency_fund_current:,.0f} {currency}
+  Status: {baby_step_1_status}
+  Complete: {"YES ✓" if baby_step_1_complete else "NO - needs " + f"{abs(baby_step_1_difference):,.0f}" + " " + currency + " more"}
+
+- BABY STEP 3 (full emergency fund = {emergency_fund_months} months of RECURRING expenses):
+  Based on: {recurring_expenses:,.0f} {currency}/month RECURRING expenses (NOT {total_expenses:,.0f} total)
+  Target: {baby_step_3_target:,.0f} {currency}
+  Current: {emergency_fund_current:,.0f} {currency}
+  Status: {baby_step_3_status}
+  Complete: {"YES ✓" if baby_step_3_complete else "NO - needs " + f"{abs(baby_step_3_difference):,.0f}" + " " + currency + " more"}
+{"  Surplus: " + f"{emergency_fund_surplus:,.0f}" + " " + currency + " above target. Consider redirecting excess to Baby Step 4 (investing) or Baby Step 6 (mortgage)." if emergency_fund_surplus > 0 else ""}
+{" Recommended months for this user: " + recommended_emergency_months + " months (variable income detected)" if has_variable_income else ""}
 
 INCOME BY EMPLOYMENT TYPE:
 {json.dumps(income_by_employment, indent=2)}
@@ -3127,17 +3446,20 @@ INCOME BY EMPLOYMENT TYPE:
 EXPENSE BREAKDOWN:
 {json.dumps(expense_categories, indent=2)}
 
-BABY STEP 2 DEBTS (sorted by balance - Debt Snowball order):
-{json.dumps(sorted([l for l in loans if l.get("loan_type") not in ("mortgage", "leasing")], key=lambda x: x.get("remaining_balance", 0)), indent=2)}
+BABY STEP 2 DEBTS (PRE-SORTED smallest to largest - this IS the Debt Snowball order, recommend paying in THIS exact order):
+{json.dumps(baby_step_2_debts, indent=2) if baby_step_2_debts else "No Baby Step 2 debts - user is debt-free (excluding mortgage/leasing)!"}
 
-MORTGAGE (Baby Step 6 - ignore until Baby Steps 1-5 completed):
-{json.dumps([l for l in loans if l.get("loan_type") == "mortgage"], indent=2)}
+{"ONLY MORTGAGE REMAINING - User has completed Baby Steps 1-5 debt elimination! Focus entirely on Baby Step 6 mortgage payoff strategy." if not baby_step_2_debts and mortgage_loans and baby_step_1_complete else ""}
 
-LEASING (FIXED CONTRACTS - cannot be prepaid, ignore for payoff strategy):
-{json.dumps([l for l in loans if l.get("loan_type") == "leasing"], indent=2)}
+MORTGAGE (Baby Step 6 - {"ACTIVE: user has completed earlier steps" if not baby_step_2_debts and baby_step_1_complete else "IGNORE until Baby Steps 1-5 completed"}):
+{json.dumps(mortgage_loans, indent=2) if mortgage_loans else "No mortgage"}
 
-HIGH INTEREST DEBTS (>5% - recommend overpayment):
-{json.dumps([l for l in loans if l.get("interest_rate", 0) >= 5 and l.get("loan_type") not in ("mortgage", "leasing")], indent=2)}
+LEASING (FIXED CONTRACTS - CANNOT be prepaid early, do NOT include in any payoff strategy):
+{json.dumps(leasing_loans, indent=2) if leasing_loans else "No leasing"}
+
+HIGH INTEREST DEBTS (>5%) WITH PRE-CALCULATED OVERPAYMENT SAVINGS:
+{json.dumps(high_interest_savings, indent=2) if high_interest_savings else "No high-interest Baby Step 2 debts"}
+Use the overpayment_scenarios above to recommend specific extra monthly payments. Reference the exact interest_saved amounts.
 
 SAVINGS BY CATEGORY:
 {json.dumps(savings_by_category, indent=2)}
@@ -3145,50 +3467,56 @@ SAVINGS BY CATEGORY:
 SAVINGS BY ACCOUNT TYPE (IKE/IKZE/PPK/Standard):
 {json.dumps(savings_by_account_type, indent=2)}
 
+IKE/IKZE CONTRIBUTION STATUS {current_year} (PRE-CALCULATED):
+- IKE: Contributed {ike_ytd:,.0f} / {ike_limit_2026:,.0f} PLN this year. Remaining room: {ike_remaining:,.0f} PLN
+- IKZE: Contributed {ikze_ytd:,.0f} / {ikze_applicable_limit:,.0f} PLN this year. Remaining room: {ikze_remaining:,.0f} PLN
+- Recommendation order: First max IKZE (tax deduction benefit), then IKE (if budget allows)
+
 SAVINGS GOALS:
 {json.dumps(savings_goals, indent=2)}
 
-Generate insights in these categories based on the user's current Baby Step:
+Generate insights in these 5 categories based on the user's current Baby Step:
 1. **baby_steps** - Where they are in the Baby Steps journey, what to focus on NOW
-2. **debt** - Debt payoff strategy (snowball vs avalanche), specific next steps
-3. **savings** - Emergency fund progress, retirement accounts (IKE/IKZE optimization)
+2. **debt** - Debt snowball payoff strategy, specific next debt to target
+3. **savings** - Emergency fund progress, IKE/IKZE contribution room and optimization
 4. **fire** - FIRE number, savings rate analysis, time to financial independence
 5. **tax_optimization** - Polish-specific tax opportunities based on their situation
 
-IMPORTANT GUIDELINES:
+CRITICAL GUIDELINES:
 - Be specific and actionable - tell them EXACTLY what to do next
-- Reference their actual numbers
-- Use DEBT SNOWBALL only (smallest balance first) - NEVER recommend debt avalanche
+- Reference the pre-calculated numbers exactly as provided - do NOT recalculate anything
+- Use DEBT SNOWBALL only (smallest balance first) - NEVER mention debt avalanche
 - If they're on Baby Step 2, focus ONLY on Baby Step 2 debts (exclude mortgage and leasing)
-- NEVER suggest paying off leasing early - it's a fixed contract
-- For mortgage - ONLY discuss in Baby Step 6 context, not before
-- For high-interest Baby Step 2 debts: calculate interest savings from overpayment and recommend specific monthly overpayment amounts
-- If user has high-interest debt AND savings, suggest using savings (beyond emergency fund) for debt payoff
-- CRITICAL: Use the PRE-CALCULATED emergency fund values exactly as provided. Do NOT do your own math on emergency fund surplus/deficit - use the DIFFERENCE value provided.
-- LINKS FOR MISSING DATA: When user data is missing (age, PPK, employment), include markdown links in actionItems. Use these formats:
-  * For missing profile/tax data: "[Uzupełnij profil podatkowy](/settings)"
-  * For financial freedom setup: "[Skonfiguruj Baby Steps](/financial-freedom)"
-  * For savings goals: "[Dodaj cel oszczędnościowy](/savings)"
-  * For IKE/IKZE setup: "[Dodaj oszczędności](/savings)"
-- When mentioning other sections of the app, include helpful links in actionItems (not in description)
+- NEVER suggest paying off leasing early - explain it's a fixed contract
+- For mortgage - ONLY discuss in Baby Step 6 context after earlier steps are done
+- For high-interest debts: use the PRE-CALCULATED overpayment savings scenarios and recommend specific monthly overpayment amounts
+- If user has high-interest debt AND savings beyond emergency fund, suggest using excess savings for debt payoff
+- EMERGENCY FUND: Use the EXACT pre-calculated values. Baby Step 1 and Baby Step 3 are SEPARATE targets.
+- SAVINGS RATE: Present as "Cash savings rate" and note that debt principal payments also build net worth but are not included
+- DTI: Reference baby_step_2_dti for debt discussion, total_dti for overall health assessment
+- LINKS: Include mandatory links from MISSING DATA section in the actionItems of the specified categories
+- IKE/IKZE: Reference exact remaining contribution room for the current year
+- {"User has NO debts but negative cash flow - focus on expense reduction and Baby Step 1 emergency fund urgency" if not loans and monthly_balance < 0 else ""}
+- {"User has emergency fund surplus of " + f"{emergency_fund_surplus:,.0f}" + " " + currency + " - suggest redirecting to investing or mortgage, do NOT recommend reducing emergency fund" if emergency_fund_surplus > 0 else ""}
 - If they're past Baby Step 3, focus on IKE/IKZE optimization and FIRE progress
 - Celebrate achievements but be direct about what needs improvement
 - For Polish users, always mention relevant tax benefits they might be missing
 
 RESPOND IN: {language_name}
+{"Use Polish number format: space as thousands separator, comma as decimal (e.g., 12 345,67 zł). Use Polish date format (DD.MM.YYYY)." if language == "pl" else ""}
 
-JSON Response Structure:
+JSON Response Structure (respond with ONLY valid JSON, no other text):
 {{
   "categories": {{
     "baby_steps": [
       {{
         "type": "observation|recommendation|alert|achievement",
         "title": "Insight title",
-        "description": "Detailed description with specific numbers",
+        "description": "Detailed description with specific numbers from the data above. Do NOT include links here.",
         "priority": "high|medium|low",
-        "actionItems": ["Specific action 1", "Specific action 2"],
+        "actionItems": ["Specific action 1", "Markdown links go HERE in actionItems, e.g. [Link text](/path)"],
         "metrics": [
-          {{"label": "Metric", "value": "Value", "trend": "up|down|stable"}}
+          {{"label": "Metric", "value": "Value with currency", "trend": "up|down|stable"}}
         ]
       }}
     ],
@@ -3206,61 +3534,62 @@ JSON Response Structure:
   }},
   "currentBabyStep": {current_baby_step},
   "fireNumber": {fire_number},
-  "savingsRate": {savings_rate:.1f}
-}}
+  "savingsRate": {savings_rate:.1f},
+  "realSavingsRate": {real_savings_rate:.1f}
+}}"""
 
-Respond with valid JSON only. All text in {language_name}."""
+        # Make the API call to OpenAI API with retry for transient errors
+        system_prompt = "You are a FIRE (Financial Independence, Retire Early) coach specializing in Dave Ramsey's Baby Steps methodology and Polish financial regulations. You provide direct, actionable insights focused on debt elimination, emergency fund building, and wealth accumulation. CRITICAL: 1) Respond with valid JSON ONLY - no markdown code blocks, no explanatory text. 2) Do NOT perform any mathematical calculations - all numbers are pre-calculated in the prompt, use them exactly. 3) Never recommend debt avalanche - only debt snowball. 4) Place links in actionItems arrays, never in description text. 5) ALWAYS distinguish between recurring and one-time expenses in your analysis. Emergency fund targets and FIRE numbers are based on RECURRING expenses only. 6) For B2B users, NEVER suggest '50% KUP' - that's for UoP/Dzieło only. B2B deducts actual business costs from invoices."
 
-        # Make the API call to Anthropic Claude API
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            response = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": api_key,
-                    "Content-Type": "application/json",
-                    "anthropic-version": "2023-06-01",
-                },
-                json={
-                    "model": "claude-sonnet-4-20250514",
-                    "max_tokens": 4096,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "system": "You are a FIRE (Financial Independence, Retire Early) coach specializing in Dave Ramsey's Baby Steps methodology and Polish financial regulations. You provide direct, actionable insights focused on debt elimination, emergency fund building, and wealth accumulation. Always respond with valid JSON only, no additional text."
-                },
-            )
+        max_retries = 2
+        response = None
+        for attempt in range(max_retries + 1):
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                response = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "gpt-4.1-mini",
+                        "max_tokens": 4096,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt}
+                        ],
+                    },
+                )
+
+            # Retry on 500/502/503 (transient) with backoff
+            if response.status_code in (500, 502, 503) and attempt < max_retries:
+                import asyncio
+                wait_time = 5 * (attempt + 1)  # 5s, 10s
+                print(f"[OpenAI API] {response.status_code} error, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                await asyncio.sleep(wait_time)
+                continue
+            break
 
         # Check if the request was successful
         if response.status_code != 200:
-            print(f"[Anthropic API] Error: {response.status_code} - {response.text}")
+            print(f"[OpenAI API] Error: {response.status_code} - {response.text}")
 
-            # Provide more specific error messages based on status code
-            if response.status_code == 529:
-                raise Exception(f"Anthropic API error: 529 - Service overloaded. Please try again later.")
-            elif response.status_code == 401:
-                raise Exception(f"Anthropic API error: 401 - Invalid API key. Please check your Anthropic API key in settings.")
-            elif response.status_code == 403:
-                raise Exception(f"Anthropic API error: 403 - Forbidden. Your API key may not have permission to use this model.")
+            if response.status_code == 401:
+                raise Exception("OpenAI API error: 401 - Invalid API key.")
             elif response.status_code == 429:
-                raise Exception(f"Anthropic API error: 429 - Rate limit exceeded. Please try again later.")
+                raise Exception("OpenAI API error: 429 - Rate limit exceeded. Please try again later.")
             else:
-                raise Exception(f"Anthropic API error: {response.status_code}")
+                raise Exception(f"OpenAI API error: {response.status_code}")
 
         # Parse the response
-        anthropic_response = response.json()
-        content = anthropic_response.get("content", [])
+        openai_response = response.json()
+        choices = openai_response.get("choices", [])
 
-        if not content:
-            raise Exception("Empty response from Anthropic API")
+        if not choices:
+            raise Exception("Empty response from OpenAI API")
 
-        # Extract text from content blocks
-        text_content = ""
-        for block in content:
-            if block.get("type") == "text":
-                text_content += block.get("text", "")
+        # Extract text from the first choice
+        text_content = choices[0].get("message", {}).get("content", "")
 
         text_content = text_content.strip()
 
@@ -3274,21 +3603,45 @@ Respond with valid JSON only. All text in {language_name}."""
             else:
                 insights_data = json.loads(text_content)
 
+            # Validate required fields (AC9)
+            required_categories = ["baby_steps", "debt", "savings", "fire", "tax_optimization"]
+            categories = insights_data.get("categories", {})
+            for cat in required_categories:
+                if cat not in categories:
+                    categories[cat] = []
+            insights_data["categories"] = categories
+
+            status = insights_data.get("status", {})
+            for cat in required_categories:
+                if cat not in status:
+                    status[cat] = "ok"
+            insights_data["status"] = status
+
+            # Ensure top-level metrics are present
+            if "currentBabyStep" not in insights_data:
+                insights_data["currentBabyStep"] = current_baby_step
+            if "fireNumber" not in insights_data:
+                insights_data["fireNumber"] = fire_number
+            if "savingsRate" not in insights_data:
+                insights_data["savingsRate"] = round(savings_rate, 1)
+            if "realSavingsRate" not in insights_data:
+                insights_data["realSavingsRate"] = round(real_savings_rate, 1)
+
             # Add metadata
             insights_data["metadata"] = {
                 "generatedAt": datetime.now().isoformat(),
-                "source": "claude-sonnet-4"
+                "source": "gpt-4.1-mini"
             }
 
             return insights_data
 
         except json.JSONDecodeError as e:
-            print(f"[Anthropic API] JSON parse error: {e}")
-            print(f"[Anthropic API] Response content: {text_content}")
-            raise Exception(f"Failed to parse Anthropic API response: {e}")
+            print(f"[OpenAI API] JSON parse error: {e}")
+            print(f"[OpenAI API] Response content: {text_content[:500]}")
+            raise Exception(f"Failed to parse OpenAI API response: {e}")
 
     except Exception as e:
-        print(f"[Anthropic API] Error generating insights: {str(e)}")
+        print(f"[OpenAI API] Error generating insights: {str(e)}")
 
         # Return a fallback response in case of error
         sample_insight = {
@@ -3296,7 +3649,7 @@ Respond with valid JSON only. All text in {language_name}."""
             "title": "API Error",
             "description": f"We encountered an error while generating insights: {str(e)}. Please try again later.",
             "priority": "medium",
-            "actionItems": ["Check your Anthropic API key", "Try again later"],
+            "actionItems": ["Try again later", "Contact support if the issue persists"],
             "metrics": [
                 {
                     "label": "Error",

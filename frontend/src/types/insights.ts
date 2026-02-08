@@ -16,6 +16,25 @@ export type InsightStatus = 'good' | 'can_be_improved' | 'ok' | 'bad';
 // New FIRE-aligned category keys
 export type InsightCategoryKey = 'baby_steps' | 'debt' | 'savings' | 'fire' | 'tax_optimization';
 
+export interface CategoryChartData {
+  type: 'donut' | 'bar' | 'progress' | 'timeline';
+  data: {
+    label: string;
+    value: number;
+    color?: string;
+  }[];
+}
+
+export interface SuggestedGoal {
+  name: string;
+  category: string;
+  targetAmount: number;
+  deadline?: string;
+  priority: 'high' | 'medium' | 'low';
+  reason: string;
+  accountType?: string;
+}
+
 export interface InsightsResponse {
   categories: {
     baby_steps: Insight[];

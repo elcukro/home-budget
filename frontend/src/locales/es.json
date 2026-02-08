@@ -373,6 +373,11 @@
     "title": "Gestión de Gastos",
     "subtitle": "Registra facturas recurrentes y compras puntuales en un solo lugar.",
     "expenseHistory": "Lista de gastos",
+    "expenseHistory.current": "Lista de gastos - mes actual",
+    "expenseHistory.month": "Lista de gastos - {month}",
+    "expenseHistory.predicted": "Gastos previstos - {month}",
+    "expenseHistory.readOnly": "Estás viendo datos históricos. La edición solo está disponible para el mes actual.",
+    "expenseHistory.readOnlyFuture": "Pronóstico basado en gastos recurrentes activos. La edición solo está disponible para el mes actual.",
     "noEntries": "Aún no hay gastos",
     "loadError": "No se pudieron cargar los gastos. Inténtalo de nuevo más tarde.",
     "actions": {

@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Card,
@@ -528,7 +528,7 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
   {
     name: "principal_amount",
     labelId: "loans.form.principalAmount",
-    component: "number",
+    component: "currency",
     step: "0.01",
     min: 0,
     showWhen: (values) => values.loan_type !== "leasing",
@@ -536,7 +536,7 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
   {
     name: "remaining_balance",
     labelId: "loans.form.remainingBalance",
-    component: "number",
+    component: "currency",
     step: "0.01",
     min: 0,
     showWhen: (values) => values.loan_type !== "leasing",
@@ -552,7 +552,7 @@ const loanFieldConfig: FormFieldConfig<LoanFormValues>[] = [
   {
     name: "monthly_payment",
     labelId: "loans.form.monthlyPayment",
-    component: "number",
+    component: "currency",
     step: "0.01",
     min: 0,
     onValueChange: (_value, form) => {
@@ -630,7 +630,7 @@ export default function LoansPage() {
   const [loanPayments, setLoanPayments] = useState<Record<number, LoanPayment[]>>({});
   const [loadingPayments, setLoadingPayments] = useState<Record<number, boolean>>({});
   const [overpayLoan, setOverpayLoan] = useState<Loan | null>(null);
-  const [overpayAmount, setOverpayAmount] = useState("");
+  const [overpayAmount, setOverpayAmount] = useState(0);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentHistoryLoan, setPaymentHistoryLoan] = useState<Loan | null>(null);
   const [confirmUndoPayment, setConfirmUndoPayment] = useState<{ loan: Loan; payment: LoanPayment } | null>(null);
@@ -800,7 +800,7 @@ export default function LoansPage() {
   const handleOverpayment = async () => {
     if (!userEmail || !overpayLoan || isProcessingPayment) return;
 
-    const amount = parseNumber(overpayAmount.replace(",", "."));
+    const amount = overpayAmount;
     if (!amount || amount <= 0) return;
 
     const loanId = typeof overpayLoan.id === 'number' ? overpayLoan.id : parseInt(overpayLoan.id as string);
@@ -851,7 +851,7 @@ export default function LoansPage() {
       });
 
       setOverpayLoan(null);
-      setOverpayAmount("");
+      setOverpayAmount(0);
     } catch (error) {
       logger.error("[Loans] Failed to record overpayment", error);
       toast({
@@ -1582,7 +1582,7 @@ export default function LoansPage() {
                             id="loans.summary.started"
                             values={{
                               date: (
-                                <span className="font-medium text-slate-700">
+                                <span key="date" className="font-medium text-slate-700">
                                   <FormattedDate value={new Date(loan.start_date)} />
                                 </span>
                               ),
@@ -1596,7 +1596,7 @@ export default function LoansPage() {
                               id="loans.summary.nextPayment"
                               values={{
                                 date: (
-                                  <span className="font-medium text-slate-700">
+                                  <span key="date" className="font-medium text-slate-700">
                                     <FormattedDate value={metrics.nextPaymentDate} />
                                   </span>
                                 ),
@@ -1659,7 +1659,7 @@ export default function LoansPage() {
                           variant="secondary"
                           onClick={() => {
                             setOverpayLoan(loan);
-                            setOverpayAmount("");
+                            setOverpayAmount(0);
                           }}
                           disabled={isProcessingPayment}
                           className="rounded-full border border-amber-200 bg-amber-100 px-4 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-200"
@@ -1822,12 +1822,12 @@ export default function LoansPage() {
                             id="loans.summary.progressDescription"
                             values={{
                               paid: (
-                                <span className="font-medium text-amber-700">
+                                <span key="paid" className="font-medium text-amber-700">
                                   {formatCurrency(metrics.amountPaid)}
                                 </span>
                               ),
                               principal: (
-                                <span className="font-medium text-slate-600">
+                                <span key="principal" className="font-medium text-slate-600">
                                   {formatCurrency(metrics.principalAmount)}
                                 </span>
                               ),
@@ -2211,7 +2211,7 @@ export default function LoansPage() {
         onOpenChange={(open) => {
           if (!open) {
             setOverpayLoan(null);
-            setOverpayAmount("");
+            setOverpayAmount(0);
           }
         }}
       >
@@ -2232,13 +2232,10 @@ export default function LoansPage() {
               <Label htmlFor="overpay-amount">
                 <FormattedMessage id="loans.payment.overpayAmount" />
               </Label>
-              <Input
+              <CurrencyInput
                 id="overpay-amount"
-                type="text"
-                inputMode="decimal"
                 value={overpayAmount}
-                onChange={(e) => setOverpayAmount(e.target.value)}
-                placeholder={intl.formatMessage({ id: "loans.payment.overpayAmountPlaceholder" })}
+                onValueChange={setOverpayAmount}
                 className="text-lg"
               />
             </div>
@@ -2256,14 +2253,14 @@ export default function LoansPage() {
               variant="outline"
               onClick={() => {
                 setOverpayLoan(null);
-                setOverpayAmount("");
+                setOverpayAmount(0);
               }}
             >
               <FormattedMessage id="common.cancel" />
             </Button>
             <Button
               onClick={handleOverpayment}
-              disabled={isProcessingPayment || !overpayAmount || parseNumber(overpayAmount.replace(",", ".")) === null || (parseNumber(overpayAmount.replace(",", ".")) ?? 0) <= 0}
+              disabled={isProcessingPayment || overpayAmount <= 0}
               className="bg-amber-600 hover:bg-amber-700"
             >
               <FormattedMessage id="loans.payment.overpayConfirm" />
