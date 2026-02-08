@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useIntl, FormattedMessage } from 'react-intl';
 import { Snowflake, TrendingDown, Info, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
+import { CurrencyInput } from '@/components/ui/currency-input';
 
 interface Loan {
   id: number | string;
@@ -314,17 +315,11 @@ export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayo
           {intl.formatMessage({ id: 'loans.strategy.extraPayment', defaultMessage: 'Dodatkowa miesięczna nadpłata:' })}
         </label>
         <div className="flex items-center gap-3">
-          <input
-            type="number"
-            min="0"
-            step="50"
+          <CurrencyInput
             value={customExtra}
-            onChange={(e) => setCustomExtra(Math.max(0, parseInt(e.target.value) || 0))}
+            onValueChange={(val) => setCustomExtra(Math.max(0, val))}
             className="w-32 px-3 py-2 bg-background border border-border rounded-lg text-primary text-right"
           />
-          <span className="text-secondary">
-            {intl.formatMessage({ id: 'common.currency.pln', defaultMessage: 'PLN' })}
-          </span>
           {customExtra > 0 && (
             <span className="text-xs text-success">
               {intl.formatMessage(

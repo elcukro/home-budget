@@ -149,14 +149,16 @@ function ActivityCard(props: {
     return (
       <div className={`mt-2 text-xs text-secondary space-y-1 transition-all duration-200 ${props.isExpanded ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
         {props.changes.map((change, index) => {
-          const isMonetary = ['amount', 'principal_amount', 'remaining_balance', 'monthly_payment'].includes(change.field);
-          const oldValue = isMonetary ? props.formatCurrency(Number(change.oldValue) || 0) : change.oldValue;
-          const newValue = isMonetary ? props.formatCurrency(Number(change.newValue) || 0) : change.newValue;
-          
+          const isMonetary = ['amount', 'principal_amount', 'remaining_balance', 'monthly_payment', 'target_amount'].includes(change.field);
+          const oldValue = isMonetary ? props.formatCurrency(Number(change.oldValue) || 0) : String(change.oldValue ?? '—');
+          const newValue = isMonetary ? props.formatCurrency(Number(change.newValue) || 0) : String(change.newValue ?? '—');
+          // Humanize field name as fallback (loan_type → Loan type)
+          const fallbackLabel = change.field.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
+
           return (
             <div key={index} className="flex items-center gap-2">
               <span className="font-medium">
-                {intl.formatMessage({ id: `dashboard.activity.${change.field}` })}:
+                {intl.formatMessage({ id: `dashboard.activity.${change.field}`, defaultMessage: fallbackLabel })}:
               </span>
               <span className="text-destructive line-through">{oldValue}</span>
               <span className="text-success">{newValue}</span>

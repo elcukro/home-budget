@@ -15,7 +15,6 @@ import {
   ClockIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import { Flame, Target, Wallet, PiggyBank, Receipt, Calculator } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -461,13 +460,7 @@ const AIAnalysisPage = () => {
         const errorData = await response.json().catch(() => ({}));
         const detail = typeof errorData.detail === 'string' ? errorData.detail : '';
 
-        if (detail === 'API_KEY_MISSING' || detail.includes('API key not found')) {
-          setErrorMessageId('settings.messages.claudeApiKeyRequired');
-        } else if (detail.includes('Anthropic API error')) {
-          setErrorMessageId('dashboard.summary.aiInsights.apiErrors.generic');
-        } else {
-          setErrorMessageId('dashboard.summary.aiInsights.apiErrors.generic');
-        }
+        setErrorMessageId('dashboard.summary.aiInsights.apiErrors.generic');
         setInsights(null);
         return;
       }
@@ -541,30 +534,8 @@ const AIAnalysisPage = () => {
         </div>
       )}
 
-      {/* Error: API Key Missing */}
-      {!isLoading && errorMessageId === 'settings.messages.claudeApiKeyRequired' && (
-        <Card className="rounded-2xl border-warning/30 bg-warning/10">
-          <CardContent className="py-8 text-center">
-            <Cog6ToothIcon className="h-12 w-12 text-warning mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-primary mb-2">
-              {intl.formatMessage({ id: 'aiAnalysis.noApiKey.title' })}
-            </h3>
-            <p className="text-secondary mb-4 max-w-md mx-auto">
-              {intl.formatMessage({ id: 'settings.messages.claudeApiKeyRequired' })}
-            </p>
-            <Link
-              href="/settings"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium transition-colors"
-            >
-              <Cog6ToothIcon className="h-4 w-4" />
-              {intl.formatMessage({ id: 'navigation.settings' })}
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Error: Generic */}
-      {!isLoading && errorMessageId && errorMessageId !== 'settings.messages.claudeApiKeyRequired' && (
+      {!isLoading && errorMessageId && (
         <Card className="rounded-2xl border-destructive/30 bg-destructive/10">
           <CardContent className="py-8 text-center">
             <ExclamationCircleIcon className="h-12 w-12 text-destructive mx-auto mb-4" />

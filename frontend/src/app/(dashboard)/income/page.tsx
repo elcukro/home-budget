@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { FormattedDate, FormattedMessage, useIntl } from "react-intl";
 import { z } from "zod";
@@ -140,6 +140,14 @@ const incomeSchema = z.object({
       return parseNumber(raw) ?? null;
     }),
   is_gross: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  if (data.is_gross && (!data.employment_type || data.employment_type === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "income.validation.employmentTypeRequiredForGross",
+      path: ["employment_type"],
+    });
+  }
 });
 
 type IncomeFormValues = z.infer<typeof incomeSchema>;
@@ -174,54 +182,167 @@ const categoryOptions = [
   { value: "other", labelId: "income.categories.other", icon: <ArrowDownRight className="h-5 w-5" /> },
 ];
 
-const incomeFieldConfig: FormFieldConfig<IncomeFormValues>[] = [
-  {
-    name: "category",
-    labelId: "income.form.category",
-    component: "icon-select",
-    options: categoryOptions,
-  },
-  {
-    name: "description",
-    labelId: "income.form.description",
-    component: "text",
-  },
-  {
-    name: "amount",
-    labelId: "income.form.amount",
-    descriptionId: "income.form.amountHint",
-    component: "currency",
-  },
-  {
-    name: "is_gross",
-    labelId: "income.form.isGross",
-    descriptionId: "income.form.isGrossHint",
-    component: "switch",
-  },
-  {
-    name: "employment_type",
-    labelId: "income.form.employmentType",
-    descriptionId: "income.form.employmentTypeHint",
-    component: "select",
-    options: employmentTypeOptions,
-  },
-  {
-    name: "date",
-    labelId: "income.form.startDate",
-    component: "date",
-  },
-  {
-    name: "is_recurring",
-    labelId: "income.form.recurring",
-    component: "switch",
-  },
-  {
-    name: "end_date",
-    labelId: "income.form.endDate",
-    component: "date",
-    showWhen: (values) => values.is_recurring === true,
-  },
-];
+// Tax breakdown preview state — shared between renderExtra and submit
+interface TaxResult {
+  gross: number;
+  net: number;
+  breakdown: {
+    zus: number;
+    ppk: number;
+    kup: number;
+    health: number;
+    pit: number;
+  };
+}
+
+function TaxBreakdownPreview({
+  taxResult,
+  employmentType,
+  isGross,
+  amount,
+  intl,
+  formatCurrency,
+  onValuesChange,
+}: {
+  taxResult: TaxResult | null;
+  employmentType: string | null | undefined;
+  isGross: boolean;
+  amount: number;
+  intl: ReturnType<typeof useIntl>;
+  formatCurrency: (n: number) => string;
+  onValuesChange: (amount: number, employmentType: string | null | undefined, isGross: boolean) => void;
+}) {
+  // Trigger tax calculation when relevant values change
+  useEffect(() => {
+    onValuesChange(amount, employmentType, isGross);
+  }, [amount, employmentType, isGross, onValuesChange]);
+
+  if (!isGross) return null;
+
+  if (!employmentType || employmentType === "") {
+    return (
+      <p className="text-xs text-amber-600 mt-1">
+        {intl.formatMessage({ id: "income.form.selectEmploymentFirst" })}
+      </p>
+    );
+  }
+
+  if (!amount || amount <= 0) return null;
+
+  if (!taxResult) {
+    return (
+      <div className="mt-2 rounded-lg border border-muted/60 bg-muted/20 p-3 animate-pulse">
+        <div className="h-4 bg-muted rounded w-3/4" />
+      </div>
+    );
+  }
+
+  const { breakdown } = taxResult;
+  const items = [
+    { key: "zus", value: breakdown.zus },
+    { key: "health", value: breakdown.health },
+    { key: "kup", value: breakdown.kup },
+    { key: "pit", value: breakdown.pit },
+    { key: "ppk", value: breakdown.ppk },
+  ].filter((item) => item.value > 0);
+
+  return (
+    <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-emerald-800">
+          {intl.formatMessage({ id: "income.form.computedNet" })}
+        </span>
+        <span className="text-lg font-bold text-emerald-700">
+          {formatCurrency(taxResult.net)}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        {items.map((item) => (
+          <div key={item.key} className="flex justify-between text-xs text-muted-foreground">
+            <span>{intl.formatMessage({ id: `income.form.taxBreakdown.${item.key}` })}</span>
+            <span className="font-mono">{formatCurrency(item.value)}</span>
+          </div>
+        ))}
+      </div>
+      {employmentType === "b2b" && (
+        <p className="text-xs text-amber-600 italic">
+          {intl.formatMessage({ id: "income.form.b2bDisclaimer" })}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Helper to build field config (needs to be a function since renderExtra uses hooks context)
+function useIncomeFieldConfig(
+  taxResult: TaxResult | null,
+  intl: ReturnType<typeof useIntl>,
+  formatCurrency: (n: number) => string,
+  onTaxValuesChange: (amount: number, employmentType: string | null | undefined, isGross: boolean) => void,
+): FormFieldConfig<IncomeFormValues>[] {
+  return useMemo(() => [
+    {
+      name: "category" as const,
+      labelId: "income.form.category",
+      component: "icon-select" as const,
+      options: categoryOptions,
+    },
+    {
+      name: "description" as const,
+      labelId: "income.form.description",
+      component: "text" as const,
+    },
+    {
+      name: "employment_type" as const,
+      labelId: "income.form.employmentType",
+      descriptionId: "income.form.employmentTypeHint",
+      component: "select" as const,
+      options: employmentTypeOptions,
+    },
+    {
+      name: "amount" as const,
+      labelId: "income.form.amount",
+      descriptionId: "income.form.amountHint",
+      component: "currency" as const,
+    },
+    {
+      name: "is_gross" as const,
+      labelId: "income.form.isGross",
+      descriptionId: "income.form.isGrossHint",
+      component: "switch" as const,
+      renderExtra: (form) => {
+        const values = form.watch();
+        return (
+          <TaxBreakdownPreview
+            taxResult={taxResult}
+            employmentType={values.employment_type}
+            isGross={values.is_gross}
+            amount={values.amount}
+            intl={intl}
+            formatCurrency={formatCurrency}
+            onValuesChange={onTaxValuesChange}
+          />
+        );
+      },
+    },
+    {
+      name: "date" as const,
+      labelId: "income.form.startDate",
+      component: "date" as const,
+    },
+    {
+      name: "is_recurring" as const,
+      labelId: "income.form.recurring",
+      component: "switch" as const,
+    },
+    {
+      name: "end_date" as const,
+      labelId: "income.form.endDate",
+      component: "date" as const,
+      showWhen: (values: IncomeFormValues) => values.is_recurring === true,
+    },
+  ], [taxResult, intl, formatCurrency, onTaxValuesChange]);
+}
 
 // Change rate schema and config
 const changeRateSchema = z.object({
@@ -275,7 +396,8 @@ const changeRateFieldConfig: FormFieldConfig<ChangeRateFormValues>[] = [
 const mapIncomeToFormValues = (income: Income): IncomeFormValues => ({
   category: income.category,
   description: income.description,
-  amount: income.amount,
+  // When editing a gross income, show the gross amount in the form field
+  amount: income.is_gross ? (income.gross_amount ?? income.amount) : income.amount,
   date: income.date.slice(0, 10),
   end_date: income.end_date ? income.end_date.slice(0, 10) : null,
   is_recurring: income.is_recurring,
@@ -288,7 +410,7 @@ export default function IncomePage() {
   const { data: session } = useSession();
   const intl = useIntl();
   const { toast } = useToast();
-  const { formatCurrency } = useSettings();
+  const { settings, formatCurrency } = useSettings();
   const { trackIncome } = useAnalytics();
 
   const [incomes, setIncomes] = useState<Income[]>([]);
@@ -299,6 +421,42 @@ export default function IncomePage() {
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [activeIncome, setActiveIncome] = useState<Income | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Tax calculation state
+  const [taxResult, setTaxResult] = useState<TaxResult | null>(null);
+  const taxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTaxKeyRef = useRef<string>("");
+
+  const fetchTaxCalculation = useCallback(async (
+    grossMonthly: number,
+    employmentType: string,
+  ) => {
+    const key = `${grossMonthly}:${employmentType}:${settings?.use_authors_costs}:${settings?.ppk_employee_rate}`;
+    if (key === lastTaxKeyRef.current) return;
+    lastTaxKeyRef.current = key;
+
+    try {
+      const res = await fetch("/api/tax/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gross_monthly: grossMonthly,
+          employment_type: employmentType,
+          use_authors_costs: settings?.use_authors_costs ?? false,
+          ppk_employee_rate: (settings?.ppk_enrolled && settings?.ppk_employee_rate)
+            ? settings.ppk_employee_rate / 100
+            : 0,
+        }),
+      });
+      if (res.ok) {
+        const data: TaxResult = await res.json();
+        setTaxResult(data);
+      }
+    } catch (err) {
+      logger.error("[Income] Tax calculation failed", err);
+    }
+  }, [settings]);
+
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Income | null>(null);
@@ -511,8 +669,25 @@ export default function IncomePage() {
     setDialogOpen(open);
     if (!open) {
       setActiveIncome(null);
+      setTaxResult(null);
+      lastTaxKeyRef.current = "";
     }
   };
+
+  // Debounced tax calculation trigger — called from CrudDialog via renderExtra watching form values
+  const scheduleTaxCalc = useCallback((amount: number, employmentType: string | null | undefined, isGross: boolean) => {
+    if (taxDebounceRef.current) clearTimeout(taxDebounceRef.current);
+    if (!isGross || !employmentType || !amount || amount <= 0) {
+      setTaxResult(null);
+      lastTaxKeyRef.current = "";
+      return;
+    }
+    taxDebounceRef.current = setTimeout(() => {
+      void fetchTaxCalculation(amount, employmentType);
+    }, 300);
+  }, [fetchTaxCalculation]);
+
+  const incomeFieldConfig = useIncomeFieldConfig(taxResult, intl, formatCurrency, scheduleTaxCalc);
 
   const showErrorToast = (messageId: string) => {
     toast({
@@ -529,9 +704,34 @@ export default function IncomePage() {
 
     setIsSubmitting(true);
     try {
+      let netAmount = values.amount;
+      let grossAmount: number | null = null;
+
+      if (values.is_gross && values.employment_type) {
+        // Call server for authoritative net calculation
+        const taxRes = await fetch("/api/tax/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            gross_monthly: values.amount,
+            employment_type: values.employment_type,
+            use_authors_costs: settings?.use_authors_costs ?? false,
+            ppk_employee_rate: (settings?.ppk_enrolled && settings?.ppk_employee_rate)
+              ? settings.ppk_employee_rate / 100
+              : 0,
+          }),
+        });
+        if (taxRes.ok) {
+          const taxData: TaxResult = await taxRes.json();
+          grossAmount = values.amount;
+          netAmount = taxData.net;
+        }
+      }
+
       const payload = {
         ...values,
-        amount: values.amount,
+        amount: netAmount,
+        gross_amount: grossAmount,
       };
 
       if (dialogMode === "create") {

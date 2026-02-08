@@ -10,6 +10,7 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -44,7 +45,6 @@ import {
   faReceipt,
   faBuilding,
   faDatabase,
-  faKey,
   faArrowsRotate,
   faCodeMerge,
   faTrashCanArrowUp,
@@ -462,9 +462,6 @@ export default function SettingsPage() {
       await updateContextSettings({
         language: settings.language,
         currency: settings.currency,
-        ai: {
-          apiKey: settings.ai?.apiKey,
-        },
         emergency_fund_target: settings.emergency_fund_target,
         emergency_fund_months: settings.emergency_fund_months,
         base_currency: settings.currency,
@@ -1087,17 +1084,14 @@ export default function SettingsPage() {
                       <Label htmlFor="emergency_fund_target">
                         {intl.formatMessage({ id: "settings.financialFreedom.emergencyFundTarget" })}
                       </Label>
-                      <Input
+                      <CurrencyInput
                         id="emergency_fund_target"
-                        type="number"
-                        min={1000}
-                        step={50}
                         value={settings.emergency_fund_target}
-                        onChange={(event) =>
+                        onValueChange={(val) =>
                           setSettings((prev) =>
                             prev && {
                               ...prev,
-                              emergency_fund_target: Number(event.target.value),
+                              emergency_fund_target: val,
                             },
                           )
                         }
@@ -1132,38 +1126,6 @@ export default function SettingsPage() {
                   </div>
 
                   <Separator />
-
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faKey} className="w-4 h-4 text-muted-foreground" />
-                      <h4 className="font-medium">{intl.formatMessage({ id: "settings.ai.title" })}</h4>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ai_api_key">
-                        {intl.formatMessage({ id: "settings.form.claudeApiKey" })}
-                      </Label>
-                      <Input
-                        id="ai_api_key"
-                        type="password"
-                        value={settings.ai?.apiKey ?? ""}
-                        onChange={(event) =>
-                          setSettings((prev) =>
-                            prev && {
-                              ...prev,
-                              ai: {
-                                ...(prev.ai ?? {}),
-                                apiKey: event.target.value,
-                              },
-                            },
-                          )
-                        }
-                        placeholder={intl.formatMessage({ id: "settings.form.claudeApiKeyPlaceholder" })}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {intl.formatMessage({ id: "settings.tooltips.claudeApiKey" })}
-                      </p>
-                    </div>
-                  </div>
 
                   <Button type="submit">
                     {intl.formatMessage({ id: "settings.form.submit" })}

@@ -17,11 +17,14 @@ interface Expense {
 
 interface ExpenseChartProps {
   expenses: Expense[];
+  selectedMonth?: string;
+  onMonthSelect?: (monthKey: string) => void;
 }
 
 type TimeHorizon = 'currentYear' | 'lastYear' | '2years' | '5years';
+type TimeState = 'past' | 'current' | 'predicted';
 
-export default function ExpenseChart({ expenses }: ExpenseChartProps) {
+export default function ExpenseChart({ expenses, selectedMonth, onMonthSelect }: ExpenseChartProps) {
   const intl = useIntl();
   const { formatCurrency } = useSettings();
   const [horizon, setHorizon] = useState<TimeHorizon>('currentYear');
@@ -49,7 +52,7 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
         startYear = currentYear;
         startMonth = 0; // January
         endYear = currentYear;
-        endMonth = currentMonth;
+        endMonth = 11; // Full year through December
         break;
       case 'lastYear':
         startYear = currentYear - 1;
@@ -61,23 +64,23 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
         startYear = currentYear - 1;
         startMonth = 0;
         endYear = currentYear;
-        endMonth = currentMonth;
+        endMonth = 11; // Full current year
         break;
       case '5years':
         startYear = currentYear - 4;
         startMonth = 0;
         endYear = currentYear;
-        endMonth = currentMonth;
+        endMonth = 11; // Full current year
         break;
       default:
         startYear = currentYear;
         startMonth = 0;
         endYear = currentYear;
-        endMonth = currentMonth;
+        endMonth = 11;
     }
 
     // Generate array of months for the selected range
-    const months: { key: string; date: Date; total: number }[] = [];
+    const months: { key: string; date: Date; total: number; timeState: TimeState }[] = [];
 
     let year = startYear;
     let month = startMonth;
@@ -85,7 +88,18 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
     while (year < endYear || (year === endYear && month <= endMonth)) {
       const date = new Date(year, month, 1);
       const key = `${year}-${String(month + 1).padStart(2, '0')}`;
-      months.push({ key, date, total: 0 });
+
+      // Determine time state relative to current month
+      let timeState: TimeState;
+      if (year < currentYear || (year === currentYear && month < currentMonth)) {
+        timeState = 'past';
+      } else if (year === currentYear && month === currentMonth) {
+        timeState = 'current';
+      } else {
+        timeState = 'predicted';
+      }
+
+      months.push({ key, date, total: 0, timeState });
 
       month++;
       if (month > 11) {
@@ -125,6 +139,7 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
             (chartYear === endParsed.year && chartMonth <= endParsed.month);
 
           if (afterStart && beforeEnd) {
+            // For predicted months, only include recurring expenses (not one-offs)
             monthData.total += expense.amount;
           }
         } else {
@@ -139,9 +154,12 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
     return months;
   }, [expenses, horizon, currentYear, currentMonth]);
 
-  // Calculate stats
+  const hasPredictedMonths = chartData.some(m => m.timeState === 'predicted');
+
+  // Calculate stats (only for past + current months)
   const stats = useMemo(() => {
-    const totals = chartData.map(m => m.total);
+    const actualMonths = chartData.filter(m => m.timeState !== 'predicted');
+    const totals = actualMonths.map(m => m.total);
     const sum = totals.reduce((a, b) => a + b, 0);
     const avg = totals.length > 0 ? sum / totals.length : 0;
     const max = Math.max(...totals, 0);
@@ -152,7 +170,7 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
 
   // Determine bar grouping based on horizon
   const groupedData = useMemo(() => {
-    let result: { key: string; label: string; total: number; date: Date; hasChange?: boolean }[];
+    let result: { key: string; label: string; total: number; date: Date; timeState: TimeState; hasChange?: boolean }[];
 
     if (horizon === 'currentYear' || horizon === 'lastYear') {
       // Show all months individually
@@ -168,7 +186,7 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
       }));
     } else {
       // Group by quarters for 5+ years
-      const quarters: { key: string; label: string; total: number; date: Date }[] = [];
+      const quarters: { key: string; label: string; total: number; date: Date; timeState: TimeState }[] = [];
 
       for (let i = 0; i < chartData.length; i += 3) {
         const chunk = chartData.slice(i, i + 3);
@@ -176,11 +194,18 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
           const total = chunk.reduce((sum, m) => sum + m.total, 0);
           const firstMonth = chunk[0].date;
           const quarter = Math.floor(firstMonth.getMonth() / 3) + 1;
+          // Quarter is predicted if all months in it are predicted
+          const quarterTimeState: TimeState = chunk.every(m => m.timeState === 'predicted')
+            ? 'predicted'
+            : chunk.some(m => m.timeState === 'current')
+              ? 'current'
+              : 'past';
           quarters.push({
             key: `${firstMonth.getFullYear()}-Q${quarter}`,
             label: `Q${quarter}'${firstMonth.getFullYear().toString().slice(-2)}`,
             total,
             date: firstMonth,
+            timeState: quarterTimeState,
           });
         }
       }
@@ -191,7 +216,7 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
     // Mark months where value changed from previous month
     return result.map((item, index) => ({
       ...item,
-      hasChange: index > 0 && Math.abs(item.total - result[index - 1].total) > 0.01,
+      hasChange: index > 0 && item.timeState !== 'predicted' && Math.abs(item.total - result[index - 1].total) > 0.01,
     }));
   }, [chartData, horizon, intl]);
 
@@ -219,8 +244,31 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
     }
   }, [horizon, currentYear, intl]);
 
+  // Bar style based on time state
+  const getBarClasses = (item: typeof groupedData[0], index: number) => {
+    if (item.hasChange) {
+      return item.total > (groupedData[index - 1]?.total || 0)
+        ? 'bg-gradient-to-t from-rose-600 to-rose-400 ring-2 ring-rose-400 ring-offset-1'
+        : 'bg-gradient-to-t from-emerald-500 to-emerald-400 ring-2 ring-emerald-400 ring-offset-1';
+    }
+
+    switch (item.timeState) {
+      case 'current':
+        return 'bg-gradient-to-t from-rose-500 to-rose-400';
+      case 'predicted':
+        return item.total > 0
+          ? 'bg-gradient-to-t from-rose-200/60 to-rose-100/60 border border-dashed border-rose-300 group-hover:from-rose-200 group-hover:to-rose-100'
+          : 'bg-rose-50 border border-dashed border-rose-200';
+      case 'past':
+      default:
+        return item.total > 0
+          ? 'bg-gradient-to-t from-rose-300 to-rose-200 group-hover:from-rose-400 group-hover:to-rose-300'
+          : 'bg-rose-100';
+    }
+  };
+
   return (
-    <div className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/50 via-white to-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/50 via-white to-white p-6 shadow-sm min-w-0">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
@@ -268,27 +316,56 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
         </div>
 
         {/* Bars */}
-        <div className="ml-16 overflow-x-auto">
+        <div className="ml-16 min-w-0" style={{ overflowX: 'clip', overflowY: 'visible' }}>
           <div
-            className="flex items-end gap-1"
-            style={{ height: '200px', minWidth: horizon === '2years' ? '600px' : 'auto' }}
+            className="flex items-end gap-1 pt-8"
+            style={{ height: '228px' }}
           >
             {groupedData.map((item, index) => {
               const barHeight = scaleRange > 0 ? ((item.total - scaleMin) / scaleRange) * 200 : 0;
-              const isCurrentPeriod = index === groupedData.length - 1;
+              const isPredicted = item.timeState === 'predicted';
+
+              const isSelected = selectedMonth != null && selectedMonth !== 'all' && item.key === selectedMonth;
 
               return (
                 <div
                   key={item.key}
-                  className="flex-1 min-w-[24px] max-w-[60px] flex flex-col items-center justify-end group h-full"
+                  className="relative flex-1 min-w-0 flex flex-col items-center justify-end group h-full cursor-pointer"
+                  onClick={() => {
+                    if (!onMonthSelect) return;
+                    // Quarter bars (5-year view): drill down to that year
+                    if (item.key.includes('-Q')) {
+                      const year = parseInt(item.key.split('-Q')[0], 10);
+                      if (year === currentYear) {
+                        setHorizon('currentYear');
+                      } else if (year === currentYear - 1) {
+                        setHorizon('lastYear');
+                      } else {
+                        // For older years, switch to 2-year view (closest available)
+                        setHorizon('2years');
+                      }
+                      return;
+                    }
+                    // Monthly bars: toggle selection
+                    if (isSelected) {
+                      onMonthSelect('all');
+                    } else {
+                      onMonthSelect(item.key);
+                    }
+                  }}
                 >
-                  {/* Tooltip - shift right for first bars to avoid Y-axis overlap */}
+                  {/* Tooltip */}
                   <div
-                    className={`opacity-0 group-hover:opacity-100 transition-opacity mb-1 px-2 py-1 bg-rose-800 text-white text-xs rounded shadow-lg whitespace-nowrap z-10 ${
-                      index < 2 ? 'translate-x-2' : ''
+                    className={`pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 text-white text-xs rounded shadow-lg whitespace-nowrap z-10 ${
+                      isPredicted ? 'bg-gray-600' : 'bg-rose-800'
                     }`}
                   >
                     {formatCurrency(item.total)}
+                    {isPredicted && (
+                      <span className="ml-1 text-gray-300">
+                        {intl.formatMessage({ id: 'expenses.chart.predicted', defaultMessage: 'prognoza' })}
+                      </span>
+                    )}
                     {item.hasChange && (
                       <span className="ml-1 text-amber-300">
                         {item.total > (groupedData[index - 1]?.total || 0) ? '↑' : '↓'}
@@ -311,17 +388,7 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
 
                   {/* Bar */}
                   <div
-                    className={`w-full rounded-t-md transition-all duration-300 ${
-                      item.hasChange
-                        ? item.total > (groupedData[index - 1]?.total || 0)
-                          ? 'bg-gradient-to-t from-rose-600 to-rose-400 ring-2 ring-rose-400 ring-offset-1'
-                          : 'bg-gradient-to-t from-emerald-500 to-emerald-400 ring-2 ring-emerald-400 ring-offset-1'
-                        : isCurrentPeriod
-                          ? 'bg-gradient-to-t from-rose-500 to-rose-400'
-                          : item.total > 0
-                            ? 'bg-gradient-to-t from-rose-300 to-rose-200 group-hover:from-rose-400 group-hover:to-rose-300'
-                            : 'bg-rose-100'
-                    }`}
+                    className={`w-full rounded-t-md transition-all duration-300 ${getBarClasses(item, index)} ${isSelected ? 'ring-2 ring-rose-500 ring-offset-2' : ''}`}
                     style={{
                       height: `${Math.max(barHeight, item.total > 0 ? 4 : 0)}px`
                     }}
@@ -331,13 +398,24 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
             })}
           </div>
           {/* X-axis labels */}
-          <div className="flex gap-1 mt-2" style={{ minWidth: horizon === '2years' ? '600px' : 'auto' }}>
-            {groupedData.map((item, index) => {
-              const isCurrentPeriod = index === groupedData.length - 1;
+          <div className="flex gap-1 mt-2">
+            {groupedData.map((item) => {
+              const isCurrent = item.timeState === 'current';
+              const isPredicted = item.timeState === 'predicted';
+              const isLabelSelected = selectedMonth != null && selectedMonth !== 'all' && item.key === selectedMonth;
               return (
-                <div key={`label-${item.key}`} className="flex-1 min-w-[24px] max-w-[60px] text-center">
+                <div key={`label-${item.key}`} className="flex-1 min-w-0 text-center flex flex-col items-center">
+                  {isLabelSelected && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mb-0.5" />
+                  )}
                   <span className={`text-[10px] ${
-                    isCurrentPeriod ? 'text-rose-700 font-medium' : 'text-rose-500/70'
+                    isLabelSelected
+                      ? 'text-rose-700 font-bold'
+                      : isCurrent
+                        ? 'text-rose-700 font-medium'
+                        : isPredicted
+                          ? 'text-gray-400'
+                          : 'text-rose-500/70'
                   } ${horizon === '2years' ? 'inline-block rotate-45 origin-left' : ''}`}>
                     {item.label}
                   </span>
@@ -347,6 +425,19 @@ export default function ExpenseChart({ expenses }: ExpenseChartProps) {
           </div>
         </div>
       </div>
+
+      {/* Predicted months legend */}
+      {hasPredictedMonths && (
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
+          <div className="w-3 h-3 rounded-sm border border-dashed border-rose-300 bg-rose-100/60" />
+          <span>
+            {intl.formatMessage({
+              id: 'expenses.chart.predictedNote',
+              defaultMessage: 'Prognoza na podstawie aktywnych wydatków cyklicznych',
+            })}
+          </span>
+        </div>
+      )}
 
       {/* Summary stats */}
       <div className="mt-6 pt-4 border-t border-rose-100 grid grid-cols-3 gap-4">

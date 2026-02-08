@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import { useEffect } from "react";
@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -82,6 +83,8 @@ export interface FormFieldConfig<TFormValues extends FieldValues> {
   rowGroup?: string;
   /** Width within row group: "auto" | "1/2" | "1/3" | "2/3" (default "1/2") */
   rowWidth?: "auto" | "1/2" | "1/3" | "2/3";
+  /** Render extra content below this field (e.g. tax breakdown preview) */
+  renderExtra?: (form: UseFormReturn<TFormValues>) => React.ReactNode;
 }
 
 export interface CrudDialogProps<TFormValues extends FieldValues> {
@@ -117,25 +120,6 @@ export function CrudDialog<TFormValues extends FieldValues>({
   const intl = useIntl();
   const { settings } = useSettings();
 
-  // Get currency symbol for display
-  const getCurrencySymbol = () => {
-    if (!settings?.currency) return '';
-    try {
-      const formatted = new Intl.NumberFormat(settings.language || 'en', {
-        style: 'currency',
-        currency: settings.currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(0);
-      // Extract just the symbol by removing the number
-      return formatted.replace(/[\d\s.,]/g, '').trim();
-    } catch {
-      return settings.currency;
-    }
-  };
-
-  const currencySymbol = getCurrencySymbol();
-
   const form = useForm<TFormValues>({
     resolver: zodResolver(schema as any) as Resolver<TFormValues>,
     defaultValues: defaultValues as DefaultValues<TFormValues>,
@@ -154,19 +138,15 @@ export function CrudDialog<TFormValues extends FieldValues>({
     await onSubmit(values);
   };
 
-  // Debug: Log validation errors when form submission fails
   const onFormError = (errors: any) => {
     console.error("[CrudDialog] Form validation errors:", errors);
-    // Also show in UI for easier debugging
     Object.entries(errors).forEach(([field, error]: [string, any]) => {
       console.error(`  - ${field}: ${error?.message || JSON.stringify(error)}`);
     });
   };
 
-  // Watch all form values to enable conditional field rendering
   const watchedValues = form.watch();
 
-  // Group fields by rowGroup for horizontal layout
   const groupedFields = React.useMemo(() => {
     const visibleFields = fields.filter(
       (f) => !f.showWhen || f.showWhen(watchedValues as TFormValues)
@@ -179,7 +159,6 @@ export function CrudDialog<TFormValues extends FieldValues>({
       if (processedIndices.has(index)) return;
 
       if (field.rowGroup) {
-        // Find all fields with the same rowGroup
         const groupFields = visibleFields
           .map((f, i) => ({ field: f, index: i }))
           .filter(({ field: f }) => f.rowGroup === field.rowGroup);
@@ -210,216 +189,226 @@ export function CrudDialog<TFormValues extends FieldValues>({
     }
   };
 
-  const renderField = (fieldConfig: FormFieldConfig<TFormValues>) => (
-              <FormField
-                key={fieldConfig.name}
-                control={form.control}
-                name={fieldConfig.name}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      {intl.formatMessage({ id: fieldConfig.labelId })}
-                    </FormLabel>
-                    <FormControl>
-                      {fieldConfig.component === "icon-select" ? (
-                        <div className={`grid gap-2 ${
-                          fieldConfig.columns === 2 ? "grid-cols-2" :
-                          fieldConfig.columns === 4 ? "grid-cols-4" :
-                          "grid-cols-3"
-                        }`}>
-                          {fieldConfig.options?.map((option) => {
-                            const isSelected = field.value === option.value;
-                            return (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => {
-                                  field.onChange(option.value);
-                                  fieldConfig.onValueChange?.(option.value, form);
-                                }}
-                                className={`flex ${fieldConfig.compact ? "flex-row gap-2 p-2" : "flex-col gap-2 p-3"} items-center rounded-xl border-2 transition-all ${
-                                  isSelected
-                                    ? "border-primary bg-primary/10 text-primary"
-                                    : "border-muted hover:border-primary/50 hover:bg-muted/50"
-                                }`}
-                              >
-                                <span className={`flex items-center justify-center rounded-full ${
-                                  fieldConfig.compact ? "h-8 w-8" : "h-10 w-10"
-                                } ${isSelected ? "bg-primary/20" : "bg-muted"}`}>
-                                  {option.icon}
-                                </span>
-                                <span className={`${fieldConfig.compact ? "text-sm" : "text-xs"} font-medium`}>
-                                  {intl.formatMessage({ id: option.labelId })}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : fieldConfig.component === "select" ? (
-                        <Select
-                          disabled={fieldConfig.disabled}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            fieldConfig.onValueChange?.(value, form);
-                          }}
-                          value={
-                            field.value === undefined ||
-                            field.value === null ||
-                            field.value === ""
-                              ? undefined
-                              : String(field.value)
-                          }
-                        >
-                          <SelectTrigger autoFocus={fieldConfig.autoFocus}>
-                            <SelectValue
-                              placeholder={
-                                fieldConfig.placeholderId
-                                  ? intl.formatMessage({
-                                      id: fieldConfig.placeholderId,
-                                    })
-                                  : undefined
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {fieldConfig.options?.map((option) => (
-                              <SelectItem
-                                key={option.value}
-                                value={option.value}
-                              >
-                                {intl.formatMessage({ id: option.labelId })}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : fieldConfig.component === "switch" ? (
-                        <Switch
-                          checked={Boolean(field.value)}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            fieldConfig.onValueChange?.(checked, form);
-                          }}
-                          disabled={fieldConfig.disabled}
-                        />
-                      ) : fieldConfig.component === "checkbox" ? (
-                        <Checkbox
-                          checked={Boolean(field.value)}
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            fieldConfig.onValueChange?.(checked, form);
-                          }}
-                          disabled={fieldConfig.disabled}
-                        />
-                      ) : fieldConfig.component === "textarea" ? (
-                        <Textarea
-                          {...field}
-                          onChange={(event) => {
-                            field.onChange(event);
-                            fieldConfig.onValueChange?.(
-                              event.target.value,
-                              form,
-                            );
-                          }}
-                          value={(field.value as string) ?? ""}
-                          disabled={fieldConfig.disabled}
-                          autoFocus={fieldConfig.autoFocus}
-                          placeholder={
-                            fieldConfig.placeholderId
-                              ? intl.formatMessage({
-                                  id: fieldConfig.placeholderId,
-                                })
-                              : undefined
-                          }
-                        />
-                      ) : fieldConfig.component === "currency" ? (
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                            {currencySymbol}
-                          </span>
-                          <Input
-                            {...field}
-                            onChange={(event) => {
-                              // Allow comma as decimal separator
-                              const rawValue = event.target.value.replace(',', '.');
-                              field.onChange(rawValue);
-                              fieldConfig.onValueChange?.(rawValue, form);
-                            }}
-                            type="text"
-                            inputMode="decimal"
-                            value={
-                              field.value === undefined || field.value === null || field.value === ""
-                                ? ""
-                                : String(field.value).replace('.', settings?.language === 'pl' ? ',' : '.')
-                            }
-                            className="pl-10"
-                            step={fieldConfig.step || "0.01"}
-                            min={fieldConfig.min}
-                            max={fieldConfig.max}
-                            disabled={fieldConfig.disabled}
-                            autoFocus={fieldConfig.autoFocus}
-                            placeholder={
-                              fieldConfig.placeholderId
-                                ? intl.formatMessage({
-                                    id: fieldConfig.placeholderId,
-                                  })
-                                : "0,00"
-                            }
-                          />
-                        </div>
-                      ) : (
-                        <Input
-                          {...field}
-                          onChange={(event) => {
-                            field.onChange(event);
-                            fieldConfig.onValueChange?.(
-                              event.target.value,
-                              form,
-                            );
-                          }}
-                          type={
-                            fieldConfig.component === "number"
-                              ? "number"
-                              : fieldConfig.component === "date"
-                                ? "date"
-                                : "text"
-                          }
-                          value={
-                            fieldConfig.component === "number"
-                              ? field.value === undefined || field.value === null || field.value === ""
-                                ? ""
-                                : (field.value as string | number)
-                              : (field.value as string | number) ?? ""
-                          }
-                          inputMode={
-                            fieldConfig.component === "number"
-                              ? "decimal"
-                              : undefined
-                          }
-                          step={fieldConfig.step}
-                          min={fieldConfig.min}
-                          max={fieldConfig.max}
-                          disabled={fieldConfig.disabled}
-                          autoFocus={fieldConfig.autoFocus}
-                          placeholder={
-                            fieldConfig.placeholderId
-                              ? intl.formatMessage({
-                                  id: fieldConfig.placeholderId,
-                                })
-                              : undefined
-                          }
-                        />
-                      )}
-                    </FormControl>
-                    {fieldConfig.descriptionId && (
-                      <p className="text-sm text-muted-foreground">
-                        {intl.formatMessage({ id: fieldConfig.descriptionId })}
-                      </p>
-                    )}
-                    <FormMessage />
-                  </FormItem>
+  const renderFieldContent = (fieldConfig: FormFieldConfig<TFormValues>) => (
+    <FormField
+      control={form.control}
+      name={fieldConfig.name}
+      render={({ field }) => {
+        const isToggle = fieldConfig.component === "switch" || fieldConfig.component === "checkbox";
+        return (
+          <FormItem className={isToggle ? "flex items-center justify-between gap-4 rounded-lg border p-3" : undefined}>
+            {isToggle ? (
+              <div className="space-y-0.5">
+                <FormLabel className="text-sm font-medium cursor-pointer">
+                  {intl.formatMessage({ id: fieldConfig.labelId })}
+                </FormLabel>
+                {fieldConfig.descriptionId && (
+                  <p className="text-xs text-muted-foreground">
+                    {intl.formatMessage({ id: fieldConfig.descriptionId })}
+                  </p>
                 )}
-              />
+              </div>
+            ) : (
+              <FormLabel>
+                {intl.formatMessage({ id: fieldConfig.labelId })}
+              </FormLabel>
+            )}
+            <FormControl>
+              {fieldConfig.component === "icon-select" ? (
+                <div className={`grid gap-2 ${
+                  fieldConfig.columns === 2 ? "grid-cols-2" :
+                  fieldConfig.columns === 4 ? "grid-cols-4" :
+                  "grid-cols-3"
+                }`}>
+                  {fieldConfig.options?.map((option) => {
+                    const isSelected = field.value === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          field.onChange(option.value);
+                          fieldConfig.onValueChange?.(option.value, form);
+                        }}
+                        className={`flex ${fieldConfig.compact ? "flex-row gap-2 p-2" : "flex-col gap-2 p-3"} items-center rounded-xl border-2 transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-muted hover:border-primary/50 hover:bg-muted/50"
+                        }`}
+                      >
+                        <span className={`flex items-center justify-center rounded-full ${
+                          fieldConfig.compact ? "h-8 w-8" : "h-10 w-10"
+                        } ${isSelected ? "bg-primary/20" : "bg-muted"}`}>
+                          {option.icon}
+                        </span>
+                        <span className={`${fieldConfig.compact ? "text-sm" : "text-xs"} font-medium`}>
+                          {intl.formatMessage({ id: option.labelId })}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : fieldConfig.component === "select" ? (
+                <Select
+                  disabled={fieldConfig.disabled}
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    fieldConfig.onValueChange?.(value, form);
+                  }}
+                  value={
+                    field.value === undefined ||
+                    field.value === null ||
+                    field.value === ""
+                      ? undefined
+                      : String(field.value)
+                  }
+                >
+                  <SelectTrigger autoFocus={fieldConfig.autoFocus}>
+                    <SelectValue
+                      placeholder={
+                        fieldConfig.placeholderId
+                          ? intl.formatMessage({
+                              id: fieldConfig.placeholderId,
+                            })
+                          : undefined
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fieldConfig.options?.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value}
+                      >
+                        {intl.formatMessage({ id: option.labelId })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : fieldConfig.component === "switch" ? (
+                <Switch
+                  checked={Boolean(field.value)}
+                  onCheckedChange={(checked) => {
+                    field.onChange(checked);
+                    fieldConfig.onValueChange?.(checked, form);
+                  }}
+                  disabled={fieldConfig.disabled}
+                />
+              ) : fieldConfig.component === "checkbox" ? (
+                <Checkbox
+                  checked={Boolean(field.value)}
+                  onCheckedChange={(checked) => {
+                    field.onChange(checked);
+                    fieldConfig.onValueChange?.(checked, form);
+                  }}
+                  disabled={fieldConfig.disabled}
+                />
+              ) : fieldConfig.component === "textarea" ? (
+                <Textarea
+                  {...field}
+                  onChange={(event) => {
+                    field.onChange(event);
+                    fieldConfig.onValueChange?.(
+                      event.target.value,
+                      form,
+                    );
+                  }}
+                  value={(field.value as string) ?? ""}
+                  disabled={fieldConfig.disabled}
+                  autoFocus={fieldConfig.autoFocus}
+                  placeholder={
+                    fieldConfig.placeholderId
+                      ? intl.formatMessage({
+                          id: fieldConfig.placeholderId,
+                        })
+                      : undefined
+                  }
+                />
+              ) : fieldConfig.component === "currency" ? (
+                <CurrencyInput
+                  value={Number(field.value) || 0}
+                  onValueChange={(val) => {
+                    field.onChange(val);
+                    fieldConfig.onValueChange?.(String(val), form);
+                  }}
+                  disabled={fieldConfig.disabled}
+                  autoFocus={fieldConfig.autoFocus}
+                  placeholder={
+                    fieldConfig.placeholderId
+                      ? intl.formatMessage({
+                          id: fieldConfig.placeholderId,
+                        })
+                      : undefined
+                  }
+                />
+              ) : (
+                <Input
+                  {...field}
+                  onChange={(event) => {
+                    field.onChange(event);
+                    fieldConfig.onValueChange?.(
+                      event.target.value,
+                      form,
+                    );
+                  }}
+                  type={
+                    fieldConfig.component === "number"
+                      ? "number"
+                      : fieldConfig.component === "date"
+                        ? "date"
+                        : "text"
+                  }
+                  value={
+                    fieldConfig.component === "number"
+                      ? field.value === undefined || field.value === null || field.value === ""
+                        ? ""
+                        : (field.value as string | number)
+                      : (field.value as string | number) ?? ""
+                  }
+                  inputMode={
+                    fieldConfig.component === "number"
+                      ? "decimal"
+                      : undefined
+                  }
+                  step={fieldConfig.step}
+                  min={fieldConfig.min}
+                  max={fieldConfig.max}
+                  disabled={fieldConfig.disabled}
+                  autoFocus={fieldConfig.autoFocus}
+                  placeholder={
+                    fieldConfig.placeholderId
+                      ? intl.formatMessage({
+                          id: fieldConfig.placeholderId,
+                        })
+                      : undefined
+                  }
+                />
+              )}
+            </FormControl>
+            {!isToggle && fieldConfig.descriptionId && (
+              <p className="text-sm text-muted-foreground">
+                {intl.formatMessage({ id: fieldConfig.descriptionId })}
+              </p>
+            )}
+            <FormMessage />
+          </FormItem>
+        );
+      }}
+    />
   );
+
+  const renderField = (fieldConfig: FormFieldConfig<TFormValues>) => {
+    const extra = fieldConfig.renderExtra?.(form);
+    if (extra) {
+      return (
+        <React.Fragment key={fieldConfig.name}>
+          {renderFieldContent(fieldConfig)}
+          {extra}
+        </React.Fragment>
+      );
+    }
+    return <React.Fragment key={fieldConfig.name}>{renderFieldContent(fieldConfig)}</React.Fragment>;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -439,13 +428,12 @@ export function CrudDialog<TFormValues extends FieldValues>({
             className="space-y-4"
             noValidate
           >
-            {/* Show form-level errors */}
             {Object.keys(form.formState.errors).length > 0 && (
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
-                <p className="font-medium mb-1">Popraw błędy w formularzu:</p>
+                <p className="font-medium mb-1">Popraw b&#322;&#281;dy w formularzu:</p>
                 <ul className="list-disc list-inside space-y-0.5">
                   {Object.entries(form.formState.errors).map(([field, error]: [string, any]) => (
-                    <li key={field}>{field}: {error?.message || "Nieprawidłowa wartość"}</li>
+                    <li key={field}>{field}: {error?.message || "Nieprawid\u0142owa warto\u015b\u0107"}</li>
                   ))}
                 </ul>
               </div>

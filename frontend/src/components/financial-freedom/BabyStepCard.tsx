@@ -5,6 +5,7 @@ import { useIntl } from 'react-intl';
 import { BabyStep } from '@/types/financial-freedom';
 import { CheckCircleIcon, PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useSettings } from '@/contexts/SettingsContext';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { logger } from '@/lib/logger';
 
 interface BabyStepCardProps {
@@ -124,10 +125,9 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency:
                 <label className="block text-sm font-medium text-secondary mb-1">
                   {intl.formatMessage({ id: 'financialFreedom.currentAmount' })}
                 </label>
-                <input
-                  type="number"
+                <CurrencyInput
                   value={currentAmount}
-                  onChange={(e) => setCurrentAmount(Number(e.target.value))}
+                  onValueChange={setCurrentAmount}
                   className="w-full px-3 py-2 border border-default rounded-md bg-input text-primary"
                 />
               </div>
@@ -135,10 +135,9 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency:
                 <label className="block text-sm font-medium text-secondary mb-1">
                   {intl.formatMessage({ id: 'financialFreedom.targetAmount' })}
                 </label>
-                <input
-                  type="number"
+                <CurrencyInput
                   value={targetAmount}
-                  onChange={(e) => setTargetAmount(Number(e.target.value))}
+                  onValueChange={setTargetAmount}
                   className="w-full px-3 py-2 border border-default rounded-md bg-input text-primary"
                 />
               </div>

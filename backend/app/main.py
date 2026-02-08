@@ -1224,6 +1224,153 @@ def delete_income(
         print(f"[FastAPI] Error in delete_income: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Tax calculation (stateless utility, no auth required) ──────────────────────
+
+class TaxCalculationRequest(BaseModel):
+    gross_monthly: float = Field(gt=0)
+    employment_type: str  # uop, b2b, zlecenie, dzielo, other
+    use_authors_costs: bool = False
+    ppk_employee_rate: float = 0.0  # 0 if not enrolled
+
+class TaxBreakdown(BaseModel):
+    zus: float
+    ppk: float
+    kup: float
+    health: float
+    pit: float
+
+class TaxCalculationResponse(BaseModel):
+    gross: float
+    net: float
+    breakdown: TaxBreakdown
+
+
+def calculate_net_from_gross(
+    gross_monthly: float,
+    employment_type: str,
+    use_authors_costs: bool = False,
+    ppk_employee_rate: float = 0.0,
+) -> TaxCalculationResponse:
+    """
+    Calculate monthly net income from gross for Polish employment types.
+    Constants based on 2026 Polish tax law.
+    """
+    # Tax constants
+    ZUS_PENSION = 0.0976
+    ZUS_DISABILITY = 0.015
+    ZUS_SICKNESS = 0.0245
+    ZUS_TOTAL = ZUS_PENSION + ZUS_DISABILITY + ZUS_SICKNESS  # 13.71%
+    HEALTH_RATE = 0.09
+    KUP_STANDARD_UOP = 250.0  # PLN/month
+    KUP_AUTHORS_CAP_MONTHLY = 10000.0  # 120,000/year
+    PIT_RATE_1 = 0.12
+    PIT_RATE_2 = 0.32
+    PIT_THRESHOLD_MONTHLY = 10000.0  # 120,000/year
+    TAX_FREE_MONTHLY = 2500.0  # 30,000/year
+    B2B_LINEAR_RATE = 0.19
+
+    zus = 0.0
+    ppk = 0.0
+    kup = 0.0
+    health = 0.0
+    pit = 0.0
+
+    if employment_type == "other":
+        # No deductions — gross equals net
+        return TaxCalculationResponse(
+            gross=round(gross_monthly, 2),
+            net=round(gross_monthly, 2),
+            breakdown=TaxBreakdown(zus=0, ppk=0, kup=0, health=0, pit=0),
+        )
+
+    if employment_type == "b2b":
+        # Simplified: 19% linear tax, no ZUS/health detail
+        pit = round(gross_monthly * B2B_LINEAR_RATE, 2)
+        net = round(gross_monthly - pit, 2)
+        return TaxCalculationResponse(
+            gross=round(gross_monthly, 2),
+            net=net,
+            breakdown=TaxBreakdown(zus=0, ppk=0, kup=0, health=0, pit=pit),
+        )
+
+    if employment_type == "dzielo":
+        # Umowa o dzieło: no ZUS, no health
+        if use_authors_costs:
+            kup = min(gross_monthly * 0.5, KUP_AUTHORS_CAP_MONTHLY)
+        else:
+            kup = gross_monthly * 0.2
+        taxable = max(gross_monthly - kup, 0)
+        # Progressive PIT
+        if taxable <= PIT_THRESHOLD_MONTHLY:
+            pit = max(taxable * PIT_RATE_1 - TAX_FREE_MONTHLY * PIT_RATE_1, 0)
+        else:
+            pit_below = PIT_THRESHOLD_MONTHLY * PIT_RATE_1 - TAX_FREE_MONTHLY * PIT_RATE_1
+            pit_above = (taxable - PIT_THRESHOLD_MONTHLY) * PIT_RATE_2
+            pit = max(pit_below + pit_above, 0)
+        pit = round(pit, 2)
+        kup = round(kup, 2)
+        net = round(gross_monthly - pit, 2)
+        return TaxCalculationResponse(
+            gross=round(gross_monthly, 2),
+            net=net,
+            breakdown=TaxBreakdown(zus=0, ppk=0, kup=kup, health=0, pit=pit),
+        )
+
+    # UoP and Zlecenie: ZUS + health + KUP + PIT
+    zus = round(gross_monthly * ZUS_TOTAL, 2)
+    ppk = round(gross_monthly * ppk_employee_rate, 2)
+    base_after_zus = gross_monthly - zus
+
+    health = round(base_after_zus * HEALTH_RATE, 2)
+
+    if employment_type == "uop":
+        if use_authors_costs:
+            kup = min(base_after_zus * 0.5, KUP_AUTHORS_CAP_MONTHLY)
+        else:
+            kup = KUP_STANDARD_UOP
+    elif employment_type == "zlecenie":
+        if use_authors_costs:
+            kup = min(base_after_zus * 0.5, KUP_AUTHORS_CAP_MONTHLY)
+        else:
+            kup = base_after_zus * 0.2
+
+    kup = round(kup, 2)
+    taxable = max(base_after_zus - kup, 0)
+
+    # Progressive PIT
+    if taxable <= PIT_THRESHOLD_MONTHLY:
+        pit = max(taxable * PIT_RATE_1 - TAX_FREE_MONTHLY * PIT_RATE_1, 0)
+    else:
+        pit_below = PIT_THRESHOLD_MONTHLY * PIT_RATE_1 - TAX_FREE_MONTHLY * PIT_RATE_1
+        pit_above = (taxable - PIT_THRESHOLD_MONTHLY) * PIT_RATE_2
+        pit = max(pit_below + pit_above, 0)
+
+    pit = round(pit, 2)
+    net = round(gross_monthly - zus - ppk - health - pit, 2)
+
+    return TaxCalculationResponse(
+        gross=round(gross_monthly, 2),
+        net=net,
+        breakdown=TaxBreakdown(zus=zus, ppk=ppk, kup=kup, health=health, pit=pit),
+    )
+
+
+@app.post("/api/tax/calculate", response_model=TaxCalculationResponse, tags=["Tax"])
+async def tax_calculate(req: TaxCalculationRequest):
+    """
+    Stateless tax calculator: gross → net for Polish employment types.
+    No authentication required.
+    """
+    if req.employment_type not in EMPLOYMENT_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid employment_type: {req.employment_type}")
+    return calculate_net_from_gross(
+        gross_monthly=req.gross_monthly,
+        employment_type=req.employment_type,
+        use_authors_costs=req.use_authors_costs,
+        ppk_employee_rate=req.ppk_employee_rate,
+    )
+
+
 @app.get("/users/{user_id}/summary")
 async def get_user_summary(
     user_id: str,
@@ -2666,10 +2813,9 @@ async def get_user_insights(
     validate_user_access(user_id, current_user)
 
     try:
-        # Get user settings for AI API key
-        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
-        if not settings or not settings.ai or not settings.ai.get("apiKey"):
-            raise HTTPException(status_code=400, detail="AI API key not found")
+        # Check for server-side OpenAI API key
+        if not os.environ.get("OPENAI_API_KEY"):
+            raise HTTPException(status_code=500, detail="AI service not configured")
 
         # If manual refresh requested, bypass cache
         if refresh:
@@ -2754,10 +2900,10 @@ async def refresh_user_insights(
 async def _refresh_insights_internal(user_id: str, db: Session):
     """Internal function to refresh insights for a user."""
     try:
-        # Get user settings for AI API key
-        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
-        if not settings or not settings.ai or not settings.ai.get("apiKey"):
-            raise HTTPException(status_code=400, detail="AI API key not found")
+        # Check for server-side OpenAI API key
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="AI service not configured")
 
         # Get user's financial data
         user_data = await get_user_financial_data(user_id, db)
@@ -2771,7 +2917,7 @@ async def _refresh_insights_internal(user_id: str, db: Session):
         total_loans = sum(loan["remaining_balance"] for loan in user_data["loans"])
 
         # Generate new insights
-        insights = await generate_insights(user_data, settings.ai["apiKey"])
+        insights = await generate_insights(user_data, api_key)
 
         # Mark existing cache entries as stale for this language
         db.query(models.InsightsCache).filter(
@@ -2925,13 +3071,13 @@ async def get_user_financial_data(user_id: str, db: Session):
 
 async def generate_insights(user_data: dict, api_key: str):
     """
-    Generate financial insights using the Anthropic Claude API.
+    Generate financial insights using the OpenAI API.
     Aligned with FIRE (Financial Independence, Retire Early) philosophy
     and Dave Ramsey's Baby Steps methodology.
 
     Args:
         user_data: Dictionary containing user's complete financial data
-        api_key: Anthropic API key from user settings
+        api_key: OpenAI API key from environment
 
     Returns:
         InsightsResponse object with AI-generated insights
@@ -3392,67 +3538,58 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
   "realSavingsRate": {real_savings_rate:.1f}
 }}"""
 
-        # Make the API call to Anthropic Claude API with retry for 529 errors
+        # Make the API call to OpenAI API with retry for transient errors
+        system_prompt = "You are a FIRE (Financial Independence, Retire Early) coach specializing in Dave Ramsey's Baby Steps methodology and Polish financial regulations. You provide direct, actionable insights focused on debt elimination, emergency fund building, and wealth accumulation. CRITICAL: 1) Respond with valid JSON ONLY - no markdown code blocks, no explanatory text. 2) Do NOT perform any mathematical calculations - all numbers are pre-calculated in the prompt, use them exactly. 3) Never recommend debt avalanche - only debt snowball. 4) Place links in actionItems arrays, never in description text. 5) ALWAYS distinguish between recurring and one-time expenses in your analysis. Emergency fund targets and FIRE numbers are based on RECURRING expenses only. 6) For B2B users, NEVER suggest '50% KUP' - that's for UoP/Dzieło only. B2B deducts actual business costs from invoices."
+
         max_retries = 2
         response = None
         for attempt in range(max_retries + 1):
             async with httpx.AsyncClient(timeout=90.0) as client:
                 response = await client.post(
-                    "https://api.anthropic.com/v1/messages",
+                    "https://api.openai.com/v1/chat/completions",
                     headers={
-                        "x-api-key": api_key,
+                        "Authorization": f"Bearer {api_key}",
                         "Content-Type": "application/json",
-                        "anthropic-version": "2023-06-01",
                     },
                     json={
-                        "model": "claude-sonnet-4-20250514",
+                        "model": "gpt-4.1-mini",
                         "max_tokens": 4096,
                         "messages": [
-                            {
-                                "role": "user",
-                                "content": prompt
-                            }
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": prompt}
                         ],
-                        "system": "You are a FIRE (Financial Independence, Retire Early) coach specializing in Dave Ramsey's Baby Steps methodology and Polish financial regulations. You provide direct, actionable insights focused on debt elimination, emergency fund building, and wealth accumulation. CRITICAL: 1) Respond with valid JSON ONLY - no markdown code blocks, no explanatory text. 2) Do NOT perform any mathematical calculations - all numbers are pre-calculated in the prompt, use them exactly. 3) Never recommend debt avalanche - only debt snowball. 4) Place links in actionItems arrays, never in description text. 5) ALWAYS distinguish between recurring and one-time expenses in your analysis. Emergency fund targets and FIRE numbers are based on RECURRING expenses only. 6) For B2B users, NEVER suggest '50% KUP' - that's for UoP/Dzieło only. B2B deducts actual business costs from invoices."
                     },
                 )
 
-            # Retry on 529 (overloaded) with backoff
-            if response.status_code == 529 and attempt < max_retries:
+            # Retry on 500/502/503 (transient) with backoff
+            if response.status_code in (500, 502, 503) and attempt < max_retries:
                 import asyncio
                 wait_time = 5 * (attempt + 1)  # 5s, 10s
-                print(f"[Anthropic API] 529 overloaded, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                print(f"[OpenAI API] {response.status_code} error, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
                 await asyncio.sleep(wait_time)
                 continue
             break
 
         # Check if the request was successful
         if response.status_code != 200:
-            print(f"[Anthropic API] Error: {response.status_code} - {response.text}")
+            print(f"[OpenAI API] Error: {response.status_code} - {response.text}")
 
-            if response.status_code == 529:
-                raise Exception("Anthropic API error: 529 - Service overloaded. Please try again later.")
-            elif response.status_code == 401:
-                raise Exception("Anthropic API error: 401 - Invalid API key. Please check your Anthropic API key in settings.")
-            elif response.status_code == 403:
-                raise Exception("Anthropic API error: 403 - Forbidden. Your API key may not have permission to use this model.")
+            if response.status_code == 401:
+                raise Exception("OpenAI API error: 401 - Invalid API key.")
             elif response.status_code == 429:
-                raise Exception("Anthropic API error: 429 - Rate limit exceeded. Please try again later.")
+                raise Exception("OpenAI API error: 429 - Rate limit exceeded. Please try again later.")
             else:
-                raise Exception(f"Anthropic API error: {response.status_code}")
+                raise Exception(f"OpenAI API error: {response.status_code}")
 
         # Parse the response
-        anthropic_response = response.json()
-        content = anthropic_response.get("content", [])
+        openai_response = response.json()
+        choices = openai_response.get("choices", [])
 
-        if not content:
-            raise Exception("Empty response from Anthropic API")
+        if not choices:
+            raise Exception("Empty response from OpenAI API")
 
-        # Extract text from content blocks
-        text_content = ""
-        for block in content:
-            if block.get("type") == "text":
-                text_content += block.get("text", "")
+        # Extract text from the first choice
+        text_content = choices[0].get("message", {}).get("content", "")
 
         text_content = text_content.strip()
 
@@ -3493,18 +3630,18 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
             # Add metadata
             insights_data["metadata"] = {
                 "generatedAt": datetime.now().isoformat(),
-                "source": "claude-sonnet-4"
+                "source": "gpt-4.1-mini"
             }
 
             return insights_data
 
         except json.JSONDecodeError as e:
-            print(f"[Anthropic API] JSON parse error: {e}")
-            print(f"[Anthropic API] Response content: {text_content[:500]}")
-            raise Exception(f"Failed to parse Anthropic API response: {e}")
+            print(f"[OpenAI API] JSON parse error: {e}")
+            print(f"[OpenAI API] Response content: {text_content[:500]}")
+            raise Exception(f"Failed to parse OpenAI API response: {e}")
 
     except Exception as e:
-        print(f"[Anthropic API] Error generating insights: {str(e)}")
+        print(f"[OpenAI API] Error generating insights: {str(e)}")
 
         # Return a fallback response in case of error
         sample_insight = {
@@ -3512,7 +3649,7 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
             "title": "API Error",
             "description": f"We encountered an error while generating insights: {str(e)}. Please try again later.",
             "priority": "medium",
-            "actionItems": ["Check your Anthropic API key", "Try again later"],
+            "actionItems": ["Try again later", "Contact support if the issue persists"],
             "metrics": [
                 {
                     "label": "Error",
