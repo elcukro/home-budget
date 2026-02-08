@@ -3554,6 +3554,7 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
                     json={
                         "model": "gpt-4.1-mini",
                         "max_tokens": 4096,
+                        "response_format": {"type": "json_object"},
                         "messages": [
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": prompt}
