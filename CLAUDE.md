@@ -67,13 +67,20 @@ cd backend
 ssh root@firedup.app "cd /opt/home-budget/backend && source venv/bin/activate && alembic upgrade head"
 ```
 
-**Workflow for schema changes:**
+**Workflow for schema changes (MANDATORY):**
 1. Modify models in `app/models.py`
 2. Generate migration: `./venv/bin/alembic revision --autogenerate -m "Add X column"`
 3. Review generated migration in `alembic/versions/`
 4. Test locally: `./venv/bin/alembic upgrade head`
-5. Commit migration file
+5. Commit migration file WITH the model changes (same commit)
 6. Deploy and run migration on production
+
+**⚠️ CRITICAL: If you change models without creating a migration, production WILL break with 500 errors on ALL endpoints.**
+
+**Data conventions:**
+- NEVER store translated/localized text as enum values in the DB (e.g. don't use `"Wynagrodzenie"`)
+- Always use English enum keys (e.g. `"salary"`, `"housing"`) and translate in the frontend via i18n
+- Category values must match the keys in `frontend/src/locales/*.json`
 
 ### Mobile (Expo/React Native)
 - `cd mobile && npm install` - Install mobile app dependencies
