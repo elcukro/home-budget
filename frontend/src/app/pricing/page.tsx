@@ -42,21 +42,6 @@ const plans = [
       'pricing.features.all_reports',
     ],
   },
-  {
-    id: 'lifetime',
-    nameKey: 'pricing.plans.lifetime.name',
-    price: 599,
-    periodKey: 'pricing.plans.lifetime.period',
-    descriptionKey: 'pricing.plans.lifetime.description',
-    features: [
-      'pricing.features.unlimited_entries',
-      'pricing.features.bank_integration',
-      'pricing.features.ai_insights',
-      'pricing.features.all_exports',
-      'pricing.features.all_reports',
-      'pricing.features.lifetime_updates',
-    ],
-  },
 ];
 
 const comparisonRows = [

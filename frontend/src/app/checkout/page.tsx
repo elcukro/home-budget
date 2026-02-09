@@ -13,7 +13,6 @@ const API_BASE_URL = '/api/backend';
 const planNames: Record<string, string> = {
   monthly: 'Miesięczny',
   annual: 'Roczny',
-  lifetime: 'Lifetime',
 };
 
 export default function CheckoutPage() {
@@ -35,7 +34,7 @@ export default function CheckoutPage() {
 
     // Validate plan parameter
     if (status === 'authenticated' && plan) {
-      if (!['monthly', 'annual', 'lifetime'].includes(plan)) {
+      if (!['monthly', 'annual'].includes(plan)) {
         setError('Nieprawidłowy plan. Wybierz plan z naszej oferty.');
         setIsLoading(false);
         return;

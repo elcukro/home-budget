@@ -56,7 +56,7 @@ const features = [
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="py-20 bg-gradient-to-b from-white to-emerald-50/30">
+    <section id="features" className="pt-10 pb-20 scroll-mt-20 bg-gradient-to-b from-white to-emerald-50/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 text-center mb-4">
           FiredUp — Twoje narzędzie do wolności finansowej

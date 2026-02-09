@@ -36,17 +36,6 @@ const plans = [
     buttonText: 'Wybierz plan',
     buttonStyle: 'primary',
   },
-  {
-    id: 'lifetime',
-    name: 'Lifetime',
-    price: '399',
-    period: 'jednorazowo',
-    popular: false,
-    bonus: 'Płacisz raz, korzystasz zawsze',
-    description: 'Dla tych, którzy myślą długoterminowo',
-    buttonText: 'Wybierz plan',
-    buttonStyle: 'outline',
-  },
 ];
 
 const whyPaid = [
@@ -157,7 +146,7 @@ const supportedBanks = [
 
 export default function PricingSection() {
   return (
-    <section id="pricing" className="py-20 bg-gradient-to-b from-white to-emerald-50/30">
+    <section id="pricing" className="pt-10 pb-20 scroll-mt-20 bg-gradient-to-b from-white to-emerald-50/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 text-center mb-4">
           Zacznij za darmo
@@ -218,32 +207,24 @@ export default function PricingSection() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {plans.map((plan) => {
             const features = plan.id === 'free' ? planFeatures.free : planFeatures.premium;
             const isFree = plan.id === 'free';
-            const isLifetime = plan.id === 'lifetime';
 
             return (
               <div
                 key={plan.id}
                 className={`relative bg-white/80 backdrop-blur-sm border rounded-2xl p-8 transition-all duration-300 flex flex-col ${
                   plan.popular
-                    ? 'border-emerald-300 shadow-xl shadow-emerald-100/50 scale-105 z-10'
-                    : isLifetime
-                      ? 'border-amber-200 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-100/50'
-                      : 'border-emerald-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/50'
+                    ? 'border-emerald-300 shadow-xl shadow-emerald-100/50 ring-2 ring-emerald-200'
+                    : 'border-emerald-100 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-100/50'
                 }`}
               >
-                {/* Top badges */}
+                {/* Top badge */}
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white text-xs font-medium rounded-full shadow-lg shadow-emerald-200 whitespace-nowrap">
                     Najpopularniejszy
-                  </div>
-                )}
-                {plan.bonus && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-medium rounded-full shadow-lg shadow-amber-200 whitespace-nowrap">
-                    {plan.bonus}
                   </div>
                 )}
 
@@ -284,13 +265,11 @@ export default function PricingSection() {
                       className={`w-full ${
                         plan.popular
                           ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200'
-                          : isLifetime
-                            ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-lg shadow-amber-200'
-                            : isFree
-                              ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                              : 'bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                          : isFree
+                            ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                            : 'bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-50'
                       }`}
-                      variant={plan.popular || isLifetime ? 'default' : 'outline'}
+                      variant={plan.popular ? 'default' : 'outline'}
                     >
                       {plan.buttonText}
                     </Button>
@@ -308,19 +287,32 @@ export default function PricingSection() {
                     return (
                       <li key={featureKey} className="flex items-start gap-2">
                         {isAvailable ? (
-                          <Check className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                          <Check className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
                         ) : (
-                          <X className="w-5 h-5 text-gray-300 flex-shrink-0" />
+                          <X className="w-5 h-5 text-gray-300 flex-shrink-0 mt-0.5" />
                         )}
                         <div className="flex-1 min-w-0">
                           <span className={`text-sm ${isAvailable ? 'text-emerald-700' : 'text-gray-400'}`}>
                             {featureLabels[featureKey]}
                           </span>
-                          {displayValue && (
+                          {displayValue && featureKey === 'babySteps' ? (
+                            <>
+                              {isFree ? (
+                                <span className="text-sm ml-1 text-emerald-600 font-medium">
+                                  ({displayValue})
+                                </span>
+                              ) : (
+                                <span className="block text-sm text-emerald-500 mt-0.5">
+                                  ({displayValue})
+                                </span>
+                              )}
+                              {isFree && <span className="block h-5" />}
+                            </>
+                          ) : displayValue ? (
                             <span className={`text-sm ml-1 ${isFree ? 'text-emerald-600 font-medium' : 'text-emerald-500'}`}>
                               ({displayValue})
                             </span>
-                          )}
+                          ) : null}
                           {isBankFeature && isAvailable && (
                             <div className="inline-block relative ml-1 group">
                               <Info className="w-4 h-4 text-emerald-400 inline cursor-help" />

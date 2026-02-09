@@ -24,7 +24,7 @@ const FloatingIcon = ({
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center justify-center pt-20 pb-12 overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+    <section className="relative min-h-screen flex items-center justify-center pt-20 pb-20 overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-amber-50">
       {/* Floating background icons */}
       <FloatingIcon Icon={PiggyBank} className="top-[15%] left-[8%]" delay={0} />
       <FloatingIcon Icon={TrendingUp} className="top-[20%] right-[10%]" delay={1.5} />
@@ -84,7 +84,7 @@ export default function HeroSection() {
               size="lg"
               className="text-lg px-8 py-6 h-auto group bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-300 hover:-translate-y-0.5"
             >
-              Zobacz swój pierwszy krok
+              Zacznij 7-dniowy test
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
@@ -113,14 +113,21 @@ export default function HeroSection() {
           </p>
         </div>
 
-        {/* Trust text */}
-        <p className="text-sm text-emerald-600/50">
-          7 dni Premium gratis • Bez karty kredytowej • Anuluj kiedy chcesz
-        </p>
+        {/* Trial info */}
+        <div className="max-w-xl mx-auto text-center space-y-2">
+          <p className="text-sm text-emerald-600/70">
+            7 dni Premium gratis • Bez karty kredytowej • Anuluj kiedy chcesz
+          </p>
+          <p className="text-xs text-emerald-600/50 leading-relaxed">
+            Przez 7 dni testujesz pełną wersję Premium bez ograniczeń.
+            Po tym czasie wybierz płatny plan lub kontynuuj za darmo — z limitem wydatków,
+            kredytów, celów oszczędnościowych i źródeł przychodów, bez importu z banku i analizy AI.
+          </p>
+        </div>
       </div>
 
       {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 animate-bounce">
         <div className="w-6 h-10 rounded-full border-2 border-emerald-300/50 flex items-start justify-center p-2">
           <div className="w-1 h-2 bg-emerald-400/60 rounded-full animate-pulse" />
         </div>

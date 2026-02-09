@@ -5,9 +5,18 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Flame } from 'lucide-react';
 
+const navLinks = [
+  { id: 'baby-steps', label: 'Metoda 7 Kroków' },
+  { id: 'features', label: 'Funkcje' },
+  { id: 'testimonials', label: 'Nasi użytkownicy' },
+  { id: 'pricing', label: 'Cennik' },
+  { id: 'faq', label: 'FAQ' },
+];
+
 export default function LandingHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,6 +24,37 @@ export default function LandingHeader() {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const sectionIds = navLinks.map((l) => l.id);
+    const observers: IntersectionObserver[] = [];
+
+    const visibleSections = new Set<string>();
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            visibleSections.add(id);
+          } else {
+            visibleSections.delete(id);
+          }
+          // Pick the first visible section in page order
+          const active = sectionIds.find((s) => visibleSections.has(s)) || null;
+          setActiveSection(active);
+        },
+        { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+      );
+
+      observer.observe(el);
+      observers.push(observer);
+    });
+
+    return () => observers.forEach((o) => o.disconnect());
   }, []);
 
   const scrollToSection = (sectionId: string) => {
@@ -45,18 +85,19 @@ export default function LandingHeader() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <button
-              onClick={() => scrollToSection('features')}
-              className="text-sm text-emerald-700/70 hover:text-emerald-800 transition-colors font-medium"
-            >
-              Funkcje
-            </button>
-            <button
-              onClick={() => scrollToSection('pricing')}
-              className="text-sm text-emerald-700/70 hover:text-emerald-800 transition-colors font-medium"
-            >
-              Cennik
-            </button>
+            {navLinks.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => scrollToSection(id)}
+                className={`text-sm font-medium transition-colors ${
+                  activeSection === id
+                    ? 'text-emerald-800 border-b-2 border-emerald-500 pb-0.5'
+                    : 'text-emerald-700/70 hover:text-emerald-800'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </nav>
 
           {/* Desktop Actions */}
@@ -93,18 +134,19 @@ export default function LandingHeader() {
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-emerald-100 bg-white/95 backdrop-blur-md">
             <nav className="flex flex-col gap-4">
-              <button
-                onClick={() => scrollToSection('features')}
-                className="text-left text-emerald-700 hover:text-emerald-800 transition-colors font-medium"
-              >
-                Funkcje
-              </button>
-              <button
-                onClick={() => scrollToSection('pricing')}
-                className="text-left text-emerald-700 hover:text-emerald-800 transition-colors font-medium"
-              >
-                Cennik
-              </button>
+              {navLinks.map(({ id, label }) => (
+                <button
+                  key={id}
+                  onClick={() => scrollToSection(id)}
+                  className={`text-left font-medium transition-colors ${
+                    activeSection === id
+                      ? 'text-emerald-800'
+                      : 'text-emerald-700 hover:text-emerald-800'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
               <div className="flex items-center gap-4 pt-4 border-t border-emerald-100">
                 <Link href="/auth/signin" className="flex-1">
                   <Button
