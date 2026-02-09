@@ -2,10 +2,10 @@
 
 import { signIn, useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
-import Link from "next/link";
 import { Flame, TrendingUp, PiggyBank, Wallet, Sparkles, AlertCircle } from "lucide-react";
+import LegalOverlay from "@/components/landing/LegalOverlay";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 
@@ -33,6 +33,7 @@ export default function SignIn() {
   const intl = useIntl();
   const callbackUrl = searchParams?.get("callbackUrl") || "/welcome";
   const error = searchParams?.get("error");
+  const [legalOverlay, setLegalOverlay] = useState<'privacy' | 'terms' | null>(null);
 
   useEffect(() => {
     if (session?.user) {
@@ -144,20 +145,21 @@ export default function SignIn() {
           {/* Terms and Privacy */}
           <p className="mt-6 text-center text-sm text-emerald-600/70">
             {intl.formatMessage({ id: 'auth.termsPrefix' })}{' '}
-            <Link
-              href="/terms"
+            <button
+              onClick={() => setLegalOverlay('terms')}
               className="text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
             >
               {intl.formatMessage({ id: 'auth.termsOfService' })}
-            </Link>
+            </button>
             {' '}{intl.formatMessage({ id: 'auth.termsAnd' })}{' '}
-            <Link
-              href="/privacy"
+            <button
+              onClick={() => setLegalOverlay('privacy')}
               className="text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
             >
               {intl.formatMessage({ id: 'auth.privacyPolicy' })}
-            </Link>
+            </button>
           </p>
+
         </div>
 
         {/* Bottom decorative element */}
@@ -189,6 +191,14 @@ export default function SignIn() {
           animation: float 8s ease-in-out infinite;
         }
       `}</style>
+
+      {/* Legal Overlay - outside card container so it's not constrained */}
+      {legalOverlay && (
+        <LegalOverlay
+          type={legalOverlay}
+          onClose={() => setLegalOverlay(null)}
+        />
+      )}
     </div>
   );
 }

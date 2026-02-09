@@ -146,6 +146,7 @@ export default function SalaryDistributionChart({
             {
               amount: formatMoney(salary),
               share: aboveShare,
+              percentile: percentileRounded,
             }
           )
         : intl.formatMessage({

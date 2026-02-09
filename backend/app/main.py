@@ -15,7 +15,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget
 from datetime import timezone
 from .routers.stripe_billing import TRIAL_DAYS
 from .database import engine, Base
@@ -205,6 +205,8 @@ app.include_router(gamification.router)
 app.include_router(gamification.router, prefix="/internal-api")
 # Admin endpoints (audit logs, etc.)
 app.include_router(admin.router)
+# Budget planning (annual budgets from onboarding)
+app.include_router(budget.router)
 
 # Loan models
 VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]
@@ -340,6 +342,8 @@ class IncomeBase(BaseModel):
     employment_type: str | None = Field(default=None, description="Employment type: uop (umowa o pracę), b2b, zlecenie, dzielo, other")
     gross_amount: float | None = Field(default=None, ge=0, description="Gross amount (brutto) before tax")
     is_gross: bool = Field(default=False, description="Whether the entered amount was gross (true) or net (false)")
+    kup_type: str | None = Field(default=None, description="KUP type: 'standard', 'author_50', 'none' (null = use global setting)")
+    owner: str | None = Field(default=None, description="Income owner: 'self', 'partner' (null = 'self')")
 
 class IncomeCreate(IncomeBase):
     pass
@@ -1231,6 +1235,7 @@ class TaxCalculationRequest(BaseModel):
     employment_type: str  # uop, b2b, zlecenie, dzielo, other
     use_authors_costs: bool = False
     ppk_employee_rate: float = 0.0  # 0 if not enrolled
+    kup_type: str | None = None  # "standard", "author_50", "none" (null = use global use_authors_costs)
 
 class TaxBreakdown(BaseModel):
     zus: float
@@ -1250,6 +1255,7 @@ def calculate_net_from_gross(
     employment_type: str,
     use_authors_costs: bool = False,
     ppk_employee_rate: float = 0.0,
+    kup_type: str | None = None,
 ) -> TaxCalculationResponse:
     """
     Calculate monthly net income from gross for Polish employment types.
@@ -1295,7 +1301,10 @@ def calculate_net_from_gross(
 
     if employment_type == "dzielo":
         # Umowa o dzieło: no ZUS, no health
-        if use_authors_costs:
+        # Resolve KUP: per-income kup_type overrides global use_authors_costs
+        if kup_type == "none":
+            kup = 0.0
+        elif kup_type == "author_50" or (kup_type is None and use_authors_costs):
             kup = min(gross_monthly * 0.5, KUP_AUTHORS_CAP_MONTHLY)
         else:
             kup = gross_monthly * 0.2
@@ -1323,13 +1332,18 @@ def calculate_net_from_gross(
 
     health = round(base_after_zus * HEALTH_RATE, 2)
 
+    # Resolve KUP: per-income kup_type overrides global use_authors_costs
     if employment_type == "uop":
-        if use_authors_costs:
+        if kup_type == "none":
+            kup = 0.0
+        elif kup_type == "author_50" or (kup_type is None and use_authors_costs):
             kup = min(base_after_zus * 0.5, KUP_AUTHORS_CAP_MONTHLY)
         else:
             kup = KUP_STANDARD_UOP
     elif employment_type == "zlecenie":
-        if use_authors_costs:
+        if kup_type == "none":
+            kup = 0.0
+        elif kup_type == "author_50" or (kup_type is None and use_authors_costs):
             kup = min(base_after_zus * 0.5, KUP_AUTHORS_CAP_MONTHLY)
         else:
             kup = base_after_zus * 0.2
@@ -1368,6 +1382,7 @@ async def tax_calculate(req: TaxCalculationRequest):
         employment_type=req.employment_type,
         use_authors_costs=req.use_authors_costs,
         ppk_employee_rate=req.ppk_employee_rate,
+        kup_type=req.kup_type,
     )
 
 
@@ -3839,6 +3854,50 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
             }
         }
 
+class SavingsGoalCreate(BaseModel):
+    name: str
+    category: str = "general"
+    target_amount: float
+    deadline: Optional[str] = None  # ISO date string
+    priority: int = 0
+    status: str = "active"
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    notes: Optional[str] = None
+
+@app.post("/users/{user_id}/savings-goals")
+async def create_savings_goal(
+    user_id: str,
+    goal_data: SavingsGoalCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db),
+):
+    validate_user_access(user_id, current_user)
+    goal = models.SavingsGoal(
+        user_id=current_user.id,
+        name=goal_data.name,
+        category=goal_data.category,
+        target_amount=goal_data.target_amount,
+        deadline=datetime.fromisoformat(goal_data.deadline.replace("Z", "+00:00")).date() if goal_data.deadline else None,
+        priority=goal_data.priority,
+        status=goal_data.status,
+        icon=goal_data.icon,
+        color=goal_data.color,
+        notes=goal_data.notes,
+    )
+    db.add(goal)
+    db.commit()
+    db.refresh(goal)
+    return {
+        "id": goal.id,
+        "name": goal.name,
+        "category": goal.category,
+        "target_amount": goal.target_amount,
+        "deadline": goal.deadline.isoformat() if goal.deadline else None,
+        "priority": goal.priority,
+        "status": goal.status,
+    }
+
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Home Budget API"} 
+    return {"message": "Welcome to the Home Budget API"}

@@ -27,6 +27,17 @@ interface Settings {
   ppk_employee_rate?: number; // PPK employee contribution (0.5% - 4%)
   ppk_employer_rate?: number; // PPK employer contribution (1.5% - 4%)
   children_count?: number; // For child tax relief calculation
+  // Life data
+  include_partner_finances?: boolean;
+  // Partner tax profile
+  partner_name?: string;
+  partner_employment_status?: string;
+  partner_tax_form?: string;
+  partner_birth_year?: number;
+  partner_use_authors_costs?: boolean;
+  partner_ppk_enrolled?: boolean;
+  partner_ppk_employee_rate?: number;
+  partner_ppk_employer_rate?: number;
   // Onboarding status
   onboarding_completed?: boolean;
   onboarding_completed_at?: string; // ISO datetime string
@@ -47,9 +58,13 @@ const LANGUAGE_STORAGE_KEY = 'firedup_language';
 
 const getStoredLanguage = (): string => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(LANGUAGE_STORAGE_KEY) || DEFAULT_LOCALE;
+    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (stored) return stored;
+    // Detect browser language for first-time users
+    const browserLang = navigator.language.split('-')[0];
+    if (['en', 'es', 'fr', 'pl'].includes(browserLang)) return browserLang;
   }
-  return DEFAULT_LOCALE;
+  return 'pl'; // Default to Polish for this app
 };
 
 const storeLanguage = (language: string): void => {
@@ -59,14 +74,14 @@ const storeLanguage = (language: string): void => {
 };
 
 const DEFAULT_SETTINGS: Settings = {
-  language: DEFAULT_LOCALE,
-  currency: 'USD',
+  language: 'pl',
+  currency: 'PLN',
   ai: {
     apiKey: undefined
   },
   emergency_fund_target: 3000, // Baby Step 1: 3000-5000 PLN recommended
   emergency_fund_months: 3,
-  base_currency: 'USD'
+  base_currency: 'PLN'
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -104,6 +119,14 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
       const response = await fetch(url);
       logger.debug('[SettingsContext] Response status:', response.status);
       
+      if (response.status === 404) {
+        // New user — no settings yet, use defaults with browser language
+        const browserLanguage = getStoredLanguage();
+        logger.debug('[SettingsContext] No settings found (new user), using defaults with language:', browserLanguage);
+        setSettings({ ...DEFAULT_SETTINGS, language: browserLanguage });
+        setIsLoading(false);
+        return;
+      }
       if (!response.ok) {
         throw new Error(`Failed to fetch settings: ${response.status} ${response.statusText}`);
       }

@@ -2166,24 +2166,25 @@ export const SavingsManager = () => {
         isLoading={isDeleting}
       />
 
-      <CrudDialog
-        open={changeRateOpen}
-        mode="create"
-        onOpenChange={handleChangeRateClose}
-        titleId="changeRate.dialog.title"
-        descriptionId="changeRate.dialog.description"
-        submitLabelId="changeRate.dialog.submit"
-        schema={changeRateSchema}
-        defaultValues={changeRateDefaultValues}
-        initialValues={
-          changeRateItem
-            ? { newAmount: changeRateItem.amount, effectiveDate: todayISO }
-            : undefined
-        }
-        fields={changeRateFieldConfig}
-        onSubmit={handleChangeRate}
-        isSubmitting={isChangingRate}
-      />
+      {changeRateOpen && changeRateItem && (
+        <CrudDialog
+          key={changeRateItem.id}
+          open={changeRateOpen}
+          mode="create"
+          onOpenChange={handleChangeRateClose}
+          titleId="changeRate.dialog.title"
+          descriptionId="changeRate.dialog.description"
+          submitLabelId="changeRate.dialog.submit"
+          schema={changeRateSchema}
+          defaultValues={{
+            newAmount: changeRateItem.amount,
+            effectiveDate: todayISO,
+          }}
+          fields={changeRateFieldConfig}
+          onSubmit={handleChangeRate}
+          isSubmitting={isChangingRate}
+        />
+      )}
     </div>
   );
 };

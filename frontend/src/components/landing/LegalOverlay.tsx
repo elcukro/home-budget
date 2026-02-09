@@ -28,7 +28,7 @@ export default function LegalOverlay({ type, onClose }: LegalOverlayProps) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Content */}
-      <div className="relative w-full max-w-4xl max-h-[90vh] mx-4 bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="relative w-full max-w-6xl max-h-[90vh] mx-4 bg-white rounded-2xl shadow-[0_25px_60px_-12px_rgba(0,0,0,0.35)] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-8 py-5 border-b border-emerald-100 bg-emerald-50/50 shrink-0">
           <div>
@@ -386,7 +386,7 @@ function PrivacyContent() {
         </p>
         <ul className="list-none space-y-1 mt-2">
           <li>Email: <a href={`mailto:${LEGAL_ENTITY.email.privacy}`} className="text-emerald-600">{LEGAL_ENTITY.email.privacy}</a></li>
-          <li>Strona: <a href={LEGAL_ENTITY.website} className="text-emerald-600">{LEGAL_ENTITY.website.replace('https://', '')}</a></li>
+          <li>Strona: <a href={LEGAL_ENTITY.website} target="_blank" rel="noopener noreferrer" className="text-emerald-600">{LEGAL_ENTITY.website.replace('https://', '')}</a></li>
         </ul>
       </section>
     </>
@@ -597,7 +597,7 @@ function TermsContent() {
         </p>
         <ul className="list-none space-y-1 mt-2">
           <li>Email: <a href={`mailto:${LEGAL_ENTITY.email.contact}`} className="text-emerald-600">{LEGAL_ENTITY.email.contact}</a></li>
-          <li>Strona: <a href={LEGAL_ENTITY.website} className="text-emerald-600">{LEGAL_ENTITY.website.replace('https://', '')}</a></li>
+          <li>Strona: <a href={LEGAL_ENTITY.website} target="_blank" rel="noopener noreferrer" className="text-emerald-600">{LEGAL_ENTITY.website.replace('https://', '')}</a></li>
         </ul>
       </section>
     </>

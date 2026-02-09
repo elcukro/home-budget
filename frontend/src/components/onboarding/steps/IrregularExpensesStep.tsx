@@ -10,13 +10,17 @@ import FormFooter from '../common/FormFooter';
 import { AnimatedAmount } from '../common/AnimatedAmount';
 import type { IrregularExpenses } from '../OnboardingWizard';
 
+const MONTH_NAMES_SHORT: Record<string, string[]> = {
+  pl: ['Sty', 'Lut', 'Mar', 'Kwi', 'Maj', 'Cze', 'Lip', 'Sie', 'Wrz', 'Paź', 'Lis', 'Gru'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+};
+
 interface IrregularExpensesStepProps {
   data: IrregularExpenses;
   errors: Record<string, string>;
   onUpdate: (updater: (prev: IrregularExpenses) => IrregularExpenses) => void;
   onNext: () => void;
   onBack: () => void;
-  onSkip: () => void;
   formatMoney: (value: number) => string;
   generateId: (prefix: string) => string;
   nextLabel: string;
@@ -28,7 +32,6 @@ export default function IrregularExpensesStep({
   onUpdate,
   onNext,
   onBack,
-  onSkip,
   formatMoney,
   generateId,
   nextLabel,
@@ -42,6 +45,12 @@ export default function IrregularExpensesStep({
 
   const totalMonthly = totalAnnual / 12;
 
+  const monthLabel = intl.formatMessage({
+    id: 'onboarding.irregularExpenses.month.label',
+  });
+  const monthPlaceholder = intl.formatMessage({
+    id: 'onboarding.irregularExpenses.month.placeholder',
+  });
   const introText = intl.formatMessage({
     id: 'onboarding.irregularExpenses.intro',
   });
@@ -65,11 +74,24 @@ export default function IrregularExpensesStep({
   });
   const finalNextLabel = nextLabel || intl.formatMessage({ id: 'onboarding.navigation.nextDefault' });
 
+  const monthNames = MONTH_NAMES_SHORT[intl.locale] || MONTH_NAMES_SHORT.en;
+
   const handleAmountChange = useCallback(
     (id: string, amount: number) => {
       onUpdate((prev) =>
         prev.map((item) =>
           item.id === id ? { ...item, amount: Math.max(0, amount) } : item
+        )
+      );
+    },
+    [onUpdate]
+  );
+
+  const handleMonthChange = useCallback(
+    (id: string, month: number) => {
+      onUpdate((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, month } : item
         )
       );
     },
@@ -153,12 +175,30 @@ export default function IrregularExpensesStep({
                     <CurrencyInput
                       value={item.amount}
                       onValueChange={(value) => handleAmountChange(item.id, value)}
+                      placeholder="0"
                       aria-invalid={Boolean(amountError)}
                     />
                     {amountError && (
                       <p className="mt-1 text-xs text-destructive">{amountError}</p>
                     )}
                   </div>
+                  {item.amount > 0 && (
+                    <select
+                      value={item.month || ''}
+                      onChange={(event) => handleMonthChange(item.id, Number(event.target.value))}
+                      aria-label={monthLabel}
+                      className="h-10 w-[5.5rem] rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="" disabled>
+                        {monthPlaceholder}
+                      </option>
+                      {monthNames.map((name, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   {item.isCustom && (
                     <Button
                       type="button"
@@ -196,7 +236,6 @@ export default function IrregularExpensesStep({
 
       <FormFooter
         onBack={onBack}
-        onSkip={onSkip}
         onNext={onNext}
         nextLabel={finalNextLabel}
       />

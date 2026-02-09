@@ -123,10 +123,14 @@ export default function Sidebar() {
     void checkShouldShowOnboarding();
   }, [session?.user?.email, settings?.onboarding_completed, settingsLoading]);
 
-  // Filter out onboarding from navigation - hidden by default, only shown if explicitly needed
-  const filteredNavigation = showOnboarding
-    ? navigation
-    : navigation.filter((item) => !item.href.startsWith('/onboarding'));
+  const isOnboardingPage = pathname === '/onboarding';
+
+  // During onboarding, show only the onboarding link; otherwise, conditionally include it
+  const filteredNavigation = isOnboardingPage
+    ? navigation.filter((item) => item.href.startsWith('/onboarding'))
+    : showOnboarding
+      ? navigation
+      : navigation.filter((item) => !item.href.startsWith('/onboarding'));
 
   return (
     <div className="sticky top-0 h-screen w-64 border-r border-default bg-muted z-40">
@@ -167,7 +171,8 @@ export default function Sidebar() {
 
           <nav className="flex-1 space-y-1">
             {filteredNavigation.map((item) => {
-              const isActive = pathname === item.href;
+              const itemPath = item.href.split('?')[0];
+              const isActive = pathname === itemPath;
               return (
                 <Link
                   key={item.href}

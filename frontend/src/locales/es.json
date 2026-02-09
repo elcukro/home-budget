@@ -998,11 +998,14 @@
         "expenses": "Guardando gastos",
         "loans": "Guardando préstamos",
         "savings": "Guardando ahorros y activos",
+        "budget": "Presupuesto anual",
+        "goals": "Metas financieras",
         "finalize": "Finalizando"
       },
       "detail": {
         "clearing": "Eliminando datos previos del onboarding",
         "finalize": "Realizando comprobaciones finales",
+        "creatingBudget": "Creando presupuesto anual...",
         "count": "{current} de {total}"
       }
     },

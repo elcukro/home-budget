@@ -111,6 +111,7 @@ class SavingBase(BaseModel):
     account_type: AccountType = AccountType.STANDARD  # Type of savings account (IKE/IKZE/PPK/OIPE/standard)
     annual_return_rate: Optional[float] = None  # Expected annual return rate for compound interest (e.g., 0.05 for 5%)
     goal_id: Optional[int] = None  # Link to a savings goal
+    owner: Optional[str] = None  # "self", "partner" (null = "self")
 
     @validator('target_amount')
     def target_amount_must_be_positive(cls, v):

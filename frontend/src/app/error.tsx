@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import * as Sentry from '@sentry/nextjs';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Home, AlertTriangle } from 'lucide-react';
@@ -13,6 +14,9 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const pathname = usePathname();
+  const isOnboarding = pathname?.startsWith('/onboarding');
+
   useEffect(() => {
     // Report to Sentry
     Sentry.captureException(error, {
@@ -37,7 +41,7 @@ export default function Error({
 
         {/* Headline */}
         <h1 className="text-3xl sm:text-4xl font-bold text-emerald-900 mb-4">
-          Mały turbulencja na drodze
+          Mała turbulencja na drodze
         </h1>
 
         {/* Description */}
@@ -63,14 +67,14 @@ export default function Error({
             <RefreshCw className="mr-2 w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
             Spróbuj ponownie
           </Button>
-          <Link href="/dashboard">
+          <Link href={isOnboarding ? '/onboarding' : '/'}>
             <Button
               variant="outline"
               size="lg"
               className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
             >
               <Home className="mr-2 w-5 h-5" />
-              Dashboard
+              {isOnboarding ? 'Wróć do onboardingu' : 'Strona główna'}
             </Button>
           </Link>
         </div>

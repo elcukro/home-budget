@@ -1,44 +1,52 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useIntl } from 'react-intl';
 import { useSubscription } from '@/contexts/SubscriptionContext';
-import { useUser } from '@/contexts/UserContext';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faCrown,
-  faCheck,
-  faCalendarDays,
-  faInfinity,
-  faRocket,
-  faBuildingColumns,
-  faRobot,
-  faFileExport,
-  faCircleCheck,
-} from '@fortawesome/free-solid-svg-icons';
-import { Loader2 } from 'lucide-react';
+  Flame,
+  Sparkles,
+  Check,
+  ArrowRight,
+  Building2,
+  Brain,
+  FileSpreadsheet,
+  Infinity,
+  Crown,
+} from 'lucide-react';
+import Link from 'next/link';
 
 const PREMIUM_FEATURES = [
-  { iconKey: faRocket, titleKey: 'welcome.features.unlimited.title', descKey: 'welcome.features.unlimited.desc' },
-  { iconKey: faBuildingColumns, titleKey: 'welcome.features.bank.title', descKey: 'welcome.features.bank.desc' },
-  { iconKey: faRobot, titleKey: 'welcome.features.ai.title', descKey: 'welcome.features.ai.desc' },
-  { iconKey: faFileExport, titleKey: 'welcome.features.reports.title', descKey: 'welcome.features.reports.desc' },
-  { iconKey: faCircleCheck, titleKey: 'welcome.features.all.title', descKey: 'welcome.features.all.desc' },
-];
-
-const COMPARISON_ROWS = [
-  { key: 'expenses', freeValue: '50/mies.', premiumValue: 'unlimited' },
-  { key: 'incomes', freeValue: '20/mies.', premiumValue: 'unlimited' },
-  { key: 'loans', freeValue: '3', premiumValue: 'unlimited' },
-  { key: 'savings', freeValue: '3', premiumValue: 'unlimited' },
-  { key: 'bank', freeValue: false, premiumValue: true },
-  { key: 'ai', freeValue: false, premiumValue: true },
-  { key: 'export', freeValue: false, premiumValue: true },
-  { key: 'reports', freeValue: false, premiumValue: true },
+  {
+    icon: Infinity,
+    color: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
+    titleKey: 'welcome.features.unlimited.title',
+    descKey: 'welcome.features.unlimited.desc',
+  },
+  {
+    icon: Building2,
+    color: 'bg-violet-100',
+    iconColor: 'text-violet-600',
+    titleKey: 'welcome.features.bank.title',
+    descKey: 'welcome.features.bank.desc',
+  },
+  {
+    icon: Brain,
+    color: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+    titleKey: 'welcome.features.ai.title',
+    descKey: 'welcome.features.ai.desc',
+  },
+  {
+    icon: FileSpreadsheet,
+    color: 'bg-rose-100',
+    iconColor: 'text-rose-600',
+    titleKey: 'welcome.features.reports.title',
+    descKey: 'welcome.features.reports.desc',
+  },
 ];
 
 function formatTrialDate(isoDate: string, locale: string): string {
@@ -55,19 +63,20 @@ export default function WelcomePage() {
   const intl = useIntl();
   const { data: session } = useSession();
   const { subscription, isLoading, isTrial } = useSubscription();
-  const { refreshUser } = useUser();
-  const [isSkipping, setIsSkipping] = useState(false);
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-amber-50 fixed inset-0">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-emerald-700 font-medium">
+            {intl.formatMessage({ id: 'auth.loading' })}
+          </p>
+        </div>
       </div>
     );
   }
 
-  const isLifetime = subscription?.is_lifetime ?? false;
-  const trialExpired = !isTrial && !isLifetime && subscription?.status !== 'active';
   const trialEndDate = subscription?.trial_ends_at;
   const locale = intl.locale;
 
@@ -75,191 +84,131 @@ export default function WelcomePage() {
     router.push('/onboarding');
   };
 
-  const handleSkip = async () => {
-    if (!session?.user?.email) {
-      router.push('/dashboard');
-      return;
-    }
-
-    setIsSkipping(true);
-    try {
-      const response = await fetch(
-        `/api/backend/users/${encodeURIComponent(session.user.email)}/first-login-complete`,
-        { method: 'PUT' }
-      );
-      if (!response.ok) {
-        throw new Error('Failed to complete activation');
-      }
-      await refreshUser();
-      router.push('/dashboard');
-    } catch {
-      alert(intl.formatMessage({ id: 'welcome.skip.error', defaultMessage: 'Nie udało się zakończyć aktywacji. Spróbuj ponownie.' }));
-      setIsSkipping(false);
-    }
+  const handleSkip = () => {
+    // Don't mark first-login-complete here — let the onboarding wizard handle it
+    router.push('/onboarding');
   };
 
-  // Lifetime users see a simplified version
-  if (isLifetime) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
-        <div className="w-full max-w-lg text-center space-y-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
-            <FontAwesomeIcon icon={faCrown} className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold text-foreground">
-            {intl.formatMessage({ id: 'welcome.lifetime.title' })}
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            {intl.formatMessage({ id: 'welcome.lifetime.subtitle' })}
-          </p>
-          <Button size="lg" className="w-full sm:w-auto" onClick={handleContinue}>
-            {intl.formatMessage({ id: 'welcome.continue' })}
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const firstName = session?.user?.name?.split(' ')[0] || '';
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container max-w-3xl py-8 px-4 sm:py-12">
-        {/* Hero Section */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <FontAwesomeIcon icon={faCrown} className="w-8 h-8 text-primary" />
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-amber-50 relative overflow-hidden">
+      {/* Gradient orbs */}
+      <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/30 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-200/20 rounded-full blur-3xl" />
+
+      <div className="relative z-10 w-full max-w-2xl mx-4 py-12">
+        {/* Logo */}
+        <div className="flex justify-center mb-8">
+          <div className="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
+            <Flame className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-            {intl.formatMessage({
-              id: trialExpired ? 'welcome.expired.title' : 'welcome.title',
-            })}
+        </div>
+
+        {/* Greeting */}
+        <div className="text-center mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold text-emerald-900 mb-3">
+            {firstName
+              ? intl.formatMessage(
+                  { id: 'welcome.greeting', defaultMessage: 'Witaj, {name}!' },
+                  { name: firstName }
+                )
+              : intl.formatMessage({ id: 'welcome.title' })}
           </h1>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            {intl.formatMessage({
-              id: trialExpired ? 'welcome.expired.subtitle' : 'welcome.subtitle',
-            })}
+          <p className="text-lg text-emerald-700/70 max-w-lg mx-auto">
+            {intl.formatMessage({ id: 'welcome.subtitle' })}
           </p>
         </div>
 
-        {/* Trial Date Card */}
-        {isTrial && trialEndDate && !trialExpired && (
-          <Card className="mb-8 border-primary">
-            <CardContent className="flex items-center gap-4 py-5">
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <FontAwesomeIcon icon={faCalendarDays} className="w-5 h-5 text-primary" />
+        {/* Trial Badge */}
+        {isTrial && trialEndDate && (
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm border border-emerald-200 rounded-full px-6 py-3 shadow-sm">
+              <Sparkles className="w-5 h-5 text-emerald-600" />
+              <div className="text-sm">
+                <span className="text-emerald-700 font-medium">
+                  {intl.formatMessage(
+                    { id: 'welcome.trial.active', defaultMessage: '7 dni Premium gratis' }
+                  )}
+                </span>
+                <span className="text-emerald-600/60 ml-2">
+                  do {formatTrialDate(trialEndDate, locale)}
+                </span>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  {intl.formatMessage({ id: 'welcome.trial.endsLabel' })}
-                </p>
-                <p className="text-lg font-bold text-primary">
-                  {formatTrialDate(trialEndDate, locale)}
-                </p>
-                <p className="text-xs text-muted-foreground italic">
-                  {intl.formatMessage({ id: 'welcome.trial.reminder' })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
-        {/* Premium Features */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-4">
+        {/* Features Card */}
+        <div className="bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-2xl p-8 mb-8 shadow-lg shadow-emerald-100/30">
+          <h2 className="text-lg font-semibold text-emerald-900 mb-6 text-center">
             {intl.formatMessage({ id: 'welcome.features.heading' })}
           </h2>
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {PREMIUM_FEATURES.map((feature) => (
-              <Card key={feature.titleKey}>
-                <CardContent className="flex items-center gap-4 py-4">
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FontAwesomeIcon icon={feature.iconKey} className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">
-                      {intl.formatMessage({ id: feature.titleKey })}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {intl.formatMessage({ id: feature.descKey })}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={feature.titleKey} className="flex items-start gap-3">
+                <div
+                  className={`w-10 h-10 ${feature.color} rounded-xl flex items-center justify-center flex-shrink-0`}
+                >
+                  <feature.icon className={`w-5 h-5 ${feature.iconColor}`} />
+                </div>
+                <div>
+                  <p className="font-medium text-emerald-900 text-sm">
+                    {intl.formatMessage({ id: feature.titleKey })}
+                  </p>
+                  <p className="text-emerald-700/60 text-xs">
+                    {intl.formatMessage({ id: feature.descKey })}
+                  </p>
+                </div>
+              </div>
             ))}
+          </div>
+
+          {/* What's included in free */}
+          <div className="mt-6 pt-6 border-t border-emerald-100">
+            <p className="text-xs text-emerald-600/60 text-center">
+              {intl.formatMessage({ id: 'welcome.finePrint' })}
+            </p>
           </div>
         </div>
 
-        {/* Plan Comparison Table */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-foreground mb-4">
-            {intl.formatMessage({ id: 'welcome.comparison.heading' })}
-          </h2>
-          <Card>
-            <CardContent className="pt-6 overflow-x-auto">
-              <table className="w-full min-w-[400px]">
-                <thead>
-                  <tr className="border-b border-default">
-                    <th className="text-left py-3 px-4 text-foreground font-semibold">
-                      {intl.formatMessage({ id: 'pricing.comparison.feature' })}
-                    </th>
-                    <th className="text-center py-3 px-4 text-foreground font-semibold">
-                      {intl.formatMessage({ id: 'pricing.comparison.free' })}
-                    </th>
-                    <th className="text-center py-3 px-4 text-foreground font-semibold">
-                      <span className="flex items-center justify-center gap-2">
-                        <FontAwesomeIcon icon={faCrown} className="w-4 h-4 text-primary" />
-                        {intl.formatMessage({ id: 'pricing.comparison.premium' })}
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON_ROWS.map((row) => (
-                    <tr key={row.key} className="border-b border-default last:border-0">
-                      <td className="py-3 px-4 text-foreground">
-                        {intl.formatMessage({ id: `pricing.comparison.${row.key}` })}
-                      </td>
-                      <td className="text-center py-3 px-4">
-                        {typeof row.freeValue === 'boolean' ? (
-                          <span className="text-muted-foreground">-</span>
-                        ) : (
-                          <span className="text-muted-foreground">{row.freeValue}</span>
-                        )}
-                      </td>
-                      <td className="text-center py-3 px-4">
-                        {typeof row.premiumValue === 'boolean' ? (
-                          <FontAwesomeIcon icon={faCheck} className="w-4 h-4 text-success" />
-                        ) : row.premiumValue === 'unlimited' ? (
-                          <span className="text-success flex items-center justify-center gap-1">
-                            <FontAwesomeIcon icon={faInfinity} className="w-4 h-4" />
-                          </span>
-                        ) : (
-                          <span className="text-success">{row.premiumValue}</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
+        {/* CTA */}
+        <div className="flex justify-center">
+          <Button
+            size="lg"
+            onClick={handleSkip}
+
+            className="text-base px-10 py-6 h-auto group bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5"
+          >
+            {intl.formatMessage({ id: 'welcome.start', defaultMessage: 'Zaczynajmy!' })}
+            <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </Button>
         </div>
 
-        {/* Fine Print */}
-        <p className="text-center text-sm text-muted-foreground mb-8">
-          {intl.formatMessage({ id: 'welcome.finePrint' })}
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Button size="lg" onClick={handleContinue}>
-            {intl.formatMessage({ id: 'welcome.continue' })}
-          </Button>
-          <Button variant="ghost" onClick={handleSkip} disabled={isSkipping}>
-            {isSkipping ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            {intl.formatMessage({ id: 'welcome.skip' })}
-          </Button>
+        {/* Pricing nudge */}
+        <div className="mt-10 text-center">
+          <div className="inline-flex items-center gap-2 text-emerald-600/50 text-sm">
+            <Crown className="w-4 h-4" />
+            <span>
+              {intl.formatMessage(
+                {
+                  id: 'welcome.pricing.nudge',
+                  defaultMessage: 'Plany Premium od 29 PLN/mies.',
+                }
+              )}
+            </span>
+            <Link
+              href="/checkout"
+              className="text-emerald-700 hover:text-emerald-800 underline underline-offset-2 font-medium"
+            >
+              {intl.formatMessage(
+                {
+                  id: 'welcome.pricing.link',
+                  defaultMessage: 'Zobacz plany',
+                }
+              )}
+            </Link>
+          </div>
         </div>
       </div>
     </div>

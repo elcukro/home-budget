@@ -10,7 +10,10 @@
     },
     "form": {
       "newAmount": "New amount",
-      "effectiveDate": "Effective from"
+      "effectiveDate": "Effective from",
+      "hasEndDate": "Set end date",
+      "hasEndDateHint": "Income will expire after this date",
+      "endDate": "End date"
     },
     "toast": {
       "success": "Rate has been changed",
@@ -431,8 +434,8 @@
       "greeting": "Hi, {name}!",
       "greetingDefault": "Hi there!",
       "situationGood": "You're in great shape – time to start building wealth.",
-      "netIncome": "Monthly living costs",
-      "expenses": "Your income",
+      "netIncome": "Your income",
+      "expenses": "Monthly living costs",
       "balance": "Surplus",
       "vsLastMonth": "vs last month",
       "fireNumber": "FIRE Goals"
@@ -466,6 +469,7 @@
       "years": "{count} years",
       "months": "{count} mo.",
       "targetSavings": "Target: {amount}",
+      "babyStepCurrent": "Step {step}",
       "noFireGoal": "Set your FIRE goals",
       "setupFire": "Configure goals",
       "overpaymentSim": "Overpayment Simulator",
@@ -600,6 +604,7 @@
           "can_be_improved": "Can Be Improved",
           "bad": "Needs Attention"
         },
+        "generatedAt": "Generated: {date}",
         "lastRefreshed": "Last refreshed {date} ({days} days ago)",
         "dataChanges": "Changes since last refresh",
         "incomeChange": "Income: {change}",
@@ -742,6 +747,7 @@
       "expense": "expense",
       "loan": "loan",
       "payment": "payment",
+      "saving": "saving",
       "settings": "settings",
       "source": "source",
       "description": "description",
@@ -790,6 +796,7 @@
       "overpayment_fee_percent": "Overpayment fee (%)",
       "overpayment_fee_waived_until": "Fee waived until",
       "target_amount": "Target amount",
+      "account_type": "Account type",
       "saving_type": "Saving type",
       "notes": "Notes",
       "currency": "Currency",
@@ -804,6 +811,7 @@
         "freelance": "Freelance",
         "investments": "Investments",
         "rental": "Rental Income",
+        "benefits": "Benefits (child allowance)",
         "other": "Other"
       },
       "expense": {
@@ -823,6 +831,10 @@
   "income": {
     "title": "Income Management",
     "subtitle": "Track both recurring and one-off income sources.",
+    "tabs": {
+      "transactions": "Income",
+      "budget": "Budget"
+    },
     "incomeHistory": "List of incomes",
     "noEntries": "No income entries yet",
     "loadError": "Failed to load income data. Please try again later.",
@@ -837,7 +849,9 @@
       "totalWithPeriod": "Total ({period})",
       "average": "Average/mo.",
       "activeMonths": "Active months",
-      "monthsInPeriod": "Months"
+      "monthsInPeriod": "Months",
+      "predicted": "forecast",
+      "predictedNote": "Forecast based on active recurring income"
     },
     "summary": {
       "totalLabel": "Total income ({month})",
@@ -858,6 +872,7 @@
       "freelance": "Income from freelancing, gigs, or contract projects.",
       "investments": "Dividends, interest, or other investment returns.",
       "rental": "Net income from renting out property.",
+      "benefits": "Family benefits — child allowance, maternity, social payments.",
       "other": "Any other source such as grants, gifts, or stipends.",
       "learnMore": "Learn more"
     },
@@ -866,6 +881,7 @@
       "freelance": "Freelance",
       "investments": "Investments",
       "rental": "Rental Income",
+      "benefits": "Benefits (child allowance)",
       "other": "Other"
     },
     "form": {
@@ -885,6 +901,20 @@
       "computedNet": "Calculated net (take-home)",
       "selectEmploymentFirst": "Select employment type above to calculate net amount.",
       "b2bDisclaimer": "Simplified calculation (19% flat)",
+      "kupType": "Tax-deductible costs (KUP)",
+      "kupTypeHint": "Choose how tax-deductible costs are calculated for this income.",
+      "kupOptions": {
+        "standard": "Standard (250 PLN UoP / 20% contract)",
+        "author50": "Author's 50% (creative work)",
+        "none": "No deductible costs"
+      },
+      "owner": "Income owner",
+      "ownerOptions": {
+        "self": "Mine",
+        "partner": "{name}",
+        "partnerDefault": "Partner",
+        "shared": "Shared"
+      },
       "taxBreakdown": {
         "zus": "Social security",
         "health": "Health insurance",
@@ -932,6 +962,10 @@
   "expenses": {
     "title": "Expense Management",
     "subtitle": "Capture recurring bills and one-off purchases in one place.",
+    "tabs": {
+      "transactions": "Transactions",
+      "budget": "Budget"
+    },
     "expenseHistory": "List of expenses",
     "expenseHistory.current": "Expense list - current month",
     "expenseHistory.month": "Expense list - {month}",
@@ -1402,7 +1436,14 @@
       "ppkEmployeeRate": "Your contribution (%)",
       "ppkEmployerRate": "Employer contribution (%)",
       "authorsCosts": "Author's costs (50% deduction)",
-      "authorsCostsHint": "For creators - 50% of income as deductible costs",
+      "authorsCostsHint": "Default for new income entries. Each income can override this in its form.",
+      "includePartner": "Joint budgeting",
+      "includePartnerHint": "Track partner's income separately for accurate tax calculations",
+      "partnerSection": "Partner's tax profile",
+      "partnerName": "Partner's name",
+      "partnerNameHint": "Displayed in the income form",
+      "incomeSource": "Income source",
+      "selectIncomeSource": "Select source",
       "employmentStatuses": {
         "employee": "Employment contract",
         "b2b": "B2B / Self-employed",
@@ -2010,18 +2051,23 @@
       "welcomeGreeting": "Welcome to your Financial Hub!"
     },
     "navigation": {
-      "whyItMatters": "Why does it matter? These details let us personalize your goals.",
+      "whyItMatters": "Why these questions? So your plan is truly yours.",
       "skipStep": "Skip step",
       "back": "Back",
-      "finish": "Finish",
+      "finish": "Summary",
       "nextDefault": "Next",
       "nextWithStep": "Next → {step}"
     },
     "skipConfirm": {
       "title": "Skip setup?",
-      "message": "You can always return to the data collection wizard by going to Settings → General → Data Collection Wizard.",
-      "cancel": "Cancel",
-      "confirm": "OK, skip"
+      "message": "The onboarding wizard helps you capture your current financial state – income, expenses, debts, and savings. Based on this, we'll prepare a personalized action plan. It only takes a few minutes.",
+      "benefits": "What you get from onboarding:",
+      "benefit1": "A complete picture of your financial situation",
+      "benefit2": "Personalized goals and recommendations",
+      "benefit3": "A step-by-step plan to financial freedom (Baby Steps)",
+      "settingsHint": "If you skip, you can always return to the wizard in: Settings → General → Data Collection Wizard.",
+      "cancel": "Continue onboarding",
+      "confirm": "Skip for now"
     },
     "savingProgress": {
       "title": "We're setting things up",
@@ -2032,11 +2078,14 @@
         "expenses": "Saving expenses",
         "loans": "Saving loans",
         "savings": "Saving savings and assets",
+        "budget": "Yearly budget",
+        "goals": "Financial goals",
         "finalize": "Finishing up"
       },
       "detail": {
         "clearing": "Removing previous onboarding data",
         "finalize": "Final checks before redirecting",
+        "creatingBudget": "Creating yearly budget...",
         "count": "{current} of {total}"
       }
     },
@@ -2051,7 +2100,7 @@
       },
       "life": {
         "label": "Life situation",
-        "description": "Capture your financial context"
+        "description": "Who you are and how you live"
       },
       "income": {
         "label": "Income",
@@ -2107,6 +2156,7 @@
         "assets": {
           "savings": "Savings",
           "investments": "Investments",
+          "retirement": "Retirement accounts",
           "properties": "Properties",
           "emergencyCoverage": "Emergency fund coverage",
           "emergencyCoverageValue": "{months} mo."
@@ -2124,6 +2174,10 @@
       }
     },
     "summary": {
+      "celebration": {
+        "title": "Your financial profile is ready!",
+        "subtitle": "Here's the complete picture of your financial situation. Everything's set to start taking action."
+      },
       "cards": {
         "monthlyIncome": "Monthly income",
         "monthlyExpenses": "Monthly expenses",
@@ -2157,6 +2211,7 @@
       "assets": {
         "savings": "Savings",
         "investments": "Investments",
+        "retirement": "Retirement accounts",
         "properties": "Properties",
         "emergencyCoverage": "Emergency fund coverage",
         "emergencyCoverageValue": "{months} mo."
@@ -2179,18 +2234,18 @@
       "moreInfo": "More information"
     },
     "welcome": {
-      "intro": "In just a few minutes we'll map your finances. We'll cover six short steps – from income and expenses to financial goals.",
+      "intro": "In just a few minutes we'll map your finances. We'll cover seven short steps – from income and expenses to financial goals.",
       "info": "Onboarding is a one-time data entry. Everything saves automatically so you can return and edit anytime.",
       "start": "Let's begin",
       "skip": "Skip onboarding"
     },
     "life": {
-      "intro": "Let's understand your life situation so we can propose a tailored plan.",
-      "subIntro": "A few calm questions will help us prepare a personalized starting point.",
+      "intro": "Tell us about yourself – we'll tailor the plan to your lifestyle.",
+      "subIntro": "This takes about a minute. We'll use it to build recommendations just for you.",
       "fields": {
         "maritalStatus": {
           "label": "Marital status",
-          "tooltip": "This helps us adapt the questions to your family situation.",
+          "tooltip": "We'll adapt the next questions to your situation.",
           "options": {
             "single": "Single",
             "relationship": "In a relationship",
@@ -2203,11 +2258,11 @@
         },
         "childrenCount": {
           "label": "Number of children",
-          "tooltip": "We'll factor in education, clothing, and activities later on."
+          "tooltip": "We'll factor in child-related expenses in your plan."
         },
         "childrenAgeRange": {
           "label": "How old are the children?",
-          "hint": "We tailor savings and education tips accordingly.",
+          "hint": "Affects savings and education recommendations.",
           "placeholder": "Select an age range",
           "options": {
             "0_6": "0 – 6 years",
@@ -2218,8 +2273,8 @@
         },
         "housingType": {
           "label": "Housing type",
-          "tooltip": "Rent or mortgage is often the biggest fixed cost – it's worth being precise.",
-          "hint": "Rentals and mortgages shape how your expenses look.",
+          "tooltip": "Housing is usually your biggest fixed cost.",
+          "hint": "Shapes your expense structure and savings goals.",
           "options": {
             "rent": "Rent",
             "mortgage": "Owned (with mortgage)",
@@ -2228,7 +2283,7 @@
         },
         "hasMortgage": {
           "label": "Do you have an active mortgage?",
-          "hint": "We can then tailor debt and emergency fund suggestions."
+          "hint": "We'll include it in your payoff strategy and emergency fund."
         },
         "employmentStatus": {
           "label": "Employment status",
@@ -2243,7 +2298,7 @@
         },
         "birthYear": {
           "label": "Year of birth",
-          "tooltip": "Used to check eligibility for youth tax relief (under 26).",
+          "tooltip": "We'll check if you qualify for youth tax relief (under 26).",
           "hint": "Youth relief exempts income up to ~85,528 PLN/year from income tax."
         },
         "ppkEnrolled": {
@@ -2265,8 +2320,8 @@
           }
         },
         "householdCost": {
-          "label": "Monthly household cost (local currency)",
-          "hint": "Use the average from the last 3 months."
+          "label": "How much do you spend monthly on living?",
+          "hint": "A rough estimate from the last 2–3 months is enough."
         }
       }
     },
@@ -2310,8 +2365,15 @@
       "fields": {
         "salaryNet": {
           "label": "Monthly salary (net)",
-          "tooltip": "The amount deposited to your account after tax."
+          "yourLabel": "Your salary (net)",
+          "tooltip": "The amount deposited to your account after tax.",
+          "householdHint": "You're on a shared budget – enter the combined salary of both partners."
         },
+        "partnerSalaryNet": {
+          "label": "Partner's salary (net)",
+          "tooltip": "Your partner's monthly net salary"
+        },
+        "partnerEmploymentType": "Partner's employment type",
         "irregularIncome": {
           "label": "Irregular income (annual)",
           "tooltip": "We convert yearly bonuses or tax refunds into a monthly equivalent.",
@@ -2341,12 +2403,12 @@
       },
       "summary": {
         "totalMonthlyIncome": "Total monthly income",
-        "description": "Based on your data, net monthly income is {amount}. Next we'll look at your spending."
+        "description": "Based on your data, net monthly income is {amount}. Next we'll review your liabilities."
       },
       "distribution": {
         "datasetLabel": "Share of households",
         "tooltip": "Percentile: {value}%",
-        "summaryWithSalary": "Your income {amount} is higher than about {share}% of households (chart up to 30k net).",
+        "summaryWithSalary": "Your income of {amount} is higher than {percentile}% of households in Poland.",
         "summaryWithoutSalary": "Enter your salary to see your position (chart shows up to 30k net)."
       }
     },
@@ -2374,7 +2436,6 @@
           "hint": "Knowing your housing costs helps us plan your safety net.",
           "items": {
             "home-rental-tax": "Rental tax payment",
-            "home-mortgage": "Mortgage repayment",
             "home-rent": "Apartment rent",
             "home-electricity": "Electricity",
             "home-gas": "Gas",
@@ -2393,9 +2454,6 @@
           "hint": "Tracking transport costs shows whether your car or commute is optimal.",
           "items": {
             "transport-fuel": "Fuel",
-            "transport-insurance": "Car insurance (liability / collision)",
-            "transport-service": "Service and inspections",
-            "transport-leasing": "Lease / installment",
             "transport-public": "Public transport tickets",
             "transport-parking": "Parking fees"
           }
@@ -2418,8 +2476,7 @@
             "family-education": "Preschool / school / activities",
             "family-clothes": "Clothing",
             "family-activities": "Care / trips / gifts",
-            "family-extracurricular-son": "Extracurricular classes (son)",
-            "family-extracurricular-daughter": "Extracurricular classes (daughter)",
+            "family-extracurricular": "Extracurricular classes (children)",
             "family-toys": "Toys and accessories",
             "family-afterschool": "After-school care / day room"
           }
@@ -2447,18 +2504,6 @@
             "subscriptions-insurance": "Supplementary insurance"
           }
         },
-        "obligations": {
-          "title": "Financial obligations",
-          "description": "Regular loan and installment payments.",
-          "hint": "Tracking obligations makes it easier to manage cash flow.",
-          "items": {
-            "obligations-loans": "Loan installments",
-            "obligations-card-fees": "Monthly credit card fees",
-            "obligations-cards": "Credit cards (legacy item)",
-            "obligations-bank-fees": "Other banking fees",
-            "obligations-private": "Private loans"
-          }
-        },
         "pets": {
           "title": "Pets and hobbies",
           "description": "Costs of caring for pets and pursuing hobbies.",
@@ -2474,7 +2519,6 @@
           "hint": "Understanding your insurance helps assess your coverage.",
           "items": {
             "insurance-health": "Health / life insurance",
-            "insurance-home": "Home / property insurance",
             "insurance-personal": "Individual insurance"
           }
         },
@@ -2484,7 +2528,6 @@
           "hint": "Small expenses add up – total them so nothing slips through.",
           "items": {
             "other-leisure": "Cinema / restaurants / trips",
-            "other-gifts": "Gifts and occasional shopping",
             "other-misc": "Other small expenses",
             "other-gambling": "Lottery / gambling",
             "other-donations": "Donations and charity"
@@ -2497,6 +2540,10 @@
       "annualHint": "Enter annual amounts – we’ll show the monthly equivalent automatically.",
       "totalAnnual": "Total irregular expenses (annual)",
       "totalMonthly": "Monthly equivalent",
+      "month": {
+        "label": "Month",
+        "placeholder": "When?"
+      },
       "custom": {
         "defaultName": "New irregular expense",
         "add": "Add irregular expense",
@@ -2505,28 +2552,22 @@
       },
       "items": {
         "homeInsurance": "Home insurance",
-        "trainings": "Training & courses",
-        "carInsurance": "Car insurance",
+        "carInsurance": "Car insurance (liability/comprehensive)",
         "carService": "Car service (inspections, repairs)",
-        "domains": "Domain renewals",
-        "realEstateAgency": "Real estate agency fee",
-        "gifts": "Gifts",
-        "clothing": "Clothing",
         "propertyTax": "Property taxes and land fees",
-        "softwareHosting": "Software & hosting",
         "vacations": "Vacations",
+        "gifts": "Gifts",
+        "clothing": "Clothing (seasonal shopping)",
         "schoolTextbooks": "School textbooks",
         "schoolInsurance": "School insurance",
-        "classFund": "Class fund",
-        "unplanned": "Other unplanned spend",
-        "newComputer": "New computer purchase",
-        "robotVacuum": "Robot vacuum purchase"
+        "trainings": "Training & courses",
+        "unplanned": "Other unplanned expenses"
       }
     },
     "liabilities": {
       "intro": {
-        "title": "Let's look at your loans and debts – we'll calculate your debt-to-income ratio (DTI) and help plan a safe repayment.",
-        "description": "Provide approximate amounts – we care about the overall picture, not perfect precision."
+        "title": "Let's look at your financial obligations — we'll calculate your debt-to-income ratio (DTI) and help plan repayment.",
+        "description": "Add: mortgage, car loan, consumer loans, credit cards, overdraft limits, leasing, 0% installments, and other debts. Approximate amounts are fine — the big picture matters more than exact figures."
       },
       "actions": {
         "add": "Add another liability",
@@ -2567,7 +2608,15 @@
       "summary": {
         "monthly": "Total monthly payments",
         "remaining": "Total outstanding balance",
-        "dti": "Your DTI is <strong>{value}%</strong>. That means <strong>{value}%</strong> of your income goes toward debt payments."
+        "dti": "Your DTI is {value}% — that's how much of your income goes toward debt payments.",
+        "dtiLabel": "Debt-to-Income Ratio (DTI)",
+        "dtiLevel": {
+          "none": "No liabilities — great starting position!",
+          "excellent": "Low debt — you're in the comfort zone. Banks consider DTI below 20% exemplary.",
+          "acceptable": "Moderate debt — you're within the safe range. Most banks accept DTI up to 36%.",
+          "high": "Elevated debt — approaching the limit. Above 36%, new credit gets harder and budgets feel tight.",
+          "critical": "High debt — over 43% of income goes to payments. Reducing liabilities should be a priority."
+        }
       },
       "types": {
         "default": {
@@ -2668,8 +2717,23 @@
         "totalLabel": "Total investment value (PLN)",
         "totalPlaceholder": "Total amount (PLN)"
       },
+      "retirement": {
+        "title": "Retirement accounts",
+        "hint": "Select accounts you have — they provide tax benefits and build long-term capital.",
+        "options": {
+          "ppk": "PPK",
+          "ike": "IKE",
+          "ikze": "IKZE",
+          "oipe": "OIPE (PEPP)"
+        },
+        "totalLabel": "Total retirement accounts value (PLN)",
+        "totalPlaceholder": "Total amount (PLN)",
+        "yourBalance": "Your balance",
+        "partnerBalance": "Partner's balance"
+      },
       "sections": {
         "properties": "Properties",
+        "propertiesHint": "Houses, apartments, land, commercial units — enter estimated current market value.",
         "vehicles": "Vehicles",
         "empty": "No entries yet.",
         "namePlaceholder": "Name",
@@ -3038,9 +3102,15 @@
       "title": "You have Premium access!",
       "subtitle": "You have full access to all FiredUp features."
     },
+    "greeting": "Welcome, {name}!",
     "trial": {
       "endsLabel": "Your trial ends:",
-      "reminder": "We'll remind you 3 days before it ends"
+      "reminder": "We'll remind you 3 days before it ends",
+      "active": "7 days Premium free"
+    },
+    "pricing": {
+      "nudge": "Premium plans from 29 PLN/mo.",
+      "link": "See plans"
     },
     "features": {
       "heading": "What you get with Premium",
@@ -3071,6 +3141,42 @@
     "finePrint": "After the trial ends, you'll keep access to basic features for free.",
     "continue": "Great, continue!",
     "skip": "Remind me later",
+    "start": "Let's go!",
     "skip.error": "Failed to complete activation. Please try again."
+  },
+  "budget": {
+    "title": "Budget {year} — {month}",
+    "monthSummary": "Summary: {month}",
+    "planned": "Planned",
+    "actual": "Actual",
+    "income": "Income",
+    "expenses": "Expenses",
+    "loanPayments": "Loan payments",
+    "balance": "Balance",
+    "addEntry": "Add entry",
+    "editEntry": "Edit entry",
+    "deleteEntry": "Delete entry",
+    "noData": "No budget for this year. Complete onboarding to set up.",
+    "noEntries": "No entries in this category.",
+    "recurring": "Recurring",
+    "oneTime": "One-time",
+    "saved": "Saved",
+    "saveError": "Failed to save changes.",
+    "loadError": "Failed to load budget.",
+    "deleted": "Entry deleted.",
+    "deleteError": "Failed to delete entry.",
+    "entryType": "Entry type",
+    "entryCount": "{count} entries",
+    "chart": {
+      "title": "Budget vs Actual",
+      "planned": "Planned",
+      "actual": "Actual",
+      "noActuals": "No transactions this month",
+      "overBudget": "Over budget",
+      "underBudget": "Under budget",
+      "legendUnder": "Under budget",
+      "legendClose": "On track (±10%)",
+      "legendOver": "Over budget (>10%)"
+    }
   }
 }

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 interface FormFooterProps {
   onNext: () => void;
   onBack: () => void;
-  onSkip: () => void;
   nextLabel?: string;
   isLast?: boolean;
 }
@@ -14,7 +13,6 @@ interface FormFooterProps {
 export default function FormFooter({
   onNext,
   onBack,
-  onSkip,
   nextLabel,
   isLast = false,
 }: FormFooterProps) {
@@ -32,14 +30,6 @@ export default function FormFooter({
         </span>
       </div>
       <div className="flex items-center gap-3">
-        <Button
-          type="button"
-          variant="link"
-          onClick={onSkip}
-          className="text-muted-foreground hover:text-primary"
-        >
-          {intl.formatMessage({ id: 'onboarding.navigation.skipStep' })}
-        </Button>
         <Button type="button" variant="outline" onClick={onBack}>
           {intl.formatMessage({ id: 'onboarding.navigation.back' })}
         </Button>

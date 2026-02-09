@@ -2,17 +2,21 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { FormattedDate, FormattedMessage, useIntl } from "react-intl";
 import { z } from "zod";
 import type { LucideIcon } from "lucide-react";
 import {
+  Archive,
   Car,
+  Check,
   ChevronDown,
   ChevronRight,
   CircleEllipsis,
   CircleDot,
   HeartPulse,
   Home,
+  Minus,
   Pencil,
   Plus,
   CalendarDays,
@@ -24,6 +28,10 @@ import {
   Zap,
 } from "lucide-react";
 import ExpenseChart from "@/components/charts/ExpenseChart";
+import BudgetChart from "@/components/budget/BudgetChart";
+import MonthBar from "@/components/budget/MonthBar";
+import BudgetView from "@/components/budget/BudgetView";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -281,6 +289,8 @@ const changeRateSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: error.messageId });
       }
     }),
+  hasEndDate: z.boolean().optional(),
+  endDate: z.string().nullable().optional(),
 });
 
 type ChangeRateFormValues = z.infer<typeof changeRateSchema>;
@@ -288,6 +298,8 @@ type ChangeRateFormValues = z.infer<typeof changeRateSchema>;
 const changeRateDefaultValues: ChangeRateFormValues = {
   newAmount: 0,
   effectiveDate: todayISO,
+  hasEndDate: false,
+  endDate: null,
 };
 
 const changeRateFieldConfig: FormFieldConfig<ChangeRateFormValues>[] = [
@@ -301,6 +313,18 @@ const changeRateFieldConfig: FormFieldConfig<ChangeRateFormValues>[] = [
     name: "effectiveDate",
     labelId: "changeRate.form.effectiveDate",
     component: "date",
+  },
+  {
+    name: "hasEndDate",
+    labelId: "changeRate.form.hasEndDate",
+    component: "switch",
+    descriptionId: "changeRate.form.hasEndDateHint",
+  },
+  {
+    name: "endDate",
+    labelId: "changeRate.form.endDate",
+    component: "date",
+    showWhen: (values) => values.hasEndDate === true,
   },
 ];
 
@@ -332,6 +356,20 @@ export default function ExpensesPage() {
   const { toast } = useToast();
   const { formatCurrency } = useSettings();
   const { trackExpense } = useAnalytics();
+  const searchParams = useSearchParams();
+
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabFromUrl = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
+    return tabFromUrl === "budget" ? "budget" : "transactions";
+  });
+
+  // Sync tab with URL
+  useEffect(() => {
+    const tabFromUrl = searchParams.get("tab");
+    if (tabFromUrl === "budget" || tabFromUrl === "transactions") {
+      setActiveTab(tabFromUrl);
+    }
+  }, [searchParams]);
 
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
@@ -361,6 +399,15 @@ export default function ExpensesPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [recurringFilter, setRecurringFilter] = useState<"all" | "recurring" | "oneoff">("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
+
+  // Budget tab: month for BudgetView (1-12), synced from ExpenseChart clicks
+  const [budgetMonth, setBudgetMonth] = useState<number>(new Date().getMonth() + 1);
+
+  const handleBudgetChartMonthSelect = (monthKey: string) => {
+    if (monthKey === "all") return;
+    const m = parseInt(monthKey.split("-")[1], 10);
+    if (!Number.isNaN(m)) setBudgetMonth(m);
+  };
 
   const monthlyTotals = useMemo(() => {
     const now = new Date();
@@ -574,8 +621,9 @@ export default function ExpensesPage() {
 
       const group = groups.get(key)!;
 
-      if (expense.end_date) {
-        // Has end_date = historical
+      const isPast = expense.end_date && new Date(expense.end_date) < new Date();
+      if (isPast) {
+        // end_date in the past = historical
         group.historical.push(expense);
       } else {
         // No end_date = current (or latest if multiple)
@@ -728,6 +776,25 @@ export default function ExpensesPage() {
   const currentMonthKey = getMonthKey(new Date());
   const isCurrentMonth = selectedMonth === "all" || selectedMonth === currentMonthKey;
   const isFutureMonth = !isCurrentMonth && selectedMonth > currentMonthKey;
+
+  // MonthBar bridging: derive numeric month from YYYY-MM string
+  const selectedMonthNum = useMemo(() => {
+    if (selectedMonth === "all") return new Date().getMonth() + 1;
+    return parseInt(selectedMonth.split("-")[1], 10);
+  }, [selectedMonth]);
+
+  const handleMonthBarSelect = (m: number) => {
+    const y = new Date().getFullYear();
+    setSelectedMonth(`${y}-${String(m).padStart(2, "0")}`);
+  };
+
+  const futureDisabledMonths = useMemo(() => {
+    const now = new Date();
+    const cm = now.getMonth() + 1;
+    const disabled = new Set<number>();
+    for (let m = cm + 1; m <= 12; m++) disabled.add(m);
+    return disabled;
+  }, []);
 
   const unitKey = selectedMonth === "all" ? "period" : "month";
   const _unitLabel = intl.formatMessage({
@@ -1045,7 +1112,7 @@ export default function ExpensesPage() {
             description: changeRateItem.description,
             amount: values.newAmount,
             date: effectiveDateStr,
-            end_date: null,
+            end_date: values.hasEndDate ? (values.endDate || null) : null,
             is_recurring: true,
           }),
         },
@@ -1109,14 +1176,38 @@ export default function ExpensesPage() {
             <FormattedMessage id="expenses.subtitle" />
           </p>
         </div>
-        <Button onClick={handleOpenCreate} disabled={!isCurrentMonth} className={!isCurrentMonth ? "opacity-50" : ""}>
-          <Plus className="mr-2 h-4 w-4" />
-          <FormattedMessage id="expenses.actions.add" />
-        </Button>
+        {activeTab === "transactions" && (
+          <Button onClick={handleOpenCreate} disabled={!isCurrentMonth} className={!isCurrentMonth ? "opacity-50" : ""}>
+            <Plus className="mr-2 h-4 w-4" />
+            <FormattedMessage id="expenses.actions.add" />
+          </Button>
+        )}
       </div>
 
-      {/* Chart */}
-      <ExpenseChart expenses={expenses} selectedMonth={selectedMonth} onMonthSelect={setSelectedMonth} />
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="transactions">
+            <FormattedMessage id="expenses.tabs.transactions" />
+          </TabsTrigger>
+          <TabsTrigger value="budget">
+            <FormattedMessage id="expenses.tabs.budget" />
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="transactions">
+
+      {/* Month navigation bar */}
+      <div className="flex justify-center mb-4">
+        <MonthBar
+          selectedMonth={selectedMonthNum}
+          onMonthSelect={handleMonthBarSelect}
+          disabledMonths={futureDisabledMonths}
+        />
+      </div>
+
+      {/* Budget vs Actual chart */}
+      <BudgetChart expenses={expenses} selectedMonth={selectedMonth} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-muted/60 bg-muted/20 px-5 py-4">
@@ -1278,7 +1369,7 @@ export default function ExpensesPage() {
                               <TableHead
                                 className={cn(
                                   columnClasses.recurring,
-                                  "text-xs uppercase tracking-wide text-muted-foreground",
+                                  "text-center text-xs uppercase tracking-wide text-muted-foreground",
                                 )}
                               >
                                 <FormattedMessage id="expenses.table.recurring" />
@@ -1299,11 +1390,12 @@ export default function ExpensesPage() {
                             if (!mainExpense) return null;
 
                             const groupKey = `${category}::${descGroup.key}`;
-                            const hasHistory = descGroup.historical.length > 0;
+                            const expandableHistory = descGroup.historical.filter(h => h.id !== mainExpense.id);
+                            const hasHistory = expandableHistory.length > 0;
                             const isExpanded = expandedGroups.has(groupKey);
 
                             const renderExpenseRow = (expense: Expense, isMain: boolean) => {
-                              const isHistorical = !!expense.end_date;
+                              const isHistorical = !!expense.end_date && new Date(expense.end_date) < new Date();
                               return (
                                 <TableRow
                                   key={expense.id}
@@ -1349,9 +1441,9 @@ export default function ExpensesPage() {
                                             onClick={() => toggleGroupExpanded(groupKey)}
                                             className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"
                                           >
-                                            📜 {descGroup.historical.length} {intl.formatMessage({
-                                              id: descGroup.historical.length === 1 ? "common.historyCount.one" : "common.historyCount.many",
-                                              defaultMessage: descGroup.historical.length === 1 ? "change" : "changes"
+                                            📜 {expandableHistory.length} {intl.formatMessage({
+                                              id: expandableHistory.length === 1 ? "common.historyCount.one" : "common.historyCount.many",
+                                              defaultMessage: expandableHistory.length === 1 ? "change" : "changes"
                                             })}
                                           </button>
                                         )}
@@ -1391,23 +1483,20 @@ export default function ExpensesPage() {
                                   <TableCell
                                     className={cn(
                                       columnClasses.recurring,
-                                      "align-middle py-4 text-sm",
+                                      "align-middle py-4 text-center",
                                     )}
                                   >
                                     {isHistorical ? (
-                                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
-                                        📁
-                                        <FormattedMessage id="common.historical" defaultMessage="Historyczny" />
+                                      <span className="inline-flex items-center justify-center rounded-full bg-slate-100 p-1 text-slate-500">
+                                        <Archive className="h-3.5 w-3.5" />
                                       </span>
                                     ) : expense.is_recurring ? (
-                                      <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                                        <span className="text-emerald-500">●</span>
-                                        <FormattedMessage id="expenses.recurring.yes" defaultMessage="Recurring" />
+                                      <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 p-1 text-emerald-700">
+                                        <Check className="h-3.5 w-3.5" />
                                       </span>
                                     ) : (
-                                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                                        <span className="text-slate-400">○</span>
-                                        <FormattedMessage id="expenses.recurring.no" defaultMessage="One-off" />
+                                      <span className="inline-flex items-center justify-center rounded-full bg-slate-100 p-1 text-slate-500">
+                                        <Minus className="h-3.5 w-3.5" />
                                       </span>
                                     )}
                                   </TableCell>
@@ -1467,8 +1556,8 @@ export default function ExpensesPage() {
                             return (
                               <React.Fragment key={descGroup.key}>
                                 {renderExpenseRow(mainExpense, true)}
-                                {isExpanded && descGroup.historical.map((histExpense) => (
-                                  histExpense.id !== mainExpense.id && renderExpenseRow(histExpense, false)
+                                {isExpanded && expandableHistory.map((histExpense) => (
+                                  renderExpenseRow(histExpense, false)
                                 ))}
                               </React.Fragment>
                             );
@@ -1514,6 +1603,20 @@ export default function ExpensesPage() {
         <Plus className="mr-2 h-5 w-5" />
         <FormattedMessage id="expenses.actions.add" />
       </Button>
+        </TabsContent>
+
+        <TabsContent value="budget">
+          <div className="space-y-6">
+            <ExpenseChart
+              expenses={expenses}
+              selectedMonth={`${new Date().getFullYear()}-${String(budgetMonth).padStart(2, "0")}`}
+              onMonthSelect={handleBudgetChartMonthSelect}
+              compact
+            />
+            <BudgetView month={budgetMonth} onMonthChange={setBudgetMonth} showTypes={["expense", "loan_payment"]} />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <CrudDialog
         open={dialogOpen}
@@ -1556,24 +1659,27 @@ export default function ExpensesPage() {
         isLoading={isDeleting}
       />
 
-      <CrudDialog
-        open={changeRateOpen}
-        mode="create"
-        onOpenChange={handleChangeRateClose}
-        titleId="changeRate.dialog.title"
-        descriptionId="changeRate.dialog.description"
-        submitLabelId="changeRate.dialog.submit"
-        schema={changeRateSchema}
-        defaultValues={changeRateDefaultValues}
-        initialValues={
-          changeRateItem
-            ? { newAmount: changeRateItem.amount, effectiveDate: todayISO }
-            : undefined
-        }
-        fields={changeRateFieldConfig}
-        onSubmit={handleChangeRate}
-        isSubmitting={isChangingRate}
-      />
+      {changeRateOpen && changeRateItem && (
+        <CrudDialog
+          key={changeRateItem.id}
+          open={changeRateOpen}
+          mode="create"
+          onOpenChange={handleChangeRateClose}
+          titleId="changeRate.dialog.title"
+          descriptionId="changeRate.dialog.description"
+          submitLabelId="changeRate.dialog.submit"
+          schema={changeRateSchema}
+          defaultValues={{
+            newAmount: changeRateItem.amount,
+            effectiveDate: todayISO,
+            hasEndDate: !!changeRateItem.end_date,
+            endDate: changeRateItem.end_date ? changeRateItem.end_date.slice(0, 10) : null,
+          }}
+          fields={changeRateFieldConfig}
+          onSubmit={handleChangeRate}
+          isSubmitting={isChangingRate}
+        />
+      )}
     </div>
   );
 }
