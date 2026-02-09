@@ -21,14 +21,21 @@ export async function POST(request: Request) {
     // Get the JSON data from the request
     const { data, clearExisting = false } = await request.json();
 
-    // Send the data to the backend
+    // Send the data to the backend with auth headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'X-User-ID': session.user.email,
+    };
+    const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+    if (internalSecret) {
+      headers['X-Internal-Secret'] = internalSecret;
+    }
+
     const response = await fetch(
       `${API_BASE_URL}/users/${encodeURIComponent(session.user.email)}/import`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           data,
           clear_existing: Boolean(clearExisting),

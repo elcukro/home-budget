@@ -181,6 +181,8 @@ export default function SettingsPage() {
   const [tinkConnecting, setTinkConnecting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [shouldClearBeforeImport, setShouldClearBeforeImport] = useState<boolean>(false);
+  const [importing, setImporting] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [onboardingModeDialogOpen, setOnboardingModeDialogOpen] = useState(false);
   const [onboardingBackups, setOnboardingBackups] = useState<Array<{
     id: number;
@@ -202,7 +204,7 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/settings`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/settings`,
         {
           headers: { Accept: "application/json" },
         },
@@ -501,7 +503,7 @@ export default function SettingsPage() {
       // For JSON exports, also save a backup on the server
       const saveParam = format === "json" && saveBackup ? "&save_backup=true" : "";
       const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/export/?format=${format}${saveParam}`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/export?format=${format}${saveParam}`,
       );
 
       if (!response.ok) {
@@ -596,26 +598,21 @@ export default function SettingsPage() {
     }
   };
 
-  const handleImport = async () => {
+  const handleImport = async (confirmed = false) => {
     if (!importFile) {
       return;
     }
 
+    // If clearing existing data, require confirmation first
+    if (shouldClearBeforeImport && !confirmed) {
+      setShowImportConfirm(true);
+      return;
+    }
+
+    setShowImportConfirm(false);
+
     try {
-      if (shouldClearBeforeImport) {
-        const confirmPrimary = window.confirm(
-          intl.formatMessage({ id: "settings.import.confirmClearPrimary" }),
-        );
-        if (!confirmPrimary) {
-          return;
-        }
-        const confirmSecondary = window.confirm(
-          intl.formatMessage({ id: "settings.import.confirmClearSecondary" }),
-        );
-        if (!confirmSecondary) {
-          return;
-        }
-      }
+      setImporting(true);
 
       const fileContent = await importFile.text();
       const payload = JSON.parse(fileContent);
@@ -632,24 +629,36 @@ export default function SettingsPage() {
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        throw new Error(errorText || response.statusText);
       }
-
-      toast({
-        title: intl.formatMessage({ id: 'settings.messages.importSuccess' }),
-      });
       setImportFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
       setShouldClearBeforeImport(false);
-      void fetchSettings();
+      // Refresh settings without triggering loading state (which unmounts UI and kills toast)
+      try {
+        const settingsRes = await fetch(
+          `/api/backend/users/${encodeURIComponent(userEmail!)}/settings`,
+          { headers: { Accept: "application/json" } },
+        );
+        if (settingsRes.ok) {
+          setSettings(await settingsRes.json());
+        }
+      } catch { /* ignore, toast is more important */ }
+      toast({
+        title: intl.formatMessage({ id: 'settings.messages.importSuccess' }),
+      });
     } catch (err) {
       logger.error("[Settings] Import failed", err);
       toast({
         title: intl.formatMessage({ id: 'settings.messages.importError' }),
+        description: err instanceof Error ? err.message : String(err),
         variant: 'destructive',
       });
+    } finally {
+      setImporting(false);
     }
   };
   if (loading) {
@@ -1396,20 +1405,51 @@ export default function SettingsPage() {
                       {intl.formatMessage({ id: "settings.import.clearExistingLabel" })}
                     </Label>
                   </div>
-                  <div className="flex gap-2">
-                    <Button disabled={!importFile} onClick={() => void handleImport()}>
-                      {intl.formatMessage({ id: "settings.import.upload" })}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setImportFile(null);
-                        if (fileInputRef.current) fileInputRef.current.value = "";
-                      }}
-                    >
-                      {intl.formatMessage({ id: "common.cancel" })}
-                    </Button>
-                  </div>
+                  {showImportConfirm ? (
+                    <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <FontAwesomeIcon icon={faTriangleExclamation} className="h-4 w-4" />
+                        <p className="font-medium text-sm">
+                          {intl.formatMessage({ id: "settings.import.confirmClearPrimary" })}
+                        </p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.import.confirmClearSecondary" })}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          disabled={importing}
+                          onClick={() => void handleImport(true)}
+                        >
+                          {importing
+                            ? intl.formatMessage({ id: "settings.messages.loading" })
+                            : intl.formatMessage({ id: "settings.import.upload" })}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowImportConfirm(false)}
+                        >
+                          {intl.formatMessage({ id: "common.cancel" })}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button disabled={!importFile || importing} onClick={() => void handleImport()}>
+                        {importing ? intl.formatMessage({ id: "settings.messages.loading" }) : intl.formatMessage({ id: "settings.import.upload" })}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setImportFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                      >
+                        {intl.formatMessage({ id: "common.cancel" })}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 

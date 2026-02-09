@@ -2238,13 +2238,29 @@ async def export_user_data(
         loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
         savings = db.query(models.Saving).filter(models.Saving.user_id == current_user.id).all()
 
+        # Fetch additional data
+        loan_payments = db.query(models.LoanPayment).filter(models.LoanPayment.user_id == current_user.id).all()
+        savings_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == current_user.id).all()
+
+        # Build goal_id -> goal name lookup for savings
+        goal_names = {g.id: g.name for g in savings_goals}
+
         # Prepare data structure for JSON
         data = {
             "settings": {
                 "language": settings.language if settings else "en",
                 "currency": settings.currency if settings else "USD",
                 "emergency_fund_target": settings.emergency_fund_target if settings else 1000,
-                "emergency_fund_months": settings.emergency_fund_months if settings else 3
+                "emergency_fund_months": settings.emergency_fund_months if settings else 3,
+                "base_currency": settings.base_currency if settings else "USD",
+                "employment_status": settings.employment_status if settings else None,
+                "tax_form": settings.tax_form if settings else None,
+                "birth_year": settings.birth_year if settings else None,
+                "use_authors_costs": settings.use_authors_costs if settings else False,
+                "ppk_enrolled": settings.ppk_enrolled if settings else None,
+                "ppk_employee_rate": settings.ppk_employee_rate if settings else None,
+                "ppk_employer_rate": settings.ppk_employer_rate if settings else None,
+                "children_count": settings.children_count if settings else 0,
             },
             "expenses": [
                 {
@@ -2252,7 +2268,8 @@ async def export_user_data(
                     "description": expense.description,
                     "amount": expense.amount,
                     "date": expense.date.isoformat(),
-                    "is_recurring": expense.is_recurring
+                    "is_recurring": expense.is_recurring,
+                    "end_date": expense.end_date.isoformat() if expense.end_date else None,
                 }
                 for expense in expenses
             ],
@@ -2262,7 +2279,11 @@ async def export_user_data(
                     "description": income.description,
                     "amount": income.amount,
                     "date": income.date.isoformat(),
-                    "is_recurring": income.is_recurring
+                    "is_recurring": income.is_recurring,
+                    "end_date": income.end_date.isoformat() if income.end_date else None,
+                    "employment_type": income.employment_type,
+                    "gross_amount": income.gross_amount,
+                    "is_gross": income.is_gross,
                 }
                 for income in incomes
             ],
@@ -2275,7 +2296,22 @@ async def export_user_data(
                     "interest_rate": loan.interest_rate,
                     "monthly_payment": loan.monthly_payment,
                     "term_months": loan.term_months,
-                    "start_date": loan.start_date.isoformat()
+                    "start_date": loan.start_date.isoformat(),
+                    "due_day": loan.due_day,
+                    "overpayment_fee_percent": loan.overpayment_fee_percent,
+                    "overpayment_fee_waived_until": loan.overpayment_fee_waived_until.isoformat() if loan.overpayment_fee_waived_until else None,
+                    "is_archived": loan.is_archived,
+                    "payments": [
+                        {
+                            "amount": p.amount,
+                            "payment_date": p.payment_date.isoformat(),
+                            "payment_type": p.payment_type,
+                            "covers_month": p.covers_month,
+                            "covers_year": p.covers_year,
+                            "notes": p.notes,
+                        }
+                        for p in loan_payments if p.loan_id == loan.id
+                    ],
                 }
                 for loan in loans
             ],
@@ -2286,11 +2322,30 @@ async def export_user_data(
                     "amount": saving.amount,
                     "date": saving.date.isoformat(),
                     "is_recurring": saving.is_recurring,
+                    "end_date": saving.end_date.isoformat() if saving.end_date else None,
                     "target_amount": saving.target_amount,
-                    "saving_type": saving.saving_type
+                    "saving_type": saving.saving_type,
+                    "account_type": saving.account_type,
+                    "annual_return_rate": saving.annual_return_rate,
+                    "goal_name": goal_names.get(saving.goal_id) if saving.goal_id else None,
                 }
                 for saving in savings
-            ]
+            ],
+            "savings_goals": [
+                {
+                    "name": goal.name,
+                    "category": goal.category,
+                    "target_amount": goal.target_amount,
+                    "current_amount": goal.current_amount,
+                    "deadline": goal.deadline.isoformat() if goal.deadline else None,
+                    "icon": goal.icon,
+                    "color": goal.color,
+                    "status": goal.status,
+                    "priority": goal.priority,
+                    "notes": goal.notes,
+                }
+                for goal in savings_goals
+            ],
         }
 
         if format.lower() == 'json':
@@ -2694,6 +2749,11 @@ async def import_user_data(
                 )
                 db.delete(saving)
 
+            # Clear savings goals
+            existing_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == current_user.id).all()
+            for goal in existing_goals:
+                db.delete(goal)
+
             db.commit()
             print(f"[FastAPI] Cleared existing data for user: {current_user.id}")
 
@@ -2701,11 +2761,21 @@ async def import_user_data(
         if "settings" in data:
             settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
             if settings:
-                settings.language = data["settings"].get("language", settings.language)
-                settings.currency = data["settings"].get("currency", settings.currency)
-                settings.ai = data["settings"].get("ai", settings.ai)
-                settings.emergency_fund_target = data["settings"].get("emergency_fund_target", settings.emergency_fund_target)
-                settings.emergency_fund_months = data["settings"].get("emergency_fund_months", settings.emergency_fund_months)
+                s = data["settings"]
+                settings.language = s.get("language", settings.language)
+                settings.currency = s.get("currency", settings.currency)
+                settings.ai = s.get("ai", settings.ai)
+                settings.emergency_fund_target = s.get("emergency_fund_target", settings.emergency_fund_target)
+                settings.emergency_fund_months = s.get("emergency_fund_months", settings.emergency_fund_months)
+                settings.base_currency = s.get("base_currency", settings.base_currency)
+                settings.employment_status = s.get("employment_status", settings.employment_status)
+                settings.tax_form = s.get("tax_form", settings.tax_form)
+                settings.birth_year = s.get("birth_year", settings.birth_year)
+                settings.use_authors_costs = s.get("use_authors_costs", settings.use_authors_costs)
+                settings.ppk_enrolled = s.get("ppk_enrolled", settings.ppk_enrolled)
+                settings.ppk_employee_rate = s.get("ppk_employee_rate", settings.ppk_employee_rate)
+                settings.ppk_employer_rate = s.get("ppk_employer_rate", settings.ppk_employer_rate)
+                settings.children_count = s.get("children_count", settings.children_count)
                 db.commit()
 
         # Import expenses
@@ -2717,7 +2787,8 @@ async def import_user_data(
                     description=expense_data["description"],
                     amount=expense_data["amount"],
                     date=datetime.fromisoformat(expense_data["date"].replace("Z", "+00:00")),
-                    is_recurring=expense_data.get("is_recurring", False)
+                    is_recurring=expense_data.get("is_recurring", False),
+                    end_date=datetime.fromisoformat(expense_data["end_date"].replace("Z", "+00:00")) if expense_data.get("end_date") else None,
                 )
                 db.add(expense)
                 db.flush()
@@ -2737,7 +2808,11 @@ async def import_user_data(
                     description=income_data["description"],
                     amount=income_data["amount"],
                     date=datetime.fromisoformat(income_data["date"].replace("Z", "+00:00")),
-                    is_recurring=income_data.get("is_recurring", False)
+                    is_recurring=income_data.get("is_recurring", False),
+                    end_date=datetime.fromisoformat(income_data["end_date"].replace("Z", "+00:00")) if income_data.get("end_date") else None,
+                    employment_type=income_data.get("employment_type"),
+                    gross_amount=income_data.get("gross_amount"),
+                    is_gross=income_data.get("is_gross", False),
                 )
                 db.add(income)
                 db.flush()
@@ -2760,7 +2835,11 @@ async def import_user_data(
                     interest_rate=loan_data["interest_rate"],
                     monthly_payment=loan_data["monthly_payment"],
                     term_months=loan_data["term_months"],
-                    start_date=datetime.fromisoformat(loan_data["start_date"].replace("Z", "+00:00"))
+                    start_date=datetime.fromisoformat(loan_data["start_date"].replace("Z", "+00:00")),
+                    due_day=loan_data.get("due_day", 1),
+                    overpayment_fee_percent=loan_data.get("overpayment_fee_percent", 0),
+                    overpayment_fee_waived_until=datetime.fromisoformat(loan_data["overpayment_fee_waived_until"].replace("Z", "+00:00")) if loan_data.get("overpayment_fee_waived_until") else None,
+                    is_archived=loan_data.get("is_archived", False),
                 )
                 db.add(loan)
                 db.flush()
@@ -2770,6 +2849,19 @@ async def import_user_data(
                     entity_id=loan.id,
                     new_values=serialize_loan(loan),
                 )
+                # Import loan payments
+                for payment_data in loan_data.get("payments", []):
+                    payment = models.LoanPayment(
+                        loan_id=loan.id,
+                        user_id=current_user.id,
+                        amount=payment_data["amount"],
+                        payment_date=datetime.fromisoformat(payment_data["payment_date"].replace("Z", "+00:00")),
+                        payment_type=payment_data["payment_type"],
+                        covers_month=payment_data.get("covers_month"),
+                        covers_year=payment_data.get("covers_year"),
+                        notes=payment_data.get("notes"),
+                    )
+                    db.add(payment)
 
         # Import savings
         if "savings" in data:
@@ -2781,8 +2873,11 @@ async def import_user_data(
                     amount=saving_data["amount"],
                     date=datetime.fromisoformat(saving_data["date"].replace("Z", "+00:00")),
                     is_recurring=saving_data.get("is_recurring", False),
+                    end_date=datetime.fromisoformat(saving_data["end_date"].replace("Z", "+00:00")) if saving_data.get("end_date") else None,
                     target_amount=saving_data.get("target_amount"),
-                    saving_type=saving_data["saving_type"]
+                    saving_type=saving_data["saving_type"],
+                    account_type=saving_data.get("account_type", "standard"),
+                    annual_return_rate=saving_data.get("annual_return_rate"),
                 )
                 db.add(saving)
                 db.flush()
@@ -2792,6 +2887,24 @@ async def import_user_data(
                     entity_id=saving.id,
                     new_values=serialize_saving(saving),
                 )
+
+        # Import savings goals
+        if "savings_goals" in data:
+            for goal_data in data["savings_goals"]:
+                goal = models.SavingsGoal(
+                    user_id=current_user.id,
+                    name=goal_data["name"],
+                    category=goal_data["category"],
+                    target_amount=goal_data["target_amount"],
+                    current_amount=goal_data.get("current_amount", 0),
+                    deadline=datetime.fromisoformat(goal_data["deadline"].replace("Z", "+00:00")) if goal_data.get("deadline") else None,
+                    icon=goal_data.get("icon"),
+                    color=goal_data.get("color"),
+                    status=goal_data.get("status", "active"),
+                    priority=goal_data.get("priority", 0),
+                    notes=goal_data.get("notes"),
+                )
+                db.add(goal)
 
         db.commit()
         return {"message": "Data imported successfully"}
