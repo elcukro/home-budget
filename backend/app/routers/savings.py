@@ -223,16 +223,27 @@ async def get_savings_summary(
 
         emergency_fund = emergency_fund_deposits - emergency_fund_withdrawals
 
-        # Calculate monthly contribution (current month's deposits - non-recurring in this month + active recurring)
+        # Calculate monthly contribution (net: deposits - withdrawals for current month)
         month_start = today.replace(day=1)
         month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
 
         # Non-recurring deposits in current month
-        monthly_non_recurring = db.query(
+        monthly_non_recurring_deposits = db.query(
             func.sum(Saving.amount)
         ).filter(
             Saving.user_id == current_user.id,
             Saving.saving_type == 'deposit',
+            Saving.is_recurring == False,
+            Saving.date >= month_start,
+            Saving.date <= month_end
+        ).scalar() or 0.0
+
+        # Non-recurring withdrawals in current month
+        monthly_non_recurring_withdrawals = db.query(
+            func.sum(Saving.amount)
+        ).filter(
+            Saving.user_id == current_user.id,
+            Saving.saving_type == 'withdrawal',
             Saving.is_recurring == False,
             Saving.date >= month_start,
             Saving.date <= month_end
@@ -252,7 +263,7 @@ async def get_savings_summary(
             )
         ).scalar() or 0.0
 
-        monthly_contribution = monthly_non_recurring + monthly_recurring
+        monthly_contribution = (monthly_non_recurring_deposits - monthly_non_recurring_withdrawals) + monthly_recurring
 
         # Calculate category totals (only active items)
         category_totals = {}

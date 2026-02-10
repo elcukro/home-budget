@@ -4,12 +4,14 @@ import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { z } from "zod";
 import {
+  ArrowRight,
   Baby,
   Calendar,
   CheckCircle2,
   ChevronRight,
   Edit2,
   Flag,
+  Loader2,
   MoreVertical,
   Pause,
   Plus,
@@ -20,6 +22,8 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+
+import confetti from "canvas-confetti";
 
 import { useSettings } from "@/contexts/SettingsContext";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +41,8 @@ import {
   completeGoal,
   getSavingsSummary,
   getMonthlyRecurringExpenses,
+  createSaving,
+  invalidateSavingsCache,
 } from "@/api/savings";
 import { CrudDialog, type FormFieldConfig } from "@/components/crud/CrudDialog";
 import { ConfirmDialog } from "@/components/crud/ConfirmDialog";
@@ -163,11 +169,13 @@ function isBabyStepGoal(goal: DisplayGoal): goal is BabyStepGoal {
 interface SavingsGoalsSectionProps {
   onGoalSelect?: (goalId: number) => void;
   refreshTrigger?: number;
+  onTransferComplete?: () => void;
 }
 
 export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
   onGoalSelect,
   refreshTrigger,
+  onTransferComplete,
 }) => {
   const intl = useIntl();
   const { formatCurrency } = useSettings();
@@ -187,6 +195,8 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
   const [monthlyExpenses, setMonthlyExpenses] = useState<number>(0);
   const [emergencyFundSavings, setEmergencyFundSavings] = useState<number>(0);
   const [sixMonthFundSavings, setSixMonthFundSavings] = useState<number>(0);
+  const [categoryTotals, setCategoryTotals] = useState<Record<SavingCategory, number>>({} as Record<SavingCategory, number>);
+  const [isAllocating, setIsAllocating] = useState(false);
 
   const fetchGoals = useCallback(async () => {
     try {
@@ -200,6 +210,7 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
 
       setGoals(goalsData);
       setMonthlyExpenses(expenses);
+      setCategoryTotals(summary.category_totals);
       setEmergencyFundSavings(summary.category_totals[SavingCategory.EMERGENCY_FUND] || 0);
       setSixMonthFundSavings(summary.category_totals[SavingCategory.SIX_MONTH_FUND] || 0);
     } catch (error) {
@@ -224,11 +235,16 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
     const emergencyTarget = monthlyExpenses; // 1 month of expenses
     const sixMonthTarget = monthlyExpenses * 6; // 6 months of expenses
 
+    // Overflow: excess from emergency fund flows to 6-month fund
+    const emergencyOverflow = Math.max(emergencyFundSavings - emergencyTarget, 0);
+    const effectiveEmergency = Math.min(emergencyFundSavings, emergencyTarget);
+    const effectiveSixMonth = sixMonthFundSavings + emergencyOverflow;
+
     const emergencyProgress = emergencyTarget > 0
-      ? Math.min((emergencyFundSavings / emergencyTarget) * 100, 100)
+      ? Math.min((effectiveEmergency / emergencyTarget) * 100, 100)
       : 0;
     const sixMonthProgress = sixMonthTarget > 0
-      ? Math.min((sixMonthFundSavings / sixMonthTarget) * 100, 100)
+      ? Math.min((effectiveSixMonth / sixMonthTarget) * 100, 100)
       : 0;
 
     return [
@@ -239,11 +255,11 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
         name: intl.formatMessage({ id: "goals.babySteps.emergencyFund" }),
         category: SavingCategory.EMERGENCY_FUND,
         target_amount: emergencyTarget,
-        current_amount: emergencyFundSavings,
+        current_amount: effectiveEmergency,
         status: emergencyProgress >= 100 ? GoalStatus.COMPLETED : GoalStatus.ACTIVE,
         priority: 100, // Highest priority
         progress_percent: emergencyProgress,
-        remaining_amount: Math.max(emergencyTarget - emergencyFundSavings, 0),
+        remaining_amount: Math.max(emergencyTarget - effectiveEmergency, 0),
         is_on_track: null,
         monthly_needed: null,
         deadline: null,
@@ -260,11 +276,11 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
         name: intl.formatMessage({ id: "goals.babySteps.sixMonthFund" }),
         category: SavingCategory.SIX_MONTH_FUND,
         target_amount: sixMonthTarget,
-        current_amount: sixMonthFundSavings,
+        current_amount: effectiveSixMonth,
         status: sixMonthProgress >= 100 ? GoalStatus.COMPLETED : GoalStatus.ACTIVE,
         priority: 90,
         progress_percent: sixMonthProgress,
-        remaining_amount: Math.max(sixMonthTarget - sixMonthFundSavings, 0),
+        remaining_amount: Math.max(sixMonthTarget - effectiveSixMonth, 0),
         is_on_track: null,
         monthly_needed: null,
         deadline: null,
@@ -276,6 +292,155 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
       },
     ];
   }, [monthlyExpenses, emergencyFundSavings, sixMonthFundSavings, intl]);
+
+  // Categories that are never touched by Baby Steps allocations
+  const PROTECTED_CATEGORIES = useMemo(() => new Set([
+    SavingCategory.RETIREMENT,
+    SavingCategory.EMERGENCY_FUND,
+    SavingCategory.SIX_MONTH_FUND,
+  ]), []);
+
+  // Available savings = non-retirement, non-target categories with positive balance
+  const availableSources = useMemo(() => {
+    const sources: { category: SavingCategory; amount: number }[] = [];
+    for (const [cat, amount] of Object.entries(categoryTotals)) {
+      if (amount > 0 && !PROTECTED_CATEGORIES.has(cat as SavingCategory)) {
+        sources.push({ category: cat as SavingCategory, amount });
+      }
+    }
+    // Sort largest first for greedy drain
+    sources.sort((a, b) => b.amount - a.amount);
+    return sources;
+  }, [categoryTotals, PROTECTED_CATEGORIES]);
+
+  const availableSavingsTotal = useMemo(
+    () => availableSources.reduce((sum, s) => sum + s.amount, 0),
+    [availableSources]
+  );
+
+  // For Step 3: overflow from emergency_fund beyond Step 1 target is also available
+  const emergencyOverflowForStep3 = useMemo(() => {
+    if (monthlyExpenses <= 0) return 0;
+    return Math.max(emergencyFundSavings - monthlyExpenses, 0);
+  }, [emergencyFundSavings, monthlyExpenses]);
+
+  const triggerCelebration = useCallback(() => {
+    const end = Date.now() + 600;
+    const frame = () => {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.6 },
+        colors: ["#22c55e", "#3b82f6", "#a855f7", "#f59e0b"],
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.6 },
+        colors: ["#22c55e", "#3b82f6", "#a855f7", "#f59e0b"],
+      });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    };
+    frame();
+  }, []);
+
+  const handleAllocateToGoal = useCallback(
+    async (targetCategory: SavingCategory, targetAmount: number, babyStepNumber: number) => {
+      setIsAllocating(true);
+      const today = new Date().toISOString().slice(0, 10);
+
+      try {
+        // Determine sources based on which step we're funding
+        const sources: { category: SavingCategory; amount: number }[] = [];
+        let remaining = targetAmount;
+
+        if (babyStepNumber === 3 && emergencyOverflowForStep3 > 0) {
+          // Step 3: first use emergency_fund overflow
+          const overflowToUse = Math.min(emergencyOverflowForStep3, remaining);
+          if (overflowToUse > 0) {
+            sources.push({ category: SavingCategory.EMERGENCY_FUND, amount: overflowToUse });
+            remaining -= overflowToUse;
+          }
+        }
+
+        // Then drain from available categories (largest first)
+        for (const src of availableSources) {
+          if (remaining <= 0) break;
+          const take = Math.min(src.amount, remaining);
+          sources.push({ category: src.category, amount: take });
+          remaining -= take;
+        }
+
+        if (sources.length === 0) return;
+
+        const targetLabel =
+          targetCategory === SavingCategory.EMERGENCY_FUND
+            ? "fundusz awaryjny"
+            : "fundusz bezpieczeństwa";
+
+        // Create withdrawal + deposit pairs for each source
+        for (const src of sources) {
+          const srcLabel = intl.formatMessage({ id: `savings.categories.${src.category}` });
+          await createSaving({
+            category: src.category,
+            saving_type: "withdrawal",
+            amount: src.amount,
+            date: today,
+            description: `Transfer → ${targetLabel}`,
+          });
+          await createSaving({
+            category: targetCategory,
+            saving_type: "deposit",
+            amount: src.amount,
+            date: today,
+            description: `Transfer ← ${srcLabel}`,
+          });
+        }
+
+        // Bust cache and refetch
+        invalidateSavingsCache();
+        await fetchGoals();
+        onTransferComplete?.();
+
+        // Check if goal is now complete
+        const freshSummary = await getSavingsSummary();
+        const newAmount = freshSummary.category_totals[targetCategory] || 0;
+        const target =
+          targetCategory === SavingCategory.EMERGENCY_FUND
+            ? monthlyExpenses
+            : monthlyExpenses * 6;
+
+        if (newAmount >= target) {
+          triggerCelebration();
+          toast({
+            title: intl.formatMessage({
+              id: babyStepNumber === 1
+                ? "goals.babySteps.celebration.step1"
+                : "goals.babySteps.celebration.step3",
+            }),
+          });
+        } else {
+          toast({
+            title: intl.formatMessage({ id: "goals.babySteps.cta.transferSuccess" }),
+          });
+        }
+      } catch (error) {
+        logger.error("[Goals] Failed to allocate savings", error);
+        toast({
+          title: intl.formatMessage({ id: "goals.toast.error" }),
+          variant: "destructive",
+        });
+        // Refetch to show actual state
+        invalidateSavingsCache();
+        void fetchGoals();
+      } finally {
+        setIsAllocating(false);
+      }
+    },
+    [availableSources, emergencyOverflowForStep3, monthlyExpenses, intl, toast, fetchGoals, triggerCelebration, onTransferComplete]
+  );
 
   const goalFieldConfig = useMemo<FormFieldConfig<GoalFormValues>[]>(
     () => [
@@ -531,6 +696,63 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
                 </div>
               </div>
 
+              {/* Baby Steps allocation CTA */}
+              {isBabyStep && goal.progress_percent < 100 && (() => {
+                const step = (goal as BabyStepGoal).babyStepNumber;
+
+                // Step 3 CTA only shows when Step 1 is complete
+                if (step === 3) {
+                  const step1Complete = monthlyExpenses > 0 &&
+                    emergencyFundSavings >= monthlyExpenses;
+                  if (!step1Complete) return null;
+                }
+
+                const needed = goal.remaining_amount;
+                // For Step 3, include emergency overflow as available
+                const totalAvailable = step === 3
+                  ? availableSavingsTotal + emergencyOverflowForStep3
+                  : availableSavingsTotal;
+                const transferAmount = Math.min(needed, totalAvailable);
+
+                if (totalAvailable <= 0 || transferAmount <= 0) return null;
+
+                return (
+                  <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                    <p className="text-sm text-amber-800 mb-2">
+                      <FormattedMessage
+                        id="goals.babySteps.cta.hasAvailableSavings"
+                        values={{
+                          amount: <span key="amt" className="font-semibold">{formatCurrency(totalAvailable)}</span>,
+                          transfer: <span key="xfer" className="font-semibold">{formatCurrency(transferAmount)}</span>,
+                        }}
+                      />
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                      disabled={isAllocating}
+                      onClick={() =>
+                        handleAllocateToGoal(goal.category, transferAmount, step)
+                      }
+                    >
+                      {isAllocating ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ArrowRight className="mr-2 h-4 w-4" />
+                      )}
+                      <FormattedMessage
+                        id={
+                          step === 1
+                            ? "goals.babySteps.cta.createEmergencyFund"
+                            : "goals.babySteps.cta.createSixMonthFund"
+                        }
+                      />
+                    </Button>
+                  </div>
+                );
+              })()}
+
               {goal.deadline && (
                 <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
@@ -657,15 +879,8 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
             </div>
           )}
 
-          {/* User's custom goals */}
-          {goals.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {goals.map(renderGoalCard)}
-            </div>
-          )}
-
-          {/* Full empty state - only show when no Baby Steps and no user goals */}
-          {allGoals.length === 0 && (
+          {/* Full empty state - only show when no Baby Steps */}
+          {babyStepGoals.length === 0 && (
             <div className="text-center py-8">
               <Target className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <p className="mt-2 text-muted-foreground">

@@ -1489,7 +1489,7 @@ export default function IncomePage() {
               onMonthSelect={handleBudgetChartMonthSelect}
               compact
             />
-            <BudgetView month={budgetMonth} onMonthChange={setBudgetMonth} defaultCollapsed showTypes={["income"]} />
+            <BudgetView month={budgetMonth} onMonthChange={setBudgetMonth} showTypes={["income"]} />
           </div>
         </TabsContent>
       </Tabs>

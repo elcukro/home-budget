@@ -758,6 +758,8 @@
       "remaining_balance": "remaining balance",
       "interest_rate": "interest rate",
       "term_months": "term months",
+      "end_date": "end date",
+      "is_gross": "gross amount",
       "monthly_payment": "monthly payment",
       "timestamp": "{date} at {time}",
       "updated_at": "Updated {date} at {time}",
@@ -1263,6 +1265,7 @@
       "totalInterest": "Total interest:",
       "payoffTime": "Payoff time:",
       "extraPayment": "Extra monthly payment:",
+      "extraPaymentHint": "How much extra can you pay each month on top of minimum payments?",
       "order": "Payoff order:",
       "paidOffIn": "Paid off in {time}",
       "selected": "Selected strategy",
@@ -1270,6 +1273,17 @@
       "snowballSavings": "Snowball method will save you {amount} in interest!",
       "comparisonNote": "Avalanche is mathematically optimal, but Snowball provides quicker \"small wins\" - choose what motivates you more.",
       "speedsUpBy": "Speeds up payoff by {time}",
+      "interestSaved": "You'll save {amount} in interest",
+      "addToBudget": "Add overpayment to budget",
+      "addToBudgetDesc": "Overpayment {amount}/mo. on {loan} until {date}",
+      "addToBudgetSuccess": "Added overpayment as recurring expense",
+      "addToBudgetError": "Failed to add overpayment",
+      "confirmDialog": {
+        "title": "Add overpayment to budget",
+        "description": "An overpayment of {amount}/mo. on {loan} will be added to your expense budget from the current month until the loan is fully paid off ({endDate}).",
+        "timeSaved": "You'll pay off {time} sooner",
+        "interestSaved": "You'll save {amount} in interest"
+      },
       "annualRate": "{rate}% annually",
       "babyStepsLink": "This strategy is part of {step} - pay off all debts (except mortgage)",
       "babyStep2": "Baby Step 2",
@@ -1800,7 +1814,7 @@
       "oipe": "OIPE"
     },
     "retirementLimits": {
-      "title": "Pillar III Limits",
+      "title": "Pillar III Retirement",
       "subtitle": "Retirement account contributions in {year}",
       "tooltip": "Annual contribution limits for IKE and IKZE are set by the Ministry of Finance. Exceeding limits may result in tax penalties.",
       "contributed": "Contributed",
@@ -1822,6 +1836,38 @@
         "oipe": "OIPE",
         "standard": "Standard"
       }
+    },
+    "ppk": {
+      "title": "PPK",
+      "estimatedBalance": "Estimated balance",
+      "monthlyContribution": "Monthly contribution",
+      "breakdown": "{employee} (employee {employeeRate}%) + {employer} (employer {employerRate}%)",
+      "estimateNote": "Estimate based on contract date, PPK rates and gross salary",
+      "updateActual": "Update actual balance",
+      "withdraw": "Withdraw from PPK",
+      "withdrawTitle": "PPK Withdrawal",
+      "withdrawWarning": "Early PPK withdrawal has serious consequences:",
+      "withdrawPenalties": {
+        "zus": "30% of employer contributions go to your ZUS account",
+        "welcome": "Loss of welcome bonus (250 PLN)",
+        "annual": "Loss of annual bonuses (240 PLN/year)",
+        "tax": "Capital gains tax (19%)"
+      },
+      "withdrawConfirm": "I understand the consequences",
+      "withdrawNetNote": "You will receive approx. 70% of the withdrawn amount after deductions",
+      "ownerLabel": "Estimated PPK account balance — {name}",
+      "contractInfo": "Contract: {description}, since {date}",
+      "grossBasis": "Gross basis: {amount}",
+      "stateBonus": "+ state bonuses: 250 PLN welcome + {annual} PLN ({years} yrs × 240 PLN/yr)",
+      "monthsAccumulated": "Accumulated over {months} months",
+      "noSalaryData": "Add salary in Income tab to see PPK estimate",
+      "updateTitle": "Update PPK balance",
+      "updateDescription": "Enter the current PPK account balance",
+      "actualBalance": "Actual balance",
+      "updateSuccess": "PPK balance has been updated",
+      "withdrawSuccess": "PPK withdrawal has been recorded",
+      "withdrawAmount": "Withdrawal amount",
+      "maxAmount": "Max: {amount}"
     },
     "summary": {
       "totalSavings": "Total Savings",
@@ -1954,7 +2000,17 @@
       "badge": "Step {step}",
       "emergencyFund": "Emergency Fund (1 month)",
       "sixMonthFund": "Full Emergency Fund (6 months)",
-      "autoCalculated": "Auto-calculated"
+      "autoCalculated": "Auto-calculated",
+      "cta": {
+        "hasAvailableSavings": "You have {amount} in savings. Move {transfer} here!",
+        "createEmergencyFund": "Create emergency fund",
+        "createSixMonthFund": "Create safety fund",
+        "transferSuccess": "Funds transferred successfully"
+      },
+      "celebration": {
+        "step1": "Emergency fund complete! 🎉",
+        "step3": "Full safety fund complete! 🎉"
+      }
     },
     "form": {
       "name": "Goal name",

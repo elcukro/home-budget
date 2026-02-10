@@ -19,6 +19,7 @@ import {
   Landmark,
   LayoutGrid,
   List,
+  MoreHorizontal,
   Pencil,
   PiggyBank,
   Plus,
@@ -58,6 +59,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   parseNumber,
   validateAmountPositive,
@@ -1315,12 +1323,12 @@ export default function LoansPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl bg-gradient-to-r from-amber-50 via-white to-white px-6 py-5 shadow-sm">
         <div>
-          <h1 className="text-2xl font-semibold text-primary">
+          <h1 className="text-3xl font-semibold text-amber-900">
             <FormattedMessage id="loans.title" />
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-amber-700/80">
             <FormattedMessage id="loans.subtitle" />
           </p>
         </div>
@@ -1379,18 +1387,19 @@ export default function LoansPage() {
             <FormattedMessage id="loans.summaryPanel.nextPaymentLabel" />
           </p>
           {upcomingPayment ? (
-            <p className="text-base font-semibold text-emerald-900">
-              {intl.formatDate(upcomingPayment.date, { dateStyle: "medium" })} ·{" "}
-              {formatCurrency(upcomingPayment.amount)}
-            </p>
+            <>
+              <p className="text-base font-semibold text-amber-900">
+                {intl.formatDate(upcomingPayment.date, { dateStyle: "medium" })} · {formatCurrency(upcomingPayment.amount)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {upcomingPayment.loan.description}
+              </p>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">
               <FormattedMessage id="loans.summaryPanel.noUpcomingPayment" />
             </p>
           )}
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            <FormattedMessage id="loans.summaryPanel.nextPaymentDescription" />
-          </p>
         </div>
       </div>
 
@@ -1398,7 +1407,7 @@ export default function LoansPage() {
       <QuickAddLoanTiles onQuickAdd={handleQuickAdd} />
 
       {/* Debt Payoff Strategy */}
-      {loans.length > 0 && <DebtPayoffStrategy loans={loans} />}
+      {loans.length > 0 && <DebtPayoffStrategy loans={loans} userEmail={userEmail} />}
 
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-muted/60 bg-muted/30 px-5 py-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1555,7 +1564,7 @@ export default function LoansPage() {
             return (
               <div
                 key={loan.id}
-                className="group rounded-3xl border border-muted/50 bg-gradient-to-r from-emerald-50/70 via-white to-white p-6 shadow-sm transition-shadow hover:shadow-lg"
+                className="group rounded-3xl border border-muted/50 bg-gradient-to-r from-amber-50/70 via-white to-white p-6 shadow-sm transition-shadow hover:shadow-lg"
               >
                 <div className="flex flex-wrap items-start justify-between gap-5">
                   <div className="flex items-start gap-4">
@@ -1572,7 +1581,7 @@ export default function LoansPage() {
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
                         <FormattedMessage id={`loans.types.${loan.loan_type}`} />
                       </p>
-                      <h2 className="text-xl font-semibold text-emerald-900">
+                      <h2 className="text-lg font-semibold text-amber-900">
                         {loan.description}
                       </h2>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -1607,11 +1616,10 @@ export default function LoansPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2">
                     {/* Payment status indicator */}
                     {(() => {
                       const status = getPaymentStatus(loan);
-                      const _loanId = typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string);
                       if (status === "paid") {
                         return (
                           <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-700">
@@ -1639,131 +1647,112 @@ export default function LoansPage() {
                       return null;
                     })()}
 
-                    {/* Payment action buttons */}
+                    {/* Mark as paid - primary action */}
                     {!hasCurrentMonthPayment(typeof loan.id === 'number' ? loan.id : parseInt(loan.id as string)) && (
                       <Button
                         variant="secondary"
+                        size="sm"
                         onClick={() => handleMarkAsPaid(loan)}
                         disabled={isProcessingPayment}
-                        className="rounded-full border border-emerald-200 bg-emerald-100 px-4 py-1.5 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-200"
+                        className="rounded-full border border-emerald-200 bg-emerald-100 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-200"
                       >
-                        <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
                         <FormattedMessage id="loans.payment.markAsPaid" />
                       </Button>
                     )}
 
-                    {/* Overpay button - only for non-leasing */}
-                    {loan.loan_type !== "leasing" && (
-                      <Tooltip content={intl.formatMessage({ id: "loans.payment.overpayTooltip" })}>
+                    {/* More actions dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setOverpayLoan(loan);
-                            setOverpayAmount(0);
-                          }}
-                          disabled={isProcessingPayment}
-                          className="rounded-full border border-amber-200 bg-amber-100 px-4 py-1.5 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-200"
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-full border-muted"
                         >
-                          <Wallet className="mr-1.5 h-4 w-4" />
-                          <FormattedMessage id="loans.payment.overpay" />
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      </Tooltip>
-                    )}
-
-                    {/* Payment history button */}
-                    <Tooltip content={intl.formatMessage({ id: "loans.payment.historyTooltip" })}>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setPaymentHistoryLoan(loan)}
-                        className="h-10 w-10 rounded-full border-primary/10 hover:bg-primary/10 hover:text-primary"
-                      >
-                        <History className="h-4 w-4" />
-                        <span className="sr-only">
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        {loan.loan_type !== "leasing" && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setOverpayLoan(loan);
+                              setOverpayAmount(0);
+                            }}
+                            disabled={isProcessingPayment}
+                          >
+                            <Wallet className="mr-2 h-4 w-4" />
+                            <FormattedMessage id="loans.payment.overpay" />
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => setPaymentHistoryLoan(loan)}>
+                          <History className="mr-2 h-4 w-4" />
                           <FormattedMessage id="loans.payment.history" />
-                        </span>
-                      </Button>
-                    </Tooltip>
-
-                    <Button
-                      variant="secondary"
-                      onClick={() => setScheduleLoan(loan)}
-                      disabled={metrics.monthlyPayment <= 0}
-                      className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:border-muted/40 disabled:bg-muted/20 disabled:text-muted-foreground"
-                    >
-                      <FormattedMessage id="loans.schedule.view" />
-                    </Button>
-                    <Tooltip content={intl.formatMessage({ id: "common.edit" })}>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleOpenEdit(loan)}
-                        className="h-10 w-10 rounded-full border-primary/10 hover:bg-primary/10 hover:text-primary"
-                        aria-label={intl.formatMessage({ id: "common.edit" })}
-                      >
-                        <Pencil className="h-4 w-4" />
-                        <span className="sr-only">
-                          {intl.formatMessage({ id: "common.edit" })}
-                        </span>
-                      </Button>
-                    </Tooltip>
-                    <Tooltip content={intl.formatMessage({ id: "common.delete" })}>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          setPendingDelete(loan);
-                          setConfirmOpen(true);
-                        }}
-                        className="h-10 w-10 rounded-full border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
-                        aria-label={intl.formatMessage({ id: "common.delete" })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">
-                          {intl.formatMessage({ id: "common.delete" })}
-                        </span>
-                      </Button>
-                    </Tooltip>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setScheduleLoan(loan)}
+                          disabled={metrics.monthlyPayment <= 0}
+                        >
+                          <CalendarDays className="mr-2 h-4 w-4" />
+                          <FormattedMessage id="loans.schedule.view" />
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleOpenEdit(loan)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          <FormattedMessage id="common.edit" />
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setPendingDelete(loan);
+                            setConfirmOpen(true);
+                          }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          <FormattedMessage id="common.delete" />
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="rounded-2xl border border-white/40 bg-white/70 p-4 shadow-sm">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border border-muted/40 bg-muted/20 px-3 py-2.5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       <FormattedMessage id="loans.summary.remaining" />
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-amber-700">
+                    <p className="mt-1 text-base font-semibold text-amber-700">
                       {formatCurrency(metrics.remainingBalance)}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/40 bg-white/70 p-4 shadow-sm">
+                  <div className="rounded-xl border border-muted/40 bg-muted/20 px-3 py-2.5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       <FormattedMessage id="loans.summary.monthlyPayment" />
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-amber-700">
+                    <p className="mt-1 text-base font-semibold text-amber-700">
                       {formatCurrency(metrics.monthlyPayment)}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/40 bg-white/70 p-4 shadow-sm">
+                  <div className="rounded-xl border border-muted/40 bg-muted/20 px-3 py-2.5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       <FormattedMessage id="loans.summary.interestRate" />
                     </p>
-                    <p className={cn("mt-2 text-2xl font-semibold", meta.accentClass)}>
+                    <p className={cn("mt-1 text-base font-semibold", meta.accentClass)}>
                       {interestRateFormatted}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-white/40 bg-white/70 p-4 shadow-sm">
+                  <div className="rounded-xl border border-muted/40 bg-muted/20 px-3 py-2.5">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">
                       <FormattedMessage id="loans.summary.term" />
                     </p>
-                    <p className="mt-2 text-2xl font-semibold text-emerald-900">
+                    <p className="mt-1 text-base font-semibold text-amber-900">
                       {metrics.termMonths}
-                      <span className="ml-1 text-sm font-normal text-muted-foreground">
+                      <span className="ml-1 text-xs font-normal text-muted-foreground">
                         <FormattedMessage id="loans.summary.monthsSuffix" />
                       </span>
                     </p>
                     {metrics.monthsRemaining > 0 && (
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         <FormattedMessage
                           id="loans.summary.monthsRemaining"
                           values={{ months: metrics.monthsRemaining }}
@@ -1777,7 +1766,7 @@ export default function LoansPage() {
                   {isRevolvingCredit ? (
                     <>
                       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                        <span className="font-medium text-emerald-900">
+                        <span className="font-medium text-amber-900">
                           <FormattedMessage id="loans.creditCard.utilization" />
                         </span>
                         <span className={cn(
@@ -1811,7 +1800,7 @@ export default function LoansPage() {
                   ) : (
                     <>
                       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
-                        <span className="font-medium text-emerald-900">
+                        <span className="font-medium text-amber-900">
                           <FormattedMessage
                             id="loans.summary.progressLabel"
                             values={{ percentage: progressLabel }}
@@ -1936,14 +1925,14 @@ export default function LoansPage() {
       )}
 
       <Card className="rounded-3xl border border-muted/60 bg-card shadow-sm">
-        <CardHeader className="rounded-t-3xl border-b border-emerald-100/60 bg-emerald-50/70 py-5 shadow-sm">
-          <CardTitle className="text-lg font-semibold text-emerald-900">
+        <CardHeader className="rounded-t-3xl border-b border-muted/40 bg-muted/20 py-5">
+          <CardTitle className="text-lg font-semibold text-primary">
             <FormattedMessage id="loans.loanHistory" />
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table className="w-full overflow-hidden rounded-b-3xl">
-            <TableHeader className="bg-emerald-50/80 text-emerald-900 shadow-sm">
+            <TableHeader className="bg-muted/30">
               <TableRow>
                 <TableHead className="py-3 text-xs font-semibold uppercase tracking-wide">
                   <FormattedMessage id="loans.table.type" />
@@ -2013,7 +2002,7 @@ export default function LoansPage() {
                   return (
                     <TableRow
                       key={loan.id}
-                      className="border-b border-muted/30 text-sm leading-relaxed odd:bg-white even:bg-emerald-50/40 transition-colors hover:bg-emerald-100/50 focus-within:bg-emerald-100/50"
+                      className="border-b border-muted/30 text-sm leading-relaxed odd:bg-white even:bg-muted/20 transition-colors hover:bg-muted/30 focus-within:bg-muted/30"
                     >
                       <TableCell className="py-4 text-sm font-medium text-slate-700">
                         <FormattedMessage id={`loans.types.${loan.loan_type}`} />

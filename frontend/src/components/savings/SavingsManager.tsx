@@ -7,11 +7,15 @@ import { z } from "zod";
 import {
   ArrowDownRight,
   ArrowUpRight,
+  BadgePercent,
+  Building2,
   CalendarClock,
   CalendarDays,
   ChevronDown,
   ChevronRight,
   Filter,
+  Globe,
+  Landmark,
   Pencil,
   PiggyBank,
   Plus,
@@ -20,6 +24,7 @@ import {
   Target,
   Trash2,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
 
 import { useSettings } from "@/contexts/SettingsContext";
@@ -127,12 +132,12 @@ const accountTypeOptions = Object.values(AccountType).map((type) => ({
 }));
 
 // Badge styling for III Pillar account types (IKE, IKZE, OIPE, PPK)
-const accountTypeBadgeStyles: Record<AccountType, { bg: string; text: string; icon: string }> = {
-  [AccountType.STANDARD]: { bg: 'bg-gray-100', text: 'text-gray-700', icon: '💰' },
-  [AccountType.IKE]: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: '🏦' },
-  [AccountType.IKZE]: { bg: 'bg-blue-100', text: 'text-blue-700', icon: '📊' },
-  [AccountType.PPK]: { bg: 'bg-purple-100', text: 'text-purple-700', icon: '🏢' },
-  [AccountType.OIPE]: { bg: 'bg-amber-100', text: 'text-amber-700', icon: '🇪🇺' },
+const accountTypeBadgeStyles: Record<AccountType, { bg: string; text: string; icon: React.ReactNode }> = {
+  [AccountType.STANDARD]: { bg: 'bg-gray-100', text: 'text-gray-700', icon: <Wallet className="h-3 w-3" /> },
+  [AccountType.IKE]: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: <Landmark className="h-3 w-3" /> },
+  [AccountType.IKZE]: { bg: 'bg-blue-100', text: 'text-blue-700', icon: <BadgePercent className="h-3 w-3" /> },
+  [AccountType.PPK]: { bg: 'bg-purple-100', text: 'text-purple-700', icon: <Building2 className="h-3 w-3" /> },
+  [AccountType.OIPE]: { bg: 'bg-amber-100', text: 'text-amber-700', icon: <Globe className="h-3 w-3" /> },
 };
 
 const savingSchema = z
@@ -735,7 +740,7 @@ export const SavingsManager = () => {
     try {
       const payload = {
         ...values,
-        target_amount: values.target_amount ?? null,
+        target_amount: values.target_amount || null,
       };
 
       if (dialogMode === "create") {
@@ -1054,110 +1059,6 @@ export const SavingsManager = () => {
     return sortedSavings.filter((s) => !groupedItemIds.has(s.id));
   }, [sortedSavings, groupedItemIds]);
 
-  // Calculate average annual return rate from savings with return rates
-  const averageReturnRate = useMemo(() => {
-    const savingsWithRate = savings.filter((s) => s.annual_return_rate !== undefined && s.annual_return_rate !== null);
-    if (savingsWithRate.length === 0) {
-      return 0.05; // Default 5% if no rates specified
-    }
-    const totalRate = savingsWithRate.reduce((sum, s) => sum + (s.annual_return_rate ?? 0), 0);
-    return totalRate / savingsWithRate.length;
-  }, [savings]);
-
-  // Goal projection calculation using COMPOUND INTEREST
-  // Formula: n = log((FV * r + PMT) / (PV * r + PMT)) / log(1 + r)
-  // Where: FV = target, PV = current, r = monthly rate, PMT = monthly contribution
-  const goalProjection = useMemo(() => {
-    if (!summary || summary.monthly_contribution <= 0) {
-      return null;
-    }
-
-    const currentTotal = summary.total_savings;
-    const monthlyContribution = summary.monthly_contribution;
-    const emergencyTarget = summary.emergency_fund_target;
-    const emergencyCurrent = summary.emergency_fund;
-
-    // Monthly return rate from annual rate
-    const monthlyReturnRate = averageReturnRate / 12;
-
-    // Helper function: calculate months to reach target with compound interest
-    const calculateMonthsWithCompoundInterest = (
-      presentValue: number,
-      futureValue: number,
-      monthlyPMT: number,
-      monthlyRate: number
-    ): number | null => {
-      if (presentValue >= futureValue) return 0;
-      if (monthlyPMT <= 0) return null;
-
-      // If no return rate, use simple linear calculation
-      if (monthlyRate <= 0 || monthlyRate < 0.0001) {
-        return Math.ceil((futureValue - presentValue) / monthlyPMT);
-      }
-
-      // Compound interest formula solving for n
-      // FV = PV * (1 + r)^n + PMT * [((1 + r)^n - 1) / r]
-      // Solving: n = log((FV * r + PMT) / (PV * r + PMT)) / log(1 + r)
-      const numerator = futureValue * monthlyRate + monthlyPMT;
-      const denominator = presentValue * monthlyRate + monthlyPMT;
-
-      if (denominator <= 0 || numerator <= 0) {
-        return Math.ceil((futureValue - presentValue) / monthlyPMT);
-      }
-
-      const n = Math.log(numerator / denominator) / Math.log(1 + monthlyRate);
-      return Math.ceil(Math.max(0, n));
-    };
-
-    // Calculate months to reach emergency fund target
-    const monthsToEmergency = calculateMonthsWithCompoundInterest(
-      emergencyCurrent,
-      emergencyTarget,
-      monthlyContribution,
-      monthlyReturnRate
-    );
-    const emergencyTargetDate = monthsToEmergency !== null && monthsToEmergency > 0
-      ? new Date(Date.now() + monthsToEmergency * 30 * 24 * 60 * 60 * 1000)
-      : null;
-
-    // Calculate when they'll reach various milestones
-    const milestones = [5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
-    const nextMilestone = milestones.find((m) => m > currentTotal);
-    const monthsToNextMilestone = nextMilestone
-      ? calculateMonthsWithCompoundInterest(currentTotal, nextMilestone, monthlyContribution, monthlyReturnRate)
-      : null;
-    const nextMilestoneDate = monthsToNextMilestone !== null && monthsToNextMilestone > 0
-      ? new Date(Date.now() + monthsToNextMilestone * 30 * 24 * 60 * 60 * 1000)
-      : null;
-
-    // Calculate projected value in 10 years with compound interest
-    // FV = PV * (1 + r)^n + PMT * [((1 + r)^n - 1) / r]
-    const yearsProjection = 10;
-    const monthsProjection = yearsProjection * 12;
-    let projectedValue10Years: number;
-
-    if (monthlyReturnRate > 0.0001) {
-      const compoundFactor = Math.pow(1 + monthlyReturnRate, monthsProjection);
-      projectedValue10Years = currentTotal * compoundFactor +
-        monthlyContribution * ((compoundFactor - 1) / monthlyReturnRate);
-    } else {
-      projectedValue10Years = currentTotal + monthlyContribution * monthsProjection;
-    }
-
-    return {
-      monthlyRate: monthlyContribution,
-      annualReturnRate: averageReturnRate,
-      monthsToEmergency,
-      emergencyTargetDate,
-      nextMilestone,
-      monthsToNextMilestone,
-      nextMilestoneDate,
-      emergencyComplete: emergencyCurrent >= emergencyTarget,
-      projectedValue10Years: Math.round(projectedValue10Years),
-      useCompoundInterest: averageReturnRate > 0,
-    };
-  }, [summary, averageReturnRate]);
-
   const latestMonth = monthlyTotals.length > 0 ? monthlyTotals[monthlyTotals.length - 1] : undefined;
   const previousMonth = monthlyTotals.length > 1 ? monthlyTotals[monthlyTotals.length - 2] : null;
   const changeAmount = latestMonth?.total ?? 0;
@@ -1300,14 +1201,17 @@ export const SavingsManager = () => {
     });
 
     const map = new Map<number, number>();
-    let running = 0;
+    const runningByGroup = new Map<string, number>();
     chronological.forEach((saving) => {
+      const groupKey = `${saving.category}::${saving.account_type ?? 'standard'}`;
+      const running = runningByGroup.get(groupKey) ?? 0;
       const delta =
         saving.saving_type === SavingType.DEPOSIT
           ? saving.amount
           : -saving.amount;
-      running += delta;
-      map.set(saving.id, running);
+      const newBalance = running + delta;
+      runningByGroup.set(groupKey, newBalance);
+      map.set(saving.id, newBalance);
     });
     return map;
   }, [savings]);
@@ -1370,12 +1274,12 @@ export const SavingsManager = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-3xl bg-gradient-to-r from-emerald-50 via-white to-white px-6 py-5 shadow-sm">
         <div>
-          <h1 className="text-2xl font-semibold text-primary">
+          <h1 className="text-3xl font-semibold text-emerald-900">
             <FormattedMessage id="savings.title" />
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-emerald-700/80">
             <FormattedMessage id="savings.subtitle" />
           </p>
         </div>
@@ -1392,42 +1296,38 @@ export const SavingsManager = () => {
       </div>
 
       {summary && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <Card className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-100 via-white to-white p-6 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg md:col-span-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Card className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-100 via-white to-white px-6 py-4 shadow-sm">
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl" aria-hidden="true" />
-            <div className="relative flex flex-wrap items-start justify-between gap-6">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-200 text-emerald-800">
-                    <PiggyBank className="h-6 w-6" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-emerald-800/80">
-                      <FormattedMessage id="savings.summary.totalSavings" />
-                    </p>
-                    {topCategory && (
-                      <p className="text-xs text-emerald-800/70">
-                        <FormattedMessage
-                          id="savings.summary.topCategory"
-                          values={{
-                            category: (
-                              <span key="category" className="font-medium text-emerald-900">
-                                <FormattedMessage id={`savings.categories.${topCategory.category}`} />
-                              </span>
-                            ),
-                          }}
-                        />
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-5xl font-semibold text-emerald-900 transition-all duration-300">
-                    {formatCurrency(summary.total_savings)}
+            <div className="relative flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-emerald-800">
+                  <PiggyBank className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <p className="text-xs uppercase tracking-wide text-emerald-800/80">
+                  <FormattedMessage id="savings.summary.totalSavings" />
+                </p>
+              </div>
+              <p className="text-2xl font-semibold text-emerald-900 shrink-0">
+                {formatCurrency(summary.total_savings)}
+              </p>
+            </div>
+          </Card>
+
+          <Card className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-100 via-white to-white px-6 py-4 shadow-sm">
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-emerald-200/40 blur-3xl" aria-hidden="true" />
+            <div className="relative flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-emerald-600">
+                  <TrendingUp className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    <FormattedMessage id="savings.summary.monthlyContribution" />
                   </p>
                   <p
                     className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium",
+                      "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium mt-0.5",
                       changeToneClass,
                     )}
                   >
@@ -1436,162 +1336,16 @@ export const SavingsManager = () => {
                   </p>
                 </div>
               </div>
-              <div className="space-y-3 text-sm text-emerald-900/80">
-                <p>
-                  <FormattedMessage
-                    id="savings.summary.monthlyContributionHint"
-                    values={{ amount: formatCurrency(summary.monthly_contribution) }}
-                  />
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full border-emerald-200 bg-white/80 text-emerald-700 hover:bg-emerald-100"
-                  onClick={() => void fetchSummary()}
-                >
-                  <FormattedMessage id="common.refresh" defaultMessage="Odśwież" />
-                </Button>
-              </div>
+              <p className="text-2xl font-semibold text-emerald-800 shrink-0">
+                {formatCurrency(summary.monthly_contribution)}
+              </p>
             </div>
-          </Card>
-
-          <Card className="flex flex-col justify-between rounded-3xl border border-muted/60 bg-card p-6 shadow-sm transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg">
-            <div className="flex items-start gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <TrendingUp className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                  <FormattedMessage id="savings.summary.monthlyContribution" />
-                </p>
-                <p className="text-3xl font-semibold text-emerald-800 transition-all duration-300">
-                  {formatCurrency(summary.monthly_contribution)}
-                </p>
-              </div>
-            </div>
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              <FormattedMessage id="savings.summary.monthlyContributionDescription" />
-            </p>
           </Card>
         </div>
       )}
 
-      {/* Goal Projection Card (Compound Interest) */}
-      {goalProjection && (
-        <Card className="rounded-3xl border border-sky-100 bg-gradient-to-r from-sky-50 via-white to-white p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-              <Target className="h-6 w-6" aria-hidden="true" />
-            </span>
-            <div className="flex-1 space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold text-sky-900">
-                  <FormattedMessage id="savings.goalProjection.title" defaultMessage="Goal Projection (Compound Interest)" />
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {goalProjection.useCompoundInterest ? (
-                    <FormattedMessage
-                      id="savings.goalProjection.monthlyRate"
-                      defaultMessage="At {amount}/month and {rate}% annual return"
-                      values={{
-                        amount: formatCurrency(goalProjection.monthlyRate),
-                        rate: (goalProjection.annualReturnRate * 100).toFixed(1),
-                      }}
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="savings.goalProjection.monthlyRateSimple"
-                      defaultMessage="At your current rate of {amount}/month"
-                      values={{ amount: formatCurrency(goalProjection.monthlyRate) }}
-                    />
-                  )}
-                </p>
-                {goalProjection.useCompoundInterest && (
-                  <p className="mt-1 text-xs text-sky-600">
-                    📈 <FormattedMessage id="savings.goalProjection.compoundInterestNote" defaultMessage="Calculation includes compound interest" />
-                  </p>
-                )}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {/* Emergency Fund Projection */}
-                {!goalProjection.emergencyComplete && goalProjection.emergencyTargetDate && (
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-emerald-700">
-                      <FormattedMessage id="savings.goalProjection.emergencyFund" defaultMessage="Emergency Fund Complete" />
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-emerald-800">
-                      {intl.formatDate(goalProjection.emergencyTargetDate, {
-                        year: "numeric",
-                        month: "long",
-                      })}
-                    </p>
-                    <p className="text-xs text-emerald-600">
-                      <FormattedMessage
-                        id="savings.goalProjection.inMonths"
-                        defaultMessage="In {months} months"
-                        values={{ months: goalProjection.monthsToEmergency }}
-                      />
-                    </p>
-                  </div>
-                )}
-                {goalProjection.emergencyComplete && (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-100/50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-emerald-700">
-                      <FormattedMessage id="savings.goalProjection.emergencyFund" defaultMessage="Emergency Fund" />
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-emerald-800">
-                      ✓ <FormattedMessage id="savings.goalProjection.complete" defaultMessage="Complete!" />
-                    </p>
-                  </div>
-                )}
-                {/* Next Milestone Projection */}
-                {goalProjection.nextMilestone && goalProjection.nextMilestoneDate && (
-                  <div className="rounded-2xl border border-sky-100 bg-sky-50/50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-sky-700">
-                      <FormattedMessage
-                        id="savings.goalProjection.nextMilestone"
-                        defaultMessage="Reach {amount}"
-                        values={{ amount: formatCurrency(goalProjection.nextMilestone) }}
-                      />
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-sky-800">
-                      {intl.formatDate(goalProjection.nextMilestoneDate, {
-                        year: "numeric",
-                        month: "long",
-                      })}
-                    </p>
-                    <p className="text-xs text-sky-600">
-                      <FormattedMessage
-                        id="savings.goalProjection.inMonths"
-                        defaultMessage="In {months} months"
-                        values={{ months: goalProjection.monthsToNextMilestone }}
-                      />
-                    </p>
-                  </div>
-                )}
-                {/* 10-Year Projection */}
-                {goalProjection.projectedValue10Years > 0 && (
-                  <div className="rounded-2xl border border-purple-100 bg-purple-50/50 px-4 py-3">
-                    <p className="text-xs uppercase tracking-wide text-purple-700">
-                      <FormattedMessage id="savings.goalProjection.projectedIn10Years" defaultMessage="In 10 years" />
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-purple-800">
-                      {formatCurrency(goalProjection.projectedValue10Years)}
-                    </p>
-                    <p className="text-xs text-purple-600">
-                      {goalProjection.useCompoundInterest ? "📊 " : ""}
-                      {(goalProjection.annualReturnRate * 100).toFixed(1)}% p.a.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
-
       {/* Savings Goals */}
-      <SavingsGoalsSection />
+      <SavingsGoalsSection onTransferComplete={() => { void fetchSavings(); void fetchSummary(); }} />
 
       {/* Retirement Account Limits (IKE/IKZE/OIPE) */}
       <RetirementLimitsCard
@@ -1685,15 +1439,13 @@ export const SavingsManager = () => {
               </Select>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setFilters({})}>
-                <FormattedMessage id="savings.filters.clear" />
+              <Button variant="outline" onClick={handleOpenWithdraw}>
+                <ArrowDownRight className="mr-2 h-4 w-4" />
+                <FormattedMessage id="savings.actions.withdraw" />
               </Button>
-              <Button
-                variant="secondary"
-                onClick={() => void fetchSavings()}
-              >
-                <Filter className="mr-2 h-4 w-4" />
-                <FormattedMessage id="savings.filters.apply" />
+              <Button onClick={handleOpenCreate}>
+                <Plus className="mr-2 h-4 w-4" />
+                <FormattedMessage id="savings.actions.add" />
               </Button>
             </div>
           </div>
@@ -2066,30 +1818,30 @@ export const SavingsManager = () => {
             </TableBody>
           </Table>
 
-          <div className="grid gap-3 rounded-2xl border border-muted/60 bg-muted/20 px-4 py-4 sm:grid-cols-3">
+          <div className="flex items-center justify-between rounded-2xl border border-muted/60 bg-muted/20 px-6 py-4">
             <div className="space-y-1">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 <FormattedMessage id="savings.summaryTotals.deposits" />
               </p>
-              <p className="text-lg font-semibold text-emerald-700">
+              <p className="text-sm font-semibold text-emerald-700">
                 {formatCurrency(totals.deposits)}
               </p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 text-center">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 <FormattedMessage id="savings.summaryTotals.withdrawals" />
               </p>
-              <p className="text-lg font-semibold text-rose-600">
+              <p className="text-sm font-semibold text-rose-600">
                 {formatCurrency(totals.withdrawals)}
               </p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 text-right">
               <p className="text-xs uppercase tracking-wide text-muted-foreground">
                 <FormattedMessage id="savings.summaryTotals.net" />
               </p>
               <p
                 className={cn(
-                  "text-lg font-semibold",
+                  "text-sm font-semibold",
                   totals.net >= 0 ? "text-emerald-700" : "text-rose-600",
                 )}
               >

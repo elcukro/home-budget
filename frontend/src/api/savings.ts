@@ -1,4 +1,5 @@
 import {
+  Saving,
   SavingCategory,
   SavingsSummary,
   AccountType,
@@ -47,7 +48,37 @@ const createEmptySummary = (): SavingsSummary => ({
   emergency_fund_progress: 0,
 });
 
-// Removed clearApiCache function as it's no longer needed
+/**
+ * Invalidates the savings summary cache so next fetch gets fresh data.
+ * Call this after creating savings entries (e.g., transfers between categories).
+ */
+export const invalidateSavingsCache = (): void => {
+  delete apiCache.savingsSummary;
+};
+
+/**
+ * Creates a single savings entry (deposit or withdrawal).
+ */
+export const createSaving = async (data: {
+  category: string;
+  saving_type: 'deposit' | 'withdrawal';
+  amount: number;
+  date: string;
+  description: string;
+  account_type?: string;
+}): Promise<Saving> => {
+  const response = await fetch('/api/savings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return response.json();
+};
 
 /**
  * Fetches the savings summary for the current user with caching
@@ -262,6 +293,46 @@ export const getRetirementLimits = async (
   }
 };
 
+
+export interface SalaryForPpk {
+  date: string;
+  grossAmount: number;
+  netAmount: number;
+  description: string;
+  ownerName: string | null;
+}
+
+/**
+ * Fetches the earliest recurring salary (owner=self) from the income API.
+ * Used for PPK balance estimation — PPK only applies to UoP (employment contract).
+ */
+export const getEarliestRecurringSalary = async (
+  email: string
+): Promise<SalaryForPpk | null> => {
+  try {
+    const res = await fetch(
+      `/api/backend/users/${encodeURIComponent(email)}/income`
+    );
+    if (!res.ok) return null;
+    const incomes = await res.json();
+    const salary = incomes
+      .filter((i: { is_recurring?: boolean; category?: string; owner?: string | null }) =>
+        i.is_recurring && i.category === 'salary' && (i.owner === 'self' || i.owner === null || i.owner === undefined)
+      )
+      .sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date))[0];
+    if (!salary) return null;
+    return {
+      date: salary.date,
+      grossAmount: salary.gross_amount || salary.amount,
+      netAmount: salary.amount,
+      description: salary.description || '',
+      ownerName: salary.user_name || null,
+    };
+  } catch (error) {
+    logger.error('Error fetching earliest recurring salary:', error);
+    return null;
+  }
+};
 
 // ============== Savings Goals API ==============
 

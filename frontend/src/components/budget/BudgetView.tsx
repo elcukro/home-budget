@@ -474,6 +474,8 @@ export default function BudgetView({ month, onMonthChange, defaultCollapsed = fa
     );
   }
 
+  const showIncome = !showTypes || showTypes.includes("income");
+  const showExpenses = !showTypes || showTypes.includes("expense") || showTypes.includes("loan_payment");
   const totalPlannedIncome = monthSummary?.planned_income ?? 0;
   const totalPlannedExpenses = (monthSummary?.planned_expenses ?? 0) + (monthSummary?.planned_loan_payments ?? 0);
   const balance = totalPlannedIncome - totalPlannedExpenses;
@@ -633,7 +635,7 @@ export default function BudgetView({ month, onMonthChange, defaultCollapsed = fa
                                   defaultMessage: entry.category,
                                 })
                               : null;
-                            const showCategoryLabel = categoryLabel && categoryLabel.toLowerCase() !== entry.description.toLowerCase();
+                            const showCategoryLabel = categoryLabel && !entry.description.toLowerCase().includes(categoryLabel.toLowerCase());
 
                             return (
                               <div

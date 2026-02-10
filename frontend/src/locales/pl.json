@@ -712,6 +712,8 @@
       "interest_rate": "oprocentowanie",
       "term_months": "okres w miesiącach",
       "monthly_payment": "rata miesięczna",
+      "end_date": "data końcowa",
+      "is_gross": "kwota brutto",
       "timestamp": "{date} o {time}",
       "updated_at": "Zaktualizowano {date} o {time}",
       "details": {
@@ -1220,6 +1222,7 @@
       "totalInterest": "Całkowite odsetki:",
       "payoffTime": "Czas spłaty:",
       "extraPayment": "Dodatkowa miesięczna nadpłata:",
+      "extraPaymentHint": "Ile dodatkowo możesz wpłacać co miesiąc ponad minimalne raty?",
       "order": "Kolejność spłaty:",
       "paidOffIn": "Spłacony w {time}",
       "selected": "Wybrana strategia",
@@ -1227,6 +1230,17 @@
       "snowballSavings": "Metoda Kuli Śnieżnej oszczędzi Ci {amount} na odsetkach!",
       "comparisonNote": "Lawina jest matematycznie optymalna, ale Kula Śnieżna daje szybsze \"małe zwycięstwa\" - wybierz to, co zmotywuje Cię bardziej.",
       "speedsUpBy": "Przyspiesza spłatę o {time}",
+      "interestSaved": "Zaoszczędzisz {amount} na odsetkach",
+      "addToBudget": "Dodaj nadpłatę do budżetu",
+      "addToBudgetDesc": "Nadpłata {amount}/mies. na {loan} do {date}",
+      "addToBudgetSuccess": "Dodano nadpłatę do wydatków cyklicznych",
+      "addToBudgetError": "Nie udało się dodać nadpłaty",
+      "confirmDialog": {
+        "title": "Dodaj nadpłatę do budżetu",
+        "description": "Nadpłata {amount}/mies. na {loan} zostanie dopisana do budżetu wydatków od bieżącego miesiąca aż do całkowitej spłaty kredytu ({endDate}).",
+        "timeSaved": "Skrócisz spłatę o {time}",
+        "interestSaved": "Zaoszczędzisz {amount} na odsetkach"
+      },
       "annualRate": "{rate}% rocznie",
       "babyStepsLink": "Ta strategia jest częścią {step} - spłać wszystkie długi (oprócz hipoteki)",
       "babyStep2": "Kroku 2 Baby Steps",
@@ -1794,7 +1808,7 @@
       "oipe": "OIPE"
     },
     "retirementLimits": {
-      "title": "Limity III Filaru",
+      "title": "Emerytura III Filar",
       "subtitle": "Wpłaty na konta emerytalne w {year} roku",
       "tooltip": "Roczne limity wpłat na IKE i IKZE są ustalane przez Ministerstwo Finansów. Przekroczenie limitu może skutkować sankcjami podatkowymi.",
       "contributed": "Wpłacono",
@@ -1816,6 +1830,38 @@
         "oipe": "OIPE",
         "standard": "Standard"
       }
+    },
+    "ppk": {
+      "title": "PPK",
+      "estimatedBalance": "Szacunkowy stan",
+      "monthlyContribution": "Wpłata miesięczna",
+      "breakdown": "{employee} (pracownik {employeeRate}%) + {employer} (pracodawca {employerRate}%)",
+      "estimateNote": "Szacunek na podstawie daty umowy, parametrów PPK i wynagrodzenia brutto",
+      "updateActual": "Wprowadź aktualny stan",
+      "withdraw": "Wypłać z PPK",
+      "withdrawTitle": "Wypłata z PPK",
+      "withdrawWarning": "Przedwczesna wypłata z PPK wiąże się z poważnymi konsekwencjami:",
+      "withdrawPenalties": {
+        "zus": "30% wpłat pracodawcy trafi na Twoje konto w ZUS",
+        "welcome": "Utrata dopłaty powitalnej (250 zł)",
+        "annual": "Utrata dopłat rocznych (240 zł/rok)",
+        "tax": "Podatek od zysków kapitałowych (19%)"
+      },
+      "withdrawConfirm": "Rozumiem konsekwencje",
+      "withdrawNetNote": "Otrzymasz ok. 70% wypłacanej kwoty po potrąceniach",
+      "ownerLabel": "Szacunkowy stan konta PPK — {name}",
+      "contractInfo": "Umowa: {description}, od {date}",
+      "grossBasis": "Podstawa brutto: {amount}",
+      "stateBonus": "+ dopłaty państwa: 250 zł powitalna + {annual} zł ({years} l. × 240 zł/rok)",
+      "monthsAccumulated": "Naliczane od {months} mies.",
+      "noSalaryData": "Dodaj wynagrodzenie w zakładce Przychody, aby zobaczyć szacunek PPK",
+      "updateTitle": "Aktualizuj stan PPK",
+      "updateDescription": "Podaj aktualny stan konta PPK",
+      "actualBalance": "Aktualny stan",
+      "updateSuccess": "Stan PPK został zaktualizowany",
+      "withdrawSuccess": "Wypłata z PPK została zarejestrowana",
+      "withdrawAmount": "Kwota wypłaty",
+      "maxAmount": "Maks: {amount}"
     },
     "summary": {
       "totalSavings": "Łączne oszczędności",
@@ -1949,7 +1995,17 @@
       "badge": "Krok {step}",
       "emergencyFund": "Fundusz awaryjny (1 mies.)",
       "sixMonthFund": "Pełny fundusz bezpieczeństwa (6 mies.)",
-      "autoCalculated": "Cel automatyczny"
+      "autoCalculated": "Cel automatyczny",
+      "cta": {
+        "hasAvailableSavings": "Masz {amount} w oszczędnościach. Przenieś {transfer} tutaj!",
+        "createEmergencyFund": "Utwórz fundusz awaryjny",
+        "createSixMonthFund": "Utwórz fundusz bezpieczeństwa",
+        "transferSuccess": "Środki zostały przeniesione"
+      },
+      "celebration": {
+        "step1": "Fundusz awaryjny gotowy! 🎉",
+        "step3": "Pełny fundusz bezpieczeństwa! 🎉"
+      }
     },
     "form": {
       "name": "Nazwa celu",
