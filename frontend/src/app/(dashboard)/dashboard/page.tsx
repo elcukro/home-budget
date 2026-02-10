@@ -414,17 +414,26 @@ export default function Home() {
           incomeDistribution: data.income_distribution || [],
           expenseDistribution: data.expense_distribution || [],
           cashFlow: data.cash_flow || [],
-          loans: (data.loans || []).map((loan: any) => ({
-            id: loan.id,
-            description: loan.description,
-            balance: loan.balance ?? 0,
-            monthlyPayment: loan.monthly_payment ?? loan.monthlyPayment ?? 0,
-            interestRate: loan.interest_rate ?? loan.interestRate ?? 0,
-            progress: loan.progress ?? 0,
-            totalAmount: loan.total_amount ?? loan.totalAmount ?? 0,
-            interestPaidYtd: loan.interest_paid_ytd ?? loan.interestPaidYtd,
-            nextPaymentDate: loan.next_payment_date ?? loan.nextPaymentDate,
-          })),
+          loans: (data.loans || []).map((loan: any) => {
+            const totalAmount = loan.total_amount ?? loan.totalAmount ?? 0;
+            const balance = loan.balance ?? 0;
+            const amountPaid = Math.max(totalAmount - balance, 0);
+            const calculatedProgress = totalAmount > 0
+              ? Math.min(Math.max(amountPaid / totalAmount, 0), 1)
+              : 0;
+
+            return {
+              id: loan.id,
+              description: loan.description,
+              balance,
+              monthlyPayment: loan.monthly_payment ?? loan.monthlyPayment ?? 0,
+              interestRate: loan.interest_rate ?? loan.interestRate ?? 0,
+              progress: calculatedProgress,
+              totalAmount,
+              interestPaidYtd: loan.interest_paid_ytd ?? loan.interestPaidYtd,
+              nextPaymentDate: loan.next_payment_date ?? loan.nextPaymentDate,
+            };
+          }),
           activities: data.activities || [],
           savings: {
             totalBalance: data.total_savings_balance || 0,
