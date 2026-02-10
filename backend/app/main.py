@@ -839,8 +839,11 @@ def delete_loan_payment(
     if not db_payment:
         raise HTTPException(status_code=404, detail="Payment not found")
 
-    # Restore the balance
-    db_loan.remaining_balance = db_loan.remaining_balance + db_payment.amount
+    # Restore the balance (capped at principal_amount to avoid validation errors)
+    db_loan.remaining_balance = min(
+        db_loan.remaining_balance + db_payment.amount,
+        db_loan.principal_amount
+    )
 
     # Delete the payment
     db.delete(db_payment)
