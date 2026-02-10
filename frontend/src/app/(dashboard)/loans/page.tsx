@@ -99,6 +99,7 @@ interface Loan {
   // Polish prepayment regulations
   overpayment_fee_percent?: number;  // Fee percentage for prepayment (0-10%)
   overpayment_fee_waived_until?: string;  // Date until prepayment fees are waived
+  is_archived?: boolean;  // Whether loan has been archived (paid off)
   created_at: string;
 }
 
