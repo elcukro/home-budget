@@ -1,6 +1,7 @@
 import logging
 import os
 import traceback
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Query, Header, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -26,6 +27,12 @@ import httpx
 from .logging_utils import make_conditional_print
 from .services.subscription_service import SubscriptionService
 from .services.gamification_service import GamificationService
+from .services.scheduler_service import (
+    initialize_scheduler,
+    start_scheduler,
+    shutdown_scheduler,
+    add_job,
+)
 from .dependencies import get_current_user as get_authenticated_user
 
 # Rate limiting
@@ -138,10 +145,69 @@ def validate_user_access(user_id_from_path: str, authenticated_user: models.User
             detail="Access denied: You can only access your own data"
         )
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for FastAPI application.
+
+    Handles:
+    - Scheduler initialization and startup
+    - Background job registration
+    - Graceful shutdown
+    """
+    # Startup
+    logger.info("Starting application...")
+
+    # Initialize and start scheduler
+    try:
+        scheduler = initialize_scheduler()
+        if scheduler:
+            start_scheduler()
+            logger.info("Scheduler initialized and started")
+
+            # Add Tink sync job
+            from .jobs.tink_sync_job import run_sync_job
+
+            # Get sync interval from environment (default: 6 hours)
+            sync_interval_hours = int(os.getenv("TINK_SYNC_INTERVAL_HOURS", "6"))
+
+            add_job(
+                func=run_sync_job,
+                trigger='interval',
+                hours=sync_interval_hours,
+                id='tink_sync_job',
+                name='Tink Connection Sync',
+                replace_existing=True,
+                max_instances=1,
+            )
+
+            logger.info(
+                f"Tink sync job scheduled: every {sync_interval_hours} hours"
+            )
+        else:
+            logger.info("Scheduler is disabled")
+
+    except Exception as e:
+        logger.error(f"Error initializing scheduler: {str(e)}", exc_info=True)
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down application...")
+
+    try:
+        shutdown_scheduler(wait=True)
+        logger.info("Scheduler shut down successfully")
+    except Exception as e:
+        logger.error(f"Error shutting down scheduler: {str(e)}", exc_info=True)
+
+
 app = FastAPI(
     title="FiredUp API",
     description="Personal finance management API",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Add rate limiter to app state and exception handler

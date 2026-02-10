@@ -27,6 +27,7 @@ from ..models import User, TinkConnection, BankTransaction
 from ..services.tink_service import tink_service
 from ..services.subscription_service import SubscriptionService
 from ..services.tink_metrics_service import tink_metrics_service
+from ..services.tink_sync_service import sync_tink_connection
 from ..services.audit_service import (
     audit_connect_initiated,
     audit_connection_created,
@@ -441,7 +442,9 @@ async def refresh_tink_data(
     # Rate limit: 100 syncs per day per user (Tink API quota protection)
     limiter = get_limiter(http_request)
     await limiter.check("100/day", http_request)
+
     try:
+        # Find user's active connection
         connection = db.query(TinkConnection).filter(
             TinkConnection.user_id == current_user.id,
             TinkConnection.is_active == True
@@ -450,44 +453,9 @@ async def refresh_tink_data(
         if not connection:
             return {"error": "No active Tink connection found", "success": False}
 
-        # Get valid access token
-        access_token = await tink_service.get_valid_access_token(connection, db)
-
-        # Refresh accounts data
-        accounts = await tink_service.fetch_accounts(access_token)
-
-        # Update stored account data
-        account_ids = [acc["id"] for acc in accounts]
-        account_details = {
-            acc["id"]: {
-                "name": acc.get("name", "Unknown Account"),
-                "iban": acc.get("identifiers", {}).get("iban", {}).get("iban"),
-                "currency": acc.get("balances", {}).get("booked", {}).get("amount", {}).get("currencyCode", "PLN"),
-                "type": acc.get("type"),
-            }
-            for acc in accounts
-        }
-
-        connection.accounts = account_ids
-        connection.account_details = account_details
-        connection.last_sync_at = datetime.now()
-        db.commit()
-
-        # Audit: Data refreshed
-        audit_data_refreshed(
-            db,
-            current_user.id,
-            connection.id,
-            len(accounts),
-            http_request
-        )
-
-        return {
-            "success": True,
-            "message": "Data refreshed successfully",
-            "accounts_count": len(accounts),
-            "timestamp": datetime.now().isoformat()
-        }
+        # Use the refactored sync function
+        result = await sync_tink_connection(connection, db, http_request)
+        return result
 
     except Exception as e:
         logger.error(f"Error refreshing Tink data: {str(e)}")
