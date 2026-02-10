@@ -128,6 +128,30 @@ vi.mock('lucide-react', () => ({
   Loader2: ({ className }: { className?: string }) => (
     <span data-testid="loader" className={className} />
   ),
+  Flame: ({ className }: { className?: string }) => (
+    <span data-testid="flame-icon" className={className} />
+  ),
+  Sparkles: ({ className }: { className?: string }) => (
+    <span data-testid="sparkles-icon" className={className} />
+  ),
+  ArrowRight: ({ className }: { className?: string }) => (
+    <span data-testid="arrow-right-icon" className={className} />
+  ),
+  Building2: ({ className }: { className?: string }) => (
+    <span data-testid="building2-icon" className={className} />
+  ),
+  Brain: ({ className }: { className?: string }) => (
+    <span data-testid="brain-icon" className={className} />
+  ),
+  FileSpreadsheet: ({ className }: { className?: string }) => (
+    <span data-testid="file-spreadsheet-icon" className={className} />
+  ),
+  Infinity: ({ className }: { className?: string }) => (
+    <span data-testid="infinity-icon" className={className} />
+  ),
+  Crown: ({ className }: { className?: string }) => (
+    <span data-testid="crown-icon" className={className} />
+  ),
 }))
 
 // Mock UI components

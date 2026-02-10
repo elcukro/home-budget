@@ -103,7 +103,7 @@ describe('SettingsContext', () => {
     it('has default settings initially', () => {
       const { result } = renderHook(() => useSettings(), { wrapper })
       expect(result.current.settings).toBeDefined()
-      expect(result.current.settings?.currency).toBe('USD')
+      expect(result.current.settings?.currency).toBe('PLN')
     })
   })
 
@@ -201,7 +201,7 @@ describe('SettingsContext', () => {
 
       expect(result.current.error).not.toBeNull()
       // Should fall back to default settings
-      expect(result.current.settings?.currency).toBe('USD')
+      expect(result.current.settings?.currency).toBe('PLN')
     })
   })
 
