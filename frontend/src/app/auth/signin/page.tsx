@@ -34,24 +34,22 @@ export default function SignIn() {
   const error = searchParams?.get("error");
   const [legalOverlay, setLegalOverlay] = useState<'privacy' | 'terms' | null>(null);
 
-  // Determine redirect based on onboarding status
-  const isFirstLogin = session?.user?.isFirstLogin ?? true;
-  const defaultCallbackUrl = isFirstLogin ? "/welcome" : "/dashboard";
-  const callbackUrl = searchParams?.get("callbackUrl") || defaultCallbackUrl;
-
+  // Redirect authenticated users based on onboarding status
   useEffect(() => {
     if (session?.user) {
-      logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl, '(isFirstLogin:', isFirstLogin, ')');
-      router.replace(callbackUrl);
+      const isFirstLogin = session.user.isFirstLogin ?? true;
+      const targetUrl = searchParams?.get("callbackUrl") || (isFirstLogin ? "/welcome" : "/dashboard");
+
+      logger.debug('[auth][debug] Redirecting authenticated user to:', targetUrl, '(isFirstLogin:', isFirstLogin, ')');
+      router.replace(targetUrl);
     }
-  }, [session, router, callbackUrl, isFirstLogin]);
+  }, [session, router, searchParams]);
 
   const handleSignIn = async () => {
     logger.debug('[auth][debug] Initiating Google sign-in...');
     try {
-      await signIn("google", {
-        callbackUrl,
-      });
+      // Don't pass callbackUrl - let it redirect back here, then useEffect handles it
+      await signIn("google");
     } catch (error) {
       logger.error('[auth][error] Sign-in error:', error);
     }
