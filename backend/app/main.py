@@ -403,7 +403,7 @@ class Insight(BaseModel):
     description: str
     priority: str  # "high" | "medium" | "low"
     actionItems: list[str]
-    metrics: list[InsightMetric]
+    metrics: list[InsightMetric] = []
 
 class CategoryInsights(BaseModel):
     insights: list[Insight]
