@@ -80,8 +80,9 @@ This documentation package has been prepared to support FiredUp's application fo
 - Website: https://firedup.app
 
 **Technical Contact:**
-- Łukasz Górski
+- Łukasz Felsztukier
 - Email: privacy@firedup.app
+- Phone: +48 664 952 859
 
 ---
 
