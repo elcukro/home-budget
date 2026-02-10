@@ -945,6 +945,17 @@ export default function LoansPage() {
         principalAmount > 0
           ? Math.min(Math.max(amountPaid / principalAmount, 0), 1)
           : 0;
+
+      // Debug logging for progress calculation
+      if (typeof window !== 'undefined' && (progress === 1 || progress > 0.99)) {
+        console.log(`[Loan ${loan.id}] Progress calc:`, {
+          principal: principalAmount,
+          remaining: remainingBalance,
+          amountPaid,
+          progress,
+          rawData: { principal: loan.principal_amount, remaining: loan.remaining_balance }
+        });
+      }
       const termMonths = Math.max(loan.term_months ?? 0, 0);
 
       // Calculate months remaining using proper amortization formula with interest
