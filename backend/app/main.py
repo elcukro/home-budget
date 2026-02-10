@@ -3269,24 +3269,30 @@ async def generate_insights(user_data: dict, api_key: str):
             emp_type = income.get("employment_type") or "unknown"
             income_by_employment[emp_type] = income_by_employment.get(emp_type, 0) + income["amount"]
 
-        # Calculate savings totals by category and account type
+        # Calculate savings totals by category and account type (net: deposits - withdrawals)
         savings_by_category = {}
         savings_by_account_type = {}
         total_savings_deposits = 0
         for saving in savings:
+            cat = saving["category"]
+            acc_type = saving.get("account_type") or "standard"
+            amount = saving["amount"]
             if saving.get("saving_type") == "deposit":
-                total_savings_deposits += saving["amount"]
-                cat = saving["category"]
-                savings_by_category[cat] = savings_by_category.get(cat, 0) + saving["amount"]
-                acc_type = saving.get("account_type") or "standard"
-                savings_by_account_type[acc_type] = savings_by_account_type.get(acc_type, 0) + saving["amount"]
+                total_savings_deposits += amount
+                savings_by_category[cat] = savings_by_category.get(cat, 0) + amount
+                savings_by_account_type[acc_type] = savings_by_account_type.get(acc_type, 0) + amount
+            elif saving.get("saving_type") == "withdrawal":
+                savings_by_category[cat] = savings_by_category.get(cat, 0) - amount
+                savings_by_account_type[acc_type] = savings_by_account_type.get(acc_type, 0) - amount
 
         # Calculate emergency fund status
         # Baby Step 1: Starter emergency fund (fixed target, typically 1000 PLN/USD)
         baby_step_1_target = settings.get("emergency_fund_target", 1000)
         # Baby Step 3: Full emergency fund (3-6 months of expenses)
         emergency_fund_months = settings.get("emergency_fund_months", 3)
-        emergency_fund_current = savings_by_category.get("emergency_fund", 0)
+        # Liquid savings = emergency_fund + six_month_fund + general (excludes retirement, investment, real_estate)
+        liquid_categories = ["emergency_fund", "six_month_fund", "general"]
+        emergency_fund_current = sum(savings_by_category.get(cat, 0) for cat in liquid_categories)
         # Use RECURRING expenses for emergency fund target (not total which includes one-time)
         baby_step_3_target = recurring_expenses * emergency_fund_months if recurring_expenses > 0 else baby_step_1_target * emergency_fund_months
 
@@ -3553,16 +3559,17 @@ ONE-TIME EXPENSES THIS MONTH (for sinking fund analysis):
 {json.dumps(one_time_expense_details, indent=2) if one_time_expense_details else "None"}
 
 EMERGENCY FUND STATUS (PRE-CALCULATED - use these EXACT values, do NOT recalculate):
+- Liquid savings (emergency_fund + six_month_fund + general): {emergency_fund_current:,.0f} {currency}
 - BABY STEP 1 (starter emergency fund):
   Target: {baby_step_1_target:,.0f} {currency}
-  Current: {emergency_fund_current:,.0f} {currency}
+  Current liquid savings: {emergency_fund_current:,.0f} {currency}
   Status: {baby_step_1_status}
   Complete: {"YES ✓" if baby_step_1_complete else "NO - needs " + f"{abs(baby_step_1_difference):,.0f}" + " " + currency + " more"}
 
 - BABY STEP 3 (full emergency fund = {emergency_fund_months} months of RECURRING expenses):
   Based on: {recurring_expenses:,.0f} {currency}/month RECURRING expenses (NOT {total_expenses:,.0f} total)
   Target: {baby_step_3_target:,.0f} {currency}
-  Current: {emergency_fund_current:,.0f} {currency}
+  Current liquid savings: {emergency_fund_current:,.0f} {currency}
   Status: {baby_step_3_status}
   Complete: {"YES ✓" if baby_step_3_complete else "NO - needs " + f"{abs(baby_step_3_difference):,.0f}" + " " + currency + " more"}
 {"  Surplus: " + f"{emergency_fund_surplus:,.0f}" + " " + currency + " above target. Consider redirecting excess to Baby Step 4 (investing) or Baby Step 6 (mortgage)." if emergency_fund_surplus > 0 else ""}
