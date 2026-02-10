@@ -670,7 +670,9 @@ export default function LoansPage() {
         }
 
         const data: Loan[] = await response.json();
-        setLoans(data);
+        // Filter out archived loans as a safety check (backend should already exclude them)
+        const activeLoans = data.filter(loan => !loan.is_archived);
+        setLoans(activeLoans);
       } catch (error) {
         logger.error("[Loans] Failed to load loans", error);
         setApiError(intl.formatMessage({ id: "loans.loadError" }));
