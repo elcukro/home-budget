@@ -879,8 +879,15 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
             </div>
           )}
 
-          {/* Full empty state - only show when no Baby Steps */}
-          {babyStepGoals.length === 0 && (
+          {/* Custom Goals */}
+          {goals.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2 mt-4">
+              {goals.map(renderGoalCard)}
+            </div>
+          )}
+
+          {/* Full empty state - only show when no goals at all */}
+          {allGoals.length === 0 && (
             <div className="text-center py-8">
               <Target className="mx-auto h-12 w-12 text-muted-foreground/50" />
               <p className="mt-2 text-muted-foreground">
