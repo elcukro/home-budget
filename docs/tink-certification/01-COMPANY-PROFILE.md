@@ -4,14 +4,12 @@
 
 | Field | Value |
 |-------|-------|
-| **Legal Name** | FiredUp Łukasz Górski |
+| **Legal Name** | LORA Julita Felsztukier |
 | **Trading Name** | FiredUp |
 | **Business Type** | Sole Proprietorship (Działalność gospodarcza jednoosobowa) |
 | **Country of Registration** | Poland |
-| **NIP (Tax ID)** | *[To be updated with actual NIP before submission]* |
-| **REGON** | *[To be updated with actual REGON before submission]* |
-
-> **Note:** The NIP and REGON placeholders must be updated with actual registration numbers before submitting to Tink. Current values in the application are examples.
+| **NIP (Tax ID)** | 7292415420 |
+| **REGON** | 473161188 |
 
 ---
 
@@ -19,12 +17,10 @@
 
 | Field | Value |
 |-------|-------|
-| **Street** | *[To be updated with actual address]* |
-| **Postal Code** | *[00-001]* |
-| **City** | Warszawa |
+| **Street** | ul. Dzikich Pól 17 |
+| **Postal Code** | 93-640 |
+| **City** | Łódź |
 | **Country** | Poland |
-
-> **Note:** Address placeholders must be updated with actual business address before submission.
 
 ---
 
@@ -32,6 +28,7 @@
 
 | Type | Contact |
 |------|---------|
+| **Phone** | +48 664 952 859 |
 | **General Inquiries** | contact@firedup.app |
 | **Privacy/Data Protection** | privacy@firedup.app |
 | **Technical Support** | support@firedup.app |
@@ -42,9 +39,11 @@
 ## Key Personnel
 
 ### Owner / Data Controller
-- **Name:** Łukasz Górski
-- **Role:** Owner, Data Controller
+- **Name:** Julita Felsztukier (Owner)
+- **Contact Person:** Łukasz Felsztukier
+- **Role:** Data Controller
 - **Contact:** privacy@firedup.app
+- **Phone:** +48 664 952 859
 
 ---
 
@@ -121,10 +120,11 @@ The following documents can be provided upon request:
 
 ---
 
-## Action Items Before Submission
+## Certification Status
 
-- [ ] Update NIP with actual tax identification number
-- [ ] Update REGON with actual statistical number
-- [ ] Update registered address with actual business address
-- [ ] Obtain KRS/CEIDG extract
-- [ ] Verify insurance coverage (if required)
+✅ All company information updated with actual business registration data
+✅ NIP and REGON verified
+✅ Business address confirmed
+✅ Contact information validated
+
+Ready for Tink certification submission.

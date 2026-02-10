@@ -1,7 +1,7 @@
 # Tink Production Certification Documentation Package
 
 **Application:** FiredUp
-**Company:** FiredUp Łukasz Górski
+**Company:** LORA Julita Felsztukier
 **Prepared:** February 2026
 **Version:** 1.0
 

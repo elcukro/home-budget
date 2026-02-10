@@ -6,22 +6,31 @@
  */
 
 export const LEGAL_ENTITY = {
-  // Company/entity name (update with legal business name)
+  // Company/entity name (trading name)
   name: 'FiredUp',
 
   // Full legal name for formal documents
-  legalName: 'FiredUp Łukasz Górski',
+  legalName: 'LORA Julita Felsztukier',
 
-  // Registered address (update with actual business address)
+  // Registered business address
   address: {
-    street: 'ul. Przykładowa 1/2',
-    postalCode: '00-001',
-    city: 'Warszawa',
+    street: 'ul. Dzikich Pól 17',
+    postalCode: '93-640',
+    city: 'Łódź',
     country: 'Polska',
   },
 
-  // Tax identification number (NIP) - update with actual NIP
-  nip: '1234567890',
+  // Tax identification number (NIP)
+  nip: '7292415420',
+
+  // Statistical identification number (REGON)
+  regon: '473161188',
+
+  // Contact phone number
+  phone: '+48 664 952 859',
+
+  // Contact person
+  contactPerson: 'Łukasz Felsztukier',
 
   // Contact emails
   email: {
@@ -34,7 +43,7 @@ export const LEGAL_ENTITY = {
   website: 'https://firedup.app',
 
   // Last updated date for legal documents (update when documents change)
-  lastUpdated: '5 lutego 2026',
+  lastUpdated: '10 lutego 2026',
 } as const;
 
 /**

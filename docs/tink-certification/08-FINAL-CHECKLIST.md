@@ -90,9 +90,11 @@
 - [x] Tink Consumer Revocation Portal linked
 
 ### Business Registration
-- [x] Company: FiredUp Łukasz Górski
-- [x] NIP: 9221945527
-- [x] Address: ul. Małgorzaty Fornalskiej 10/6, 81-552 Gdynia, Poland
+- [x] Company: LORA Julita Felsztukier
+- [x] NIP: 7292415420
+- [x] REGON: 473161188
+- [x] Address: ul. Dzikich Pól 17, 93-640 Łódź, Poland
+- [x] Phone: +48 664 952 859
 - [x] Email: contact@firedup.app
 
 ---
@@ -164,7 +166,7 @@
    - This final checklist (08)
 
 2. **Application Details:**
-   - Company: FiredUp Łukasz Górski
+   - Company: LORA Julita Felsztukier
    - Product: FiredUp Personal Finance Manager
    - URL: https://firedup.app
    - Market: Poland (PL)
@@ -176,8 +178,9 @@
    - Contact: contact@firedup.app
 
 4. **Technical Contact:**
-   - Name: Łukasz Górski
+   - Name: Łukasz Felsztukier
    - Email: privacy@firedup.app
+   - Phone: +48 664 952 859
 
 ---
 
@@ -196,9 +199,11 @@ I am requesting production access for FiredUp, a personal finance management
 SaaS application for Polish consumers.
 
 Company Details:
-- Name: FiredUp Łukasz Górski
-- NIP: 9221945527
-- Location: Gdynia, Poland
+- Name: LORA Julita Felsztukier
+- NIP: 7292415420
+- REGON: 473161188
+- Location: Łódź, Poland
+- Phone: +48 664 952 859
 - Website: https://firedup.app
 
 Use Case:
@@ -230,8 +235,9 @@ I have prepared comprehensive documentation including:
 I am ready to discuss pricing and contractual terms at your earliest convenience.
 
 Best regards,
-Łukasz Górski
+Łukasz Felsztukier
 contact@firedup.app
++48 664 952 859
 ```
 
 ### Step 2: Provide Documentation
