@@ -82,10 +82,11 @@ export const authOptions: NextAuthOptions = {
         session.user.id = (token.sub as string) ?? session.user.email ?? ""
         session.user.email = (token.email as string | undefined) ?? session.user.email
         session.user.name = (token.name as string | undefined) ?? session.user.name
+        session.user.isFirstLogin = token.isFirstLogin
       }
       return session
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         if (user.id) {
           token.sub = user.id
@@ -97,6 +98,33 @@ export const authOptions: NextAuthOptions = {
           token.name = user.name
         }
       }
+
+      // Fetch is_first_login from backend on first sign-in (when account is present)
+      if (account && token.email) {
+        try {
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+          const response = await fetch(`${API_URL}/users/${encodeURIComponent(token.email as string)}`, {
+            headers: {
+              'X-Internal-Secret': process.env.INTERNAL_API_SECRET || 'dev-secret-key',
+            },
+          })
+
+          if (response.ok) {
+            const userData = await response.json()
+            token.isFirstLogin = userData.is_first_login ?? true
+            logger.debug(`[auth] Fetched is_first_login for ${token.email}: ${token.isFirstLogin}`)
+          } else {
+            // If user doesn't exist yet, they're definitely first-time
+            token.isFirstLogin = true
+            logger.debug(`[auth] User not found, setting is_first_login=true`)
+          }
+        } catch (error) {
+          logger.error('[auth] Failed to fetch user data:', error)
+          // Default to true on error to be safe (show onboarding)
+          token.isFirstLogin = true
+        }
+      }
+
       return token
     },
   },

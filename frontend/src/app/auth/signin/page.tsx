@@ -31,16 +31,20 @@ export default function SignIn() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const intl = useIntl();
-  const callbackUrl = searchParams?.get("callbackUrl") || "/welcome";
   const error = searchParams?.get("error");
   const [legalOverlay, setLegalOverlay] = useState<'privacy' | 'terms' | null>(null);
 
+  // Determine redirect based on onboarding status
+  const isFirstLogin = session?.user?.isFirstLogin ?? true;
+  const defaultCallbackUrl = isFirstLogin ? "/welcome" : "/dashboard";
+  const callbackUrl = searchParams?.get("callbackUrl") || defaultCallbackUrl;
+
   useEffect(() => {
     if (session?.user) {
-      logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl);
+      logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl, '(isFirstLogin:', isFirstLogin, ')');
       router.replace(callbackUrl);
     }
-  }, [session, router, callbackUrl]);
+  }, [session, router, callbackUrl, isFirstLogin]);
 
   const handleSignIn = async () => {
     logger.debug('[auth][debug] Initiating Google sign-in...');
