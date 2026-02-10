@@ -98,14 +98,14 @@ export default function BankingPage() {
       setInstitutionId('');
       setInstitutions([]);
     }
-  }, [useSandbox, getInstitutions]);
+  }, [useSandbox]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // Auto-fetch transactions when account is selected
   useEffect(() => {
     if (accountId) {
       getTransactions();
     }
-  }, [accountId, getTransactions]);
+  }, [accountId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle redirect from bank and fetch saved connections on page load
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function BankingPage() {
         }
       }
     }
-  }, [fetchBankConnections, getRequisition, requisitionId]);
+  }, [requisitionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getInstitutions = async () => {
     setLoading(true);
