@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import {
   Flame,
   Sparkles,
-  Check,
   ArrowRight,
   Building2,
   Brain,
@@ -80,7 +79,7 @@ export default function WelcomePage() {
   const trialEndDate = subscription?.trial_ends_at;
   const locale = intl.locale;
 
-  const handleContinue = () => {
+  const _handleContinue = () => {
     router.push('/onboarding');
   };
 

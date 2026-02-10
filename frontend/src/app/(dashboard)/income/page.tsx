@@ -439,7 +439,7 @@ function useIncomeFieldConfig(
       component: "date" as const,
       showWhen: (values: IncomeFormValues) => values.is_recurring === true,
     },
-  ], [taxResult, intl, formatCurrency, onTaxValuesChange, settings, ownerOptions]);
+  ], [taxResult, intl, formatCurrency, onTaxValuesChange, settings, ownerOptions, hasTaxFields, taxCategories]);
 }
 
 // Change rate schema and config
@@ -474,7 +474,7 @@ const changeRateSchema = z.object({
 
 type ChangeRateFormValues = z.infer<typeof changeRateSchema>;
 
-const changeRateDefaultValues: ChangeRateFormValues = {
+const _changeRateDefaultValues: ChangeRateFormValues = {
   newAmount: 0,
   effectiveDate: todayISO,
   hasEndDate: false,

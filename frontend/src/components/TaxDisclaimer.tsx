@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Info, Scale } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 
 interface TaxDisclaimerProps {
   variant?: 'full' | 'compact' | 'inline';

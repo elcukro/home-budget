@@ -733,7 +733,7 @@ const AIAnalysisPage = () => {
     if (session?.user?.email) {
       fetchInsights();
     }
-  }, [session?.user?.email]);
+  }, [session?.user?.email, fetchInsights]);
 
   // Extract all insights into a flat list for insight cards
   const allInsights = useMemo(() => {

@@ -81,7 +81,7 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       setIsLoading(false);
     }
-  }, [status, session]);
+  }, [status, session, fetchUser]);
 
   // Function to manually refresh user data
   const refreshUser = async () => {

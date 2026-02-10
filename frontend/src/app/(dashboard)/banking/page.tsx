@@ -98,14 +98,14 @@ export default function BankingPage() {
       setInstitutionId('');
       setInstitutions([]);
     }
-  }, [useSandbox]);
+  }, [useSandbox, getInstitutions]);
   
   // Auto-fetch transactions when account is selected
   useEffect(() => {
     if (accountId) {
       getTransactions();
     }
-  }, [accountId]);
+  }, [accountId, getTransactions]);
 
   // Handle redirect from bank and fetch saved connections on page load
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function BankingPage() {
         }
       }
     }
-  }, []);
+  }, [fetchBankConnections, getRequisition, requisitionId]);
 
   const getInstitutions = async () => {
     setLoading(true);

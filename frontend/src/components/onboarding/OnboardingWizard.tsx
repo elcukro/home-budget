@@ -1710,7 +1710,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
     setCurrentStepIndex((prev) => Math.max(prev - 1, 0));
   }, []);
 
-  const handleSkipStep = useCallback(() => {
+  const _handleSkipStep = useCallback(() => {
     handleNext({ skipValidation: true });
   }, [handleNext]);
 
@@ -3050,7 +3050,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
           Math.round((currentStepIndex / stepsWithoutEdges) * 100)
         );
 
-  const displayStepNumber = Math.min(Math.max(currentStepIndex, 1), stepsWithoutEdges);
+  const _displayStepNumber = Math.min(Math.max(currentStepIndex, 1), stepsWithoutEdges);
   const nextStepLabel =
     currentStepIndex >= steps.length - 1
       ? null

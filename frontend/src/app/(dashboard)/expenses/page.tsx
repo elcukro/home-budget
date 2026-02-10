@@ -295,7 +295,7 @@ const changeRateSchema = z.object({
 
 type ChangeRateFormValues = z.infer<typeof changeRateSchema>;
 
-const changeRateDefaultValues: ChangeRateFormValues = {
+const _changeRateDefaultValues: ChangeRateFormValues = {
   newAmount: 0,
   effectiveDate: todayISO,
   hasEndDate: false,
@@ -708,7 +708,7 @@ export default function ExpensesPage() {
       month: "long",
       year: "numeric",
     });
-  }, [selectedMonth, selectedMonthEntry, intl]);
+  }, [selectedMonth, intl]);
 
   const _comparisonDescriptor = useMemo(() => {
     if (!selectedMonthEntry) {

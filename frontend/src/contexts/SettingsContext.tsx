@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
-import { SupportedLocale, DEFAULT_LOCALE, formatLocaleCurrency } from '@/utils/i18n';
+import { SupportedLocale, formatLocaleCurrency } from '@/utils/i18n';
 import { convertCurrency } from '@/api/exchangeRates';
 import { logger } from '@/lib/logger';
 

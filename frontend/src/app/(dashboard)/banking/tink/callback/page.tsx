@@ -121,7 +121,7 @@ export default function TinkCallbackPage() {
     };
 
     handleCallback();
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const handleGoToSettings = () => {
     router.push('/settings?tab=banking');

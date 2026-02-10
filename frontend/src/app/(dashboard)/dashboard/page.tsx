@@ -374,7 +374,7 @@ export default function Home() {
         { value: 'saving', label: intl.formatMessage({ id: 'dashboard.activity.filters.saving' }) },
         { value: 'payment', label: intl.formatMessage({ id: 'dashboard.activity.filters.payment' }) },
       ] as Array<{ value: ActivityFilter; label: string }>),
-    [intl.locale],
+    [intl],
   );
 
   useEffect(() => {

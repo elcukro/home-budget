@@ -13,7 +13,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
-  Filter,
   Globe,
   Landmark,
   Pencil,
@@ -314,7 +313,7 @@ const savingDefaultValues: SavingFormValues = {
   annual_return_rate: undefined,
 };
 
-const changeRateDefaultValues: ChangeRateFormValues = {
+const _changeRateDefaultValues: ChangeRateFormValues = {
   newAmount: 0,
   effectiveDate: todayISO,
 };
@@ -1104,7 +1103,7 @@ export const SavingsManager = () => {
   const changeSymbol =
     !latestMonth ? "•" : changeAmount > 0 ? "↑" : changeAmount < 0 ? "↓" : "•";
 
-  const topCategory = useMemo(() => {
+  const _topCategory = useMemo(() => {
     if (!summary) {
       return null;
     }
