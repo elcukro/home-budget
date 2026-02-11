@@ -1195,11 +1195,10 @@
       "totalActual": "Total Actual",
       "duplicatesExcluded": "{count, plural, one {# duplicate excluded} other {# duplicates excluded}}"
     },
-    "needsReview": {
-      "title": "{count, plural, one {# entry needs} other {# entries need}} review",
-      "description": "These manual entries might be duplicates of bank transactions. Review them to ensure accurate totals.",
-      "reviewButton": "Review Now",
-      "comingSoon": "Reconciliation review UI coming in next update"
+    "bankNotice": {
+      "title": "Bank Integration Added",
+      "message": "When bank integration was added and transactions were pulled from your bank, some entries might need review to avoid duplicates. Please review the entries and remove the ones you manually entered to allow us to track the actuals. At any point you are free to add any entries manually that might be missing from current month (e.g. due to cash payments or other reasons). This is a one-time notice.",
+      "dismiss": "Got it, close"
     }
   },
   "loans": {
