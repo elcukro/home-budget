@@ -575,6 +575,12 @@ async def categorize_transactions(
             if tx.status == "converted":
                 continue
 
+            # Skip if transaction already has a linked income/expense record
+            # This handles the case where transaction was reset but linked record still exists
+            if tx.linked_expense_id is not None or tx.linked_income_id is not None:
+                logger.warning(f"Skipping auto-convert for transaction {tx.id} - already has linked record")
+                continue
+
             result = results_map[tx.id]
             amount = abs(tx.amount)
 
@@ -801,6 +807,14 @@ async def convert_transaction(
     if bank_tx.status == "converted":
         raise HTTPException(status_code=400, detail="Transaction already converted")
 
+    # Check if transaction has already been linked to an income/expense record
+    # This handles the case where transaction was reset but linked record still exists
+    if bank_tx.linked_expense_id is not None or bank_tx.linked_income_id is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Transaction already has a linked income/expense record. Delete the existing record first if you want to re-convert."
+        )
+
     # Use provided description or fall back to bank description
     description = request.description or bank_tx.description_display
 
@@ -956,14 +970,15 @@ async def accept_transaction(
 async def reset_transaction(
     http_request: Request,
     transaction_id: int,
+    delete_linked: bool = Query(default=False, description="Delete linked income/expense when resetting"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Reset a transaction back to pending status.
 
-    Note: If the transaction was converted, the linked expense/income
-    will NOT be deleted - you need to delete it manually if needed.
+    By default, linked expense/income records are NOT deleted.
+    Set delete_linked=true to also delete the linked record when resetting.
 
     Rate limit: 100/hour per user (undo action)
     """
@@ -978,12 +993,37 @@ async def reset_transaction(
     if not bank_tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
+    # Optionally delete linked income/expense record
+    if delete_linked:
+        if bank_tx.linked_expense_id:
+            linked_expense = db.query(Expense).filter(
+                Expense.id == bank_tx.linked_expense_id,
+                Expense.user_id == current_user.id
+            ).first()
+            if linked_expense:
+                db.delete(linked_expense)
+                logger.info(f"Deleted linked expense {bank_tx.linked_expense_id} for transaction {transaction_id}")
+            bank_tx.linked_expense_id = None
+
+        if bank_tx.linked_income_id:
+            linked_income = db.query(Income).filter(
+                Income.id == bank_tx.linked_income_id,
+                Income.user_id == current_user.id
+            ).first()
+            if linked_income:
+                db.delete(linked_income)
+                logger.info(f"Deleted linked income {bank_tx.linked_income_id} for transaction {transaction_id}")
+            bank_tx.linked_income_id = None
+
     bank_tx.status = "pending"
     bank_tx.reviewed_at = None
-    # Don't clear linked_expense_id/linked_income_id to maintain history
     db.commit()
 
-    return {"success": True, "message": "Transaction reset to pending"}
+    message = "Transaction reset to pending"
+    if delete_linked:
+        message += " and linked record deleted"
+
+    return {"success": True, "message": message}
 
 
 # ============================================================================
@@ -1243,6 +1283,12 @@ async def bulk_convert_transactions(
     converted_count = 0
 
     for bank_tx in transactions:
+        # Skip if transaction already has a linked income/expense record
+        # This handles the case where transaction was reset but linked record still exists
+        if bank_tx.linked_expense_id is not None or bank_tx.linked_income_id is not None:
+            logger.warning(f"Skipping transaction {bank_tx.id} - already has linked record")
+            continue
+
         description = bank_tx.description_display
         amount = abs(bank_tx.amount)
 
