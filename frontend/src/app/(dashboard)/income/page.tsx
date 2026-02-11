@@ -41,6 +41,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import IncomeChart from "@/components/charts/IncomeChart";
 import IncomeBudgetChart from "@/components/budget/IncomeBudgetChart";
 import MonthBar from "@/components/budget/MonthBar";
