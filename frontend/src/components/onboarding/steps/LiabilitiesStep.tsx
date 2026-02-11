@@ -8,7 +8,7 @@ import {
   TrendingDown,
   Wallet,
 } from 'lucide-react';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { useIntl } from 'react-intl';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +34,6 @@ interface LiabilitiesStepProps {
   onRemove: (id: string) => void;
   onNext: () => void;
   onBack: () => void;
-  onSkip: () => void;
   monthlyIncome: number;
   formatMoney: (value: number) => string;
 }
@@ -47,7 +46,6 @@ export default function LiabilitiesStep({
   onRemove,
   onNext,
   onBack,
-  onSkip,
   monthlyIncome,
   formatMoney,
 }: LiabilitiesStepProps) {
@@ -265,6 +263,15 @@ export default function LiabilitiesStep({
     return { totalMonthly, totalRemaining, dti };
   }, [items, monthlyIncome]);
   const dtiValue = totals.dti.toFixed(1);
+
+  const dtiLevel = useMemo(() => {
+    const dti = totals.dti;
+    if (dti === 0) return { key: 'none' as const, color: 'text-muted-foreground', bg: 'bg-muted', bar: 'bg-muted-foreground', pct: 0 };
+    if (dti < 20) return { key: 'excellent' as const, color: 'text-emerald-700', bg: 'bg-emerald-50', bar: 'bg-emerald-500', pct: dti / 60 * 100 };
+    if (dti < 36) return { key: 'acceptable' as const, color: 'text-amber-700', bg: 'bg-amber-50', bar: 'bg-amber-500', pct: dti / 60 * 100 };
+    if (dti < 43) return { key: 'high' as const, color: 'text-orange-700', bg: 'bg-orange-50', bar: 'bg-orange-500', pct: dti / 60 * 100 };
+    return { key: 'critical' as const, color: 'text-red-700', bg: 'bg-red-50', bar: 'bg-red-500', pct: Math.min(dti / 60 * 100, 100) };
+  }, [totals.dti]);
 
   const getCardTitle = (type: string) =>
     cardTitleMap[type] ?? cardTitleMap.default;
@@ -489,34 +496,61 @@ export default function LiabilitiesStep({
           {addLiabilityLabel}
         </Button>
 
-        <div className="rounded-lg border border-muted/50 bg-card px-4 py-3 text-xs text-secondary">
-          <p>
-            {totalMonthlyLabel}:{' '}
-            <span className="font-semibold text-primary">
-              {formatMoney(totals.totalMonthly)}
-            </span>
-          </p>
-          <p>
-            {totalRemainingLabel}:{' '}
-            <span className="font-semibold text-primary">
-              {formatMoney(totals.totalRemaining)}
-            </span>
-          </p>
-          <p>
-            <FormattedMessage
-              id="onboarding.liabilities.summary.dti"
-              values={{
-                value: dtiValue,
-                strong: (chunks) => (
-                  <span className="font-semibold text-primary">{chunks}</span>
-                ),
-              }}
-            />
-          </p>
-        </div>
       </div>
 
-      <FormFooter onNext={onNext} onBack={onBack} onSkip={onSkip} />
+      {items.length > 0 && (
+        <div className={`rounded-xl border p-4 space-y-4 ${dtiLevel.bg} border-current/10`}>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <p className="text-secondary">
+              {totalMonthlyLabel}:{' '}
+              <span className="font-semibold text-primary">
+                {formatMoney(totals.totalMonthly)}
+              </span>
+            </p>
+            <p className="text-secondary">
+              {totalRemainingLabel}:{' '}
+              <span className="font-semibold text-primary">
+                {formatMoney(totals.totalRemaining)}
+              </span>
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm font-medium text-primary">
+                {intl.formatMessage({ id: 'onboarding.liabilities.summary.dtiLabel' })}
+              </p>
+              <span className={`text-2xl font-bold ${dtiLevel.color}`}>
+                {dtiValue}%
+              </span>
+            </div>
+
+            <div className="relative h-3 w-full rounded-full bg-muted/60 overflow-hidden">
+              <div
+                className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ${dtiLevel.bar}`}
+                style={{ width: `${dtiLevel.pct}%` }}
+              />
+              {/* Threshold markers */}
+              <div className="absolute inset-y-0 left-[33.3%] w-px bg-white/60" />
+              <div className="absolute inset-y-0 left-[60%] w-px bg-white/60" />
+              <div className="absolute inset-y-0 left-[71.7%] w-px bg-white/60" />
+            </div>
+            <div className="flex justify-between text-[10px] text-secondary/70">
+              <span>0%</span>
+              <span>20%</span>
+              <span>36%</span>
+              <span>43%</span>
+              <span>60%+</span>
+            </div>
+          </div>
+
+          <p className={`text-sm font-medium ${dtiLevel.color}`}>
+            {intl.formatMessage({ id: `onboarding.liabilities.summary.dtiLevel.${dtiLevel.key}` })}
+          </p>
+        </div>
+      )}
+
+      <FormFooter onNext={onNext} onBack={onBack} />
     </div>
   );
 }

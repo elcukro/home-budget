@@ -2,7 +2,14 @@ import { useCallback, useMemo } from 'react';
 import { Info, TrendingUp } from 'lucide-react';
 import { useIntl } from 'react-intl';
 
-import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import { CurrencyInput } from '../CurrencyInput';
 import FieldGroup from '../common/FieldGroup';
@@ -23,10 +30,10 @@ interface IncomeStepProps {
   ) => void;
   onNext: () => void;
   onBack: () => void;
-  onSkip: () => void;
   monthlyIncome: number;
   formatMoney: (value: number) => string;
   childrenCount: number;
+  includePartnerFinances: boolean;
   nextLabel?: string;
 }
 
@@ -46,10 +53,10 @@ export default function IncomeStep({
   onChange,
   onNext,
   onBack,
-  onSkip,
   monthlyIncome,
   formatMoney,
   childrenCount,
+  includePartnerFinances,
   nextLabel,
 }: IncomeStepProps) {
   const intl = useIntl();
@@ -156,7 +163,7 @@ export default function IncomeStep({
       <FieldGroup
         label={
           <>
-            {intl.formatMessage({ id: 'onboarding.income.fields.salaryNet.label' })}{' '}
+            {intl.formatMessage({ id: includePartnerFinances ? 'onboarding.income.fields.salaryNet.yourLabel' : 'onboarding.income.fields.salaryNet.label' })}{' '}
             <TooltipTrigger text={intl.formatMessage({ id: 'onboarding.income.fields.salaryNet.tooltip' })}>
               <Info className="h-4 w-4 text-primary" />
             </TooltipTrigger>
@@ -174,6 +181,52 @@ export default function IncomeStep({
           )}
         />
       </FieldGroup>
+
+      {includePartnerFinances && (
+        <>
+          <FieldGroup
+            label={
+              <>
+                {intl.formatMessage({ id: 'onboarding.income.fields.partnerSalaryNet.label' })}{' '}
+                <TooltipTrigger text={intl.formatMessage({ id: 'onboarding.income.fields.partnerSalaryNet.tooltip' })}>
+                  <Info className="h-4 w-4 text-primary" />
+                </TooltipTrigger>
+              </>
+            }
+            error={errors['partnerSalaryNet']}
+          >
+            <CurrencyInput
+              value={data.partnerSalaryNet}
+              onValueChange={(amount) => onChange({ partnerSalaryNet: amount })}
+              placeholder={intl.formatMessage(
+                { id: 'onboarding.placeholders.exampleAmount' },
+                { value: '5 000' },
+              )}
+            />
+          </FieldGroup>
+
+          <FieldGroup
+            label={intl.formatMessage({ id: 'onboarding.income.fields.partnerEmploymentType' })}
+            error={errors['partnerEmploymentType']}
+          >
+            <Select
+              value={data.partnerEmploymentType || ''}
+              onValueChange={(value) => onChange({ partnerEmploymentType: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={intl.formatMessage({ id: 'settings.taxProfile.selectEmployment' })} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="employee">{intl.formatMessage({ id: 'settings.taxProfile.employmentStatuses.employee' })}</SelectItem>
+                <SelectItem value="b2b">{intl.formatMessage({ id: 'settings.taxProfile.employmentStatuses.b2b' })}</SelectItem>
+                <SelectItem value="contract">{intl.formatMessage({ id: 'settings.taxProfile.employmentStatuses.contract' })}</SelectItem>
+                <SelectItem value="freelancer">{intl.formatMessage({ id: 'settings.taxProfile.employmentStatuses.freelancer' })}</SelectItem>
+                <SelectItem value="business">{intl.formatMessage({ id: 'settings.taxProfile.employmentStatuses.business' })}</SelectItem>
+              </SelectContent>
+            </Select>
+          </FieldGroup>
+        </>
+      )}
 
       <div className="rounded-lg border border-muted/50 p-4">
         <div className="flex items-start justify-between gap-4">
@@ -216,17 +269,11 @@ export default function IncomeStep({
                     : 'border-muted/60 bg-muted/40'
                 }`}
               >
-                <label className="flex items-start gap-2 text-sm font-medium text-primary">
-                  <Checkbox
-                    checked={source.enabled && (!isChildBenefit || childrenCount > 0)}
-                    onCheckedChange={(checked) => toggleSource(key, Boolean(checked))}
-                    id={`source-${key}`}
-                    disabled={isChildBenefit && childrenCount === 0}
-                  />
+                <label className="flex cursor-pointer items-center justify-between gap-2 text-sm font-medium text-primary">
                   <span className="flex flex-col gap-1">
                     <span className="flex items-center gap-2">
                       {label}
-                    {tooltipId && (
+                      {tooltipId && (
                         <TooltipTrigger
                           text={intl.formatMessage({ id: tooltipId })}
                         >
@@ -236,13 +283,18 @@ export default function IncomeStep({
                     </span>
                     {isChildBenefit && (
                       <span className="text-xs text-secondary">
-                      {intl.formatMessage(
-                        { id: 'onboarding.income.additionalSources.childBenefitLimit' },
-                        { limit: formatMoney(maxBenefit) },
-                      )}
+                        {intl.formatMessage(
+                          { id: 'onboarding.income.additionalSources.childBenefitLimit' },
+                          { limit: formatMoney(maxBenefit) },
+                        )}
                       </span>
                     )}
                   </span>
+                  <Switch
+                    checked={source.enabled && (!isChildBenefit || childrenCount > 0)}
+                    onCheckedChange={(checked) => toggleSource(key, Boolean(checked))}
+                    disabled={isChildBenefit && childrenCount === 0}
+                  />
                 </label>
                 {source.enabled && (
                   <CurrencyInput
@@ -315,12 +367,14 @@ export default function IncomeStep({
               { value: '6 000' },
             )}
           />
-          <p className="text-xs text-secondary">
-            {intl.formatMessage(
-              { id: 'onboarding.income.fields.irregularIncome.monthlyEquivalent' },
-              { amount: formatMoney(Math.round(irregularMonthly)) },
-            )}
-          </p>
+          {irregularMonthly > 0 && (
+            <p className="text-xs text-secondary">
+              {intl.formatMessage(
+                { id: 'onboarding.income.fields.irregularIncome.monthlyEquivalent' },
+                { amount: formatMoney(Math.round(irregularMonthly)) },
+              )}
+            </p>
+          )}
         </div>
       </FieldGroup>
 
@@ -351,7 +405,6 @@ export default function IncomeStep({
       <FormFooter
         onNext={onNext}
         onBack={onBack}
-        onSkip={onSkip}
         nextLabel={nextLabel}
       />
     </form>

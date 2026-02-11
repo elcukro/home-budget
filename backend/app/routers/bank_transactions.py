@@ -19,11 +19,13 @@ Rate Limits (per user):
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 from typing import List, Optional
 from pydantic import BaseModel
 from enum import Enum
+import os
 
 # Rate limiting
 from slowapi import Limiter
@@ -31,7 +33,7 @@ from slowapi import Limiter
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User, TinkConnection, BankTransaction, Expense, Income, Settings
-from ..services.tink_service import tink_service
+from ..services.tink_service import tink_service, TinkAPIError, TinkAPIRetryExhausted
 from ..services.categorization_service import categorize_in_batches
 from ..services.audit_service import (
     audit_transactions_synced,
@@ -44,6 +46,14 @@ from ..services.duplicate_detection_service import (
     create_fingerprint,
 )
 from ..logging_utils import get_secure_logger
+from ..schemas.errors import (
+    token_expired_error,
+    rate_limited_error,
+    bank_unavailable_error,
+    auth_failed_error,
+    network_error,
+    internal_error,
+)
 
 logger = get_secure_logger(__name__)
 
@@ -249,9 +259,12 @@ async def sync_transactions(
             merchant_name = merchant_info.get("merchantName")
             merchant_category_code = merchant_info.get("merchantCategoryCode")
 
-            # Parse Tink categories
-            categories = tx.get("categories", {})
-            pfm_category = categories.get("pfm", {})
+            # Parse Tink categories - check enriched_data first (enrichment API), fallback to categories (basic API)
+            enriched_categories = tx.get("enrichedData", {}).get("categories", {}) or tx.get("enriched_data", {}).get("categories", {})
+            basic_categories = tx.get("categories", {})
+
+            # Prefer enriched data, fallback to basic
+            pfm_category = enriched_categories.get("pfm", {}) or basic_categories.get("pfm", {})
             tink_category_id = pfm_category.get("id")
             tink_category_name = pfm_category.get("name")
 
@@ -387,6 +400,44 @@ async def sync_transactions(
             message=", ".join(message_parts)
         )
 
+    except TinkAPIRetryExhausted as e:
+        logger.error(f"Tink API retry exhausted during sync: {str(e)}")
+        # Audit sync failure
+        audit_transactions_synced(
+            db=db,
+            user_id=current_user.id,
+            connection_id=connection.id if connection else None,
+            synced_count=0,
+            exact_duplicate_count=0,
+            fuzzy_duplicate_count=0,
+            total_fetched=0,
+            date_range_days=days,
+            result="failure",
+            request=http_request,
+        )
+        error = bank_unavailable_error("Tink")
+        return JSONResponse(status_code=503, content=error.model_dump())
+    except TinkAPIError as e:
+        logger.error(f"Tink API error during sync: {str(e)}")
+        # Audit sync failure
+        audit_transactions_synced(
+            db=db,
+            user_id=current_user.id,
+            connection_id=connection.id if connection else None,
+            synced_count=0,
+            exact_duplicate_count=0,
+            fuzzy_duplicate_count=0,
+            total_fetched=0,
+            date_range_days=days,
+            result="failure",
+            request=http_request,
+        )
+        # Check if it's a 401 Unauthorized (token expired)
+        if "401" in str(e) or "Unauthorized" in str(e):
+            error = token_expired_error()
+        else:
+            error = auth_failed_error()
+        return JSONResponse(status_code=500, content=error.model_dump())
     except Exception as e:
         logger.error(f"Error syncing transactions: {str(e)}")
         # Audit sync failure
@@ -402,7 +453,8 @@ async def sync_transactions(
             result="failure",
             request=http_request,
         )
-        raise HTTPException(status_code=500, detail=f"Error syncing transactions: {str(e)}")
+        error = internal_error(str(e))
+        return JSONResponse(status_code=500, content=error.model_dump())
 
 
 @router.post("/categorize", response_model=CategorizeResponse)
@@ -427,15 +479,28 @@ async def categorize_transactions(
     # Rate limit: 100 categorizations per hour per user (AI categorization, compute-intensive)
     limiter = get_limiter(http_request)
     await limiter.check("100/hour", http_request)
-    # Get API key from user settings
+
+    # Get API key from user settings, fallback to environment variable
     settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
-    if not settings or not settings.ai or not settings.ai.get("apiKey"):
+    api_key = None
+
+    # Priority 1: User's own API key from settings
+    if settings and settings.ai and settings.ai.get("apiKey"):
+        api_key = settings.ai["apiKey"]
+        logger.info(f"Using user-configured API key for categorization (user {current_user.id})")
+
+    # Priority 2: Environment variable (for sandbox/development)
+    if not api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            logger.info(f"Using environment OPENAI_API_KEY for categorization (user {current_user.id})")
+
+    # If still no API key, raise error
+    if not api_key:
         raise HTTPException(
             status_code=400,
-            detail="AI API key not configured. Please add your Anthropic API key in Settings."
+            detail="AI API key not configured. Please add your OpenAI API key in Settings or configure OPENAI_API_KEY environment variable."
         )
-
-    api_key = settings.ai["apiKey"]
 
     # Get transactions to categorize
     query = db.query(BankTransaction).filter(

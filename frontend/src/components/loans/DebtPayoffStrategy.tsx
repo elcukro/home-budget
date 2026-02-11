@@ -1,10 +1,21 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useIntl, FormattedMessage } from 'react-intl';
-import { Snowflake, TrendingDown, Info, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Snowflake, TrendingDown, Info, ArrowRight, Wallet, ChevronUp, ChevronDown } from 'lucide-react';
 import { useSettings } from '@/contexts/SettingsContext';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Loan {
   id: number | string;
@@ -18,6 +29,13 @@ interface Loan {
 interface DebtPayoffStrategyProps {
   loans: Loan[];
   extraPayment?: number;
+  userEmail?: string | null;
+}
+
+function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  result.setMonth(result.getMonth() + months);
+  return result;
 }
 
 interface PayoffResult {
@@ -102,11 +120,14 @@ function calculatePayoff(
   };
 }
 
-export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayoffStrategyProps) {
+export default function DebtPayoffStrategy({ loans, extraPayment = 0, userEmail }: DebtPayoffStrategyProps) {
   const intl = useIntl();
   const { formatCurrency } = useSettings();
-  const [selectedStrategy, setSelectedStrategy] = useState<'snowball' | 'avalanche'>('avalanche');
-  const [customExtra, setCustomExtra] = useState<number>(extraPayment);
+  const { toast } = useToast();
+  const [selectedStrategy, setSelectedStrategy] = useState<'snowball' | 'avalanche'>('snowball');
+  const [customExtra, setCustomExtra] = useState<number>(extraPayment || 100);
+  const [isAddingToBudget, setIsAddingToBudget] = useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
   // Filter out mortgages - focus on consumer debt
   const consumerLoans = useMemo(() =>
@@ -141,6 +162,69 @@ export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayo
   const interestSavings = snowballResult.totalInterest - avalancheResult.totalInterest;
   const _timeSavings = snowballResult.monthsToPayoff - avalancheResult.monthsToPayoff;
 
+  const selectedResult = selectedStrategy === 'snowball' ? snowballResult : avalancheResult;
+
+  // Baseline: no extra payment, used to show how much time/interest the extra saves
+  const baseResult = useMemo(() =>
+    calculatePayoff(consumerLoans, selectedResult.order, 0),
+    [consumerLoans, selectedResult.order]
+  );
+
+  const timeSavedByExtra = Math.max(0, baseResult.monthsToPayoff - selectedResult.monthsToPayoff);
+  const interestSavedByExtra = Math.max(0, baseResult.totalInterest - selectedResult.totalInterest);
+
+  const handleAddToBudget = useCallback(async () => {
+    if (!userEmail || customExtra <= 0) return;
+    setIsAddingToBudget(true);
+    try {
+      // 1. Get active budget year
+      const yearsRes = await fetch(
+        `/api/backend/users/${encodeURIComponent(userEmail)}/budget/years`,
+        { headers: { Accept: 'application/json' } }
+      );
+      if (!yearsRes.ok) throw new Error('Failed to fetch budget years');
+      const years: { id: number; year: number; status: string }[] = await yearsRes.json();
+      const activeYear = years.find(y => y.status === 'active') ?? years[0];
+      if (!activeYear) throw new Error('No budget year found');
+
+      // 2. Create budget entry
+      const firstLoan = selectedResult.order[0];
+      const currentMonth = new Date().getMonth() + 1;
+
+      const payload = {
+        entry_type: 'loan_payment',
+        category: firstLoan?.loan_type || 'other',
+        description: `Nadpłata - ${firstLoan?.description || 'Kredyt'}`,
+        planned_amount: customExtra,
+        is_recurring: true,
+        month: currentMonth,
+        budget_year_id: activeYear.id,
+      };
+
+      const response = await fetch(
+        `/api/backend/users/${encodeURIComponent(userEmail)}/budget/entries`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to create budget entry');
+
+      toast({
+        title: intl.formatMessage({ id: 'loans.strategy.addToBudgetSuccess', defaultMessage: 'Dodano nadpłatę do wydatków cyklicznych' }),
+      });
+    } catch {
+      toast({
+        title: intl.formatMessage({ id: 'loans.strategy.addToBudgetError', defaultMessage: 'Nie udało się dodać nadpłaty' }),
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAddingToBudget(false);
+    }
+  }, [userEmail, customExtra, selectedResult, intl, toast]);
+
   if (consumerLoans.length === 0) {
     return null;
   }
@@ -165,8 +249,6 @@ export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayo
       { years, months: remainingMonths }
     );
   };
-
-  const selectedResult = selectedStrategy === 'snowball' ? snowballResult : avalancheResult;
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
@@ -225,12 +307,6 @@ export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayo
               <span className="font-medium text-primary">{formatMonths(snowballResult.monthsToPayoff)}</span>
             </div>
           </div>
-          {selectedStrategy === 'snowball' && (
-            <div className="mt-3 flex items-center gap-1 text-xs text-primary">
-              <CheckCircle2 className="w-4 h-4" />
-              {intl.formatMessage({ id: 'loans.strategy.selected', defaultMessage: 'Selected strategy' })}
-            </div>
-          )}
         </button>
 
         {/* Avalanche Card */}
@@ -271,12 +347,6 @@ export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayo
               <span className="font-medium text-primary">{formatMonths(avalancheResult.monthsToPayoff)}</span>
             </div>
           </div>
-          {selectedStrategy === 'avalanche' && (
-            <div className="mt-3 flex items-center gap-1 text-xs text-primary">
-              <CheckCircle2 className="w-4 h-4" />
-              {intl.formatMessage({ id: 'loans.strategy.selected', defaultMessage: 'Selected strategy' })}
-            </div>
-          )}
         </button>
       </div>
 
@@ -309,29 +379,54 @@ export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayo
         </div>
       )}
 
-      {/* Extra payment input */}
-      <div className="bg-muted/30 rounded-xl p-4">
-        <label className="block text-sm font-medium text-primary mb-2">
+      {/* Extra payment input - inline */}
+      <div className="flex flex-wrap items-center gap-2 bg-muted/30 rounded-xl px-4 py-3">
+        <span className="text-sm font-medium text-primary">
           {intl.formatMessage({ id: 'loans.strategy.extraPayment', defaultMessage: 'Dodatkowa miesięczna nadpłata:' })}
-        </label>
-        <div className="flex items-center gap-3">
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCustomExtra(prev => Math.max(0, prev - 50))}
+            className="p-1 rounded-md bg-muted hover:bg-muted/80 text-secondary hover:text-primary transition-colors"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </button>
           <CurrencyInput
             value={customExtra}
             onValueChange={(val) => setCustomExtra(Math.max(0, val))}
-            className="w-32 px-3 py-2 bg-background border border-border rounded-lg text-primary text-right"
+            className="w-24 px-2 py-1 bg-background border-none rounded-lg text-sm text-primary text-right focus:ring-1 focus:ring-primary/40"
           />
-          {customExtra > 0 && (
-            <span className="text-xs text-success">
-              {intl.formatMessage(
-                { id: 'loans.strategy.speedsUpBy', defaultMessage: 'Speeds up payoff by {time}' },
-                { time: formatMonths(Math.max(0,
-                  (customExtra === 0 ? snowballResult.monthsToPayoff : calculatePayoff(consumerLoans, selectedResult.order, 0).monthsToPayoff) -
-                  selectedResult.monthsToPayoff
-                ))}
-              )}
-            </span>
-          )}
+          <button
+            onClick={() => setCustomExtra(prev => prev + 50)}
+            className="p-1 rounded-md bg-muted hover:bg-muted/80 text-secondary hover:text-primary transition-colors"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </button>
         </div>
+        {customExtra > 0 && (
+          <span className="text-xs text-success font-medium">
+            {intl.formatMessage(
+              { id: 'loans.strategy.speedsUpBy', defaultMessage: 'Speeds up payoff by {time}' },
+              { time: formatMonths(timeSavedByExtra) }
+            )}
+            {interestSavedByExtra > 0 && (
+              <> · {intl.formatMessage(
+                { id: 'loans.strategy.interestSaved', defaultMessage: "You'll save {amount} in interest" },
+                { amount: formatCurrency(interestSavedByExtra) }
+              )}</>
+            )}
+          </span>
+        )}
+        {customExtra > 0 && userEmail && (
+          <button
+            onClick={() => setConfirmDialogOpen(true)}
+            disabled={isAddingToBudget}
+            className="ml-auto flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-success/15 text-success hover:bg-success/25 transition-colors disabled:opacity-50"
+          >
+            <Wallet className="w-3.5 h-3.5" />
+            {intl.formatMessage({ id: 'loans.strategy.addToBudget', defaultMessage: 'Dodaj nadpłatę do budżetu' })}
+          </button>
+        )}
       </div>
 
       {/* Payoff Order */}
@@ -380,11 +475,73 @@ export default function DebtPayoffStrategy({ loans, extraPayment = 0 }: DebtPayo
             id="loans.strategy.babyStepsLink"
             defaultMessage="This strategy is part of {step} - pay off all debts (except mortgage)"
             values={{
-              step: <span className="font-medium text-primary"><FormattedMessage id="loans.strategy.babyStep2" defaultMessage="Baby Step 2" /></span>
+              step: <span key="step" className="font-medium text-primary"><FormattedMessage id="loans.strategy.babyStep2" defaultMessage="Baby Step 2" /></span>
             }}
           />
         </span>
       </div>
+      {/* Confirm add to budget dialog */}
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {intl.formatMessage({ id: 'loans.strategy.confirmDialog.title', defaultMessage: 'Dodaj nadpłatę do budżetu' })}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  {(() => {
+                    const payoffDate = addMonths(new Date(), selectedResult.monthsToPayoff);
+                    const monthName = intl.formatDate(payoffDate, { month: 'long' });
+                    const year = payoffDate.getFullYear();
+                    return intl.formatMessage(
+                      { id: 'loans.strategy.confirmDialog.description', defaultMessage: 'Nadpłata {amount}/mies. na {loan} zostanie dopisana do budżetu wydatków od bieżącego miesiąca aż do całkowitej spłaty kredytu ({endDate}).' },
+                      {
+                        amount: formatCurrency(customExtra),
+                        loan: selectedResult.order[0]?.description || 'Kredyt',
+                        endDate: `${monthName} ${year}`,
+                      }
+                    );
+                  })()}
+                </p>
+                <div className="rounded-lg bg-success/10 border border-success/20 p-3 space-y-1">
+                  {timeSavedByExtra > 0 && (
+                    <p className="text-success font-medium">
+                      {intl.formatMessage(
+                        { id: 'loans.strategy.confirmDialog.timeSaved', defaultMessage: 'Skrócisz spłatę o {time}' },
+                        { time: formatMonths(timeSavedByExtra) }
+                      )}
+                    </p>
+                  )}
+                  {interestSavedByExtra > 0 && (
+                    <p className="text-success font-medium">
+                      {intl.formatMessage(
+                        { id: 'loans.strategy.confirmDialog.interestSaved', defaultMessage: 'Zaoszczędzisz {amount} na odsetkach' },
+                        { amount: formatCurrency(interestSavedByExtra) }
+                      )}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {intl.formatMessage({ id: 'common.cancel', defaultMessage: 'Anuluj' })}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isAddingToBudget}
+              onClick={async (e) => {
+                e.preventDefault();
+                await handleAddToBudget();
+                setConfirmDialogOpen(false);
+              }}
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

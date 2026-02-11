@@ -13,7 +13,7 @@ const faqItems: FAQItem[] = [
   {
     category: 'security',
     question: 'Czy moje dane finansowe są bezpieczne?',
-    answer: 'Tak, bezpieczeństwo Twoich danych to nasz priorytet. Korzystamy z szyfrowania bankowego (TLS 1.3), a integracja z bankami odbywa się przez certyfikowanego dostawcę Tink, który spełnia wymogi PSD2. Twoje dane przechowywane są na serwerach w UE i nigdy nie sprzedajemy ich osobom trzecim.',
+    answer: 'Tak, bezpieczeństwo Twoich danych to nasz priorytet. Korzystamy z szyfrowania klasy bankowej (TLS 1.2+), a integracja z bankami odbywa się przez certyfikowanego dostawcę Tink, który spełnia wymogi PSD2. Twoje dane przechowywane są na serwerach w UE i nigdy nie sprzedajemy ich osobom trzecim.',
   },
   {
     category: 'security',
@@ -23,7 +23,7 @@ const faqItems: FAQItem[] = [
   {
     category: 'debt',
     question: 'Mam bardzo duże długi. Czy ta metoda zadziała dla mnie?',
-    answer: 'Metoda Baby Steps została zaprojektowana właśnie dla osób z dużymi długami. Kluczem jest systematyczność, nie wielkość długu. Zaczynasz od małego funduszu awaryjnego (1000 zł), potem spłacasz długi metodą kuli śnieżnej - od najmniejszego do największego. Tysiące osób spłaciło w ten sposób długi przekraczające 100 000 zł.',
+    answer: 'Metoda Baby Steps została zaprojektowana właśnie dla osób z dużymi długami. Kluczem jest systematyczność, nie wielkość długu. Zaczynasz od małego funduszu awaryjnego (np. 1000 zł), potem spłacasz długi metodą kuli śnieżnej - od najmniejszego do największego. Tysiące osób spłaciło w ten sposób długi przekraczające 100 000 zł.',
   },
   {
     category: 'debt',
@@ -38,12 +38,12 @@ const faqItems: FAQItem[] = [
   {
     category: 'product',
     question: 'Co się stanie po zakończeniu okresu próbnego?',
-    answer: 'Po 7 dniach przechodzisz na darmowy plan, który pozwala śledzić podstawowe wydatki i przychody. Przed zmianą planu możesz wyeksportować wszystkie swoje dane (Excel, CSV, JSON) - Twoje dane zawsze należą do Ciebie. Możesz korzystać z darmowego planu bez ograniczeń czasowych. Płatne plany odblokowują integrację z bankiem, zaawansowaną analitykę AI i pełny dostęp do metodologii Baby Steps.',
+    answer: 'Po 7 dniach przechodzisz na darmowy plan z limitami: do 20 wydatków miesięcznie, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. W trakcie okresu próbnego możesz wyeksportować wszystkie swoje dane (Excel, CSV, JSON) — Twoje dane zawsze należą do Ciebie. Możesz korzystać z darmowego planu bez ograniczeń czasowych. Płatne plany odblokowują brak limitów, integrację z bankiem, eksport danych, zaawansowaną analitykę AI i pełną metodologię Baby Steps z rekomendacjami.',
   },
   {
     category: 'product',
     question: 'Jak szybko zobaczę efekty?',
-    answer: 'Pierwsze efekty - pełną kontrolę nad tym, gdzie idą Twoje pieniądze - zobaczysz już w pierwszym tygodniu. Fundusz awaryjny (1000 zł) większość użytkowników buduje w 1-3 miesiące. Spłata długów zależy od ich wielkości, ale dzięki metodzie kuli śnieżnej każda spłacona rata motywuje do kolejnej. Kluczem jest konsekwencja, nie szybkość.',
+    answer: 'Pierwsze efekty - pełną kontrolę nad tym, gdzie idą Twoje pieniądze - zobaczysz już w pierwszym tygodniu. Fundusz awaryjny (np. 1000 zł) większość użytkowników buduje w 1-3 miesiące. Spłata długów zależy od ich wielkości, ale dzięki metodzie kuli śnieżnej każda spłacona rata motywuje do kolejnej. Kluczem jest konsekwencja, nie szybkość.',
   },
   {
     category: 'product',
@@ -70,7 +70,7 @@ export default function FAQSection() {
   };
 
   return (
-    <section id="faq" className="py-20 bg-gradient-to-b from-emerald-50/30 to-white">
+    <section id="faq" className="pt-10 pb-20 scroll-mt-20 bg-gradient-to-b from-emerald-50/30 to-white">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-12">

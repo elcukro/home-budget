@@ -26,7 +26,6 @@ interface GoalsStepProps {
   onRemove: (id: string) => void;
   onNext: () => void;
   onBack: () => void;
-  onSkip: () => void;
 }
 
 export default function GoalsStep({
@@ -37,7 +36,6 @@ export default function GoalsStep({
   onRemove,
   onNext,
   onBack,
-  onSkip,
 }: GoalsStepProps) {
   const intl = useIntl();
 
@@ -182,6 +180,7 @@ export default function GoalsStep({
                 <Input
                   type="date"
                   value={goal.targetDate ?? ''}
+                  min={new Date().toISOString().slice(0, 10)}
                   onChange={(event) =>
                     onUpdate(goal.id, { targetDate: event.target.value })
                   }
@@ -197,17 +196,22 @@ export default function GoalsStep({
                   errors['priority']
                 }
               >
-                <Input
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={goal.priority}
-                  onChange={(event) =>
-                    onUpdate(goal.id, {
-                      priority: Number(event.target.value) || 1,
-                    })
-                  }
-                />
+                <div className="flex gap-1.5">
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => onUpdate(goal.id, { priority: level })}
+                      className={`flex h-9 w-9 items-center justify-center rounded-md border text-sm font-medium transition-colors ${
+                        goal.priority === level
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-muted/60 bg-card text-secondary hover:bg-muted/40'
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
               </FieldGroup>
             </div>
 
@@ -239,7 +243,7 @@ export default function GoalsStep({
       <FormFooter
         onNext={onNext}
         onBack={onBack}
-        onSkip={onSkip}
+        isLast
       />
     </div>
   );

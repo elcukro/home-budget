@@ -35,6 +35,35 @@ export interface SuggestedGoal {
   accountType?: string;
 }
 
+export type HeroDashboardHealthStatus = 'excellent' | 'good' | 'warning' | 'critical';
+export type MoveIconType = 'mortgage' | 'savings' | 'investment' | 'budget' | 'tax' | 'emergency';
+
+export interface BudgetDistortion {
+  is_distorted: boolean;
+  one_time_total: number;
+  explanation: string;
+  corrected_surplus: number;
+}
+
+export interface Top3Move {
+  title: string;
+  description: string;
+  impact: string;
+  icon_type: MoveIconType;
+}
+
+export interface HeroDashboard {
+  greeting: string;
+  health_status: HeroDashboardHealthStatus;
+  monthly_cost_of_living: number;
+  monthly_income: number;
+  monthly_surplus: number;
+  fire_progress_percent: number;
+  fire_target: number;
+  budget_distortion?: BudgetDistortion;
+  top3_moves: Top3Move[];
+}
+
 export interface InsightsResponse {
   categories: {
     baby_steps: Insight[];
@@ -55,6 +84,8 @@ export interface InsightsResponse {
   fireNumber?: number;
   savingsRate?: number;
   generatedAt?: string;
+  // Hero dashboard data (optional - may not be present in older cached insights)
+  hero_dashboard?: HeroDashboard;
   metadata?: {
     isCached?: boolean;
     createdAt?: string;

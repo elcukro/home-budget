@@ -1,6 +1,7 @@
 import logging
 import os
 import traceback
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, Query, Header, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -15,7 +16,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget
 from datetime import timezone
 from .routers.stripe_billing import TRIAL_DAYS
 from .database import engine, Base
@@ -26,6 +27,12 @@ import httpx
 from .logging_utils import make_conditional_print
 from .services.subscription_service import SubscriptionService
 from .services.gamification_service import GamificationService
+from .services.scheduler_service import (
+    initialize_scheduler,
+    start_scheduler,
+    shutdown_scheduler,
+    add_job,
+)
 from .dependencies import get_current_user as get_authenticated_user
 
 # Rate limiting
@@ -138,10 +145,69 @@ def validate_user_access(user_id_from_path: str, authenticated_user: models.User
             detail="Access denied: You can only access your own data"
         )
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for FastAPI application.
+
+    Handles:
+    - Scheduler initialization and startup
+    - Background job registration
+    - Graceful shutdown
+    """
+    # Startup
+    logger.info("Starting application...")
+
+    # Initialize and start scheduler
+    try:
+        scheduler = initialize_scheduler()
+        if scheduler:
+            start_scheduler()
+            logger.info("Scheduler initialized and started")
+
+            # Add Tink sync job (use async function directly with AsyncIOScheduler)
+            from .jobs.tink_sync_job import sync_all_tink_connections
+
+            # Get sync interval from environment (default: 6 hours)
+            sync_interval_hours = int(os.getenv("TINK_SYNC_INTERVAL_HOURS", "6"))
+
+            add_job(
+                func=sync_all_tink_connections,
+                trigger='interval',
+                hours=sync_interval_hours,
+                id='tink_sync_job',
+                name='Tink Connection Sync',
+                replace_existing=True,
+                max_instances=1,
+            )
+
+            logger.info(
+                f"Tink sync job scheduled: every {sync_interval_hours} hours"
+            )
+        else:
+            logger.info("Scheduler is disabled")
+
+    except Exception as e:
+        logger.error(f"Error initializing scheduler: {str(e)}", exc_info=True)
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down application...")
+
+    try:
+        shutdown_scheduler(wait=True)
+        logger.info("Scheduler shut down successfully")
+    except Exception as e:
+        logger.error(f"Error shutting down scheduler: {str(e)}", exc_info=True)
+
+
 app = FastAPI(
     title="FiredUp API",
     description="Personal finance management API",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Add rate limiter to app state and exception handler
@@ -205,6 +271,8 @@ app.include_router(gamification.router)
 app.include_router(gamification.router, prefix="/internal-api")
 # Admin endpoints (audit logs, etc.)
 app.include_router(admin.router)
+# Budget planning (annual budgets from onboarding)
+app.include_router(budget.router)
 
 # Loan models
 VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]
@@ -340,6 +408,8 @@ class IncomeBase(BaseModel):
     employment_type: str | None = Field(default=None, description="Employment type: uop (umowa o pracę), b2b, zlecenie, dzielo, other")
     gross_amount: float | None = Field(default=None, ge=0, description="Gross amount (brutto) before tax")
     is_gross: bool = Field(default=False, description="Whether the entered amount was gross (true) or net (false)")
+    kup_type: str | None = Field(default=None, description="KUP type: 'standard', 'author_50', 'none' (null = use global setting)")
+    owner: str | None = Field(default=None, description="Income owner: 'self', 'partner' (null = 'self')")
 
 class IncomeCreate(IncomeBase):
     pass
@@ -399,7 +469,7 @@ class Insight(BaseModel):
     description: str
     priority: str  # "high" | "medium" | "low"
     actionItems: list[str]
-    metrics: list[InsightMetric]
+    metrics: list[InsightMetric] = []
 
 class CategoryInsights(BaseModel):
     insights: list[Insight]
@@ -835,8 +905,11 @@ def delete_loan_payment(
     if not db_payment:
         raise HTTPException(status_code=404, detail="Payment not found")
 
-    # Restore the balance
-    db_loan.remaining_balance = db_loan.remaining_balance + db_payment.amount
+    # Restore the balance (capped at principal_amount to avoid validation errors)
+    db_loan.remaining_balance = min(
+        db_loan.remaining_balance + db_payment.amount,
+        db_loan.principal_amount
+    )
 
     # Delete the payment
     db.delete(db_payment)
@@ -1231,6 +1304,7 @@ class TaxCalculationRequest(BaseModel):
     employment_type: str  # uop, b2b, zlecenie, dzielo, other
     use_authors_costs: bool = False
     ppk_employee_rate: float = 0.0  # 0 if not enrolled
+    kup_type: str | None = None  # "standard", "author_50", "none" (null = use global use_authors_costs)
 
 class TaxBreakdown(BaseModel):
     zus: float
@@ -1250,6 +1324,7 @@ def calculate_net_from_gross(
     employment_type: str,
     use_authors_costs: bool = False,
     ppk_employee_rate: float = 0.0,
+    kup_type: str | None = None,
 ) -> TaxCalculationResponse:
     """
     Calculate monthly net income from gross for Polish employment types.
@@ -1295,7 +1370,10 @@ def calculate_net_from_gross(
 
     if employment_type == "dzielo":
         # Umowa o dzieło: no ZUS, no health
-        if use_authors_costs:
+        # Resolve KUP: per-income kup_type overrides global use_authors_costs
+        if kup_type == "none":
+            kup = 0.0
+        elif kup_type == "author_50" or (kup_type is None and use_authors_costs):
             kup = min(gross_monthly * 0.5, KUP_AUTHORS_CAP_MONTHLY)
         else:
             kup = gross_monthly * 0.2
@@ -1323,13 +1401,18 @@ def calculate_net_from_gross(
 
     health = round(base_after_zus * HEALTH_RATE, 2)
 
+    # Resolve KUP: per-income kup_type overrides global use_authors_costs
     if employment_type == "uop":
-        if use_authors_costs:
+        if kup_type == "none":
+            kup = 0.0
+        elif kup_type == "author_50" or (kup_type is None and use_authors_costs):
             kup = min(base_after_zus * 0.5, KUP_AUTHORS_CAP_MONTHLY)
         else:
             kup = KUP_STANDARD_UOP
     elif employment_type == "zlecenie":
-        if use_authors_costs:
+        if kup_type == "none":
+            kup = 0.0
+        elif kup_type == "author_50" or (kup_type is None and use_authors_costs):
             kup = min(base_after_zus * 0.5, KUP_AUTHORS_CAP_MONTHLY)
         else:
             kup = base_after_zus * 0.2
@@ -1368,6 +1451,7 @@ async def tax_calculate(req: TaxCalculationRequest):
         employment_type=req.employment_type,
         use_authors_costs=req.use_authors_costs,
         ppk_employee_rate=req.ppk_employee_rate,
+        kup_type=req.kup_type,
     )
 
 
@@ -2238,13 +2322,29 @@ async def export_user_data(
         loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
         savings = db.query(models.Saving).filter(models.Saving.user_id == current_user.id).all()
 
+        # Fetch additional data
+        loan_payments = db.query(models.LoanPayment).filter(models.LoanPayment.user_id == current_user.id).all()
+        savings_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == current_user.id).all()
+
+        # Build goal_id -> goal name lookup for savings
+        goal_names = {g.id: g.name for g in savings_goals}
+
         # Prepare data structure for JSON
         data = {
             "settings": {
                 "language": settings.language if settings else "en",
                 "currency": settings.currency if settings else "USD",
                 "emergency_fund_target": settings.emergency_fund_target if settings else 1000,
-                "emergency_fund_months": settings.emergency_fund_months if settings else 3
+                "emergency_fund_months": settings.emergency_fund_months if settings else 3,
+                "base_currency": settings.base_currency if settings else "USD",
+                "employment_status": settings.employment_status if settings else None,
+                "tax_form": settings.tax_form if settings else None,
+                "birth_year": settings.birth_year if settings else None,
+                "use_authors_costs": settings.use_authors_costs if settings else False,
+                "ppk_enrolled": settings.ppk_enrolled if settings else None,
+                "ppk_employee_rate": settings.ppk_employee_rate if settings else None,
+                "ppk_employer_rate": settings.ppk_employer_rate if settings else None,
+                "children_count": settings.children_count if settings else 0,
             },
             "expenses": [
                 {
@@ -2252,7 +2352,8 @@ async def export_user_data(
                     "description": expense.description,
                     "amount": expense.amount,
                     "date": expense.date.isoformat(),
-                    "is_recurring": expense.is_recurring
+                    "is_recurring": expense.is_recurring,
+                    "end_date": expense.end_date.isoformat() if expense.end_date else None,
                 }
                 for expense in expenses
             ],
@@ -2262,7 +2363,11 @@ async def export_user_data(
                     "description": income.description,
                     "amount": income.amount,
                     "date": income.date.isoformat(),
-                    "is_recurring": income.is_recurring
+                    "is_recurring": income.is_recurring,
+                    "end_date": income.end_date.isoformat() if income.end_date else None,
+                    "employment_type": income.employment_type,
+                    "gross_amount": income.gross_amount,
+                    "is_gross": income.is_gross,
                 }
                 for income in incomes
             ],
@@ -2275,7 +2380,22 @@ async def export_user_data(
                     "interest_rate": loan.interest_rate,
                     "monthly_payment": loan.monthly_payment,
                     "term_months": loan.term_months,
-                    "start_date": loan.start_date.isoformat()
+                    "start_date": loan.start_date.isoformat(),
+                    "due_day": loan.due_day,
+                    "overpayment_fee_percent": loan.overpayment_fee_percent,
+                    "overpayment_fee_waived_until": loan.overpayment_fee_waived_until.isoformat() if loan.overpayment_fee_waived_until else None,
+                    "is_archived": loan.is_archived,
+                    "payments": [
+                        {
+                            "amount": p.amount,
+                            "payment_date": p.payment_date.isoformat(),
+                            "payment_type": p.payment_type,
+                            "covers_month": p.covers_month,
+                            "covers_year": p.covers_year,
+                            "notes": p.notes,
+                        }
+                        for p in loan_payments if p.loan_id == loan.id
+                    ],
                 }
                 for loan in loans
             ],
@@ -2286,11 +2406,30 @@ async def export_user_data(
                     "amount": saving.amount,
                     "date": saving.date.isoformat(),
                     "is_recurring": saving.is_recurring,
+                    "end_date": saving.end_date.isoformat() if saving.end_date else None,
                     "target_amount": saving.target_amount,
-                    "saving_type": saving.saving_type
+                    "saving_type": saving.saving_type,
+                    "account_type": saving.account_type,
+                    "annual_return_rate": saving.annual_return_rate,
+                    "goal_name": goal_names.get(saving.goal_id) if saving.goal_id else None,
                 }
                 for saving in savings
-            ]
+            ],
+            "savings_goals": [
+                {
+                    "name": goal.name,
+                    "category": goal.category,
+                    "target_amount": goal.target_amount,
+                    "current_amount": goal.current_amount,
+                    "deadline": goal.deadline.isoformat() if goal.deadline else None,
+                    "icon": goal.icon,
+                    "color": goal.color,
+                    "status": goal.status,
+                    "priority": goal.priority,
+                    "notes": goal.notes,
+                }
+                for goal in savings_goals
+            ],
         }
 
         if format.lower() == 'json':
@@ -2694,6 +2833,11 @@ async def import_user_data(
                 )
                 db.delete(saving)
 
+            # Clear savings goals
+            existing_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == current_user.id).all()
+            for goal in existing_goals:
+                db.delete(goal)
+
             db.commit()
             print(f"[FastAPI] Cleared existing data for user: {current_user.id}")
 
@@ -2701,11 +2845,21 @@ async def import_user_data(
         if "settings" in data:
             settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
             if settings:
-                settings.language = data["settings"].get("language", settings.language)
-                settings.currency = data["settings"].get("currency", settings.currency)
-                settings.ai = data["settings"].get("ai", settings.ai)
-                settings.emergency_fund_target = data["settings"].get("emergency_fund_target", settings.emergency_fund_target)
-                settings.emergency_fund_months = data["settings"].get("emergency_fund_months", settings.emergency_fund_months)
+                s = data["settings"]
+                settings.language = s.get("language", settings.language)
+                settings.currency = s.get("currency", settings.currency)
+                settings.ai = s.get("ai", settings.ai)
+                settings.emergency_fund_target = s.get("emergency_fund_target", settings.emergency_fund_target)
+                settings.emergency_fund_months = s.get("emergency_fund_months", settings.emergency_fund_months)
+                settings.base_currency = s.get("base_currency", settings.base_currency)
+                settings.employment_status = s.get("employment_status", settings.employment_status)
+                settings.tax_form = s.get("tax_form", settings.tax_form)
+                settings.birth_year = s.get("birth_year", settings.birth_year)
+                settings.use_authors_costs = s.get("use_authors_costs", settings.use_authors_costs)
+                settings.ppk_enrolled = s.get("ppk_enrolled", settings.ppk_enrolled)
+                settings.ppk_employee_rate = s.get("ppk_employee_rate", settings.ppk_employee_rate)
+                settings.ppk_employer_rate = s.get("ppk_employer_rate", settings.ppk_employer_rate)
+                settings.children_count = s.get("children_count", settings.children_count)
                 db.commit()
 
         # Import expenses
@@ -2717,7 +2871,8 @@ async def import_user_data(
                     description=expense_data["description"],
                     amount=expense_data["amount"],
                     date=datetime.fromisoformat(expense_data["date"].replace("Z", "+00:00")),
-                    is_recurring=expense_data.get("is_recurring", False)
+                    is_recurring=expense_data.get("is_recurring", False),
+                    end_date=datetime.fromisoformat(expense_data["end_date"].replace("Z", "+00:00")) if expense_data.get("end_date") else None,
                 )
                 db.add(expense)
                 db.flush()
@@ -2737,7 +2892,11 @@ async def import_user_data(
                     description=income_data["description"],
                     amount=income_data["amount"],
                     date=datetime.fromisoformat(income_data["date"].replace("Z", "+00:00")),
-                    is_recurring=income_data.get("is_recurring", False)
+                    is_recurring=income_data.get("is_recurring", False),
+                    end_date=datetime.fromisoformat(income_data["end_date"].replace("Z", "+00:00")) if income_data.get("end_date") else None,
+                    employment_type=income_data.get("employment_type"),
+                    gross_amount=income_data.get("gross_amount"),
+                    is_gross=income_data.get("is_gross", False),
                 )
                 db.add(income)
                 db.flush()
@@ -2760,7 +2919,11 @@ async def import_user_data(
                     interest_rate=loan_data["interest_rate"],
                     monthly_payment=loan_data["monthly_payment"],
                     term_months=loan_data["term_months"],
-                    start_date=datetime.fromisoformat(loan_data["start_date"].replace("Z", "+00:00"))
+                    start_date=datetime.fromisoformat(loan_data["start_date"].replace("Z", "+00:00")),
+                    due_day=loan_data.get("due_day", 1),
+                    overpayment_fee_percent=loan_data.get("overpayment_fee_percent", 0),
+                    overpayment_fee_waived_until=datetime.fromisoformat(loan_data["overpayment_fee_waived_until"].replace("Z", "+00:00")) if loan_data.get("overpayment_fee_waived_until") else None,
+                    is_archived=loan_data.get("is_archived", False),
                 )
                 db.add(loan)
                 db.flush()
@@ -2770,6 +2933,19 @@ async def import_user_data(
                     entity_id=loan.id,
                     new_values=serialize_loan(loan),
                 )
+                # Import loan payments
+                for payment_data in loan_data.get("payments", []):
+                    payment = models.LoanPayment(
+                        loan_id=loan.id,
+                        user_id=current_user.id,
+                        amount=payment_data["amount"],
+                        payment_date=datetime.fromisoformat(payment_data["payment_date"].replace("Z", "+00:00")),
+                        payment_type=payment_data["payment_type"],
+                        covers_month=payment_data.get("covers_month"),
+                        covers_year=payment_data.get("covers_year"),
+                        notes=payment_data.get("notes"),
+                    )
+                    db.add(payment)
 
         # Import savings
         if "savings" in data:
@@ -2781,8 +2957,11 @@ async def import_user_data(
                     amount=saving_data["amount"],
                     date=datetime.fromisoformat(saving_data["date"].replace("Z", "+00:00")),
                     is_recurring=saving_data.get("is_recurring", False),
+                    end_date=datetime.fromisoformat(saving_data["end_date"].replace("Z", "+00:00")) if saving_data.get("end_date") else None,
                     target_amount=saving_data.get("target_amount"),
-                    saving_type=saving_data["saving_type"]
+                    saving_type=saving_data["saving_type"],
+                    account_type=saving_data.get("account_type", "standard"),
+                    annual_return_rate=saving_data.get("annual_return_rate"),
                 )
                 db.add(saving)
                 db.flush()
@@ -2792,6 +2971,24 @@ async def import_user_data(
                     entity_id=saving.id,
                     new_values=serialize_saving(saving),
                 )
+
+        # Import savings goals
+        if "savings_goals" in data:
+            for goal_data in data["savings_goals"]:
+                goal = models.SavingsGoal(
+                    user_id=current_user.id,
+                    name=goal_data["name"],
+                    category=goal_data["category"],
+                    target_amount=goal_data["target_amount"],
+                    current_amount=goal_data.get("current_amount", 0),
+                    deadline=datetime.fromisoformat(goal_data["deadline"].replace("Z", "+00:00")) if goal_data.get("deadline") else None,
+                    icon=goal_data.get("icon"),
+                    color=goal_data.get("color"),
+                    status=goal_data.get("status", "active"),
+                    priority=goal_data.get("priority", 0),
+                    notes=goal_data.get("notes"),
+                )
+                db.add(goal)
 
         db.commit()
         return {"message": "Data imported successfully"}
@@ -3141,24 +3338,30 @@ async def generate_insights(user_data: dict, api_key: str):
             emp_type = income.get("employment_type") or "unknown"
             income_by_employment[emp_type] = income_by_employment.get(emp_type, 0) + income["amount"]
 
-        # Calculate savings totals by category and account type
+        # Calculate savings totals by category and account type (net: deposits - withdrawals)
         savings_by_category = {}
         savings_by_account_type = {}
         total_savings_deposits = 0
         for saving in savings:
+            cat = saving["category"]
+            acc_type = saving.get("account_type") or "standard"
+            amount = saving["amount"]
             if saving.get("saving_type") == "deposit":
-                total_savings_deposits += saving["amount"]
-                cat = saving["category"]
-                savings_by_category[cat] = savings_by_category.get(cat, 0) + saving["amount"]
-                acc_type = saving.get("account_type") or "standard"
-                savings_by_account_type[acc_type] = savings_by_account_type.get(acc_type, 0) + saving["amount"]
+                total_savings_deposits += amount
+                savings_by_category[cat] = savings_by_category.get(cat, 0) + amount
+                savings_by_account_type[acc_type] = savings_by_account_type.get(acc_type, 0) + amount
+            elif saving.get("saving_type") == "withdrawal":
+                savings_by_category[cat] = savings_by_category.get(cat, 0) - amount
+                savings_by_account_type[acc_type] = savings_by_account_type.get(acc_type, 0) - amount
 
         # Calculate emergency fund status
         # Baby Step 1: Starter emergency fund (fixed target, typically 1000 PLN/USD)
         baby_step_1_target = settings.get("emergency_fund_target", 1000)
         # Baby Step 3: Full emergency fund (3-6 months of expenses)
         emergency_fund_months = settings.get("emergency_fund_months", 3)
-        emergency_fund_current = savings_by_category.get("emergency_fund", 0)
+        # Liquid savings = emergency_fund + six_month_fund + general (excludes retirement, investment, real_estate)
+        liquid_categories = ["emergency_fund", "six_month_fund", "general"]
+        emergency_fund_current = sum(savings_by_category.get(cat, 0) for cat in liquid_categories)
         # Use RECURRING expenses for emergency fund target (not total which includes one-time)
         baby_step_3_target = recurring_expenses * emergency_fund_months if recurring_expenses > 0 else baby_step_1_target * emergency_fund_months
 
@@ -3425,16 +3628,17 @@ ONE-TIME EXPENSES THIS MONTH (for sinking fund analysis):
 {json.dumps(one_time_expense_details, indent=2) if one_time_expense_details else "None"}
 
 EMERGENCY FUND STATUS (PRE-CALCULATED - use these EXACT values, do NOT recalculate):
+- Liquid savings (emergency_fund + six_month_fund + general): {emergency_fund_current:,.0f} {currency}
 - BABY STEP 1 (starter emergency fund):
   Target: {baby_step_1_target:,.0f} {currency}
-  Current: {emergency_fund_current:,.0f} {currency}
+  Current liquid savings: {emergency_fund_current:,.0f} {currency}
   Status: {baby_step_1_status}
   Complete: {"YES ✓" if baby_step_1_complete else "NO - needs " + f"{abs(baby_step_1_difference):,.0f}" + " " + currency + " more"}
 
 - BABY STEP 3 (full emergency fund = {emergency_fund_months} months of RECURRING expenses):
   Based on: {recurring_expenses:,.0f} {currency}/month RECURRING expenses (NOT {total_expenses:,.0f} total)
   Target: {baby_step_3_target:,.0f} {currency}
-  Current: {emergency_fund_current:,.0f} {currency}
+  Current liquid savings: {emergency_fund_current:,.0f} {currency}
   Status: {baby_step_3_status}
   Complete: {"YES ✓" if baby_step_3_complete else "NO - needs " + f"{abs(baby_step_3_difference):,.0f}" + " " + currency + " more"}
 {"  Surplus: " + f"{emergency_fund_surplus:,.0f}" + " " + currency + " above target. Consider redirecting excess to Baby Step 4 (investing) or Baby Step 6 (mortgage)." if emergency_fund_surplus > 0 else ""}
@@ -3481,6 +3685,24 @@ Generate insights in these 5 categories based on the user's current Baby Step:
 3. **savings** - Emergency fund progress, IKE/IKZE contribution room and optimization
 4. **fire** - FIRE number, savings rate analysis, time to financial independence
 5. **tax_optimization** - Polish-specific tax opportunities based on their situation
+
+HERO DASHBOARD (generate this object alongside categories):
+Generate a "hero_dashboard" object with:
+- greeting: One warm sentence summarizing the user's financial health (max 20 words, in response language)
+- health_status: "excellent" if real surplus >30% of income, "good" if >10%, "warning" if >0%, "critical" if negative
+- monthly_cost_of_living: RECURRING expenses only (use {recurring_expenses:,.2f} {currency})
+- monthly_income: recurring income (use {recurring_income:,.2f} {currency})
+- monthly_surplus: recurring income - recurring expenses - loan payments (use {recurring_monthly_surplus:,.2f} {currency})
+- fire_progress_percent: (current savings / FIRE number) * 100, rounded to 1 decimal
+- fire_target: FIRE number (use {fire_number:,.0f} {currency})
+- budget_distortion: If one-time expenses > 30% of total expenses this month, set is_distorted=true. Include one_time_total, explanation (why this month looks different), and corrected_surplus (what surplus would be without one-time expenses)
+- top3_moves: The 3 most impactful financial actions, specific to this user's data, with concrete {currency} amounts. Each must have: title (short), description (1-2 sentences), impact (specific savings/gain like "Oszczędzisz X PLN rocznie"), icon_type (one of: mortgage, savings, investment, budget, tax, emergency)
+
+TOP 3 MOVES RULES:
+- Each move MUST have a specific {currency} impact calculated from the user's data (not generic advice)
+- Prioritize by impact: highest {currency} savings/gain first
+- Good: "Nadpłać hipotekę 3000 zł/mies → oszczędność 22k odsetek" — Bad: "Śledź wydatki"
+- Never suggest generic things like "track expenses" or "read a book"
 
 CRITICAL GUIDELINES:
 - Be specific and actionable - tell them EXACTLY what to do next
@@ -3535,7 +3757,30 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
   "currentBabyStep": {current_baby_step},
   "fireNumber": {fire_number},
   "savingsRate": {savings_rate:.1f},
-  "realSavingsRate": {real_savings_rate:.1f}
+  "realSavingsRate": {real_savings_rate:.1f},
+  "hero_dashboard": {{
+    "greeting": "One warm sentence about financial health",
+    "health_status": "excellent|good|warning|critical",
+    "monthly_cost_of_living": 0,
+    "monthly_income": 0,
+    "monthly_surplus": 0,
+    "fire_progress_percent": 0.0,
+    "fire_target": 0,
+    "budget_distortion": {{
+      "is_distorted": false,
+      "one_time_total": 0,
+      "explanation": "Why this month looks different (or empty if not distorted)",
+      "corrected_surplus": 0
+    }},
+    "top3_moves": [
+      {{
+        "title": "Short action title",
+        "description": "1-2 sentence description",
+        "impact": "Specific PLN impact",
+        "icon_type": "mortgage|savings|investment|budget|tax|emergency"
+      }}
+    ]
+  }}
 }}"""
 
         # Make the API call to OpenAI API with retry for transient errors
@@ -3553,7 +3798,7 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
                     },
                     json={
                         "model": "gpt-4.1-mini",
-                        "max_tokens": 4096,
+                        "max_tokens": 5000,
                         "response_format": {"type": "json_object"},
                         "messages": [
                             {"role": "system", "content": system_prompt},
@@ -3685,6 +3930,50 @@ JSON Response Structure (respond with ONLY valid JSON, no other text):
             }
         }
 
+class SavingsGoalCreate(BaseModel):
+    name: str
+    category: str = "general"
+    target_amount: float
+    deadline: Optional[str] = None  # ISO date string
+    priority: int = 0
+    status: str = "active"
+    icon: Optional[str] = None
+    color: Optional[str] = None
+    notes: Optional[str] = None
+
+@app.post("/users/{user_id}/savings-goals")
+async def create_savings_goal(
+    user_id: str,
+    goal_data: SavingsGoalCreate,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db),
+):
+    validate_user_access(user_id, current_user)
+    goal = models.SavingsGoal(
+        user_id=current_user.id,
+        name=goal_data.name,
+        category=goal_data.category,
+        target_amount=goal_data.target_amount,
+        deadline=datetime.fromisoformat(goal_data.deadline.replace("Z", "+00:00")).date() if goal_data.deadline else None,
+        priority=goal_data.priority,
+        status=goal_data.status,
+        icon=goal_data.icon,
+        color=goal_data.color,
+        notes=goal_data.notes,
+    )
+    db.add(goal)
+    db.commit()
+    db.refresh(goal)
+    return {
+        "id": goal.id,
+        "name": goal.name,
+        "category": goal.category,
+        "target_amount": goal.target_amount,
+        "deadline": goal.deadline.isoformat() if goal.deadline else None,
+        "priority": goal.priority,
+        "status": goal.status,
+    }
+
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the Home Budget API"} 
+    return {"message": "Welcome to the Home Budget API"}

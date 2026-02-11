@@ -935,11 +935,22 @@ class TinkService:
         # Get client access token (no user token needed for providers)
         client_token = await self.get_client_access_token(scope="providers:read")
 
+        # In sandbox/development mode, include test providers (Tink Demo Bank)
+        # Check ENVIRONMENT variable: sandbox, development, or production
+        environment = os.getenv("ENVIRONMENT", "production").lower()
+        is_sandbox = environment in ["sandbox", "development"]
+        params = {"includeTestProviders": "true"} if is_sandbox else {}
+
+        logger.info(f"Fetching providers: environment={environment}, is_sandbox={is_sandbox}, params={params}")
+
         response = await self._request_with_retry(
             method="GET",
             url=f"{self.api_url}/api/v1/providers/{market}",
+            params=params,
             headers={"Authorization": f"Bearer {client_token}"},
         )
+
+        logger.info(f"Providers response: status={response.status_code}, providers_count={len(response.json().get('providers', []))}")
 
         if response.status_code != 200:
             logger.error(f"Failed to fetch providers: {response.status_code} - {response.text}")

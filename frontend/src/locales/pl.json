@@ -10,7 +10,10 @@
     },
     "form": {
       "newAmount": "Nowa kwota",
-      "effectiveDate": "Data obowiązywania od"
+      "effectiveDate": "Data obowiązywania od",
+      "hasEndDate": "Ustal datę końcową",
+      "hasEndDateHint": "Przychód wygaśnie po tej dacie",
+      "endDate": "Data końcowa"
     },
     "toast": {
       "success": "Stawka została zmieniona",
@@ -195,6 +198,12 @@
     "categorize": "Kategoryzuj AI",
     "categorizing": "Kategoryzuję...",
     "allCategorized": "Wszystko skategoryzowane",
+    "categorization": {
+      "cta": {
+        "title": "Uruchom AI, aby zobaczyć podział wg kategorii",
+        "description": "AI przeanalizuje opisy transakcji i automatycznie przypisze kategorie. Dzięki temu zobaczysz szczegółowy podział wydatków."
+      }
+    },
     "categorizeModal": {
       "title": "Kategoryzacja AI",
       "step1": "Przygotowywanie transakcji...",
@@ -246,7 +255,20 @@
       "error": "Błąd dodawania do budżetu"
     },
     "filters": {
-      "search": "Szukaj transakcji..."
+      "search": "Szukaj transakcji...",
+      "category": "Kategoria",
+      "type": "Typ",
+      "period": "Przedział",
+      "allCategories": "Wszystkie kategorie",
+      "allTypes": "Wszystkie typy",
+      "expenses": "Wydatki",
+      "income": "Wpływy",
+      "allTime": "Cały czas",
+      "lastWeek": "Ostatni tydzień",
+      "lastMonth": "Ostatni miesiąc",
+      "lastQuarter": "Ostatni kwartał",
+      "lastYear": "Ostatni rok",
+      "clearAll": "Wyczyść filtry"
     },
     "convert": {
       "asExpense": "Jako wydatek",
@@ -262,6 +284,48 @@
       "categorizeSuccess": "Skategoryzowano {count} transakcji przez AI",
       "categorizeError": "Błąd kategoryzacji AI",
       "categorizeNoApiKey": "Kategoryzacja AI jest dostępna dla użytkowników trial i płatnych"
+    },
+    "errors": {
+      "token_expired": {
+        "title": "Połączenie z bankiem wygasło",
+        "description": "Musisz ponownie połączyć swoje konto bankowe w ustawieniach.",
+        "action": "Połącz ponownie"
+      },
+      "rate_limited": {
+        "title": "Zbyt wiele żądań",
+        "description": "Poczekaj chwilę i spróbuj ponownie.",
+        "action": "Spróbuj później"
+      },
+      "bank_unavailable": {
+        "title": "Bank jest niedostępny",
+        "description": "Twój bank jest tymczasowo niedostępny. Spróbuj ponownie za kilka minut.",
+        "action": "Spróbuj później"
+      },
+      "auth_failed": {
+        "title": "Błąd autoryzacji",
+        "description": "Nie udało się połączyć z bankiem. Spróbuj połączyć ponownie.",
+        "action": "Połącz ponownie"
+      },
+      "subscription_required": {
+        "title": "Wymagana subskrypcja Premium",
+        "description": "Ta funkcja jest dostępna tylko w planie Premium.",
+        "action": "Uaktualnij"
+      },
+      "network_error": {
+        "title": "Błąd połączenia",
+        "description": "Sprawdź swoje połączenie internetowe i spróbuj ponownie.",
+        "action": "Spróbuj ponownie"
+      },
+      "internal_error": {
+        "title": "Wystąpił błąd",
+        "description": "Coś poszło nie tak. Spróbuj ponownie później.",
+        "action": "Skontaktuj się z pomocą"
+      },
+      "tink_api_error": {
+        "title": "Błąd API banku",
+        "description": "Nie udało się pobrać danych z banku. Spróbuj ponownie.",
+        "action": "Spróbuj ponownie"
+      }
     }
   },
   "aiAnalysis": {
@@ -344,6 +408,28 @@
         "medium": "Średnie",
         "high": "Trudne"
       }
+    },
+    "hero": {
+      "costOfLiving": "Koszt życia miesięcznie",
+      "income": "Twój dochód",
+      "surplus": "Nadwyżka",
+      "recurringOnly": "tylko stałe",
+      "fireProgress": "Postęp FIRE",
+      "fireTarget": "Cel: {target}",
+      "budgetDistortion": {
+        "title": "Co psuje obraz budżetu",
+        "explanation": "Jednorazowe wydatki {amount} wpływają na obraz tego miesiąca",
+        "correctedSurplus": "Realna nadwyżka (bez jednorazowych): {amount}",
+        "toggle": "Pokaż skorygowane"
+      },
+      "top3Moves": "Top 3 Ruchy Finansowe",
+      "detailedAnalysis": "Szczegółowa analiza",
+      "healthStatus": {
+        "excellent": "Doskonała",
+        "good": "Dobra",
+        "warning": "Wymaga uwagi",
+        "critical": "Krytyczna"
+      }
     }
   },
   "dashboard": {
@@ -359,8 +445,8 @@
       "greeting": "Cześć, {name}!",
       "greetingDefault": "Cześć!",
       "situationGood": "Masz bardzo dobrą sytuację – warto już przejść do budowania bogactwa.",
-      "netIncome": "Koszty życia miesięcznie",
-      "expenses": "Twój dochód",
+      "netIncome": "Twój dochód",
+      "expenses": "Koszty życia miesięcznie",
       "balance": "Nadwyżka",
       "vsLastMonth": "vs zeszły miesiąc",
       "fireNumber": "Cele FIRE"
@@ -394,6 +480,7 @@
       "years": "{count} lat",
       "months": "{count} mies.",
       "targetSavings": "Cel: {amount}",
+      "babyStepCurrent": "Krok {step}",
       "noFireGoal": "Ustaw swoje cele FIRE",
       "setupFire": "Skonfiguruj cele",
       "overpaymentSim": "Symulator Nadpłaty",
@@ -529,6 +616,7 @@
           "can_be_improved": "Można poprawić",
           "bad": "Wymaga uwagi"
         },
+        "generatedAt": "Wygenerowano: {date}",
         "lastRefreshed": "Ostatnio odświeżono {date} ({days} dni temu)",
         "dataChanges": "Zmiany od ostatniego odświeżenia",
         "incomeChange": "Dochody: {change}",
@@ -673,6 +761,7 @@
       "expense": "wydatek",
       "loan": "kredyt",
       "payment": "płatność",
+      "saving": "oszczędność",
       "settings": "ustawienia",
       "source": "źródło",
       "description": "opis",
@@ -684,6 +773,8 @@
       "interest_rate": "oprocentowanie",
       "term_months": "okres w miesiącach",
       "monthly_payment": "rata miesięczna",
+      "end_date": "data końcowa",
+      "is_gross": "kwota brutto",
       "timestamp": "{date} o {time}",
       "updated_at": "Zaktualizowano {date} o {time}",
       "details": {
@@ -721,6 +812,7 @@
       "overpayment_fee_percent": "Opłata za nadpłatę (%)",
       "overpayment_fee_waived_until": "Zwolnienie z opłaty do",
       "target_amount": "Kwota docelowa",
+      "account_type": "Typ konta",
       "saving_type": "Typ oszczędności",
       "notes": "Notatki",
       "currency": "Waluta",
@@ -735,6 +827,7 @@
         "freelance": "Freelance",
         "investments": "Inwestycje",
         "rental": "Przychód z wynajmu",
+        "benefits": "Świadczenia (800+)",
         "other": "Inne"
       },
       "expense": {
@@ -754,6 +847,10 @@
   "income": {
     "title": "Zarządzanie Przychodami",
     "subtitle": "Śledź zarówno cykliczne, jak i jednorazowe źródła przychodu.",
+    "tabs": {
+      "transactions": "Przychody",
+      "budget": "Budżet"
+    },
     "incomeHistory": "Lista przychodów",
     "noEntries": "Brak wpisów przychodów",
     "loadError": "Nie udało się załadować przychodów. Spróbuj ponownie później.",
@@ -768,7 +865,9 @@
       "totalWithPeriod": "Suma ({period})",
       "average": "Średnia/mies.",
       "activeMonths": "Aktywne mies.",
-      "monthsInPeriod": "Miesięcy"
+      "monthsInPeriod": "Miesięcy",
+      "predicted": "prognoza",
+      "predictedNote": "Prognoza na podstawie aktywnych przychodów cyklicznych"
     },
     "summary": {
       "totalLabel": "Łączne przychody ({month})",
@@ -789,7 +888,8 @@
       "freelance": "Przychody z umów zleceń, dzieła lub działalności na boku.",
       "investments": "Dywidendy, odsetki lub zyski z inwestycji. UWAGA: Zyski kapitałowe poza IKE/IKZE/OIPE są opodatkowane 19% (podatek Belki).",
       "rental": "Dochód z wynajmu mieszkania lub nieruchomości.",
-      "other": "Pozostałe źródła – np. darowizny, stypendia czy świadczenia.",
+      "benefits": "Świadczenia rodzinne – 800+, Kosiniakowe, zasiłki.",
+      "other": "Pozostałe źródła – np. darowizny, stypendia.",
       "learnMore": "Szczegóły"
     },
     "categories": {
@@ -797,6 +897,7 @@
       "freelance": "Freelance",
       "investments": "Inwestycje",
       "rental": "Przychód z wynajmu",
+      "benefits": "Świadczenia (800+)",
       "other": "Inne"
     },
     "form": {
@@ -816,6 +917,20 @@
       "computedNet": "Obliczone netto (na rękę)",
       "selectEmploymentFirst": "Wybierz formę zatrudnienia powyżej, aby obliczyć netto.",
       "b2bDisclaimer": "Uproszczona kalkulacja (19% liniowy)",
+      "kupType": "Koszty uzyskania (KUP)",
+      "kupTypeHint": "Wybierz sposób obliczania kosztów uzyskania przychodu dla tego źródła.",
+      "kupOptions": {
+        "standard": "Standardowe (250 zł UoP / 20% zlecenie)",
+        "author50": "Autorskie 50% (praca twórcza)",
+        "none": "Brak KUP"
+      },
+      "owner": "Czyj przychód",
+      "ownerOptions": {
+        "self": "Mój",
+        "partner": "{name}",
+        "partnerDefault": "Partner/ka",
+        "shared": "Wspólne"
+      },
       "taxBreakdown": {
         "zus": "ZUS",
         "health": "Zdrowotna",
@@ -839,7 +954,7 @@
       "description": "Opis",
       "amount": "Kwota",
       "date": "Data",
-      "recurring": "Charakter",
+      "recurring": "Cykliczne?",
       "actions": "Akcje"
     },
     "recurring": {
@@ -867,6 +982,10 @@
   "expenses": {
     "title": "Zarządzanie Wydatkami",
     "subtitle": "Rejestruj regularne rachunki oraz jednorazowe wydatki.",
+    "tabs": {
+      "transactions": "Transakcje",
+      "budget": "Budżet"
+    },
     "expenseHistory": "Lista wydatków",
     "expenseHistory.current": "Lista wydatków - bieżący miesiąc",
     "expenseHistory.month": "Lista wydatków - {month}",
@@ -1164,6 +1283,7 @@
       "totalInterest": "Całkowite odsetki:",
       "payoffTime": "Czas spłaty:",
       "extraPayment": "Dodatkowa miesięczna nadpłata:",
+      "extraPaymentHint": "Ile dodatkowo możesz wpłacać co miesiąc ponad minimalne raty?",
       "order": "Kolejność spłaty:",
       "paidOffIn": "Spłacony w {time}",
       "selected": "Wybrana strategia",
@@ -1171,6 +1291,17 @@
       "snowballSavings": "Metoda Kuli Śnieżnej oszczędzi Ci {amount} na odsetkach!",
       "comparisonNote": "Lawina jest matematycznie optymalna, ale Kula Śnieżna daje szybsze \"małe zwycięstwa\" - wybierz to, co zmotywuje Cię bardziej.",
       "speedsUpBy": "Przyspiesza spłatę o {time}",
+      "interestSaved": "Zaoszczędzisz {amount} na odsetkach",
+      "addToBudget": "Dodaj nadpłatę do budżetu",
+      "addToBudgetDesc": "Nadpłata {amount}/mies. na {loan} do {date}",
+      "addToBudgetSuccess": "Dodano nadpłatę do wydatków cyklicznych",
+      "addToBudgetError": "Nie udało się dodać nadpłaty",
+      "confirmDialog": {
+        "title": "Dodaj nadpłatę do budżetu",
+        "description": "Nadpłata {amount}/mies. na {loan} zostanie dopisana do budżetu wydatków od bieżącego miesiąca aż do całkowitej spłaty kredytu ({endDate}).",
+        "timeSaved": "Skrócisz spłatę o {time}",
+        "interestSaved": "Zaoszczędzisz {amount} na odsetkach"
+      },
       "annualRate": "{rate}% rocznie",
       "babyStepsLink": "Ta strategia jest częścią {step} - spłać wszystkie długi (oprócz hipoteki)",
       "babyStep2": "Kroku 2 Baby Steps",
@@ -1512,7 +1643,14 @@
       "ppkEmployeeRate": "Twoja składka (%)",
       "ppkEmployerRate": "Składka pracodawcy (%)",
       "authorsCosts": "Koszty autorskie (50% KUP)",
-      "authorsCostsHint": "Dla twórców - 50% przychodu jako koszty uzyskania",
+      "authorsCostsHint": "Domyślne ustawienie dla nowych przychodów. Każdy przychód może mieć własny typ KUP w formularzu.",
+      "includePartner": "Wspólne budżetowanie",
+      "includePartnerHint": "Śledź przychody partnera osobno dla prawidłowych obliczeń podatkowych",
+      "partnerSection": "Profil podatkowy partnera",
+      "partnerName": "Imię partnera",
+      "partnerNameHint": "Wyświetlane w formularzu przychodu",
+      "incomeSource": "Źródło przychodów",
+      "selectIncomeSource": "Wybierz źródło",
       "employmentStatuses": {
         "employee": "Umowa o pracę",
         "b2b": "B2B / Działalność gospodarcza",
@@ -1731,7 +1869,7 @@
       "oipe": "OIPE"
     },
     "retirementLimits": {
-      "title": "Limity III Filaru",
+      "title": "Emerytura III Filar",
       "subtitle": "Wpłaty na konta emerytalne w {year} roku",
       "tooltip": "Roczne limity wpłat na IKE i IKZE są ustalane przez Ministerstwo Finansów. Przekroczenie limitu może skutkować sankcjami podatkowymi.",
       "contributed": "Wpłacono",
@@ -1753,6 +1891,38 @@
         "oipe": "OIPE",
         "standard": "Standard"
       }
+    },
+    "ppk": {
+      "title": "PPK",
+      "estimatedBalance": "Szacunkowy stan",
+      "monthlyContribution": "Wpłata miesięczna",
+      "breakdown": "{employee} (pracownik {employeeRate}%) + {employer} (pracodawca {employerRate}%)",
+      "estimateNote": "Szacunek na podstawie daty umowy, parametrów PPK i wynagrodzenia brutto",
+      "updateActual": "Wprowadź aktualny stan",
+      "withdraw": "Wypłać z PPK",
+      "withdrawTitle": "Wypłata z PPK",
+      "withdrawWarning": "Przedwczesna wypłata z PPK wiąże się z poważnymi konsekwencjami:",
+      "withdrawPenalties": {
+        "zus": "30% wpłat pracodawcy trafi na Twoje konto w ZUS",
+        "welcome": "Utrata dopłaty powitalnej (250 zł)",
+        "annual": "Utrata dopłat rocznych (240 zł/rok)",
+        "tax": "Podatek od zysków kapitałowych (19%)"
+      },
+      "withdrawConfirm": "Rozumiem konsekwencje",
+      "withdrawNetNote": "Otrzymasz ok. 70% wypłacanej kwoty po potrąceniach",
+      "ownerLabel": "Szacunkowy stan konta PPK — {name}",
+      "contractInfo": "Umowa: {description}, od {date}",
+      "grossBasis": "Podstawa brutto: {amount}",
+      "stateBonus": "+ dopłaty państwa: 250 zł powitalna + {annual} zł ({years} l. × 240 zł/rok)",
+      "monthsAccumulated": "Naliczane od {months} mies.",
+      "noSalaryData": "Dodaj wynagrodzenie w zakładce Przychody, aby zobaczyć szacunek PPK",
+      "updateTitle": "Aktualizuj stan PPK",
+      "updateDescription": "Podaj aktualny stan konta PPK",
+      "actualBalance": "Aktualny stan",
+      "updateSuccess": "Stan PPK został zaktualizowany",
+      "withdrawSuccess": "Wypłata z PPK została zarejestrowana",
+      "withdrawAmount": "Kwota wypłaty",
+      "maxAmount": "Maks: {amount}"
     },
     "summary": {
       "totalSavings": "Łączne oszczędności",
@@ -1886,7 +2056,17 @@
       "badge": "Krok {step}",
       "emergencyFund": "Fundusz awaryjny (1 mies.)",
       "sixMonthFund": "Pełny fundusz bezpieczeństwa (6 mies.)",
-      "autoCalculated": "Cel automatyczny"
+      "autoCalculated": "Cel automatyczny",
+      "cta": {
+        "hasAvailableSavings": "Masz {amount} w oszczędnościach. Przenieś {transfer} tutaj!",
+        "createEmergencyFund": "Utwórz fundusz awaryjny",
+        "createSixMonthFund": "Utwórz fundusz bezpieczeństwa",
+        "transferSuccess": "Środki zostały przeniesione"
+      },
+      "celebration": {
+        "step1": "Fundusz awaryjny gotowy! 🎉",
+        "step3": "Pełny fundusz bezpieczeństwa! 🎉"
+      }
     },
     "form": {
       "name": "Nazwa celu",
@@ -1940,18 +2120,23 @@
       "welcomeGreeting": "Witaj w Twoim Finansowym Centrum!"
     },
     "navigation": {
-      "whyItMatters": "Dlaczego to ważne? Dzięki tym danym spersonalizujemy Twoje cele.",
+      "whyItMatters": "Po co te pytania? Dzięki nim Twój plan będzie naprawdę Twój.",
       "skipStep": "Pomiń krok",
       "back": "Wstecz",
-      "finish": "Zakończ",
+      "finish": "Podsumowanie",
       "nextDefault": "Dalej",
       "nextWithStep": "Dalej → {step}"
     },
     "skipConfirm": {
       "title": "Pominąć konfigurację?",
-      "message": "Zawsze możesz wrócić do zebrania podstawowych danych przechodząc do Ustawienia → Ogólne → Zebranie podstawowych danych.",
-      "cancel": "Anuluj",
-      "confirm": "OK, pomiń"
+      "message": "Onboarding pomoże Ci uchwycić aktualny stan Twoich finansów – dochody, wydatki, zobowiązania i oszczędności. Na tej podstawie przygotujemy spersonalizowany plan działania. Zajmie to zaledwie kilka minut.",
+      "benefits": "Co zyskujesz dzięki onboardingowi?",
+      "benefit1": "Pełny obraz Twojej sytuacji finansowej",
+      "benefit2": "Spersonalizowane cele i rekomendacje",
+      "benefit3": "Plan kroków do wolności finansowej (Baby Steps)",
+      "settingsHint": "Jeśli pominiesz, zawsze możesz wrócić do kreatora w: Ustawienia → Ogólne → Zebranie podstawowych danych.",
+      "cancel": "Kontynuuj onboarding",
+      "confirm": "Chcę pominąć"
     },
     "savingProgress": {
       "title": "Przygotowujemy dane",
@@ -1962,11 +2147,14 @@
         "expenses": "Zapisywanie wydatków",
         "loans": "Zapisywanie zobowiązań",
         "savings": "Zapisywanie oszczędności i majątku",
+        "budget": "Budżet roczny",
+        "goals": "Cele finansowe",
         "finalize": "Kończenie konfiguracji"
       },
       "detail": {
         "clearing": "Usuwamy wcześniejsze dane z onboardingu",
         "finalize": "Kończymy ostatnie sprawdzenia",
+        "creatingBudget": "Tworzenie rocznego budżetu...",
         "count": "{current} z {total}"
       }
     },
@@ -1981,7 +2169,7 @@
       },
       "life": {
         "label": "Sytuacja życiowa",
-        "description": "Poznaj swój kontekst finansowy"
+        "description": "Kim jesteś i jak żyjesz"
       },
       "income": {
         "label": "Przychody",
@@ -2037,6 +2225,7 @@
         "assets": {
           "savings": "Oszczędności",
           "investments": "Inwestycje",
+          "retirement": "Konta emerytalne",
           "properties": "Nieruchomości",
           "emergencyCoverage": "Pokrycie poduszką",
           "emergencyCoverageValue": "{months} mies."
@@ -2054,6 +2243,10 @@
       }
     },
     "summary": {
+      "celebration": {
+        "title": "Twój profil finansowy jest gotowy!",
+        "subtitle": "Oto pełny obraz Twojej sytuacji finansowej. Wszystko gotowe, żeby zacząć działać."
+      },
       "cards": {
         "monthlyIncome": "Miesięczny dochód",
         "monthlyExpenses": "Miesięczne wydatki",
@@ -2087,6 +2280,7 @@
       "assets": {
         "savings": "Oszczędności",
         "investments": "Inwestycje",
+        "retirement": "Konta emerytalne",
         "properties": "Nieruchomości",
         "emergencyCoverage": "Pokrycie poduszką",
         "emergencyCoverageValue": "{months} mies."
@@ -2109,20 +2303,20 @@
       "moreInfo": "Więcej informacji"
     },
     "welcome": {
-      "intro": "W kilka minut pomożemy Ci odkryć, jak wygląda Twoja sytuacja finansowa. Przejdziemy przez sześć krótkich kroków – od dochodów i wydatków po cele finansowe.",
+      "intro": "W kilka minut pomożemy Ci odkryć, jak wygląda Twoja sytuacja finansowa. Przejdziemy przez siedem krótkich kroków – od dochodów i wydatków po cele finansowe.",
       "info": "Onboarding to jednorazowe wprowadzenie danych. Wszystko zapisujemy automatycznie – możesz wrócić i edytować informacje w dowolnym momencie.",
       "start": "Zaczynamy",
       "skip": "Pomiń onboarding"
     },
     "life": {
-      "intro": "Zrozumiemy Twoją sytuację życiową, aby zaproponować dopasowany plan finansowy.",
-      "subIntro": "Kilka spokojnych pytań pozwoli nam przygotować Twój spersonalizowany punkt startowy.",
+      "intro": "Opowiedz nam o sobie – dopasujemy plan do Twojego stylu życia.",
+      "subIntro": "To zajmie minutę. Na tej podstawie przygotujemy rekomendacje skrojone pod Ciebie.",
       "fields": {
         "maritalStatus": {
           "label": "Stan cywilny",
-          "tooltip": "Dzięki temu dopasujemy pytania do Twojej sytuacji rodzinnej.",
+          "tooltip": "Dopasujemy kolejne pytania do Twojej sytuacji.",
           "options": {
-            "single": "Singiel / singielka",
+            "single": "Panna / Kawaler",
             "relationship": "W związku",
             "married": "Małżeństwo"
           }
@@ -2133,11 +2327,11 @@
         },
         "childrenCount": {
           "label": "Liczba dzieci",
-          "tooltip": "Uwzględnimy edukację, ubrania i zajęcia dodatkowe w dalszym planie."
+          "tooltip": "Uwzględnimy wydatki na dzieci w Twoim planie."
         },
         "childrenAgeRange": {
           "label": "W jakim wieku są dzieci?",
-          "hint": "Dzięki temu dopasujemy rekomendacje oszczędzania i edukacji.",
+          "hint": "Wpływa na rekomendacje oszczędzania i edukacji.",
           "placeholder": "Wybierz przedział wiekowy",
           "options": {
             "0_6": "0 – 6 lat",
@@ -2148,8 +2342,8 @@
         },
         "housingType": {
           "label": "Typ zamieszkania",
-          "tooltip": "Rata kredytu lub czynsz to często największy stały koszt – warto być precyzyjnym.",
-          "hint": "Wynajem i kredyt mają wpływ na strukturę Twoich wydatków.",
+          "tooltip": "Mieszkanie to zwykle największy stały koszt.",
+          "hint": "Wpływa na strukturę Twoich wydatków i cele oszczędnościowe.",
           "options": {
             "rent": "Wynajem",
             "mortgage": "Własne (z kredytem)",
@@ -2158,7 +2352,7 @@
         },
         "hasMortgage": {
           "label": "Masz aktywny kredyt hipoteczny?",
-          "hint": "Dzięki temu dopasujemy rekomendacje dotyczące zadłużenia i poduszki bezpieczeństwa."
+          "hint": "Uwzględnimy go w strategii spłaty i poduszce bezpieczeństwa."
         },
         "employmentStatus": {
           "label": "Status zawodowy",
@@ -2173,16 +2367,16 @@
         },
         "birthYear": {
           "label": "Rok urodzenia",
-          "tooltip": "Potrzebujemy tej informacji do sprawdzenia ulgi dla młodych (do 26 r.ż.).",
+          "tooltip": "Sprawdzimy, czy przysługuje Ci ulga dla młodych (do 26 r.ż.).",
           "hint": "Ulga dla młodych zwalnia z PIT dochody do 85 528 zł rocznie."
         },
         "ppkEnrolled": {
           "label": "Czy jesteś zapisany do PPK?",
-          "hint": "Pracownicze Plany Kapitałowe – pracodawca dopłaca min. 1,5% do Twojej składki."
+          "hint": "PPK to dodatkowe oszczędności emerytalne – pracodawca dopłaca min. 1,5%."
         },
         "useAuthorsCosts": {
           "label": "Czy stosujesz koszty autorskie (50%)?",
-          "hint": "KUP 50% dla twórców – programiści, graficy, architekci, dziennikarze itp."
+          "hint": "Obniża podatek o połowę – dla programistów, grafików, architektów i in."
         },
         "taxForm": {
           "label": "Forma opodatkowania",
@@ -2195,8 +2389,8 @@
           }
         },
         "householdCost": {
-          "label": "Miesięczny koszt życia gospodarstwa (PLN)",
-          "hint": "Szacuj średnią z ostatnich 3 miesięcy."
+          "label": "Ile wydajecie miesięcznie na życie? (PLN)",
+          "hint": "Orientacyjna kwota z ostatnich 2–3 miesięcy wystarczy."
         }
       }
     },
@@ -2240,8 +2434,15 @@
       "fields": {
         "salaryNet": {
           "label": "Wynagrodzenie miesięczne (netto)",
-          "tooltip": "Kwota, która realnie trafia co miesiąc na Twoje konto po opodatkowaniu."
+          "yourLabel": "Twoje zarobki (netto)",
+          "tooltip": "Kwota, która realnie trafia co miesiąc na Twoje konto po opodatkowaniu.",
+          "householdHint": "Prowadzicie wspólny budżet – wpisz łączne wynagrodzenie obojga partnerów."
         },
+        "partnerSalaryNet": {
+          "label": "Zarobki partnera (netto)",
+          "tooltip": "Miesięczne wynagrodzenie netto partnera"
+        },
+        "partnerEmploymentType": "Forma zatrudnienia partnera",
         "irregularIncome": {
           "label": "Dochody nieregularne (rocznie)",
           "tooltip": "Przeliczamy roczne premie lub zwroty podatku na miesięczny ekwiwalent.",
@@ -2271,12 +2472,12 @@
       },
       "summary": {
         "totalMonthlyIncome": "Łączny miesięczny dochód",
-        "description": "Na podstawie Twoich danych miesięczny dochód netto wynosi {amount}. W kolejnym kroku zobaczymy, jak rozkładają się Twoje wydatki."
+        "description": "Na podstawie Twoich danych miesięczny dochód netto wynosi {amount}. W kolejnym kroku sprawdzimy Twoje zobowiązania."
       },
       "distribution": {
         "datasetLabel": "Procent gospodarstw domowych",
         "tooltip": "Percentyl: {value}%",
-        "summaryWithSalary": "Twój dochód {amount} przewyższa około {share}% gospodarstw domowych (skala do 30 000 zł netto).",
+        "summaryWithSalary": "Twój dochód {amount} jest wyższy niż w {percentile}% gospodarstw domowych w Polsce.",
         "summaryWithoutSalary": "Wpisz swoje wynagrodzenie, aby zobaczyć, jak wypadasz na tle innych (wykres pokazuje kwoty do 30 000 zł netto)."
       }
     },
@@ -2304,7 +2505,6 @@
           "hint": "Znając koszty mieszkania, możemy lepiej zaplanować Twoją poduszkę finansową.",
           "items": {
             "home-rental-tax": "Podatek za wynajem mieszkania",
-            "home-mortgage": "Spłata kredytu hipotecznego",
             "home-rent": "Czynsz za mieszkanie",
             "home-electricity": "Prąd",
             "home-gas": "Gaz",
@@ -2323,9 +2523,6 @@
           "hint": "Stałe koszty transportu pomagają ocenić, czy samochód lub dojazdy są optymalne.",
           "items": {
             "transport-fuel": "Samochód - paliwo",
-            "transport-insurance": "Ubezpieczenie OC/AC",
-            "transport-service": "Serwis i przeglądy",
-            "transport-leasing": "Leasing / rata",
             "transport-public": "Bilety (komunikacja)",
             "transport-parking": "Samochód - parkingi"
           }
@@ -2348,8 +2545,7 @@
             "family-education": "Przedszkole / szkoła / zajęcia",
             "family-clothes": "Ubrania",
             "family-activities": "Opieka / wyjazdy / prezenty",
-            "family-extracurricular-son": "Zajęcia dodatkowe Syna",
-            "family-extracurricular-daughter": "Zajęcia dodatkowe Córki",
+            "family-extracurricular": "Zajęcia dodatkowe dzieci",
             "family-toys": "Zabawki dla dzieci itp.",
             "family-afterschool": "Świetlica dla dzieci"
           }
@@ -2377,18 +2573,6 @@
             "subscriptions-insurance": "Ubezpieczenia dodatkowe"
           }
         },
-        "obligations": {
-          "title": "Zobowiązania finansowe",
-          "description": "Regularne płatności kredytowe i pożyczki.",
-          "hint": "Śledzenie zobowiązań ułatwia zarządzanie płynnością i minimalizuje ryzyko zadłużenia.",
-          "items": {
-            "obligations-loans": "Raty kredytów",
-            "obligations-card-fees": "Opłaty miesięczne za kartę kredytową",
-            "obligations-cards": "Karty kredytowe",
-            "obligations-bank-fees": "Inne opłaty bankowe",
-            "obligations-private": "Pożyczki prywatne"
-          }
-        },
         "pets": {
           "title": "Zwierzęta i hobby",
           "description": "Koszty opieki nad zwierzętami oraz rozwijania pasji i zainteresowań.",
@@ -2404,7 +2588,6 @@
           "hint": "Znając Twoje ubezpieczenia, możemy ocenić, czy korzystasz z odpowiedniej ochrony.",
           "items": {
             "insurance-health": "Ubezpieczenie zdrowotne / na życie",
-            "insurance-home": "Ubezpieczenie domu / sprzętu",
             "insurance-personal": "Ubezpieczenie indywidualne"
           }
         },
@@ -2414,7 +2597,6 @@
           "hint": "Drobne wydatki również potrafią rosnąć – zsumuj je, aby nic nie umknęło uwadze.",
           "items": {
             "other-leisure": "Kino / restauracje / wyjazdy",
-            "other-gifts": "Prezenty i okazjonalne zakupy",
             "other-misc": "Inne drobne wydatki",
             "other-gambling": "Hazard - Lotto i inne",
             "other-donations": "Darowizny i datki"
@@ -2427,6 +2609,10 @@
       "annualHint": "Podaj kwoty roczne – automatycznie przeliczymy je na miesięczny ekwiwalent.",
       "totalAnnual": "Suma wydatków nieregularnych (rocznie)",
       "totalMonthly": "Ekwiwalent miesięczny",
+      "month": {
+        "label": "Miesiąc",
+        "placeholder": "Kiedy?"
+      },
       "custom": {
         "defaultName": "Nowy wydatek nieregularny",
         "add": "Dodaj wydatek nieregularny",
@@ -2435,28 +2621,22 @@
       },
       "items": {
         "homeInsurance": "Ubezpieczenie mieszkania",
-        "trainings": "Szkolenia",
-        "carInsurance": "Samochód - ubezpieczenie",
+        "carInsurance": "Samochód - ubezpieczenie OC/AC",
         "carService": "Samochód - serwis (przeglądy, naprawy)",
-        "domains": "Domeny internetowe",
-        "realEstateAgency": "Agencja nieruchomości - prowizja za wynajem",
-        "gifts": "Prezenty dla różnych osób",
-        "clothing": "Ubranie",
-        "propertyTax": "Podatki gruntowe i inne opłaty - działka",
-        "softwareHosting": "Wydatki na hosting i programy komputerowe",
+        "propertyTax": "Podatki gruntowe i inne opłaty",
         "vacations": "Wakacje",
-        "schoolTextbooks": "Podręczniki dla dzieci do szkoły",
-        "schoolInsurance": "Ubezpieczenie szkolne dla dzieci",
-        "classFund": "Fundusz klasowy",
-        "unplanned": "Inne, nieplanowane wydatki",
-        "newComputer": "Zakup nowego komputera",
-        "robotVacuum": "Zakup odkurzacza iRobot"
+        "gifts": "Prezenty",
+        "clothing": "Ubranie (sezonowe zakupy)",
+        "schoolTextbooks": "Podręczniki szkolne",
+        "schoolInsurance": "Ubezpieczenie szkolne dzieci",
+        "trainings": "Szkolenia i kursy",
+        "unplanned": "Inne, nieplanowane wydatki"
       }
     },
     "liabilities": {
       "intro": {
-        "title": "Zobaczmy, jakie masz kredyty i pożyczki – obliczymy Twój wskaźnik zadłużenia (DTI) i pomożemy zaplanować bezpieczną spłatę.",
-        "description": "Podaj wartości orientacyjne – liczy się obraz Twojego zadłużenia, nie perfekcyjna dokładność."
+        "title": "Zobaczmy, jakie masz zobowiązania finansowe — obliczymy Twój wskaźnik zadłużenia (DTI) i pomożemy zaplanować spłatę.",
+        "description": "Dodaj: kredyt hipoteczny, kredyt samochodowy, pożyczki konsumenckie, karty kredytowe, limity w koncie, leasing, raty 0% i inne zobowiązania. Podaj wartości orientacyjne — liczy się ogólny obraz, nie perfekcyjna dokładność."
       },
       "actions": {
         "add": "Dodaj kolejne zobowiązanie",
@@ -2497,7 +2677,15 @@
       "summary": {
         "monthly": "Suma miesięcznych rat",
         "remaining": "Łączne zadłużenie",
-        "dti": "Twój wskaźnik DTI wynosi <strong>{value}%</strong>. Oznacza to, że <strong>{value}%</strong> dochodu przeznaczasz na spłatę zobowiązań."
+        "dti": "Twój wskaźnik DTI wynosi {value}% — tyle dochodu przeznaczasz na spłatę zobowiązań.",
+        "dtiLabel": "Wskaźnik zadłużenia (DTI)",
+        "dtiLevel": {
+          "none": "Brak zobowiązań — świetna pozycja startowa!",
+          "excellent": "Niskie zadłużenie — jesteś w komfortowej strefie. Banki traktują DTI poniżej 20% jako wzorowe.",
+          "acceptable": "Umiarkowane zadłużenie — mieścisz się w bezpiecznym zakresie. Większość banków akceptuje DTI do 36%.",
+          "high": "Podwyższone zadłużenie — zbliżasz się do granicy. Powyżej 36% trudniej o nowy kredyt, a budżet jest napięty.",
+          "critical": "Wysokie zadłużenie — powyżej 43% dochodu idzie na raty. Priorytetem powinna być redukcja zobowiązań."
+        }
       },
       "types": {
         "default": {
@@ -2598,8 +2786,23 @@
         "totalLabel": "Łączna wartość inwestycji (PLN)",
         "totalPlaceholder": "Łączna wartość (PLN)"
       },
+      "retirement": {
+        "title": "Konta emerytalne",
+        "hint": "Zaznacz posiadane konta — pomagają obniżyć podatek i budować kapitał na przyszłość.",
+        "options": {
+          "ppk": "PPK",
+          "ike": "IKE",
+          "ikze": "IKZE",
+          "oipe": "OIPE"
+        },
+        "totalLabel": "Łączna wartość kont emerytalnych (PLN)",
+        "totalPlaceholder": "Łączna wartość (PLN)",
+        "yourBalance": "Twoje saldo",
+        "partnerBalance": "Saldo partnera/ki"
+      },
       "sections": {
         "properties": "Nieruchomości",
+        "propertiesHint": "Domy, mieszkania, działki, lokale użytkowe — podaj szacunkową wartość rynkową na bieżący rok.",
         "vehicles": "Pojazdy",
         "empty": "Brak pozycji.",
         "namePlaceholder": "Nazwa",
@@ -2968,9 +3171,15 @@
       "title": "Masz dost\u0119p Premium!",
       "subtitle": "Korzystasz z pe\u0142nego dost\u0119pu do wszystkich funkcji FiredUp."
     },
+    "greeting": "Witaj, {name}!",
     "trial": {
       "endsLabel": "Tw\u00f3j trial ko\u0144czy si\u0119:",
-      "reminder": "Przypomnimy Ci na 3 dni przed ko\u0144cem"
+      "reminder": "Przypomnimy Ci na 3 dni przed ko\u0144cem",
+      "active": "7 dni Premium gratis"
+    },
+    "pricing": {
+      "nudge": "Plany Premium od 29 PLN/mies.",
+      "link": "Zobacz plany"
     },
     "features": {
       "heading": "Co zyskujesz z Premium?",
@@ -3001,6 +3210,42 @@
     "finePrint": "Po zako\u0144czeniu trialu dost\u0119p do podstawowych funkcji pozostanie darmowy.",
     "continue": "\u015awietnie, kontynuuj!",
     "skip": "Przypomnij mi p\u00f3\u017aniej",
+    "start": "Zaczynajmy!",
     "skip.error": "Nie uda\u0142o si\u0119 zako\u0144czy\u0107 aktywacji. Spr\u00f3buj ponownie."
+  },
+  "budget": {
+    "title": "Budżet {year} — {month}",
+    "monthSummary": "Podsumowanie: {month}",
+    "planned": "Planowane",
+    "actual": "Rzeczywiste",
+    "income": "Przychody",
+    "expenses": "Wydatki",
+    "loanPayments": "Raty kredytów",
+    "balance": "Bilans",
+    "addEntry": "Dodaj pozycję",
+    "editEntry": "Edytuj pozycję",
+    "deleteEntry": "Usuń pozycję",
+    "noData": "Brak budżetu na ten rok. Uzupełnij dane w onboardingu.",
+    "noEntries": "Brak pozycji w tej kategorii.",
+    "recurring": "Stały",
+    "oneTime": "Jednorazowy",
+    "saved": "Zapisano",
+    "saveError": "Nie udało się zapisać zmian.",
+    "loadError": "Nie udało się załadować budżetu.",
+    "deleted": "Pozycja usunięta.",
+    "deleteError": "Nie udało się usunąć pozycji.",
+    "entryType": "Typ pozycji",
+    "entryCount": "{count} pozycji",
+    "chart": {
+      "title": "Budżet vs Rzeczywistość",
+      "planned": "Planowane",
+      "actual": "Rzeczywiste",
+      "noActuals": "Brak transakcji w tym miesiącu",
+      "overBudget": "Powyżej budżetu",
+      "underBudget": "Poniżej budżetu",
+      "legendUnder": "Poniżej budżetu",
+      "legendClose": "W normie (±10%)",
+      "legendOver": "Powyżej budżetu (>10%)"
+    }
   }
 }

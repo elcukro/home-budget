@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Info, Scale } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
 
 interface TaxDisclaimerProps {
   variant?: 'full' | 'compact' | 'inline';
@@ -15,7 +15,7 @@ export default function TaxDisclaimer({ variant = 'full', className = '' }: TaxD
   if (variant === 'inline') {
     return (
       <p className={`text-xs text-secondary/70 italic ${className}`}>
-        Informacje mają charakter edukacyjny i nie stanowią doradztwa finansowego ani podatkowego.
+        Kalkulacje mają charakter poglądowy.
       </p>
     );
   }
@@ -25,7 +25,7 @@ export default function TaxDisclaimer({ variant = 'full', className = '' }: TaxD
       <div className={`flex items-start gap-2 p-3 bg-muted/50 rounded-lg text-xs text-secondary ${className}`}>
         <Info className="w-4 h-4 flex-shrink-0 mt-0.5" />
         <p>
-          FiredUp to narzędzie edukacyjne. Przed podjęciem decyzji finansowych skonsultuj się z doradcą.
+          Prezentowane kalkulacje mają charakter poglądowy. Przy decyzjach inwestycyjnych lub kredytowych skonsultuj się ze specjalistą.
         </p>
       </div>
     );
@@ -35,25 +35,24 @@ export default function TaxDisclaimer({ variant = 'full', className = '' }: TaxD
   return (
     <div className={`p-4 bg-muted/30 border border-border rounded-xl ${className}`}>
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Scale className="w-5 h-5 text-warning" />
+        <div className="w-10 h-10 bg-muted/50 rounded-lg flex items-center justify-center flex-shrink-0">
+          <Info className="w-5 h-5 text-secondary" />
         </div>
         <div className="space-y-2">
-          <h4 className="font-medium text-primary text-sm">Ważna informacja prawna</h4>
+          <h4 className="font-medium text-primary text-sm">Informacja</h4>
           <div className="text-xs text-secondary space-y-2">
             <p>
-              FiredUp jest narzędziem edukacyjnym pomagającym w zarządzaniu finansami osobistymi.
-              Prezentowane informacje, kalkulacje i sugestie <strong>nie stanowią doradztwa finansowego,
-              inwestycyjnego ani podatkowego</strong>.
+              FiredUp pomaga zarządzać budżetem domowym i śledzić postępy finansowe.
+              Prezentowane kalkulacje, statystyki i sugestie <strong>mają charakter poglądowy</strong> i
+              mogą nie uwzględniać wszystkich indywidualnych czynników.
             </p>
             <p>
-              Przed podjęciem istotnych decyzji finansowych, takich jak inwestycje w IKE/IKZE/PPK,
-              zaciągnięcie kredytu czy optymalizacja podatkowa, zalecamy konsultację z:
+              Przy istotnych decyzjach — takich jak inwestycje w IKE/IKZE/PPK,
+              zaciągnięcie kredytu czy optymalizacja podatkowa — warto skonsultować się ze specjalistą:
             </p>
             <ul className="list-disc list-inside pl-2 space-y-1">
-              <li>Licencjonowanym doradcą finansowym</li>
+              <li>Doradcą finansowym lub inwestycyjnym</li>
               <li>Doradcą podatkowym lub księgowym</li>
-              <li>Prawnikiem specjalizującym się w prawie finansowym</li>
             </ul>
             <p className="text-secondary/70 italic">
               Limity podatkowe i przepisy mogą ulec zmianie. Dane w aplikacji dotyczą roku 2026.
@@ -71,8 +70,7 @@ export default function TaxDisclaimer({ variant = 'full', className = '' }: TaxD
 export function FooterDisclaimer({ className = '' }: { className?: string }) {
   return (
     <p className={`text-xs text-secondary/60 ${className}`}>
-      FiredUp to narzędzie edukacyjne, nie stanowi doradztwa finansowego ani podatkowego.
-      Przed podjęciem decyzji skonsultuj się z licencjonowanym doradcą.
+      Prezentowane kalkulacje mają charakter poglądowy i nie stanowią doradztwa finansowego.
     </p>
   );
 }

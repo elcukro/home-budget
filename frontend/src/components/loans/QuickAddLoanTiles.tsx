@@ -35,7 +35,6 @@ interface LoanTemplateConfig {
   labelId: string;
   descriptionId: string;
   Icon: LucideIcon;
-  color: string;
   defaults: Partial<LoanTemplate>;
 }
 
@@ -46,7 +45,6 @@ const loanTemplates: LoanTemplateConfig[] = [
     labelId: 'loans.types.mortgage',
     descriptionId: 'loans.quickAdd.mortgage.description',
     Icon: Home,
-    color: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-200',
     defaults: {
       loan_type: 'mortgage',
       interest_rate: 7.5, // Typical Polish mortgage rate 2024-2025
@@ -58,7 +56,6 @@ const loanTemplates: LoanTemplateConfig[] = [
     labelId: 'loans.types.car',
     descriptionId: 'loans.quickAdd.car.description',
     Icon: Car,
-    color: 'bg-sky-100 text-sky-700 hover:bg-sky-200 border-sky-200',
     defaults: {
       loan_type: 'car',
       interest_rate: 9.5, // Typical car loan rate
@@ -70,7 +67,6 @@ const loanTemplates: LoanTemplateConfig[] = [
     labelId: 'loans.types.credit_card',
     descriptionId: 'loans.quickAdd.credit_card.description',
     Icon: CreditCard,
-    color: 'bg-rose-100 text-rose-700 hover:bg-rose-200 border-rose-200',
     defaults: {
       loan_type: 'credit_card',
       interest_rate: 21.0, // Typical credit card rate in Poland
@@ -82,7 +78,6 @@ const loanTemplates: LoanTemplateConfig[] = [
     labelId: 'loans.types.cash_loan',
     descriptionId: 'loans.quickAdd.cash_loan.description',
     Icon: Banknote,
-    color: 'bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200',
     defaults: {
       loan_type: 'cash_loan',
       interest_rate: 12.0, // Typical cash loan rate
@@ -94,7 +89,6 @@ const loanTemplates: LoanTemplateConfig[] = [
     labelId: 'loans.types.installment',
     descriptionId: 'loans.quickAdd.installment.description',
     Icon: ShoppingCart,
-    color: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-indigo-200',
     defaults: {
       loan_type: 'installment',
       interest_rate: 0, // Often 0% promotional
@@ -106,7 +100,6 @@ const loanTemplates: LoanTemplateConfig[] = [
     labelId: 'loans.types.leasing',
     descriptionId: 'loans.quickAdd.leasing.description',
     Icon: Truck,
-    color: 'bg-teal-100 text-teal-700 hover:bg-teal-200 border-teal-200',
     defaults: {
       loan_type: 'leasing',
       interest_rate: 0, // Leasing - interest is built into monthly payment
@@ -119,7 +112,6 @@ const loanTemplates: LoanTemplateConfig[] = [
     labelId: 'loans.types.overdraft',
     descriptionId: 'loans.quickAdd.overdraft.description',
     Icon: Wallet,
-    color: 'bg-red-100 text-red-700 hover:bg-red-200 border-red-200',
     defaults: {
       loan_type: 'overdraft',
       interest_rate: 15.0, // Typical overdraft rate
@@ -135,28 +127,22 @@ export default function QuickAddLoanTiles({
   const intl = useIntl();
 
   return (
-    <div className={cn('space-y-3', className)}>
-      <div className="text-sm text-muted-foreground">
+    <div className={cn('space-y-2', className)}>
+      <p className="text-xs text-muted-foreground">
         {intl.formatMessage({ id: 'loans.quickAdd.title' })}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2">
-        {loanTemplates.map((template) => (
-          <button
-            key={template.type}
-            onClick={() => onQuickAdd(template.defaults)}
-            className={cn(
-              'flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border-2 transition-all duration-200',
-              'hover:scale-105 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/50',
-              template.color
-            )}
-          >
-            <template.Icon className="h-5 w-5" />
-            <span className="font-medium text-xs text-center leading-tight">
-              {intl.formatMessage({ id: template.labelId })}
-            </span>
-            <Plus className="h-3 w-3 opacity-60" />
-          </button>
-        ))}
+      </p>
+      <div className="flex flex-wrap gap-2">
+      {loanTemplates.map((template) => (
+        <button
+          key={template.type}
+          onClick={() => onQuickAdd(template.defaults)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-muted bg-card px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-muted hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/50"
+        >
+          <template.Icon className="h-3.5 w-3.5 text-muted-foreground" />
+          {intl.formatMessage({ id: template.labelId })}
+          <Plus className="h-3 w-3 text-muted-foreground/60" />
+        </button>
+      ))}
       </div>
     </div>
   );

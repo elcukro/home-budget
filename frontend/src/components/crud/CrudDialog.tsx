@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +58,7 @@ type FieldComponent =
 interface FieldOption {
   value: string;
   labelId: string;
+  label?: string;  // If set, used instead of labelId
   icon?: React.ReactNode;
 }
 
@@ -126,13 +127,14 @@ export function CrudDialog<TFormValues extends FieldValues>({
     mode: "onSubmit",
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) {
       form.reset({ ...defaultValues, ...initialValues } as DefaultValues<TFormValues>);
     } else {
       form.reset(defaultValues as DefaultValues<TFormValues>);
     }
-  }, [open, initialValues, defaultValues, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSubmit = async (values: TFormValues) => {
     await onSubmit(values);
@@ -243,7 +245,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
                           {option.icon}
                         </span>
                         <span className={`${fieldConfig.compact ? "text-sm" : "text-xs"} font-medium`}>
-                          {intl.formatMessage({ id: option.labelId })}
+                          {option.label || intl.formatMessage({ id: option.labelId })}
                         </span>
                       </button>
                     );
@@ -281,7 +283,7 @@ export function CrudDialog<TFormValues extends FieldValues>({
                         key={option.value}
                         value={option.value}
                       >
-                        {intl.formatMessage({ id: option.labelId })}
+                        {option.label || intl.formatMessage({ id: option.labelId })}
                       </SelectItem>
                     ))}
                   </SelectContent>

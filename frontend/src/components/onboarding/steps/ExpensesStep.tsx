@@ -27,7 +27,6 @@ interface ExpensesStepProps {
   onUpdate: (updater: (prev: OnboardingExpenses) => OnboardingExpenses) => void;
   onNext: () => void;
   onBack: () => void;
-  onSkip: () => void;
   formatMoney: (value: number) => string;
   monthlyIncome: number;
   expenseGroups: ExpenseGroupDefinition[];
@@ -42,7 +41,6 @@ export default function ExpensesStep({
   onUpdate,
   onNext,
   onBack,
-  onSkip,
   formatMoney,
   monthlyIncome,
   expenseGroups,
@@ -52,13 +50,19 @@ export default function ExpensesStep({
 }: ExpensesStepProps) {
   const intl = useIntl();
 
-  const [expandedGroups, setExpandedGroups] = useState<Record<ExpenseGroupKey, boolean>>(() =>
-    expenseGroups.reduce<Record<ExpenseGroupKey, boolean>>((acc, group) => {
-      const hasPrefilledAmount = (data[group.key] ?? []).some((item) => (item.amount ?? 0) > 0);
-      acc[group.key] = hasPrefilledAmount;
+  const [expandedGroups, setExpandedGroups] = useState<Record<ExpenseGroupKey, boolean>>(() => {
+    const hasAnyValue = expenseGroups.some((group) =>
+      (data[group.key] ?? []).some((item) => (item.amount ?? 0) > 0)
+    );
+    return expenseGroups.reduce<Record<ExpenseGroupKey, boolean>>((acc, group, index) => {
+      if (hasAnyValue) {
+        acc[group.key] = (data[group.key] ?? []).some((item) => (item.amount ?? 0) > 0);
+      } else {
+        acc[group.key] = index === 0;
+      }
       return acc;
-    }, {} as Record<ExpenseGroupKey, boolean>)
-  );
+    }, {} as Record<ExpenseGroupKey, boolean>);
+  });
 
   const totalsByGroup = useMemo(() => {
     const result: Record<ExpenseGroupKey, number> = {} as Record<ExpenseGroupKey, number>;
@@ -81,11 +85,26 @@ export default function ExpensesStep({
   );
 
   const toggleGroup = useCallback((groupKey: ExpenseGroupKey) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupKey]: !prev[groupKey],
-    }));
-  }, []);
+    setExpandedGroups((prev) => {
+      const isCurrentlyOpen = prev[groupKey];
+      // Accordion: close all, then open the clicked one (unless it was already open)
+      const next = expenseGroups.reduce<Record<ExpenseGroupKey, boolean>>((acc, group) => {
+        acc[group.key] = false;
+        return acc;
+      }, {} as Record<ExpenseGroupKey, boolean>);
+      if (!isCurrentlyOpen) {
+        next[groupKey] = true;
+        // Scroll the opened group header into view after DOM updates
+        requestAnimationFrame(() => {
+          document.getElementById(`expense-group-${groupKey}`)?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        });
+      }
+      return next;
+    });
+  }, [expenseGroups]);
 
   const customItemDefaultName = intl.formatMessage({
     id: 'onboarding.expenses.customItem.defaultName',
@@ -215,6 +234,7 @@ export default function ExpensesStep({
           return (
             <div
               key={group.key}
+              id={`expense-group-${group.key}`}
               className={`rounded-xl border border-muted/60 bg-card shadow-sm transition-colors ${
                 groupHasError ? 'border-destructive/50' : ''
               }`}
@@ -252,16 +272,16 @@ export default function ExpensesStep({
 
               {isExpanded && (
                 <div className="space-y-4 border-t border-muted/50 px-4 py-4">
-                  <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {items.map((item, index) => {
                       const amountError = errors[`${group.key}.${index}.amount`];
                       const nameError = errors[`${group.key}.${index}.name`];
                       return (
                         <div
                           key={item.id}
-                          className="rounded-lg border border-muted/50 bg-background px-3 py-3"
+                          className="rounded-lg border border-muted/50 bg-background px-3 py-2.5"
                         >
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center justify-between gap-2">
                             {item.isCustom ? (
                               <Input
                                 value={item.name}
@@ -269,7 +289,7 @@ export default function ExpensesStep({
                                   handleNameChange(group.key, item.id, event.target.value)
                                 }
                                 placeholder={customExpenseNamePlaceholder}
-                                className="h-9"
+                                className="h-8 text-sm"
                               />
                             ) : (
                               <p className="text-sm font-medium text-primary">
@@ -287,7 +307,7 @@ export default function ExpensesStep({
                               <button
                                 type="button"
                                 onClick={() => handleRemoveItem(group.key, item.id)}
-                                className="rounded-full p-1 text-secondary transition-colors hover:text-destructive"
+                                className="shrink-0 rounded-full p-1 text-secondary transition-colors hover:text-destructive"
                                 aria-label={removeCustomExpenseLabel}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -297,7 +317,7 @@ export default function ExpensesStep({
                           {nameError && (
                             <p className="mt-1 text-xs text-destructive">{nameError}</p>
                           )}
-                          <div className="mt-3">
+                          <div className="mt-2">
                             <CurrencyInput
                               value={item.amount}
                               onValueChange={(amount) =>
@@ -307,7 +327,7 @@ export default function ExpensesStep({
                                 { id: 'onboarding.placeholders.exampleAmount' },
                                 { value: '400' }
                               )}
-                              className="h-9"
+                              className="h-8"
                             />
                             {amountError && (
                               <p className="mt-1 text-xs text-destructive">{amountError}</p>
@@ -344,7 +364,7 @@ export default function ExpensesStep({
         />
       </div>
 
-      <FormFooter onNext={onNext} onBack={onBack} onSkip={onSkip} />
+      <FormFooter onNext={onNext} onBack={onBack} />
     </form>
   );
 }

@@ -19,12 +19,13 @@ interface ExpenseChartProps {
   expenses: Expense[];
   selectedMonth?: string;
   onMonthSelect?: (monthKey: string) => void;
+  compact?: boolean;
 }
 
 type TimeHorizon = 'currentYear' | 'lastYear' | '2years' | '5years';
 type TimeState = 'past' | 'current' | 'predicted';
 
-export default function ExpenseChart({ expenses, selectedMonth, onMonthSelect }: ExpenseChartProps) {
+export default function ExpenseChart({ expenses, selectedMonth, onMonthSelect, compact = false }: ExpenseChartProps) {
   const intl = useIntl();
   const { formatCurrency } = useSettings();
   const [horizon, setHorizon] = useState<TimeHorizon>('currentYear');
@@ -267,19 +268,22 @@ export default function ExpenseChart({ expenses, selectedMonth, onMonthSelect }:
     }
   };
 
+  const barAreaHeight = compact ? 160 : 200;
+  const barContainerHeight = barAreaHeight + 28; // +padding for tooltips
+
   return (
-    <div className="rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/50 via-white to-white p-6 shadow-sm min-w-0">
+    <div className={`rounded-2xl border border-rose-100 bg-gradient-to-br from-rose-50/50 via-white to-white shadow-sm min-w-0 ${compact ? 'p-4' : 'p-6'}`}>
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <div className={`flex flex-wrap items-center justify-between gap-4 ${compact ? 'mb-3' : 'mb-6'}`}>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
-            <TrendingDown className="h-5 w-5 text-rose-600" />
+          <div className={`flex items-center justify-center rounded-full bg-rose-100 ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}>
+            <TrendingDown className={compact ? 'h-4 w-4 text-rose-600' : 'h-5 w-5 text-rose-600'} />
           </div>
           <div>
-            <h3 className="font-semibold text-rose-900">
+            <h3 className={`font-semibold text-rose-900 ${compact ? 'text-sm' : ''}`}>
               {intl.formatMessage({ id: 'expenses.chart.title', defaultMessage: 'Wydatki w czasie' })}
             </h3>
-            <p className="text-xs text-rose-600/70">
+            <p className={`text-rose-600/70 ${compact ? 'text-[10px]' : 'text-xs'}`}>
               {intl.formatMessage(
                 { id: 'expenses.chart.subtitleWithPeriod', defaultMessage: 'Średnio {avg}/mies. ({period})' },
                 { avg: formatCurrency(stats.avg), period: periodLabel }
@@ -309,7 +313,7 @@ export default function ExpenseChart({ expenses, selectedMonth, onMonthSelect }:
       {/* Chart */}
       <div className="relative">
         {/* Y-axis labels */}
-        <div className="absolute left-0 top-0 w-16 flex flex-col justify-between text-xs text-rose-600/60 pr-2" style={{ height: '200px' }}>
+        <div className={`absolute left-0 top-0 w-16 flex flex-col justify-between pr-2 ${compact ? 'text-[10px]' : 'text-xs'} text-rose-600/60`} style={{ height: `${barAreaHeight}px` }}>
           <span className="text-right">{formatCurrency(maxValue)}</span>
           <span className="text-right">{formatCurrency(scaleMin + scaleRange / 2)}</span>
           <span className="text-right">{scaleMin > 0 ? formatCurrency(scaleMin) : '0'}</span>
@@ -319,10 +323,10 @@ export default function ExpenseChart({ expenses, selectedMonth, onMonthSelect }:
         <div className="ml-16 min-w-0" style={{ overflowX: 'clip', overflowY: 'visible' }}>
           <div
             className="flex items-end gap-1 pt-8"
-            style={{ height: '228px' }}
+            style={{ height: `${barContainerHeight}px` }}
           >
             {groupedData.map((item, index) => {
-              const barHeight = scaleRange > 0 ? ((item.total - scaleMin) / scaleRange) * 200 : 0;
+              const barHeight = scaleRange > 0 ? ((item.total - scaleMin) / scaleRange) * barAreaHeight : 0;
               const isPredicted = item.timeState === 'predicted';
 
               const isSelected = selectedMonth != null && selectedMonth !== 'all' && item.key === selectedMonth;
@@ -440,10 +444,10 @@ export default function ExpenseChart({ expenses, selectedMonth, onMonthSelect }:
       )}
 
       {/* Summary stats */}
-      <div className="mt-6 pt-4 border-t border-rose-100 grid grid-cols-3 gap-4">
+      <div className={`border-t border-rose-100 grid grid-cols-3 gap-4 ${compact ? 'mt-3 pt-3' : 'mt-6 pt-4'}`}>
         <div className="text-center">
-          <p className="text-2xl font-bold text-rose-700">{formatCurrency(stats.sum)}</p>
-          <p className="text-xs text-rose-600/60">
+          <p className={`font-bold text-rose-700 ${compact ? 'text-base' : 'text-2xl'}`}>{formatCurrency(stats.sum)}</p>
+          <p className={`text-rose-600/60 ${compact ? 'text-[10px]' : 'text-xs'}`}>
             {intl.formatMessage(
               { id: 'expenses.chart.totalWithPeriod', defaultMessage: 'Suma ({period})' },
               { period: periodLabel }
@@ -451,14 +455,14 @@ export default function ExpenseChart({ expenses, selectedMonth, onMonthSelect }:
           </p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-rose-600">{formatCurrency(stats.avg)}</p>
-          <p className="text-xs text-rose-600/60">
+          <p className={`font-bold text-rose-600 ${compact ? 'text-base' : 'text-2xl'}`}>{formatCurrency(stats.avg)}</p>
+          <p className={`text-rose-600/60 ${compact ? 'text-[10px]' : 'text-xs'}`}>
             {intl.formatMessage({ id: 'expenses.chart.average', defaultMessage: 'Średnia/mies.' })}
           </p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-rose-500">{stats.monthCount}</p>
-          <p className="text-xs text-rose-600/60">
+          <p className={`font-bold text-rose-500 ${compact ? 'text-base' : 'text-2xl'}`}>{stats.monthCount}</p>
+          <p className={`text-rose-600/60 ${compact ? 'text-[10px]' : 'text-xs'}`}>
             {intl.formatMessage({ id: 'expenses.chart.monthsInPeriod', defaultMessage: 'Miesięcy' })}
           </p>
         </div>

@@ -23,14 +23,14 @@ const principles = [
 
 export default function SolutionSection() {
   return (
-    <section className="py-20 bg-gradient-to-b from-white to-emerald-50/30">
+    <section className="pt-10 pb-20 bg-gradient-to-b from-white to-emerald-50/30">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-3xl sm:text-4xl font-bold text-emerald-900 text-center mb-4">
           Jest inne wyjście
         </h2>
 
         <p className="text-emerald-700/70 text-center mb-12 max-w-3xl mx-auto text-lg leading-relaxed">
-          Ruch FIRE (Financial Independence, Retire Early) pokazał milionom ludzi na świecie,
+          🔥 Ruch FIRE (Financial Independence, Retire Early) pokazał milionom ludzi na świecie,
           że wolność finansowa jest możliwa — nie przez zarabianie milionów,
           ale przez świadome zarządzanie tym, co już masz.
         </p>

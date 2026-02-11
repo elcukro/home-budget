@@ -44,6 +44,7 @@ class User(Base):
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     payment_history = relationship("PaymentHistory", back_populates="user", cascade="all, delete-orphan")
     onboarding_backups = relationship("OnboardingBackup", back_populates="user", cascade="all, delete-orphan")
+    budget_years = relationship("BudgetYear", back_populates="user", cascade="all, delete-orphan")
     data_export_backups = relationship("DataExportBackup", back_populates="user", cascade="all, delete-orphan")
     # Gamification relationships
     gamification_stats = relationship("UserGamificationStats", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -147,6 +148,8 @@ class Income(Base):
     employment_type = Column(String, nullable=True)  # uop, b2b, zlecenie, dzielo, other
     gross_amount = Column(Float, nullable=True)  # Brutto (gross) amount before tax
     is_gross = Column(Boolean, default=False)  # Whether amount entered was gross (true) or net (false)
+    kup_type = Column(String, nullable=True)  # "standard", "author_50", "none" (null = use global setting)
+    owner = Column(String, nullable=True)  # "self", "partner" (null = "self" for backwards compat)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -181,6 +184,22 @@ class Settings(Base):
     # Onboarding status
     onboarding_completed = Column(Boolean, default=False)
     onboarding_completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Life data from onboarding
+    marital_status = Column(String, nullable=True)
+    housing_type = Column(String, nullable=True)
+    children_age_range = Column(String, nullable=True)
+    include_partner_finances = Column(Boolean, nullable=True)
+
+    # Partner tax profile (separate person for tax calculations)
+    partner_name = Column(String, nullable=True)
+    partner_employment_status = Column(String, nullable=True)
+    partner_tax_form = Column(String, nullable=True)
+    partner_birth_year = Column(Integer, nullable=True)
+    partner_use_authors_costs = Column(Boolean, default=False)
+    partner_ppk_enrolled = Column(Boolean, nullable=True)
+    partner_ppk_employee_rate = Column(Float, nullable=True)
+    partner_ppk_employer_rate = Column(Float, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -328,6 +347,7 @@ class Saving(Base):
     # Polish III Pillar retirement accounts
     account_type = Column(String, default='standard')  # standard, ike, ikze, ppk, oipe
     annual_return_rate = Column(Float, nullable=True)  # Expected annual return rate for compound interest (e.g., 0.05 for 5%)
+    owner = Column(String, nullable=True)  # "self", "partner" (null = "self" for backwards compat)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -748,6 +768,55 @@ class GamificationEvent(Base):
         Index('idx_gamification_events_user_id', 'user_id'),
         Index('idx_gamification_events_type', 'event_type'),
         Index('idx_gamification_events_created_at', 'created_at'),
+    )
+
+
+class BudgetYear(Base):
+    __tablename__ = "budget_years"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    year = Column(Integer, nullable=False)
+    status = Column(String, default="active")  # active, closed
+    source = Column(String, default="manual")  # onboarding, rollover, manual
+    template_data = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+
+    user = relationship("User", back_populates="budget_years")
+    entries = relationship("BudgetEntry", back_populates="budget_year", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'year', name='unique_user_year'),
+        Index('idx_budget_years_user_id', 'user_id'),
+    )
+
+
+class BudgetEntry(Base):
+    __tablename__ = "budget_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    budget_year_id = Column(Integer, ForeignKey("budget_years.id", ondelete="CASCADE"))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    month = Column(Integer, nullable=False)  # 1-12
+    entry_type = Column(String, nullable=False)  # income, expense, loan_payment
+    category = Column(String, nullable=False)
+    description = Column(String, nullable=False)
+    planned_amount = Column(Float, nullable=False)
+    actual_amount = Column(Float, nullable=True)
+    is_recurring = Column(Boolean, default=False)
+    source_onboarding_id = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    budget_year = relationship("BudgetYear", back_populates="entries")
+    user = relationship("User")
+
+    __table_args__ = (
+        Index('idx_budget_entries_year_month', 'budget_year_id', 'month'),
+        Index('idx_budget_entries_user_id', 'user_id'),
+        Index('idx_budget_entries_type', 'entry_type'),
     )
 
 

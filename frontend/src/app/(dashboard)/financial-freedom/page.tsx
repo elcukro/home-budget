@@ -192,7 +192,7 @@ export default function FinancialFreedomPage() {
     return () => {
       isMounted = false;
     };
-  }, [sessionStatus]); // Only depend on sessionStatus
+  }, [sessionStatus, session?.user?.id, settings?.emergency_fund_months, settings?.emergency_fund_target]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdateStep = useCallback((stepId: number, updates: Partial<BabyStep>) => {
     if (!data) return;

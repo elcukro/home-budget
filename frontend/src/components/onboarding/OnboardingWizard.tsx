@@ -16,12 +16,13 @@ import {
   FileSpreadsheet,
   Baby,
   Heart,
-  CreditCard,
   Tv,
   ShoppingBag,
   PawPrint,
   ShieldCheck,
   CalendarClock,
+  Sparkles,
+  Settings,
 } from 'lucide-react';
 import { useIntl, type IntlShape } from 'react-intl';
 import { useSession } from 'next-auth/react';
@@ -62,9 +63,9 @@ type StepId =
   | 'welcome'
   | 'life'
   | 'income'
+  | 'liabilities'
   | 'expenses'
   | 'irregularExpenses'
-  | 'liabilities'
   | 'assets'
   | 'goals'
   | 'summary';
@@ -80,6 +81,8 @@ type SavingPhase =
   | 'expenses'
   | 'loans'
   | 'savings'
+  | 'budget'
+  | 'goals'
   | 'finalize';
 
 interface SavingProgressUpdate {
@@ -107,7 +110,6 @@ export type ExpenseGroupKey =
   | 'family'
   | 'lifestyle'
   | 'subscriptions'
-  | 'obligations'
   | 'pets'
   | 'insurance'
   | 'other';
@@ -134,30 +136,23 @@ export interface OnboardingExpenseItem {
   amount: number;
   category: ExpenseBackendCategory;
   isCustom?: boolean;
+  month?: number;  // 1-12, month when this annual expense occurs
 }
 
 export type OnboardingExpenses = Record<ExpenseGroupKey, OnboardingExpenseItem[]>;
 
 export type IrregularExpenses = OnboardingExpenseItem[];
 
-const IRREGULAR_EXPENSE_TEMPLATES: Array<{ id: string; labelId: string }> = [
-  { id: 'irregular-home-insurance', labelId: 'onboarding.irregularExpenses.items.homeInsurance' },
-  { id: 'irregular-trainings', labelId: 'onboarding.irregularExpenses.items.trainings' },
-  { id: 'irregular-car-insurance', labelId: 'onboarding.irregularExpenses.items.carInsurance' },
-  { id: 'irregular-car-service', labelId: 'onboarding.irregularExpenses.items.carService' },
-  { id: 'irregular-domains', labelId: 'onboarding.irregularExpenses.items.domains' },
-  { id: 'irregular-real-estate-agency', labelId: 'onboarding.irregularExpenses.items.realEstateAgency' },
-  { id: 'irregular-gifts', labelId: 'onboarding.irregularExpenses.items.gifts' },
-  { id: 'irregular-clothing', labelId: 'onboarding.irregularExpenses.items.clothing' },
-  { id: 'irregular-property-tax', labelId: 'onboarding.irregularExpenses.items.propertyTax' },
-  { id: 'irregular-software-hosting', labelId: 'onboarding.irregularExpenses.items.softwareHosting' },
-  { id: 'irregular-vacations', labelId: 'onboarding.irregularExpenses.items.vacations' },
-  { id: 'irregular-school-textbooks', labelId: 'onboarding.irregularExpenses.items.schoolTextbooks' },
-  { id: 'irregular-school-insurance', labelId: 'onboarding.irregularExpenses.items.schoolInsurance' },
-  { id: 'irregular-class-fund', labelId: 'onboarding.irregularExpenses.items.classFund' },
-  { id: 'irregular-unplanned', labelId: 'onboarding.irregularExpenses.items.unplanned' },
-  { id: 'irregular-new-computer', labelId: 'onboarding.irregularExpenses.items.newComputer' },
-  { id: 'irregular-robot-vacuum', labelId: 'onboarding.irregularExpenses.items.robotVacuum' },
+const IRREGULAR_EXPENSE_TEMPLATES: Array<{ id: string; labelId: string; month: number }> = [
+  { id: 'irregular-home-insurance', labelId: 'onboarding.irregularExpenses.items.homeInsurance', month: 1 },
+  { id: 'irregular-car-insurance', labelId: 'onboarding.irregularExpenses.items.carInsurance', month: 3 },
+  { id: 'irregular-car-service', labelId: 'onboarding.irregularExpenses.items.carService', month: 4 },
+  { id: 'irregular-property-tax', labelId: 'onboarding.irregularExpenses.items.propertyTax', month: 3 },
+  { id: 'irregular-vacations', labelId: 'onboarding.irregularExpenses.items.vacations', month: 7 },
+  { id: 'irregular-gifts', labelId: 'onboarding.irregularExpenses.items.gifts', month: 12 },
+  { id: 'irregular-school-textbooks', labelId: 'onboarding.irregularExpenses.items.schoolTextbooks', month: 8 },
+  { id: 'irregular-school-insurance', labelId: 'onboarding.irregularExpenses.items.schoolInsurance', month: 9 },
+  { id: 'irregular-unplanned', labelId: 'onboarding.irregularExpenses.items.unplanned', month: 6 },
 ];
 
 const ensureId = (prefix: string) => {
@@ -210,11 +205,6 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
         name: 'Rental tax payment',
         category: 'housing',
       },
-      {
-        id: 'home-mortgage',
-        name: 'Mortgage repayment',
-        category: 'housing',
-      },
       { id: 'home-rent', name: 'Apartment rent', category: 'housing' },
       { id: 'home-electricity', name: 'Electricity', category: 'utilities' },
       { id: 'home-gas', name: 'Gas', category: 'utilities' },
@@ -242,13 +232,6 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
     defaultCategory: 'transportation',
     items: [
       { id: 'transport-fuel', name: 'Fuel' },
-      {
-        id: 'transport-insurance',
-        name: 'Car insurance (liability / collision)',
-        category: 'insurance',
-      },
-      { id: 'transport-service', name: 'Service and inspections' },
-      { id: 'transport-leasing', name: 'Lease / installment' },
       { id: 'transport-public', name: 'Public transport passes' },
       { id: 'transport-parking', name: 'Parking fees' },
     ],
@@ -276,12 +259,8 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
       { id: 'family-clothes', name: 'Clothing' },
       { id: 'family-activities', name: 'Care / trips / gifts' },
       {
-        id: 'family-extracurricular-son',
-        name: 'Extracurricular classes (son)',
-      },
-      {
-        id: 'family-extracurricular-daughter',
-        name: 'Extracurricular classes (daughter)',
+        id: 'family-extracurricular',
+        name: 'Extracurricular classes (children)',
       },
       { id: 'family-toys', name: 'Toys and accessories' },
       {
@@ -328,22 +307,6 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
     ],
   },
   {
-    key: 'obligations',
-    title: 'Financial obligations',
-    description: 'Regular loan and installment payments.',
-    icon: CreditCard,
-    defaultCategory: 'other',
-    items: [
-      { id: 'obligations-loans', name: 'Loan installments' },
-      {
-        id: 'obligations-card-fees',
-        name: 'Monthly credit card fees',
-      },
-      { id: 'obligations-bank-fees', name: 'Other banking fees' },
-      { id: 'obligations-private', name: 'Private loans' },
-    ],
-  },
-  {
     key: 'pets',
     title: 'Pets and hobbies',
     description: 'Costs of caring for pets and pursuing hobbies.',
@@ -362,7 +325,6 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
     defaultCategory: 'insurance',
     items: [
       { id: 'insurance-health', name: 'Health / life insurance' },
-      { id: 'insurance-home', name: 'Home / property insurance' },
       { id: 'insurance-personal', name: 'Individual insurance' },
     ],
   },
@@ -374,7 +336,6 @@ const EXPENSE_GROUPS: ExpenseGroupDefinition[] = [
     defaultCategory: 'entertainment',
     items: [
       { id: 'other-leisure', name: 'Cinema / restaurants / trips' },
-      { id: 'other-gifts', name: 'Gifts and occasional shopping' },
       { id: 'other-misc', name: 'Other small expenses' },
       { id: 'other-gambling', name: 'Lottery / gambling' },
       { id: 'other-donations', name: 'Donations and charity' },
@@ -427,7 +388,6 @@ const EXPENSE_GROUP_HINTS: Record<ExpenseGroupKey, string> = {
   family: 'Family spending helps us tailor education-focused goals.',
   lifestyle: 'Investments in health and lifestyle influence your financial fitness.',
   subscriptions: 'Subscriptions often slip by – log them to stay in control.',
-  obligations: 'Tracking obligations makes it easier to manage cash flow.',
   pets: 'Pet and hobby costs show how much you really spend on fun and passions.',
   insurance: 'Understanding your insurance helps assess your coverage.',
   other: 'Small expenses add up – total them so nothing slips through.',
@@ -442,7 +402,6 @@ const EXPENSE_CATEGORY_MAP: Record<ExpenseGroupKey, string> = {
   family: 'other',         // Childcare, education, toys (no dedicated category)
   lifestyle: 'entertainment',  // Fitness, beauty, hobbies
   subscriptions: 'entertainment', // Streaming, apps, memberships
-  obligations: 'other',    // Alimony, regular payments
   pets: 'other',           // Pet food, vet (no dedicated category)
   insurance: 'insurance',  // All insurance types
   other: 'other',          // Miscellaneous expenses
@@ -457,7 +416,7 @@ const ADDITIONAL_SOURCE_META: Record<
     labelId: 'onboarding.income.additionalSources.rental',
   },
   bonuses: {
-    category: 'other',
+    category: 'salary',
     labelId: 'onboarding.income.additionalSources.bonuses',
   },
   freelance: {
@@ -465,11 +424,11 @@ const ADDITIONAL_SOURCE_META: Record<
     labelId: 'onboarding.income.additionalSources.freelance',
   },
   benefits: {
-    category: 'other',
+    category: 'benefits',
     labelId: 'onboarding.income.additionalSources.benefits',
   },
   childBenefit: {
-    category: 'other',
+    category: 'benefits',
     labelId: 'onboarding.income.additionalSources.childBenefit',
   },
 };
@@ -651,8 +610,12 @@ const mergeExpensesData = (
               : existing.name,
         });
       } else {
+        // Skip legacy template items that no longer exist and have no value
+        const isLegacyTemplate = item.templateId && !item.isCustom && !defaultsOrder.includes(item.templateId);
+        if (isLegacyTemplate && sanitizeAmount(item.amount) === 0) return;
+
         const fallbackName =
-          item.templateId && typeof item.templateId === 'string'
+          item.templateId && typeof item.templateId === 'string' && defaultsOrder.includes(item.templateId)
             ? getExpenseTemplateLabel(
                 intl,
                 group.key,
@@ -672,7 +635,7 @@ const mergeExpensesData = (
           category: isValidExpenseCategory(item.category)
             ? item.category
             : group.defaultCategory,
-          isCustom: item.isCustom ?? !defaultsOrder.includes(item.id || ''),
+          isCustom: true,
         });
       }
     });
@@ -724,6 +687,7 @@ const createDefaultIrregularExpenses = (intl: IntlShape): IrregularExpenses =>
     amount: 0,
     category: 'other',
     isCustom: false,
+    month: template.month,
   }));
 
 const normalizeIrregularExpenses = (
@@ -862,6 +826,8 @@ export interface OnboardingData {
   };
   income: {
     salaryNet: number;
+    partnerSalaryNet: number;
+    partnerEmploymentType: string;
     additionalSources: {
       rental: AdditionalSource;
       bonuses: AdditionalSource;
@@ -880,6 +846,12 @@ export interface OnboardingData {
     investments: {
       categories: string[];
       totalValue: number;
+    };
+    retirementAccounts: {
+      ike:  { enabled: boolean; value: number; partnerValue?: number };
+      ikze: { enabled: boolean; value: number; partnerValue?: number };
+      ppk:  { enabled: boolean; value: number; partnerValue?: number };
+      oipe: { enabled: boolean; value: number; partnerValue?: number };
     };
     properties: PropertyItem[];
     vehicles: PropertyItem[];
@@ -901,11 +873,13 @@ const createDefaultOnboardingData = (intl: IntlShape): OnboardingData => ({
     birthYear: undefined,
     useAuthorsCosts: false,
     ppkEnrolled: undefined,
-    ppkEmployeeRate: 0.02,  // 2% default
-    ppkEmployerRate: 0.015,  // 1.5% minimum
+    ppkEmployeeRate: 2,  // 2% default
+    ppkEmployerRate: 1.5,  // 1.5% minimum
   },
   income: {
     salaryNet: 0,
+    partnerSalaryNet: 0,
+    partnerEmploymentType: '',
     additionalSources: {
       rental: { enabled: false, amount: 0 },
       bonuses: { enabled: false, amount: 0 },
@@ -925,6 +899,12 @@ const createDefaultOnboardingData = (intl: IntlShape): OnboardingData => ({
       categories: [],
       totalValue: 0,
     },
+    retirementAccounts: {
+      ike:  { enabled: false, value: 0 },
+      ikze: { enabled: false, value: 0 },
+      ppk:  { enabled: false, value: 0 },
+      oipe: { enabled: false, value: 0 },
+    },
     properties: [],
     vehicles: [],
   },
@@ -943,6 +923,37 @@ export interface OnboardingMetrics {
   dti: number;
   emergencyCoverage: number;
   netWorth: number;
+}
+
+/**
+ * Migrate legacy retirement data format (v1: {types: string[], totalValue: number})
+ * to the new per-account format ({ike: {enabled, value}, ...}).
+ * Distributes totalValue evenly across the selected types.
+ */
+function migrateRetirementAccounts(
+  raw: unknown
+): OnboardingData['assets']['retirementAccounts'] | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  // Already in new format — has per-account objects
+  if (obj.ike && typeof obj.ike === 'object') return undefined;
+  // Legacy format detected
+  if (Array.isArray(obj.types)) {
+    const types = obj.types as string[];
+    const totalValue = typeof obj.totalValue === 'number' ? obj.totalValue : 0;
+    const validKeys = ['ike', 'ikze', 'ppk', 'oipe'] as const;
+    const enabledKeys = types.filter((t) =>
+      (validKeys as readonly string[]).includes(t)
+    );
+    const perAccount = enabledKeys.length > 0 ? Math.round(totalValue / enabledKeys.length) : 0;
+    return {
+      ike:  { enabled: enabledKeys.includes('ike'),  value: enabledKeys.includes('ike')  ? perAccount : 0 },
+      ikze: { enabled: enabledKeys.includes('ikze'), value: enabledKeys.includes('ikze') ? perAccount : 0 },
+      ppk:  { enabled: enabledKeys.includes('ppk'),  value: enabledKeys.includes('ppk')  ? perAccount : 0 },
+      oipe: { enabled: enabledKeys.includes('oipe'), value: enabledKeys.includes('oipe') ? perAccount : 0 },
+    };
+  }
+  return undefined;
 }
 
 const mergeOnboardingData = (
@@ -978,6 +989,13 @@ const mergeOnboardingData = (
     employmentStatus: pickString(current.life.employmentStatus, incoming.life?.employmentStatus),
     taxForm: pickString(current.life.taxForm, incoming.life?.taxForm),
     householdCost: pickNumber(current.life.householdCost, incoming.life?.householdCost),
+    birthYear: current.life.birthYear ?? incoming.life?.birthYear,
+    useAuthorsCosts: pickBoolean(current.life.useAuthorsCosts ?? false, incoming.life?.useAuthorsCosts),
+    ppkEnrolled: typeof current.life.ppkEnrolled === 'boolean'
+      ? current.life.ppkEnrolled
+      : incoming.life?.ppkEnrolled,
+    ppkEmployeeRate: current.life.ppkEmployeeRate ?? incoming.life?.ppkEmployeeRate,
+    ppkEmployerRate: current.life.ppkEmployerRate ?? incoming.life?.ppkEmployerRate,
   };
 
   if (mergedLife.childrenCount <= 0) {
@@ -1027,6 +1045,8 @@ const mergeOnboardingData = (
 
   const mergedIncome: OnboardingData['income'] = {
     salaryNet: pickNumber(current.income.salaryNet, incoming.income?.salaryNet),
+    partnerSalaryNet: pickNumber(current.income.partnerSalaryNet, incoming.income?.partnerSalaryNet),
+    partnerEmploymentType: incoming.income?.partnerEmploymentType || current.income.partnerEmploymentType || '',
     additionalSources: mergedAdditionalSources,
     irregularIncomeAnnual: pickNumber(
       current.income.irregularIncomeAnnual,
@@ -1078,6 +1098,34 @@ const mergeOnboardingData = (
         incoming.assets?.investments?.totalValue
       ),
     },
+    retirementAccounts: (() => {
+      // Migrate legacy format ({types: string[], totalValue}) if present
+      const migrated = migrateRetirementAccounts(incoming.assets?.retirementAccounts);
+      const inc = migrated ?? incoming.assets?.retirementAccounts;
+      const incTyped = inc as OnboardingData['assets']['retirementAccounts'] | undefined;
+      return {
+        ike: {
+          enabled: current.assets.retirementAccounts.ike.enabled || (incTyped?.ike?.enabled ?? false),
+          value: pickNumber(current.assets.retirementAccounts.ike.value, incTyped?.ike?.value),
+          partnerValue: pickNumber(current.assets.retirementAccounts.ike.partnerValue ?? 0, incTyped?.ike?.partnerValue),
+        },
+        ikze: {
+          enabled: current.assets.retirementAccounts.ikze.enabled || (incTyped?.ikze?.enabled ?? false),
+          value: pickNumber(current.assets.retirementAccounts.ikze.value, incTyped?.ikze?.value),
+          partnerValue: pickNumber(current.assets.retirementAccounts.ikze.partnerValue ?? 0, incTyped?.ikze?.partnerValue),
+        },
+        ppk: {
+          enabled: current.assets.retirementAccounts.ppk.enabled || (incTyped?.ppk?.enabled ?? false),
+          value: pickNumber(current.assets.retirementAccounts.ppk.value, incTyped?.ppk?.value),
+          partnerValue: pickNumber(current.assets.retirementAccounts.ppk.partnerValue ?? 0, incTyped?.ppk?.partnerValue),
+        },
+        oipe: {
+          enabled: current.assets.retirementAccounts.oipe.enabled || (incTyped?.oipe?.enabled ?? false),
+          value: pickNumber(current.assets.retirementAccounts.oipe.value, incTyped?.oipe?.value),
+          partnerValue: pickNumber(current.assets.retirementAccounts.oipe.partnerValue ?? 0, incTyped?.oipe?.partnerValue),
+        },
+      };
+    })(),
     properties:
       current.assets.properties.length > 0
         ? current.assets.properties.map((property) => ({ ...property }))
@@ -1130,6 +1178,7 @@ const _hasMeaningfulData = (data: OnboardingData): boolean => {
 
   const incomeHasValues =
     income.salaryNet > 0 ||
+    income.partnerSalaryNet > 0 ||
     income.irregularIncomeAnnual > 0 ||
     Object.values(income.additionalSources).some(
       (src) => src.enabled && src.amount > 0
@@ -1145,6 +1194,7 @@ const _hasMeaningfulData = (data: OnboardingData): boolean => {
     assets.savings > 0 ||
     assets.emergencyFundMonths > 0 ||
     assets.investments.totalValue > 0 ||
+    Object.values(assets.retirementAccounts).some((a) => a.enabled && a.value > 0) ||
     assets.properties.length > 0 ||
     assets.vehicles.length > 0;
 
@@ -1284,6 +1334,12 @@ const assetsSchema = z.object({
     categories: z.array(z.string()),
     totalValue: z.number().min(0),
   }),
+  retirementAccounts: z.object({
+    ike:  z.object({ enabled: z.boolean(), value: z.number().min(0), partnerValue: z.number().min(0).optional() }),
+    ikze: z.object({ enabled: z.boolean(), value: z.number().min(0), partnerValue: z.number().min(0).optional() }),
+    ppk:  z.object({ enabled: z.boolean(), value: z.number().min(0), partnerValue: z.number().min(0).optional() }),
+    oipe: z.object({ enabled: z.boolean(), value: z.number().min(0), partnerValue: z.number().min(0).optional() }),
+  }),
   properties: z.array(
     z.object({
       id: z.string(),
@@ -1302,10 +1358,16 @@ const assetsSchema = z.object({
 
 const goalSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, 'Podaj nazwę celu'),
+  name: z.string().min(1),
   type: z.enum(['short', 'medium', 'long']),
-  targetAmount: z.number().min(0, 'Kwota musi być dodatnia'),
-  targetDate: z.string().optional(),
+  targetAmount: z.number().min(0),
+  targetDate: z.string().optional().refine(
+    (val) => {
+      if (!val) return true;
+      return val >= new Date().toISOString().slice(0, 10);
+    },
+    { message: 'past_date' },
+  ),
   priority: z.number().min(1).max(5),
 });
 
@@ -1345,6 +1407,17 @@ const STEP_DEFINITIONS: StepDefinition[] = [
     },
   },
   {
+    id: 'liabilities',
+    labelId: 'onboarding.steps.liabilities.label',
+    descriptionId: 'onboarding.steps.liabilities.description',
+    icon: TrendingDown,
+    validate: (data) => {
+      if (data.liabilities.length === 0) return null;
+      const result = z.array(liabilitySchema).safeParse(data.liabilities);
+      return result.success ? null : result.error.issues;
+    },
+  },
+  {
     id: 'expenses',
     labelId: 'onboarding.steps.expenses.label',
     descriptionId: 'onboarding.steps.expenses.description',
@@ -1361,17 +1434,6 @@ const STEP_DEFINITIONS: StepDefinition[] = [
     icon: CalendarClock,
     validate: (data) => {
       const result = irregularExpensesSchema.safeParse(data.irregularExpenses);
-      return result.success ? null : result.error.issues;
-    },
-  },
-  {
-    id: 'liabilities',
-    labelId: 'onboarding.steps.liabilities.label',
-    descriptionId: 'onboarding.steps.liabilities.description',
-    icon: TrendingDown,
-    validate: (data) => {
-      if (data.liabilities.length === 0) return null;
-      const result = z.array(liabilitySchema).safeParse(data.liabilities);
       return result.success ? null : result.error.issues;
     },
   },
@@ -1480,6 +1542,8 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       { id: 'expenses' as const, label: t('onboarding.savingProgress.steps.expenses') },
       { id: 'loans' as const, label: t('onboarding.savingProgress.steps.loans') },
       { id: 'savings' as const, label: t('onboarding.savingProgress.steps.savings') },
+      { id: 'budget' as const, label: t('onboarding.savingProgress.steps.budget') },
+      { id: 'goals' as const, label: t('onboarding.savingProgress.steps.goals') },
       { id: 'finalize' as const, label: t('onboarding.savingProgress.steps.finalize') },
     ],
     [t]
@@ -1501,6 +1565,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
 
     const loadInitialData = async () => {
       let workingData = createDefaultOnboardingData(intl);
+      let hasLocalData = false;
 
       try {
         const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -1520,6 +1585,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
             storedData,
             intl
           );
+          hasLocalData = true;
           if (isMounted) {
             setData(workingData);
             // Restore step index, but ensure it's within valid bounds
@@ -1535,35 +1601,40 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         );
       }
 
-      try {
-        const response = await fetch('/api/onboarding', {
-          cache: 'no-store',
-        });
+      // Only prefill from server if there's no localStorage data —
+      // localStorage represents the user's current session edits and
+      // is the more recent source of truth.
+      if (!hasLocalData) {
+        try {
+          const response = await fetch('/api/onboarding', {
+            cache: 'no-store',
+          });
 
-        if (response.ok) {
-          const submissions = (await response.json()) as Array<{
-            data?: OnboardingData;
-          }>;
+          if (response.ok) {
+            const submissions = (await response.json()) as Array<{
+              data?: OnboardingData;
+            }>;
 
-          if (Array.isArray(submissions) && submissions.length > 0) {
-            const lastSubmission = submissions[submissions.length - 1];
-            if (lastSubmission?.data && isMounted) {
-              setData((prev) =>
-                mergeOnboardingData(
-                  prev,
-                  lastSubmission.data as OnboardingData,
-                  intl
-                )
-              );
+            if (Array.isArray(submissions) && submissions.length > 0) {
+              const lastSubmission = submissions[submissions.length - 1];
+              if (lastSubmission?.data && isMounted) {
+                setData((prev) =>
+                  mergeOnboardingData(
+                    prev,
+                    lastSubmission.data as OnboardingData,
+                    intl
+                  )
+                );
+              }
             }
           }
+        } catch (prefillError) {
+          logger.warn('[onboarding] Failed to load previous submission', prefillError);
         }
-      } catch (prefillError) {
-        logger.warn('[onboarding] Failed to load previous submission', prefillError);
-      } finally {
-        if (isMounted) {
-          hasHydrated.current = true;
-        }
+      }
+
+      if (isMounted) {
+        hasHydrated.current = true;
       }
     };
 
@@ -1573,6 +1644,11 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       isMounted = false;
     };
   }, [intl]);
+
+  // Scroll to top on step change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStepIndex]);
 
   useEffect(() => {
     if (!hasHydrated.current || typeof window === 'undefined') return;
@@ -1634,7 +1710,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
     setCurrentStepIndex((prev) => Math.max(prev - 1, 0));
   }, []);
 
-  const handleSkipStep = useCallback(() => {
+  const _handleSkipStep = useCallback(() => {
     handleNext({ skipValidation: true });
   }, [handleNext]);
 
@@ -1797,6 +1873,8 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         is_recurring: boolean;
         date: string;
         employment_type?: string | null;
+        kup_type?: string | null;
+        owner?: string | null;
       }> = [];
 
       // Map life step employment status to income employment_type
@@ -1814,12 +1892,40 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         incomePayloads.push({
           category: 'salary',
           description: intl.formatMessage({
-            id: 'onboarding.income.fields.salaryNet.label',
+            id: data.life.includePartnerFinances
+              ? 'onboarding.income.fields.salaryNet.yourLabel'
+              : 'onboarding.income.fields.salaryNet.label',
           }),
           amount: data.income.salaryNet,
           is_recurring: true,
           date: todayISO,
           employment_type: employmentType,
+          kup_type: data.life.useAuthorsCosts ? 'author_50' : 'standard',
+        });
+      }
+
+      // Partner salary income
+      if (data.life.includePartnerFinances && data.income.partnerSalaryNet > 0) {
+        const partnerEmploymentTypeMap: Record<string, string | null> = {
+          employee: 'uop',
+          b2b: 'b2b',
+          business: 'b2b',
+          contract: 'zlecenie',
+          freelancer: 'other',
+          unemployed: null,
+        };
+        const partnerEmpType = partnerEmploymentTypeMap[data.income.partnerEmploymentType] ?? null;
+        incomePayloads.push({
+          category: 'salary',
+          description: intl.formatMessage({
+            id: 'onboarding.income.fields.partnerSalaryNet.label',
+          }),
+          amount: data.income.partnerSalaryNet,
+          is_recurring: true,
+          date: todayISO,
+          employment_type: partnerEmpType,
+          kup_type: 'standard',
+          owner: 'partner',
         });
       }
 
@@ -1833,9 +1939,13 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
           return;
         }
         const meta = ADDITIONAL_SOURCE_META[key];
+        const labelValues: Record<string, string | number> = {};
+        if (key === 'childBenefit') {
+          labelValues.limit = intl.formatNumber(data.life.childrenCount * 800, { style: 'currency', currency: 'PLN', maximumFractionDigits: 0 });
+        }
         incomePayloads.push({
           category: meta.category,
-          description: intl.formatMessage({ id: meta.labelId }),
+          description: intl.formatMessage({ id: meta.labelId }, labelValues),
           amount: source.amount,
           is_recurring: true,
           date: todayISO,
@@ -2018,6 +2128,11 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
                 id: 'onboarding.irregularExpenses.custom.defaultName',
               }));
 
+        // Place irregular expense in its designated month (mid-month)
+        const expenseMonth = item.month ?? 6;
+        const currentYear = new Date().getFullYear();
+        const irregularDate = `${currentYear}-${String(expenseMonth).padStart(2, '0')}-15`;
+
         const response = await fetch(expensesEndpoint, {
           method: 'POST',
           headers: jsonHeaders,
@@ -2026,7 +2141,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
             description,
             amount,
             is_recurring: false,
-            date: todayISO,
+            date: irregularDate,
           }),
         });
         await assertOk(response, `create irregular expense (${description})`);
@@ -2136,10 +2251,9 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
           // Leasing: calculate total from monthly × term
           principalAmount = liability.monthlyPayment * Math.max(termMonths, 1);
           interestRate = 0; // Interest is built into the rate for leasing
-        } else if (liability.propertyValue && liability.propertyValue > 0) {
-          // Mortgage: use property value as principal
-          principalAmount = liability.propertyValue;
         } else {
+          // For mortgages and other loans: use remaining amount as principal
+          // (onboarding doesn't collect original loan amount separately)
           principalAmount = liability.remainingAmount;
         }
 
@@ -2220,6 +2334,8 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         date: string;
         is_recurring: boolean;
         saving_type: 'deposit' | 'withdrawal';
+        account_type?: string;
+        owner?: string | null;
       }> = [];
 
       if (data.assets.savings > 0) {
@@ -2236,11 +2352,17 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       }
 
       if (data.assets.investments.totalValue > 0) {
+        const categoryLabels = data.assets.investments.categories
+          .map((cat) => {
+            const key = `onboarding.assets.investments.options.${cat}`;
+            return intl.messages[key] ? intl.formatMessage({ id: key }) : cat;
+          })
+          .join(', ');
         savingsPayloads.push({
           category: 'investment',
-          description: intl.formatMessage({
-            id: 'onboarding.assets.investments.title',
-          }),
+          description: categoryLabels
+            ? `${intl.formatMessage({ id: 'onboarding.assets.investments.title' })} (${categoryLabels})`
+            : intl.formatMessage({ id: 'onboarding.assets.investments.title' }),
           amount: data.assets.investments.totalValue,
           date: todayISO,
           is_recurring: false,
@@ -2248,39 +2370,42 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         });
       }
 
-      data.assets.properties.forEach((property) => {
-        if (property.value > 0) {
+      // Retirement accounts — one Saving per enabled account type
+      const retirementAccountLabels: Record<string, string> = {
+        ike: 'IKE',
+        ikze: 'IKZE',
+        ppk: 'PPK',
+        oipe: 'OIPE',
+      };
+      for (const [accountType, account] of Object.entries(data.assets.retirementAccounts)) {
+        if (account.enabled && account.value > 0) {
           savingsPayloads.push({
-            category: 'real_estate',
-            description:
-              property.name ||
-              intl.formatMessage({
-                id: 'onboarding.assets.sections.properties',
-              }),
-            amount: property.value,
+            category: 'retirement',
+            description: retirementAccountLabels[accountType] || accountType.toUpperCase(),
+            amount: account.value,
             date: todayISO,
             is_recurring: false,
             saving_type: 'deposit',
+            account_type: accountType,
           });
         }
-      });
+        // Partner retirement account (IKE/IKZE/OIPE only)
+        if (account.enabled && (account.partnerValue ?? 0) > 0 && data.life.includePartnerFinances) {
+          savingsPayloads.push({
+            category: 'retirement',
+            description: `${retirementAccountLabels[accountType] || accountType.toUpperCase()} (partner)`,
+            amount: account.partnerValue!,
+            date: todayISO,
+            is_recurring: false,
+            saving_type: 'deposit',
+            account_type: accountType,
+            owner: 'partner',
+          });
+        }
+      }
 
-      data.assets.vehicles.forEach((vehicle) => {
-        if (vehicle.value > 0) {
-          savingsPayloads.push({
-            category: 'other',
-            description:
-              vehicle.name ||
-              intl.formatMessage({
-                id: 'onboarding.assets.sections.vehicles',
-              }),
-            amount: vehicle.value,
-            date: todayISO,
-            is_recurring: false,
-            saving_type: 'deposit',
-          });
-        }
-      });
+      // Note: properties and vehicles are tracked in the budget system (BudgetEntry/template_data),
+      // NOT as savings deposits — they are illiquid assets, not cash equivalents.
 
       const savingsTotal = savingsPayloads.length;
       if (savingsTotal > 0) {
@@ -2323,7 +2448,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
 
       // --- Sync tax-specific settings from life data ---
       try {
-        const settingsResponse = await fetch(`/api/users/${encodeURIComponent(userEmail)}/settings`);
+        const settingsResponse = await fetch(`/api/backend/users/${encodeURIComponent(userEmail)}/settings`);
         if (settingsResponse.ok) {
           const currentSettings = await settingsResponse.json();
           const updatedSettings = {
@@ -2336,12 +2461,21 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
             ppk_employee_rate: data.life.ppkEmployeeRate ?? null,
             ppk_employer_rate: data.life.ppkEmployerRate ?? null,
             children_count: data.life.childrenCount ?? 0,
+            // Life data from onboarding
+            marital_status: data.life.maritalStatus || null,
+            housing_type: data.life.housingType || null,
+            children_age_range: data.life.childrenAgeRange || null,
+            include_partner_finances: data.life.includePartnerFinances ?? false,
+            // Partner tax profile from onboarding
+            partner_employment_status: data.life.includePartnerFinances
+              ? (data.income.partnerEmploymentType || null)
+              : null,
             // Mark onboarding as completed
             onboarding_completed: true,
             onboarding_completed_at: new Date().toISOString(),
           };
 
-          const updateResponse = await fetch(`/api/users/${encodeURIComponent(userEmail)}/settings`, {
+          const updateResponse = await fetch(`/api/backend/users/${encodeURIComponent(userEmail)}/settings`, {
             method: 'PUT',
             headers: jsonHeaders,
             body: JSON.stringify(updatedSettings),
@@ -2356,6 +2490,230 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
     } catch (error) {
       logger.error('[Onboarding] Failed to sync savings', error);
       throw error;
+    }
+
+    // --- Budget year sync ---
+    try {
+      notify('budget', t('onboarding.savingProgress.detail.creatingBudget'));
+      const currentYear = new Date().getFullYear();
+
+      // Build budget entries from onboarding data
+      const budgetIncomeEntries: Array<{
+        month: number;
+        entry_type: string;
+        category: string;
+        description: string;
+        planned_amount: number;
+        is_recurring: boolean;
+        source_onboarding_id: string | null;
+      }> = [];
+
+      const budgetExpenseEntries: Array<{
+        month: number;
+        entry_type: string;
+        category: string;
+        description: string;
+        planned_amount: number;
+        is_recurring: boolean;
+        source_onboarding_id: string | null;
+      }> = [];
+
+      const budgetLoanEntries: Array<{
+        month: number;
+        entry_type: string;
+        category: string;
+        description: string;
+        planned_amount: number;
+        is_recurring: boolean;
+        source_onboarding_id: string | null;
+      }> = [];
+
+      // Income → replicate to all 12 months
+      if (data.income.salaryNet > 0) {
+        for (let m = 1; m <= 12; m++) {
+          budgetIncomeEntries.push({
+            month: m,
+            entry_type: 'income',
+            category: 'salary',
+            description: intl.formatMessage({
+              id: data.life.includePartnerFinances
+                ? 'onboarding.income.fields.salaryNet.yourLabel'
+                : 'onboarding.income.fields.salaryNet.label',
+            }),
+            planned_amount: data.income.salaryNet,
+            is_recurring: true,
+            source_onboarding_id: 'salary',
+          });
+        }
+      }
+
+      // Partner salary budget entries
+      if (data.life.includePartnerFinances && data.income.partnerSalaryNet > 0) {
+        for (let m = 1; m <= 12; m++) {
+          budgetIncomeEntries.push({
+            month: m,
+            entry_type: 'income',
+            category: 'salary',
+            description: intl.formatMessage({ id: 'onboarding.income.fields.partnerSalaryNet.label' }),
+            planned_amount: data.income.partnerSalaryNet,
+            is_recurring: true,
+            source_onboarding_id: 'partner_salary',
+          });
+        }
+      }
+
+      (Object.entries(data.income.additionalSources) as Array<
+        [keyof OnboardingData['income']['additionalSources'], AdditionalSource]
+      >).forEach(([key, source]) => {
+        if (!source.enabled || source.amount <= 0) return;
+        const meta = ADDITIONAL_SOURCE_META[key];
+        const labelValues: Record<string, string | number> = {};
+        if (key === 'childBenefit') {
+          labelValues.limit = intl.formatNumber(data.life.childrenCount * 800, { style: 'currency', currency: 'PLN', maximumFractionDigits: 0 });
+        }
+        for (let m = 1; m <= 12; m++) {
+          budgetIncomeEntries.push({
+            month: m,
+            entry_type: 'income',
+            category: meta.category,
+            description: intl.formatMessage({ id: meta.labelId }, labelValues),
+            planned_amount: source.amount,
+            is_recurring: true,
+            source_onboarding_id: key,
+          });
+        }
+      });
+
+      // Regular expenses → replicate to all 12 months
+      for (const group of Object.keys(data.expenses) as ExpenseGroupKey[]) {
+        const groupCategory = EXPENSE_CATEGORY_MAP[group] ?? 'other';
+        const items = data.expenses[group] ?? [];
+        for (const item of items) {
+          if (!item.amount || item.amount <= 0) continue;
+          const category = item.category && isValidExpenseCategory(item.category)
+            ? item.category
+            : groupCategory;
+          const translationKey = `onboarding.expenses.groups.${group}.items.${item.templateId ?? item.id}`;
+          const description = item.name
+            ? item.name
+            : intl.messages[translationKey]
+              ? intl.formatMessage({ id: translationKey })
+              : intl.formatMessage({ id: `onboarding.expenses.groups.${group}.title` });
+
+          for (let m = 1; m <= 12; m++) {
+            budgetExpenseEntries.push({
+              month: m,
+              entry_type: 'expense',
+              category,
+              description,
+              planned_amount: item.amount,
+              is_recurring: true,
+              source_onboarding_id: item.id,
+            });
+          }
+        }
+      }
+
+      // Irregular expenses → single entry in the specified month
+      const irregularItems = data.irregularExpenses ?? [];
+      for (const item of irregularItems) {
+        const amount = sanitizeAmount(item.amount);
+        if (amount <= 0) continue;
+        const description =
+          typeof item.name === 'string' && item.name.trim().length > 0
+            ? item.name.trim()
+            : intl.formatMessage({ id: 'onboarding.irregularExpenses.custom.defaultName' });
+        budgetExpenseEntries.push({
+          month: item.month ?? 6,
+          entry_type: 'expense',
+          category: item.category ?? 'other',
+          description,
+          planned_amount: amount,
+          is_recurring: false,
+          source_onboarding_id: item.id,
+        });
+      }
+
+      // Loan payments → replicate to all 12 months
+      for (const liability of data.liabilities) {
+        const hasAmount =
+          (liability.remainingAmount ?? 0) > 0 ||
+          (liability.monthlyPayment ?? 0) > 0;
+        if (!hasAmount || !liability.monthlyPayment) continue;
+        const labelKey = `onboarding.liabilities.types.${liability.type || 'default'}.cardTitle`;
+        const description = intl.messages[labelKey]
+          ? intl.formatMessage({ id: labelKey })
+          : intl.formatMessage({ id: 'onboarding.liabilities.types.default.cardTitle' });
+        for (let m = 1; m <= 12; m++) {
+          budgetLoanEntries.push({
+            month: m,
+            entry_type: 'loan_payment',
+            category: liability.type || 'other',
+            description,
+            planned_amount: liability.monthlyPayment,
+            is_recurring: true,
+            source_onboarding_id: liability.id,
+          });
+        }
+      }
+
+      const budgetResponse = await fetch(
+        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/budget/years/from-onboarding`,
+        {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({
+            year: currentYear,
+            income_entries: budgetIncomeEntries,
+            expense_entries: budgetExpenseEntries,
+            loan_entries: budgetLoanEntries,
+          }),
+        }
+      );
+      await assertOk(budgetResponse, 'create budget year from onboarding');
+      const budgetResult = await budgetResponse.json();
+      logger.debug(`[Onboarding] Created budget year ${currentYear} with ${budgetResult.entries_created} entries`);
+    } catch (budgetError) {
+      logger.warn('[Onboarding] Failed to create budget year (non-fatal)', budgetError);
+      // Don't throw - budget creation is non-critical for onboarding completion
+    }
+
+    // --- Goals sync ---
+    try {
+      const validGoals = data.goals.filter(
+        (goal) => goal.name && goal.name.trim().length > 0 && goal.targetAmount > 0
+      );
+      if (validGoals.length > 0) {
+        notify('goals', t('onboarding.savingProgress.detail.count', {
+          current: 0,
+          total: validGoals.length,
+        }));
+        for (let i = 0; i < validGoals.length; i++) {
+          const goal = validGoals[i];
+          const goalResponse = await fetch('/api/savings/goals', {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify({
+              name: goal.name.trim(),
+              category: 'general',
+              target_amount: goal.targetAmount,
+              deadline: goal.targetDate || null,
+              priority: goal.priority ?? 0,
+            }),
+          });
+          await assertOk(goalResponse, `create savings goal (${goal.name})`);
+          notify('goals', t('onboarding.savingProgress.detail.count', {
+            current: i + 1,
+            total: validGoals.length,
+          }));
+        }
+        logger.debug(`[Onboarding] Created ${validGoals.length} savings goals`);
+      } else {
+        notify('goals');
+      }
+    } catch (goalsError) {
+      logger.warn('[Onboarding] Failed to create savings goals (non-fatal)', goalsError);
+      // Don't throw - goals creation is non-critical
     }
   },
     [data, intl, session?.user?.email, t]
@@ -2630,6 +2988,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
 
     const monthlyIncome =
       data.income.salaryNet +
+      (data.income.partnerSalaryNet || 0) +
       additionalMonthly +
       data.income.irregularIncomeAnnual / 12;
 
@@ -2650,6 +3009,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
     const assetsTotal =
       data.assets.savings +
       data.assets.investments.totalValue +
+      Object.values(data.assets.retirementAccounts).reduce((sum, a) => sum + (a.enabled ? a.value + (a.partnerValue ?? 0) : 0), 0) +
       data.assets.properties.reduce((sum, item) => sum + item.value, 0) +
       data.assets.vehicles.reduce((sum, item) => sum + item.value, 0);
 
@@ -2690,7 +3050,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
           Math.round((currentStepIndex / stepsWithoutEdges) * 100)
         );
 
-  const displayStepNumber = Math.min(Math.max(currentStepIndex, 1), stepsWithoutEdges);
+  const _displayStepNumber = Math.min(Math.max(currentStepIndex, 1), stepsWithoutEdges);
   const nextStepLabel =
     currentStepIndex >= steps.length - 1
       ? null
@@ -2723,12 +3083,20 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         <div>
           <div className="flex items-center justify-between text-xs font-medium text-secondary">
             <span>
-              {t('onboarding.header.stepIndicator', {
-                current: displayStepNumber,
-                total: stepsWithoutEdges,
-              })}
-              :{' '}
-              <span className="text-primary">{currentStep.label}</span>
+              {currentStepIndex === 0 ? (
+                <span className="text-primary">{currentStep.label}</span>
+              ) : currentStepIndex >= steps.length - 1 ? (
+                <span className="text-primary">{currentStep.label}</span>
+              ) : (
+                <>
+                  {t('onboarding.header.stepIndicator', {
+                    current: currentStepIndex,
+                    total: stepsWithoutEdges,
+                  })}
+                  :{' '}
+                  <span className="text-primary">{currentStep.label}</span>
+                </>
+              )}
             </span>
             <span>{progress}%</span>
           </div>
@@ -2791,7 +3159,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
               onChange={setLife}
               onNext={() => handleNext()}
               onBack={handleBack}
-              onSkip={handleSkipStep}
+
               nextLabel={nextButtonLabel}
             />
           )}
@@ -2803,11 +3171,27 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
               onChange={setIncome}
               onNext={() => handleNext()}
               onBack={handleBack}
-              onSkip={handleSkipStep}
+
               monthlyIncome={metrics.monthlyIncome}
               formatMoney={formatMoney}
               childrenCount={data.life.childrenCount}
+              includePartnerFinances={data.life.includePartnerFinances}
               nextLabel={nextButtonLabel}
+            />
+          )}
+
+          {currentStep.id === 'liabilities' && (
+            <LiabilitiesStep
+              items={data.liabilities}
+              errors={errors}
+              onAdd={addLiability}
+              onUpdate={updateLiability}
+              onRemove={removeLiability}
+              onNext={() => handleNext()}
+              onBack={handleBack}
+
+              monthlyIncome={metrics.monthlyIncome}
+              formatMoney={formatMoney}
             />
           )}
 
@@ -2818,7 +3202,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
               onUpdate={updateExpenses}
               onNext={() => handleNext()}
               onBack={handleBack}
-              onSkip={handleSkipStep}
+
               formatMoney={formatMoney}
               monthlyIncome={metrics.monthlyIncome}
               expenseGroups={EXPENSE_GROUPS}
@@ -2835,25 +3219,10 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
               onUpdate={updateIrregularExpenses}
               onNext={() => handleNext()}
               onBack={handleBack}
-              onSkip={handleSkipStep}
+
               formatMoney={formatMoney}
               generateId={ensureId}
               nextLabel={nextButtonLabel}
-            />
-          )}
-
-          {currentStep.id === 'liabilities' && (
-            <LiabilitiesStep
-              items={data.liabilities}
-              errors={errors}
-              onAdd={addLiability}
-              onUpdate={updateLiability}
-              onRemove={removeLiability}
-              onNext={() => handleNext()}
-              onBack={handleBack}
-              onSkip={handleSkipStep}
-              monthlyIncome={metrics.monthlyIncome}
-              formatMoney={formatMoney}
             />
           )}
 
@@ -2861,6 +3230,9 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
             <AssetsStep
               data={data.assets}
               errors={errors}
+              ppkEnrolled={data.life.ppkEnrolled}
+              monthlyExpenses={metrics.regularMonthlyExpenses + metrics.irregularMonthlyExpenses + metrics.liabilitiesMonthly}
+              includePartnerFinances={data.life.includePartnerFinances}
               onChange={(updates) =>
                 setData((prev) => ({
                   ...prev,
@@ -2872,7 +3244,6 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
               onRemoveProperty={removeProperty}
               onNext={() => handleNext()}
               onBack={handleBack}
-              onSkip={handleSkipStep}
             />
           )}
 
@@ -2885,7 +3256,7 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
               onRemove={removeGoal}
               onNext={() => handleNext()}
               onBack={handleBack}
-              onSkip={handleSkipStep}
+
             />
           )}
 
@@ -2942,28 +3313,61 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
 
       {showSkipConfirmDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl border border-default bg-card p-6 shadow-lg">
-            <div className="flex flex-col gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-                <Info className="h-6 w-6 text-amber-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-primary">
+          <div className="w-full max-w-lg rounded-2xl border border-amber-200 bg-card p-8 shadow-[0_25px_60px_-12px_rgba(0,0,0,0.2)]">
+            <div className="flex flex-col gap-5">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 flex-shrink-0">
+                  <Info className="h-7 w-7 text-amber-600" />
+                </div>
+                <h2 className="text-xl font-bold text-primary">
                   {t('onboarding.skipConfirm.title')}
                 </h2>
-                <p className="mt-2 text-sm text-secondary">
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm text-secondary leading-relaxed">
                   {t('onboarding.skipConfirm.message')}
                 </p>
+
+                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="h-5 w-5 text-emerald-500 mt-0.5 flex-shrink-0" />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-emerald-800">
+                        {t('onboarding.skipConfirm.benefits')}
+                      </p>
+                      <ul className="text-xs text-emerald-700/80 space-y-1">
+                        <li>• {t('onboarding.skipConfirm.benefit1')}</li>
+                        <li>• {t('onboarding.skipConfirm.benefit2')}</li>
+                        <li>• {t('onboarding.skipConfirm.benefit3')}</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-muted/50 border border-default p-4">
+                  <div className="flex items-start gap-3">
+                    <Settings className="h-5 w-5 text-secondary mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-secondary">
+                      {t('onboarding.skipConfirm.settingsHint')}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex justify-end gap-3 mt-4">
+
+              <div className="flex justify-end gap-3 pt-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
+                  onClick={handleConfirmSkip}
+                  className="text-secondary hover:text-primary"
+                >
+                  {t('onboarding.skipConfirm.confirm')}
+                </Button>
+                <Button
                   onClick={() => setShowSkipConfirmDialog(false)}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white"
                 >
                   {t('onboarding.skipConfirm.cancel')}
-                </Button>
-                <Button onClick={handleConfirmSkip}>
-                  {t('onboarding.skipConfirm.confirm')}
                 </Button>
               </div>
             </div>

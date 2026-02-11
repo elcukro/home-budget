@@ -5,14 +5,19 @@ import { useSession } from "next-auth/react";
 import { FormattedDate, FormattedMessage, useIntl } from "react-intl";
 import { z } from "zod";
 import {
+  Archive,
   ArrowDownRight,
   ArrowUpRight,
   Briefcase,
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronRight,
+  Heart,
   Home,
   LineChart,
+  Link2,
+  Minus,
   Pencil,
   Plus,
   RefreshCw,
@@ -35,6 +40,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import IncomeChart from "@/components/charts/IncomeChart";
+import IncomeBudgetChart from "@/components/budget/IncomeBudgetChart";
+import MonthBar from "@/components/budget/MonthBar";
+import BudgetView from "@/components/budget/BudgetView";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CrudDialog, type FormFieldConfig } from "@/components/crud/CrudDialog";
 import { ConfirmDialog } from "@/components/crud/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -72,6 +81,8 @@ interface Income {
   employment_type?: EmploymentType | null;
   gross_amount?: number | null;  // Brutto (before tax)
   is_gross?: boolean;  // Whether entered amount was gross
+  kup_type?: string | null;  // "standard", "author_50", "none"
+  owner?: string | null;  // "self", "partner"
   created_at: string;
 }
 
@@ -140,6 +151,8 @@ const incomeSchema = z.object({
       return parseNumber(raw) ?? null;
     }),
   is_gross: z.boolean().default(false),
+  kup_type: z.string().nullable().optional(),
+  owner: z.string().nullable().optional(),
 }).superRefine((data, ctx) => {
   if (data.is_gross && (!data.employment_type || data.employment_type === "")) {
     ctx.addIssue({
@@ -155,7 +168,7 @@ type IncomeFormValues = z.infer<typeof incomeSchema>;
 const todayISO = new Date().toISOString().split("T")[0];
 
 const incomeDefaultValues: IncomeFormValues = {
-  category: "",
+  category: "salary",
   description: "",
   amount: 0,
   date: todayISO,
@@ -164,6 +177,8 @@ const incomeDefaultValues: IncomeFormValues = {
   employment_type: null,
   gross_amount: null,
   is_gross: false,
+  kup_type: null,
+  owner: null,
 };
 
 const employmentTypeOptions = [
@@ -174,11 +189,18 @@ const employmentTypeOptions = [
   { value: EmploymentType.OTHER, labelId: "income.employmentTypes.other" },
 ];
 
+const kupTypeOptions = [
+  { value: "standard", labelId: "income.form.kupOptions.standard" },
+  { value: "author_50", labelId: "income.form.kupOptions.author50" },
+  { value: "none", labelId: "income.form.kupOptions.none" },
+];
+
 const categoryOptions = [
   { value: "salary", labelId: "income.categories.salary", icon: <Briefcase className="h-5 w-5" /> },
   { value: "freelance", labelId: "income.categories.freelance", icon: <ArrowUpRight className="h-5 w-5" /> },
   { value: "investments", labelId: "income.categories.investments", icon: <LineChart className="h-5 w-5" /> },
   { value: "rental", labelId: "income.categories.rental", icon: <Home className="h-5 w-5" /> },
+  { value: "benefits", labelId: "income.categories.benefits", icon: <Heart className="h-5 w-5" /> },
   { value: "other", labelId: "income.categories.other", icon: <ArrowDownRight className="h-5 w-5" /> },
 ];
 
@@ -198,24 +220,28 @@ interface TaxResult {
 function TaxBreakdownPreview({
   taxResult,
   employmentType,
+  kupType,
   isGross,
   amount,
+  owner,
   intl,
   formatCurrency,
   onValuesChange,
 }: {
   taxResult: TaxResult | null;
   employmentType: string | null | undefined;
+  kupType: string | null | undefined;
   isGross: boolean;
   amount: number;
+  owner?: string | null;
   intl: ReturnType<typeof useIntl>;
   formatCurrency: (n: number) => string;
-  onValuesChange: (amount: number, employmentType: string | null | undefined, isGross: boolean) => void;
+  onValuesChange: (amount: number, employmentType: string | null | undefined, isGross: boolean, kupType: string | null | undefined, owner?: string | null) => void;
 }) {
   // Trigger tax calculation when relevant values change
   useEffect(() => {
-    onValuesChange(amount, employmentType, isGross);
-  }, [amount, employmentType, isGross, onValuesChange]);
+    onValuesChange(amount, employmentType, isGross, kupType, owner);
+  }, [amount, employmentType, isGross, kupType, owner, onValuesChange]);
 
   if (!isGross) return null;
 
@@ -274,35 +300,104 @@ function TaxBreakdownPreview({
 }
 
 // Helper to build field config (needs to be a function since renderExtra uses hooks context)
+// Employment status → employment_type mapping (same as onboarding)
+const employmentStatusToType: Record<string, string | null> = {
+  employee: 'uop',
+  b2b: 'b2b',
+  business: 'b2b',
+  contract: 'zlecenie',
+  freelancer: 'other',
+  unemployed: null,
+};
+
 function useIncomeFieldConfig(
   taxResult: TaxResult | null,
   intl: ReturnType<typeof useIntl>,
   formatCurrency: (n: number) => string,
-  onTaxValuesChange: (amount: number, employmentType: string | null | undefined, isGross: boolean) => void,
+  onTaxValuesChange: (amount: number, employmentType: string | null | undefined, isGross: boolean, kupType: string | null | undefined, owner?: string | null) => void,
+  settings: { employment_status?: string; use_authors_costs?: boolean; include_partner_finances?: boolean; partner_name?: string; partner_employment_status?: string; partner_use_authors_costs?: boolean } | null,
 ): FormFieldConfig<IncomeFormValues>[] {
+  const ownerOptions = useMemo(() => [
+    { value: "self", labelId: "income.form.ownerOptions.self", label: intl.formatMessage({ id: "income.form.ownerOptions.self" }) },
+    {
+      value: "partner",
+      labelId: "income.form.ownerOptions.partnerDefault",
+      label: settings?.partner_name || intl.formatMessage({ id: "income.form.ownerOptions.partnerDefault" }),
+    },
+  ], [settings?.partner_name, intl]);
+
+  // Categories where employment type / tax calculation makes sense
+  // salary, freelance, other (bonuses, etc.) — NOT investments/rental (flat tax, shared)
+  const taxCategories = ["salary", "freelance", "other"];
+  const hasTaxFields = (values: IncomeFormValues) => taxCategories.includes(values.category);
+
   return useMemo(() => [
     {
       name: "category" as const,
       labelId: "income.form.category",
       component: "icon-select" as const,
       options: categoryOptions,
+      onValueChange: (value: unknown, form: Parameters<NonNullable<FormFieldConfig<IncomeFormValues>['onValueChange']>>[1]) => {
+        const cat = value as string;
+        if (!taxCategories.includes(cat)) {
+          // Clear tax-related fields when switching to non-tax category
+          form.setValue("employment_type", null);
+          form.setValue("kup_type", null);
+          form.setValue("is_gross", false);
+        }
+      },
     },
     {
       name: "description" as const,
       labelId: "income.form.description",
       component: "text" as const,
     },
+    ...(settings?.include_partner_finances ? [{
+      name: "owner" as const,
+      labelId: "income.form.owner",
+      component: "select" as const,
+      options: ownerOptions,
+      showWhen: (values: IncomeFormValues) => !["investments", "rental", "benefits"].includes(values.category),
+      onValueChange: (value: unknown, form: Parameters<NonNullable<FormFieldConfig<IncomeFormValues>['onValueChange']>>[1]) => {
+        if (value === "partner" && settings?.partner_employment_status) {
+          const mappedType = employmentStatusToType[settings.partner_employment_status] ?? null;
+          if (mappedType) form.setValue("employment_type", mappedType);
+          form.setValue("kup_type", settings?.partner_use_authors_costs ? "author_50" : "standard");
+        } else if (value === "self" && settings?.employment_status) {
+          const mappedType = employmentStatusToType[settings.employment_status] ?? null;
+          if (mappedType) form.setValue("employment_type", mappedType);
+          form.setValue("kup_type", settings?.use_authors_costs ? "author_50" : "standard");
+        }
+      },
+    } satisfies FormFieldConfig<IncomeFormValues>] : []),
     {
       name: "employment_type" as const,
       labelId: "income.form.employmentType",
       descriptionId: "income.form.employmentTypeHint",
       component: "select" as const,
       options: employmentTypeOptions,
+      showWhen: hasTaxFields,
+      onValueChange: (value, form) => {
+        const et = value as string;
+        if (["uop", "zlecenie", "dzielo"].includes(et)) {
+          form.setValue("kup_type", settings?.use_authors_costs ? "author_50" : "standard");
+        } else {
+          form.setValue("kup_type", null);
+        }
+      },
+    },
+    {
+      name: "kup_type" as const,
+      labelId: "income.form.kupType",
+      descriptionId: "income.form.kupTypeHint",
+      component: "select" as const,
+      options: kupTypeOptions,
+      showWhen: (values: IncomeFormValues) =>
+        hasTaxFields(values) && ["uop", "zlecenie", "dzielo"].includes(values.employment_type || ""),
     },
     {
       name: "amount" as const,
       labelId: "income.form.amount",
-      descriptionId: "income.form.amountHint",
       component: "currency" as const,
     },
     {
@@ -310,14 +405,17 @@ function useIncomeFieldConfig(
       labelId: "income.form.isGross",
       descriptionId: "income.form.isGrossHint",
       component: "switch" as const,
+      showWhen: hasTaxFields,
       renderExtra: (form) => {
         const values = form.watch();
         return (
           <TaxBreakdownPreview
             taxResult={taxResult}
             employmentType={values.employment_type}
+            kupType={values.kup_type}
             isGross={values.is_gross}
             amount={values.amount}
+            owner={values.owner}
             intl={intl}
             formatCurrency={formatCurrency}
             onValuesChange={onTaxValuesChange}
@@ -341,7 +439,7 @@ function useIncomeFieldConfig(
       component: "date" as const,
       showWhen: (values: IncomeFormValues) => values.is_recurring === true,
     },
-  ], [taxResult, intl, formatCurrency, onTaxValuesChange]);
+  ], [taxResult, intl, formatCurrency, onTaxValuesChange, settings, ownerOptions, hasTaxFields, taxCategories]);
 }
 
 // Change rate schema and config
@@ -370,13 +468,17 @@ const changeRateSchema = z.object({
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: error.messageId });
       }
     }),
+  hasEndDate: z.boolean().optional(),
+  endDate: z.string().nullable().optional(),
 });
 
 type ChangeRateFormValues = z.infer<typeof changeRateSchema>;
 
-const changeRateDefaultValues: ChangeRateFormValues = {
+const _changeRateDefaultValues: ChangeRateFormValues = {
   newAmount: 0,
   effectiveDate: todayISO,
+  hasEndDate: false,
+  endDate: null,
 };
 
 const changeRateFieldConfig: FormFieldConfig<ChangeRateFormValues>[] = [
@@ -391,6 +493,18 @@ const changeRateFieldConfig: FormFieldConfig<ChangeRateFormValues>[] = [
     labelId: "changeRate.form.effectiveDate",
     component: "date",
   },
+  {
+    name: "hasEndDate",
+    labelId: "changeRate.form.hasEndDate",
+    component: "switch",
+    descriptionId: "changeRate.form.hasEndDateHint",
+  },
+  {
+    name: "endDate",
+    labelId: "changeRate.form.endDate",
+    component: "date",
+    showWhen: (values) => values.hasEndDate === true,
+  },
 ];
 
 const mapIncomeToFormValues = (income: Income): IncomeFormValues => ({
@@ -404,6 +518,8 @@ const mapIncomeToFormValues = (income: Income): IncomeFormValues => ({
   employment_type: income.employment_type || null,
   gross_amount: income.gross_amount || null,
   is_gross: income.is_gross || false,
+  kup_type: income.kup_type || null,
+  owner: income.owner || null,
 });
 
 export default function IncomePage() {
@@ -412,6 +528,26 @@ export default function IncomePage() {
   const { toast } = useToast();
   const { settings, formatCurrency } = useSettings();
   const { trackIncome } = useAnalytics();
+
+  const [activeTab, setActiveTab] = useState("transactions");
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [budgetMonth, setBudgetMonth] = useState<number>(new Date().getMonth() + 1);
+
+  const handleBudgetChartMonthSelect = (monthKey: string) => {
+    if (monthKey === "all") return;
+    const m = parseInt(monthKey.split("-")[1], 10);
+    if (!Number.isNaN(m)) setBudgetMonth(m);
+  };
+
+  // Disable future months in MonthBar
+  const futureDisabledMonths = useMemo(() => {
+    const currentMonth = new Date().getMonth() + 1;
+    const disabled = new Set<number>();
+    for (let m = currentMonth + 1; m <= 12; m++) {
+      disabled.add(m);
+    }
+    return disabled;
+  }, []);
 
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [loading, setLoading] = useState(true);
@@ -427,11 +563,29 @@ export default function IncomePage() {
   const taxDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastTaxKeyRef = useRef<string>("");
 
+  // Resolve tax profile based on income owner
+  const getTaxProfile = useCallback((owner?: string | null) => {
+    const isPartner = owner === "partner";
+    return {
+      use_authors_costs: isPartner
+        ? settings?.partner_use_authors_costs ?? false
+        : settings?.use_authors_costs ?? false,
+      ppk_employee_rate: isPartner
+        ? (settings?.partner_ppk_enrolled && settings?.partner_ppk_employee_rate)
+          ? settings.partner_ppk_employee_rate / 100 : 0
+        : (settings?.ppk_enrolled && settings?.ppk_employee_rate)
+          ? settings.ppk_employee_rate / 100 : 0,
+    };
+  }, [settings]);
+
   const fetchTaxCalculation = useCallback(async (
     grossMonthly: number,
     employmentType: string,
+    kupType?: string | null,
+    owner?: string | null,
   ) => {
-    const key = `${grossMonthly}:${employmentType}:${settings?.use_authors_costs}:${settings?.ppk_employee_rate}`;
+    const profile = getTaxProfile(owner);
+    const key = `${grossMonthly}:${employmentType}:${kupType}:${profile.use_authors_costs}:${profile.ppk_employee_rate}`;
     if (key === lastTaxKeyRef.current) return;
     lastTaxKeyRef.current = key;
 
@@ -442,10 +596,9 @@ export default function IncomePage() {
         body: JSON.stringify({
           gross_monthly: grossMonthly,
           employment_type: employmentType,
-          use_authors_costs: settings?.use_authors_costs ?? false,
-          ppk_employee_rate: (settings?.ppk_enrolled && settings?.ppk_employee_rate)
-            ? settings.ppk_employee_rate / 100
-            : 0,
+          use_authors_costs: profile.use_authors_costs,
+          ppk_employee_rate: profile.ppk_employee_rate,
+          kup_type: kupType || undefined,
         }),
       });
       if (res.ok) {
@@ -455,7 +608,7 @@ export default function IncomePage() {
     } catch (err) {
       logger.error("[Income] Tax calculation failed", err);
     }
-  }, [settings]);
+  }, [getTaxProfile]);
 
 
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -539,8 +692,9 @@ export default function IncomePage() {
 
       const group = groups.get(key)!;
 
-      if (income.end_date) {
-        // Has end_date = historical
+      const isPast = income.end_date && new Date(income.end_date) < new Date();
+      if (isPast) {
+        // end_date in the past = historical
         group.historical.push(income);
       } else {
         // No end_date = current (or latest if multiple)
@@ -675,7 +829,7 @@ export default function IncomePage() {
   };
 
   // Debounced tax calculation trigger — called from CrudDialog via renderExtra watching form values
-  const scheduleTaxCalc = useCallback((amount: number, employmentType: string | null | undefined, isGross: boolean) => {
+  const scheduleTaxCalc = useCallback((amount: number, employmentType: string | null | undefined, isGross: boolean, kupType?: string | null, owner?: string | null) => {
     if (taxDebounceRef.current) clearTimeout(taxDebounceRef.current);
     if (!isGross || !employmentType || !amount || amount <= 0) {
       setTaxResult(null);
@@ -683,11 +837,11 @@ export default function IncomePage() {
       return;
     }
     taxDebounceRef.current = setTimeout(() => {
-      void fetchTaxCalculation(amount, employmentType);
+      void fetchTaxCalculation(amount, employmentType, kupType, owner);
     }, 300);
   }, [fetchTaxCalculation]);
 
-  const incomeFieldConfig = useIncomeFieldConfig(taxResult, intl, formatCurrency, scheduleTaxCalc);
+  const incomeFieldConfig = useIncomeFieldConfig(taxResult, intl, formatCurrency, scheduleTaxCalc, settings);
 
   const showErrorToast = (messageId: string) => {
     toast({
@@ -708,17 +862,17 @@ export default function IncomePage() {
       let grossAmount: number | null = null;
 
       if (values.is_gross && values.employment_type) {
-        // Call server for authoritative net calculation
+        // Call server for authoritative net calculation using correct owner profile
+        const profile = getTaxProfile(values.owner);
         const taxRes = await fetch("/api/tax/calculate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             gross_monthly: values.amount,
             employment_type: values.employment_type,
-            use_authors_costs: settings?.use_authors_costs ?? false,
-            ppk_employee_rate: (settings?.ppk_enrolled && settings?.ppk_employee_rate)
-              ? settings.ppk_employee_rate / 100
-              : 0,
+            use_authors_costs: profile.use_authors_costs,
+            ppk_employee_rate: profile.ppk_employee_rate,
+            kup_type: values.kup_type || undefined,
           }),
         });
         if (taxRes.ok) {
@@ -942,12 +1096,14 @@ export default function IncomePage() {
             description: changeRateItem.description,
             amount: values.newAmount,
             date: effectiveDateStr,
-            end_date: null,
+            end_date: values.hasEndDate ? (values.endDate || null) : null,
             is_recurring: true,
             // Preserve employment details from original income
             employment_type: changeRateItem.employment_type || null,
             gross_amount: changeRateItem.is_gross ? values.newAmount : (changeRateItem.gross_amount || null),
             is_gross: changeRateItem.is_gross || false,
+            kup_type: changeRateItem.kup_type || null,
+            owner: changeRateItem.owner || null,
           }),
         },
       );
@@ -1001,14 +1157,13 @@ export default function IncomePage() {
             <FormattedMessage id="income.subtitle" />
           </p>
         </div>
-        <Button onClick={handleOpenCreate}>
-          <Plus className="mr-2 h-4 w-4" />
-          <FormattedMessage id="income.actions.add" />
-        </Button>
+        {activeTab === "transactions" && (
+          <Button onClick={handleOpenCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            <FormattedMessage id="income.actions.add" />
+          </Button>
+        )}
       </div>
-
-      {/* Chart */}
-      <IncomeChart incomes={incomes} />
 
       {apiError && (
         <Card className="border-destructive/50 bg-destructive/10 text-destructive">
@@ -1017,6 +1172,34 @@ export default function IncomePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="transactions">
+            <FormattedMessage id="income.tabs.transactions" />
+          </TabsTrigger>
+          <TabsTrigger value="budget">
+            <FormattedMessage id="income.tabs.budget" />
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="transactions">
+
+      {/* Month navigation bar */}
+      <div className="flex justify-center mb-4">
+        <MonthBar
+          selectedMonth={selectedMonth}
+          onMonthSelect={setSelectedMonth}
+          disabledMonths={futureDisabledMonths}
+        />
+      </div>
+
+      {/* Budget vs Actual chart */}
+      <IncomeBudgetChart
+        incomes={incomes}
+        selectedMonth={`${new Date().getFullYear()}-${String(selectedMonth).padStart(2, "0")}`}
+      />
 
       <Card className="rounded-3xl border border-muted/60 bg-card shadow-sm">
         <CardHeader className="rounded-t-3xl border-b border-muted/40 bg-muted/20 py-5">
@@ -1045,7 +1228,7 @@ export default function IncomePage() {
                   <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
                     {renderSortableHead("date", "income.table.date")}
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wide text-muted-foreground">
+                  <TableHead className="text-center text-xs uppercase tracking-wide text-muted-foreground">
                     <FormattedMessage id="income.table.recurring" />
                   </TableHead>
                   <TableHead className="text-right text-xs uppercase tracking-wide text-muted-foreground">
@@ -1058,7 +1241,8 @@ export default function IncomePage() {
                   const mainIncome = group.current || group.historical[0];
                   if (!mainIncome) return null;
 
-                  const hasHistory = group.historical.length > 0;
+                  const expandableHistory = group.historical.filter(h => h.id !== mainIncome.id);
+                  const hasHistory = expandableHistory.length > 0;
                   const isExpanded = expandedGroups.has(group.key);
 
                   const getIcon = (category: string) => {
@@ -1066,11 +1250,12 @@ export default function IncomePage() {
                     if (category === "freelance") return <ArrowUpRight className="h-4 w-4" aria-hidden="true" />;
                     if (category === "investments") return <LineChart className="h-4 w-4" aria-hidden="true" />;
                     if (category === "rental") return <Home className="h-4 w-4" aria-hidden="true" />;
+                    if (category === "benefits") return <Heart className="h-4 w-4" aria-hidden="true" />;
                     return <ArrowDownRight className="h-4 w-4" aria-hidden="true" />;
                   };
 
                   const renderIncomeRow = (income: Income, isMain: boolean) => {
-                    const isHistorical = !!income.end_date;
+                    const isHistorical = !!income.end_date && new Date(income.end_date) < new Date();
                     return (
                       <TableRow
                         key={income.id}
@@ -1116,9 +1301,9 @@ export default function IncomePage() {
                                       onClick={() => toggleGroupExpanded(group.key)}
                                       className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"
                                     >
-                                      📜 {group.historical.length} {intl.formatMessage({
-                                        id: group.historical.length === 1 ? "common.historyCount.one" : "common.historyCount.many",
-                                        defaultMessage: group.historical.length === 1 ? "change" : "changes"
+                                      📜 {expandableHistory.length} {intl.formatMessage({
+                                        id: expandableHistory.length === 1 ? "common.historyCount.one" : "common.historyCount.many",
+                                        defaultMessage: expandableHistory.length === 1 ? "change" : "changes"
                                       })}
                                     </button>
                                   )}
@@ -1132,10 +1317,40 @@ export default function IncomePage() {
                           </div>
                         </TableCell>
                         <TableCell className={cn("text-sm", isHistorical ? "text-slate-500" : "text-slate-600")}>
-                          {income.description}
+                          <div className="flex items-center gap-2">
+                            {settings?.include_partner_finances && !["investments", "rental", "benefits"].includes(income.category) && income.owner === "partner" ? (
+                              <span className="group relative shrink-0">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-[11px] font-bold text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                                  {(settings?.partner_name || "P")[0].toUpperCase()}
+                                </span>
+                                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                                  {settings?.partner_name || intl.formatMessage({ id: "income.form.ownerOptions.partnerDefault" })}
+                                </span>
+                              </span>
+                            ) : settings?.include_partner_finances && !["investments", "rental", "benefits"].includes(income.category) && (!income.owner || income.owner === "self") ? (
+                              <span className="group relative shrink-0">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700 dark:bg-sky-900 dark:text-sky-300">
+                                  {(session?.user?.name || "?")[0].toUpperCase()}
+                                </span>
+                                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                                  {session?.user?.name || intl.formatMessage({ id: "income.form.ownerOptions.self" })}
+                                </span>
+                              </span>
+                            ) : settings?.include_partner_finances && ["investments", "rental", "benefits"].includes(income.category) ? (
+                              <span className="group relative shrink-0">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                                  <Link2 className="h-3.5 w-3.5" />
+                                </span>
+                                <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                                  {intl.formatMessage({ id: "income.form.ownerOptions.shared" })}
+                                </span>
+                              </span>
+                            ) : null}
+                            <span>{income.description}</span>
+                          </div>
                         </TableCell>
                         <TableCell className={cn(
-                          "text-right text-base font-semibold",
+                          "text-right text-sm font-semibold",
                           isHistorical ? "text-slate-500" : "text-emerald-700"
                         )}>
                           + {formatCurrency(income.amount)}
@@ -1156,21 +1371,18 @@ export default function IncomePage() {
                             </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-center">
                           {isHistorical ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">
-                              📁
-                              <FormattedMessage id="common.historical" />
+                            <span className="inline-flex items-center justify-center rounded-full bg-slate-100 p-1 text-slate-500">
+                              <Archive className="h-3.5 w-3.5" />
                             </span>
                           ) : income.is_recurring ? (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                              🟢
-                              <FormattedMessage id="common.recurring" />
+                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 p-1 text-emerald-700">
+                              <Check className="h-3.5 w-3.5" />
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                              ⚪️
-                              <FormattedMessage id="common.oneOff" />
+                            <span className="inline-flex items-center justify-center rounded-full bg-slate-100 p-1 text-slate-500">
+                              <Minus className="h-3.5 w-3.5" />
                             </span>
                           )}
                         </TableCell>
@@ -1217,8 +1429,8 @@ export default function IncomePage() {
                   return (
                     <React.Fragment key={group.key}>
                       {renderIncomeRow(mainIncome, true)}
-                      {isExpanded && group.historical.map((histIncome) => (
-                        histIncome.id !== mainIncome.id && renderIncomeRow(histIncome, false)
+                      {isExpanded && expandableHistory.map((histIncome) => (
+                        renderIncomeRow(histIncome, false)
                       ))}
                     </React.Fragment>
                   );
@@ -1232,7 +1444,7 @@ export default function IncomePage() {
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   <FormattedMessage id="income.summaryTotals.recurring" />
                 </p>
-                <p className="text-lg font-semibold text-emerald-700">
+                <p className="text-sm font-semibold text-emerald-700">
                   {formatCurrency(totalsByFrequency.recurring)}
                 </p>
               </div>
@@ -1240,7 +1452,7 @@ export default function IncomePage() {
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   <FormattedMessage id="income.summaryTotals.oneOff" />
                 </p>
-                <p className="text-lg font-semibold text-slate-600">
+                <p className="text-sm font-semibold text-slate-600">
                   {formatCurrency(totalsByFrequency.oneOff)}
                 </p>
               </div>
@@ -1248,7 +1460,7 @@ export default function IncomePage() {
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   <FormattedMessage id="income.summaryTotals.total" />
                 </p>
-                <p className="text-lg font-semibold text-emerald-800">
+                <p className="text-sm font-semibold text-emerald-800">
                   {formatCurrency(totalsByFrequency.total)}
                 </p>
               </div>
@@ -1267,6 +1479,20 @@ export default function IncomePage() {
         <Plus className="mr-2 h-5 w-5" />
         <FormattedMessage id="income.actions.add" />
       </Button>
+        </TabsContent>
+
+        <TabsContent value="budget">
+          <div className="space-y-6">
+            <IncomeChart
+              incomes={incomes}
+              selectedMonth={`${new Date().getFullYear()}-${String(budgetMonth).padStart(2, "0")}`}
+              onMonthSelect={handleBudgetChartMonthSelect}
+              compact
+            />
+            <BudgetView month={budgetMonth} onMonthChange={setBudgetMonth} showTypes={["income"]} />
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <CrudDialog
         open={dialogOpen}
@@ -1309,24 +1535,27 @@ export default function IncomePage() {
         isLoading={isDeleting}
       />
 
-      <CrudDialog
-        open={changeRateOpen}
-        mode="create"
-        onOpenChange={handleChangeRateClose}
-        titleId="changeRate.dialog.title"
-        descriptionId="changeRate.dialog.description"
-        submitLabelId="changeRate.dialog.submit"
-        schema={changeRateSchema}
-        defaultValues={changeRateDefaultValues}
-        initialValues={
-          changeRateItem
-            ? { newAmount: changeRateItem.amount, effectiveDate: todayISO }
-            : undefined
-        }
-        fields={changeRateFieldConfig}
-        onSubmit={handleChangeRate}
-        isSubmitting={isChangingRate}
-      />
+      {changeRateOpen && changeRateItem && (
+        <CrudDialog
+          key={changeRateItem.id}
+          open={changeRateOpen}
+          mode="create"
+          onOpenChange={handleChangeRateClose}
+          titleId="changeRate.dialog.title"
+          descriptionId="changeRate.dialog.description"
+          submitLabelId="changeRate.dialog.submit"
+          schema={changeRateSchema}
+          defaultValues={{
+            newAmount: changeRateItem.amount,
+            effectiveDate: todayISO,
+            hasEndDate: !!changeRateItem.end_date,
+            endDate: changeRateItem.end_date ? changeRateItem.end_date.slice(0, 10) : null,
+          }}
+          fields={changeRateFieldConfig}
+          onSubmit={handleChangeRate}
+          isSubmitting={isChangingRate}
+        />
+      )}
     </div>
   );
 }

@@ -58,9 +58,6 @@ export const CurrencyInput = React.forwardRef<
       }
     }, [locale, currency]);
 
-    const [displayValue, setDisplayValue] = React.useState('');
-    const isFocusedRef = React.useRef(false);
-
     const numberFormatter = React.useMemo(
       () =>
         new Intl.NumberFormat(locale, {
@@ -96,6 +93,13 @@ export const CurrencyInput = React.forwardRef<
       },
       [numberFormatter]
     );
+
+    // Initialize displayValue from value prop so the first render shows
+    // the correct formatted number — no effect timing issues.
+    const [displayValue, setDisplayValue] = React.useState(() =>
+      value == null ? '' : formatNumberForDisplay(value)
+    );
+    const isFocusedRef = React.useRef(false);
 
     const parseLocalizedNumber = React.useCallback(
       (input: string) => {
@@ -134,12 +138,12 @@ export const CurrencyInput = React.forwardRef<
       [allowNegative, separators.decimal, separators.group]
     );
 
-    React.useEffect(() => {
+    React.useLayoutEffect(() => {
       if (isFocusedRef.current) {
         return;
       }
 
-      if (!value) {
+      if (value == null) {
         setDisplayValue('');
         return;
       }
@@ -158,7 +162,7 @@ export const CurrencyInput = React.forwardRef<
     const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
       isFocusedRef.current = false;
 
-      if (!value) {
+      if (value == null) {
         setDisplayValue('');
       } else {
         setDisplayValue(formatNumberForDisplay(value));

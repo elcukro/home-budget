@@ -103,6 +103,12 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       // Billing endpoints require user_id as a query parameter
       const response = await fetch(`${API_BASE_URL}/billing/status?user_id=${encodeURIComponent(session.user.email)}`);
 
+      if (response.status === 404) {
+        // New user — no subscription yet
+        setSubscription(defaultStatus);
+        setError(null);
+        return;
+      }
       if (!response.ok) {
         throw new Error('Failed to fetch subscription status');
       }
@@ -128,6 +134,10 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       // Billing endpoints require user_id as a query parameter
       const response = await fetch(`${API_BASE_URL}/billing/usage?user_id=${encodeURIComponent(session.user.email)}`);
 
+      if (response.status === 404) {
+        // New user — no usage data yet
+        return;
+      }
       if (!response.ok) {
         throw new Error('Failed to fetch usage stats');
       }

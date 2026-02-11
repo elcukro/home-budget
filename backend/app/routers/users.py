@@ -53,6 +53,20 @@ class SettingsBase(BaseModel):
     ppk_employee_rate: float | None = None    # PPK employee contribution (0.5% - 4%)
     ppk_employer_rate: float | None = None    # PPK employer contribution (1.5% - 4%)
     children_count: int | None = 0            # For child tax relief calculation
+    # Life data from onboarding
+    marital_status: str | None = None
+    housing_type: str | None = None
+    children_age_range: str | None = None
+    include_partner_finances: bool | None = None
+    # Partner tax profile
+    partner_name: str | None = None
+    partner_employment_status: str | None = None
+    partner_tax_form: str | None = None
+    partner_birth_year: int | None = None
+    partner_use_authors_costs: bool | None = False
+    partner_ppk_enrolled: bool | None = None
+    partner_ppk_employee_rate: float | None = None
+    partner_ppk_employer_rate: float | None = None
     # Onboarding status
     onboarding_completed: bool | None = False
     onboarding_completed_at: datetime | None = None

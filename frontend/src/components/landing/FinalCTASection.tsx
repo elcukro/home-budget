@@ -29,7 +29,7 @@ const FloatingIcon = ({
 
 export default function FinalCTASection() {
   return (
-    <section className="py-24 relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+    <section className="pt-10 pb-24 relative overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-amber-50">
       {/* Floating icons */}
       <FloatingIcon Icon={Sparkles} className="top-[15%] left-[10%]" delay={0} />
       <FloatingIcon Icon={Flame} className="top-[20%] right-[15%]" delay={1.5} />
@@ -62,12 +62,19 @@ export default function FinalCTASection() {
           </Button>
         </Link>
 
-        <p className="text-emerald-600/50 text-sm mb-12">
-          7 dni Premium gratis • Bez karty kredytowej • Anuluj kiedy chcesz
-        </p>
+        <div className="max-w-xl mx-auto text-center space-y-2 mb-12">
+          <p className="text-sm text-emerald-600/70">
+            7 dni Premium gratis • Bez karty kredytowej • Anuluj kiedy chcesz
+          </p>
+          <p className="text-xs text-emerald-600/50 leading-relaxed">
+            Przez 7 dni testujesz pełną wersję Premium bez ograniczeń.
+            Po tym czasie wybierz płatny plan lub kontynuuj za darmo — z limitem wydatków,
+            kredytów, celów oszczędnościowych i źródeł przychodów, bez importu z banku i analizy AI.
+          </p>
+        </div>
 
         {/* Trust Badges */}
-        <div className="flex flex-wrap items-center justify-center gap-8">
+        <div className="flex flex-wrap items-center justify-center gap-8 mb-8">
           {trustBadges.map(({ icon: Icon, label }) => (
             <div
               key={label}
@@ -78,6 +85,11 @@ export default function FinalCTASection() {
             </div>
           ))}
         </div>
+
+        {/* Disclaimer */}
+        <p className="text-xs text-emerald-600/40 max-w-lg mx-auto">
+          Prezentowane kalkulacje mają charakter poglądowy i nie stanowią doradztwa finansowego.
+        </p>
       </div>
 
       {/* CSS for floating animation */}

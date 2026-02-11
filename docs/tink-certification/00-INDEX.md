@@ -1,7 +1,7 @@
 # Tink Production Certification Documentation Package
 
 **Application:** FiredUp
-**Company:** FiredUp Łukasz Górski
+**Company:** LORA Julita Felsztukier
 **Prepared:** February 2026
 **Version:** 1.0
 
@@ -80,8 +80,9 @@ This documentation package has been prepared to support FiredUp's application fo
 - Website: https://firedup.app
 
 **Technical Contact:**
-- Łukasz Górski
+- Łukasz Felsztukier
 - Email: privacy@firedup.app
+- Phone: +48 664 952 859
 
 ---
 

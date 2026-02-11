@@ -133,6 +133,19 @@ export default function HouseholdCostEstimator({
     includePartner: currentIncludePartner,
   });
 
+  // Sync from parent data whenever dialog opens
+  const handleOpenChange = useCallback((isOpen: boolean) => {
+    if (isOpen) {
+      setInputs((prev) => ({
+        ...prev,
+        housingType: currentHousingType,
+        childrenCount: currentChildrenCount,
+        includePartner: currentIncludePartner,
+      }));
+    }
+    setOpen(isOpen);
+  }, [currentHousingType, currentChildrenCount, currentIncludePartner]);
+
   const estimate = useMemo(() => calculateEstimate(inputs), [inputs]);
 
   const handleApply = useCallback(() => {
@@ -145,7 +158,7 @@ export default function HouseholdCostEstimator({
   const isValid = inputs.citySize && inputs.housingType;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           type="button"

@@ -97,6 +97,17 @@ interface UserSettings {
   ppk_employee_rate?: number | null;
   ppk_employer_rate?: number | null;
   children_count?: number;
+  // Life data
+  include_partner_finances?: boolean;
+  // Partner tax profile
+  partner_name?: string | null;
+  partner_employment_status?: string | null;
+  partner_tax_form?: string | null;
+  partner_birth_year?: number | null;
+  partner_use_authors_costs?: boolean;
+  partner_ppk_enrolled?: boolean | null;
+  partner_ppk_employee_rate?: number | null;
+  partner_ppk_employer_rate?: number | null;
   // Onboarding status
   onboarding_completed?: boolean;
   onboarding_completed_at?: string | null;
@@ -126,6 +137,23 @@ const employmentStatuses = [
   { code: "business", name: "settings.taxProfile.employmentStatuses.business" },
   { code: "unemployed", name: "settings.taxProfile.employmentStatuses.unemployed" },
 ];
+
+// Auto-select tax form based on employment status (Polish tax rules)
+const defaultTaxFormForStatus: Record<string, string> = {
+  employee: "scale",    // UoP → skala podatkowa (12%/32%)
+  b2b: "linear",        // JDG → podatek liniowy (19%)
+  business: "linear",   // Firma → liniowy domyślnie
+  contract: "scale",    // Zlecenie → skala
+  freelancer: "scale",  // Freelancer → skala
+  unemployed: "",
+};
+
+// PPK is only available for UoP employees
+const hasPpk = (status: string | null | undefined) => status === "employee";
+
+// KUP 50% applies to UoP, zlecenie, dzieło — NOT B2B/JDG
+const hasAuthorsCosts = (status: string | null | undefined) =>
+  ["employee", "contract", "freelancer"].includes(status ?? "");
 
 const taxForms = [
   { code: "scale", name: "settings.taxProfile.taxForms.scale" },
@@ -181,6 +209,8 @@ export default function SettingsPage() {
   const [tinkConnecting, setTinkConnecting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [shouldClearBeforeImport, setShouldClearBeforeImport] = useState<boolean>(false);
+  const [importing, setImporting] = useState(false);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
   const [onboardingModeDialogOpen, setOnboardingModeDialogOpen] = useState(false);
   const [onboardingBackups, setOnboardingBackups] = useState<Array<{
     id: number;
@@ -202,7 +232,7 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/settings`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/settings`,
         {
           headers: { Accept: "application/json" },
         },
@@ -434,6 +464,16 @@ export default function SettingsPage() {
         ppk_employee_rate: settings.ppk_employee_rate ?? undefined,
         ppk_employer_rate: settings.ppk_employer_rate ?? undefined,
         children_count: settings.children_count ?? undefined,
+        // Partner profile
+        include_partner_finances: settings.include_partner_finances ?? undefined,
+        partner_name: settings.partner_name ?? undefined,
+        partner_employment_status: settings.partner_employment_status ?? undefined,
+        partner_tax_form: settings.partner_tax_form ?? undefined,
+        partner_birth_year: settings.partner_birth_year ?? undefined,
+        partner_use_authors_costs: settings.partner_use_authors_costs ?? undefined,
+        partner_ppk_enrolled: settings.partner_ppk_enrolled ?? undefined,
+        partner_ppk_employee_rate: settings.partner_ppk_employee_rate ?? undefined,
+        partner_ppk_employer_rate: settings.partner_ppk_employer_rate ?? undefined,
       });
       toast({
         title: intl.formatMessage({ id: "settings.messages.success" }),
@@ -474,6 +514,16 @@ export default function SettingsPage() {
         ppk_employee_rate: settings.ppk_employee_rate ?? undefined,
         ppk_employer_rate: settings.ppk_employer_rate ?? undefined,
         children_count: settings.children_count ?? undefined,
+        // Partner profile
+        include_partner_finances: settings.include_partner_finances ?? undefined,
+        partner_name: settings.partner_name ?? undefined,
+        partner_employment_status: settings.partner_employment_status ?? undefined,
+        partner_tax_form: settings.partner_tax_form ?? undefined,
+        partner_birth_year: settings.partner_birth_year ?? undefined,
+        partner_use_authors_costs: settings.partner_use_authors_costs ?? undefined,
+        partner_ppk_enrolled: settings.partner_ppk_enrolled ?? undefined,
+        partner_ppk_employee_rate: settings.partner_ppk_employee_rate ?? undefined,
+        partner_ppk_employer_rate: settings.partner_ppk_employer_rate ?? undefined,
       });
 
       toast({
@@ -501,7 +551,7 @@ export default function SettingsPage() {
       // For JSON exports, also save a backup on the server
       const saveParam = format === "json" && saveBackup ? "&save_backup=true" : "";
       const response = await fetch(
-        `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/export/?format=${format}${saveParam}`,
+        `/api/backend/users/${encodeURIComponent(userEmail)}/export?format=${format}${saveParam}`,
       );
 
       if (!response.ok) {
@@ -596,26 +646,21 @@ export default function SettingsPage() {
     }
   };
 
-  const handleImport = async () => {
+  const handleImport = async (confirmed = false) => {
     if (!importFile) {
       return;
     }
 
+    // If clearing existing data, require confirmation first
+    if (shouldClearBeforeImport && !confirmed) {
+      setShowImportConfirm(true);
+      return;
+    }
+
+    setShowImportConfirm(false);
+
     try {
-      if (shouldClearBeforeImport) {
-        const confirmPrimary = window.confirm(
-          intl.formatMessage({ id: "settings.import.confirmClearPrimary" }),
-        );
-        if (!confirmPrimary) {
-          return;
-        }
-        const confirmSecondary = window.confirm(
-          intl.formatMessage({ id: "settings.import.confirmClearSecondary" }),
-        );
-        if (!confirmSecondary) {
-          return;
-        }
-      }
+      setImporting(true);
 
       const fileContent = await importFile.text();
       const payload = JSON.parse(fileContent);
@@ -632,24 +677,36 @@ export default function SettingsPage() {
       });
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        throw new Error(errorText || response.statusText);
       }
-
-      toast({
-        title: intl.formatMessage({ id: 'settings.messages.importSuccess' }),
-      });
       setImportFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
       setShouldClearBeforeImport(false);
-      void fetchSettings();
+      // Refresh settings without triggering loading state (which unmounts UI and kills toast)
+      try {
+        const settingsRes = await fetch(
+          `/api/backend/users/${encodeURIComponent(userEmail!)}/settings`,
+          { headers: { Accept: "application/json" } },
+        );
+        if (settingsRes.ok) {
+          setSettings(await settingsRes.json());
+        }
+      } catch { /* ignore, toast is more important */ }
+      toast({
+        title: intl.formatMessage({ id: 'settings.messages.importSuccess' }),
+      });
     } catch (err) {
       logger.error("[Settings] Import failed", err);
       toast({
         title: intl.formatMessage({ id: 'settings.messages.importError' }),
+        description: err instanceof Error ? err.message : String(err),
         variant: 'destructive',
       });
+    } finally {
+      setImporting(false);
     }
   };
   if (loading) {
@@ -984,6 +1041,231 @@ export default function SettingsPage() {
                       }
                     />
                   </div>
+
+                  {/* Partner Budgeting Toggle */}
+                  <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="include_partner_finances">
+                        {intl.formatMessage({ id: "settings.taxProfile.includePartner" })}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.taxProfile.includePartnerHint" })}
+                      </p>
+                    </div>
+                    <Switch
+                      id="include_partner_finances"
+                      checked={settings.include_partner_finances ?? false}
+                      onCheckedChange={(checked) =>
+                        setSettings((prev) =>
+                          prev && { ...prev, include_partner_finances: checked }
+                        )
+                      }
+                    />
+                  </div>
+
+                  {/* Partner Tax Profile Section */}
+                  {settings.include_partner_finances && (
+                    <div className="space-y-4 rounded-lg border p-4 bg-muted/30">
+                      <h4 className="font-medium">
+                        {intl.formatMessage({ id: "settings.taxProfile.partnerSection" })}
+                      </h4>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="partner_name">
+                          {intl.formatMessage({ id: "settings.taxProfile.partnerName" })}
+                        </Label>
+                        <Input
+                          id="partner_name"
+                          value={settings.partner_name ?? ""}
+                          onChange={(event) =>
+                            setSettings((prev) =>
+                              prev && { ...prev, partner_name: event.target.value || null }
+                            )
+                          }
+                          placeholder="np. Julita"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {intl.formatMessage({ id: "settings.taxProfile.partnerNameHint" })}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-6 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="partner_employment_status">
+                            {intl.formatMessage({ id: "settings.taxProfile.incomeSource" })}
+                          </Label>
+                          <Select
+                            value={settings.partner_employment_status ?? ""}
+                            onValueChange={(value) => {
+                              const taxForm = defaultTaxFormForStatus[value] ?? "";
+                              setSettings((prev) => prev && {
+                                ...prev,
+                                partner_employment_status: value || null,
+                                partner_tax_form: taxForm || null,
+                                // Reset PPK if not UoP
+                                ...(!hasPpk(value) ? { partner_ppk_enrolled: null, partner_ppk_employee_rate: null, partner_ppk_employer_rate: null } : {}),
+                                // Reset author's costs if not applicable
+                                ...(!hasAuthorsCosts(value) ? { partner_use_authors_costs: false } : {}),
+                              });
+                            }}
+                          >
+                            <SelectTrigger id="partner_employment_status">
+                              <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectIncomeSource" })} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {employmentStatuses.filter(s => s.code !== "unemployed").map((status) => (
+                                <SelectItem key={status.code} value={status.code}>
+                                  {intl.formatMessage({ id: status.name })}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="partner_tax_form">
+                            {intl.formatMessage({ id: "settings.taxProfile.taxForm" })}
+                          </Label>
+                          <Select
+                            value={settings.partner_tax_form ?? ""}
+                            onValueChange={(value) =>
+                              setSettings((prev) => prev && { ...prev, partner_tax_form: value || null })
+                            }
+                          >
+                            <SelectTrigger id="partner_tax_form">
+                              <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectTaxForm" })} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {taxForms.map((form) => (
+                                <SelectItem key={form.code} value={form.code}>
+                                  {intl.formatMessage({ id: form.name })}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="partner_birth_year">
+                          {intl.formatMessage({ id: "settings.taxProfile.birthYear" })}
+                        </Label>
+                        <Input
+                          id="partner_birth_year"
+                          type="number"
+                          min={1940}
+                          max={new Date().getFullYear()}
+                          value={settings.partner_birth_year ?? ""}
+                          onChange={(event) =>
+                            setSettings((prev) =>
+                              prev && {
+                                ...prev,
+                                partner_birth_year: event.target.value ? Number(event.target.value) : null,
+                              }
+                            )
+                          }
+                          placeholder="np. 1992"
+                        />
+                      </div>
+
+                      {/* Partner Author's Costs — only for UoP/zlecenie/dzieło */}
+                      {hasAuthorsCosts(settings.partner_employment_status) && (
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label htmlFor="partner_use_authors_costs">
+                              {intl.formatMessage({ id: "settings.taxProfile.authorsCosts" })}
+                            </Label>
+                            <p className="text-xs text-muted-foreground">
+                              {intl.formatMessage({ id: "settings.taxProfile.authorsCostsHint" })}
+                            </p>
+                          </div>
+                          <Switch
+                            id="partner_use_authors_costs"
+                            checked={settings.partner_use_authors_costs ?? false}
+                            onCheckedChange={(checked) =>
+                              setSettings((prev) =>
+                                prev && { ...prev, partner_use_authors_costs: checked }
+                              )
+                            }
+                          />
+                        </div>
+                      )}
+
+                      {/* Partner PPK — only for UoP employees */}
+                      {hasPpk(settings.partner_employment_status) && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="space-y-0.5">
+                              <Label htmlFor="partner_ppk_enrolled">
+                                {intl.formatMessage({ id: "settings.taxProfile.ppkEnrolled" })}
+                              </Label>
+                            </div>
+                            <Select
+                              value={settings.partner_ppk_enrolled === true ? "yes" : settings.partner_ppk_enrolled === false ? "no" : "unknown"}
+                              onValueChange={(value) =>
+                                setSettings((prev) => prev && {
+                                  ...prev,
+                                  partner_ppk_enrolled: value === "yes" ? true : value === "no" ? false : null
+                                })
+                              }
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unknown">{intl.formatMessage({ id: "settings.taxProfile.ppkUnknown" })}</SelectItem>
+                                <SelectItem value="yes">{intl.formatMessage({ id: "settings.taxProfile.ppkYes" })}</SelectItem>
+                                <SelectItem value="no">{intl.formatMessage({ id: "settings.taxProfile.ppkNo" })}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {settings.partner_ppk_enrolled === true && (
+                            <div className="grid gap-4 md:grid-cols-2 pt-2">
+                              <div className="space-y-2">
+                                <Label htmlFor="partner_ppk_employee_rate">
+                                  {intl.formatMessage({ id: "settings.taxProfile.ppkEmployeeRate" })}
+                                </Label>
+                                <Input
+                                  id="partner_ppk_employee_rate"
+                                  type="number"
+                                  min={0.5}
+                                  max={4}
+                                  step={0.5}
+                                  value={settings.partner_ppk_employee_rate ?? 2}
+                                  onChange={(event) =>
+                                    setSettings((prev) =>
+                                      prev && { ...prev, partner_ppk_employee_rate: Number(event.target.value) }
+                                    )
+                                  }
+                                />
+                                <p className="text-xs text-muted-foreground">0.5% - 4%</p>
+                              </div>
+                              <div className="space-y-2">
+                                <Label htmlFor="partner_ppk_employer_rate">
+                                  {intl.formatMessage({ id: "settings.taxProfile.ppkEmployerRate" })}
+                                </Label>
+                                <Input
+                                  id="partner_ppk_employer_rate"
+                                  type="number"
+                                  min={1.5}
+                                  max={4}
+                                  step={0.5}
+                                  value={settings.partner_ppk_employer_rate ?? 1.5}
+                                  onChange={(event) =>
+                                    setSettings((prev) =>
+                                      prev && { ...prev, partner_ppk_employer_rate: Number(event.target.value) }
+                                    )
+                                  }
+                                />
+                                <p className="text-xs text-muted-foreground">1.5% - 4%</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <Button type="submit">
@@ -1396,20 +1678,51 @@ export default function SettingsPage() {
                       {intl.formatMessage({ id: "settings.import.clearExistingLabel" })}
                     </Label>
                   </div>
-                  <div className="flex gap-2">
-                    <Button disabled={!importFile} onClick={() => void handleImport()}>
-                      {intl.formatMessage({ id: "settings.import.upload" })}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setImportFile(null);
-                        if (fileInputRef.current) fileInputRef.current.value = "";
-                      }}
-                    >
-                      {intl.formatMessage({ id: "common.cancel" })}
-                    </Button>
-                  </div>
+                  {showImportConfirm ? (
+                    <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <FontAwesomeIcon icon={faTriangleExclamation} className="h-4 w-4" />
+                        <p className="font-medium text-sm">
+                          {intl.formatMessage({ id: "settings.import.confirmClearPrimary" })}
+                        </p>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {intl.formatMessage({ id: "settings.import.confirmClearSecondary" })}
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          disabled={importing}
+                          onClick={() => void handleImport(true)}
+                        >
+                          {importing
+                            ? intl.formatMessage({ id: "settings.messages.loading" })
+                            : intl.formatMessage({ id: "settings.import.upload" })}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowImportConfirm(false)}
+                        >
+                          {intl.formatMessage({ id: "common.cancel" })}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button disabled={!importFile || importing} onClick={() => void handleImport()}>
+                        {importing ? intl.formatMessage({ id: "settings.messages.loading" }) : intl.formatMessage({ id: "settings.import.upload" })}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setImportFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                      >
+                        {intl.formatMessage({ id: "common.cancel" })}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -2,10 +2,10 @@
 
 import { signIn, useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
-import Link from "next/link";
 import { Flame, TrendingUp, PiggyBank, Wallet, Sparkles, AlertCircle } from "lucide-react";
+import LegalOverlay from "@/components/landing/LegalOverlay";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 
@@ -31,22 +31,25 @@ export default function SignIn() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const intl = useIntl();
-  const callbackUrl = searchParams?.get("callbackUrl") || "/welcome";
   const error = searchParams?.get("error");
+  const [legalOverlay, setLegalOverlay] = useState<'privacy' | 'terms' | null>(null);
 
+  // Redirect authenticated users based on onboarding status
   useEffect(() => {
     if (session?.user) {
-      logger.debug('[auth][debug] Redirecting authenticated user to:', callbackUrl);
-      router.replace(callbackUrl);
+      const isFirstLogin = session.user.isFirstLogin ?? true;
+      const targetUrl = searchParams?.get("callbackUrl") || (isFirstLogin ? "/welcome" : "/dashboard");
+
+      logger.debug('[auth][debug] Redirecting authenticated user to:', targetUrl, '(isFirstLogin:', isFirstLogin, ')');
+      router.replace(targetUrl);
     }
-  }, [session, router, callbackUrl]);
+  }, [session, router, searchParams]);
 
   const handleSignIn = async () => {
     logger.debug('[auth][debug] Initiating Google sign-in...');
     try {
-      await signIn("google", {
-        callbackUrl,
-      });
+      // Don't pass callbackUrl - let it redirect back here, then useEffect handles it
+      await signIn("google");
     } catch (error) {
       logger.error('[auth][error] Sign-in error:', error);
     }
@@ -144,20 +147,21 @@ export default function SignIn() {
           {/* Terms and Privacy */}
           <p className="mt-6 text-center text-sm text-emerald-600/70">
             {intl.formatMessage({ id: 'auth.termsPrefix' })}{' '}
-            <Link
-              href="/terms"
+            <button
+              onClick={() => setLegalOverlay('terms')}
               className="text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
             >
               {intl.formatMessage({ id: 'auth.termsOfService' })}
-            </Link>
+            </button>
             {' '}{intl.formatMessage({ id: 'auth.termsAnd' })}{' '}
-            <Link
-              href="/privacy"
+            <button
+              onClick={() => setLegalOverlay('privacy')}
               className="text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
             >
               {intl.formatMessage({ id: 'auth.privacyPolicy' })}
-            </Link>
+            </button>
           </p>
+
         </div>
 
         {/* Bottom decorative element */}
@@ -189,6 +193,14 @@ export default function SignIn() {
           animation: float 8s ease-in-out infinite;
         }
       `}</style>
+
+      {/* Legal Overlay - outside card container so it's not constrained */}
+      {legalOverlay && (
+        <LegalOverlay
+          type={legalOverlay}
+          onClose={() => setLegalOverlay(null)}
+        />
+      )}
     </div>
   );
 }
