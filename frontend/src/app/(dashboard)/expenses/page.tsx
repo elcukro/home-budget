@@ -433,6 +433,14 @@ export default function ExpensesPage() {
   }
   const [monthlyTotalsBreakdown, setMonthlyTotalsBreakdown] = useState<MonthlyTotalsBreakdown | null>(null);
 
+  // One-time bank integration notice (dismissed state)
+  const [bankNoticeDismissed, setBankNoticeDismissed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('expense-bank-notice-dismissed') === 'true';
+    }
+    return false;
+  });
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [activeExpense, setActiveExpense] = useState<Expense | null>(null);
@@ -1435,31 +1443,31 @@ export default function ExpensesPage() {
         </Card>
       )}
 
-      {/* Needs Review Alert */}
-      {monthlyTotalsBreakdown && monthlyTotalsBreakdown.breakdown.unreviewed_count > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
+      {/* One-time Bank Integration Notice */}
+      {monthlyTotalsBreakdown && monthlyTotalsBreakdown.breakdown.unreviewed_count > 0 && !bankNoticeDismissed && (
+        <Card className="mb-6 border-blue-200 bg-blue-50">
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-amber-900 mb-1">
-                  {intl.formatMessage(
-                    { id: "expenses.needsReview.title" },
-                    { count: monthlyTotalsBreakdown.breakdown.unreviewed_count }
-                  )}
+                <p className="text-sm font-semibold text-blue-900 mb-2">
+                  {intl.formatMessage({ id: "expenses.bankNotice.title" })}
                 </p>
-                <p className="text-xs text-amber-700">
-                  {intl.formatMessage({ id: "expenses.needsReview.description" })}
+                <p className="text-sm text-blue-800 mb-3 leading-relaxed">
+                  {intl.formatMessage({ id: "expenses.bankNotice.message" })}
                 </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    localStorage.setItem('expense-bank-notice-dismissed', 'true');
+                    setBankNoticeDismissed(true);
+                  }}
+                  className="bg-white border-blue-300 text-blue-700 hover:bg-blue-100"
+                >
+                  {intl.formatMessage({ id: "expenses.bankNotice.dismiss" })}
+                </Button>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-300 bg-white hover:bg-amber-100 text-amber-900"
-                onClick={() => setSourceFilter("needs_review")}
-              >
-                {intl.formatMessage({ id: "expenses.needsReview.reviewButton" })}
-              </Button>
             </div>
           </CardContent>
         </Card>
