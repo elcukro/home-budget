@@ -1324,14 +1324,10 @@ export default function IncomePage() {
                 <p className="text-xs text-amber-700">
                   {intl.formatMessage({ id: "income.needsReview.description" })}
                 </p>
+                <p className="text-xs text-amber-600 mt-2 italic">
+                  {intl.formatMessage({ id: "income.needsReview.comingSoon" })}
+                </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-300 bg-white hover:bg-amber-100 text-amber-900"
-              >
-                {intl.formatMessage({ id: "income.needsReview.reviewButton" })}
-              </Button>
             </div>
           </CardContent>
         </Card>

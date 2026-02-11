@@ -1198,7 +1198,8 @@
     "needsReview": {
       "title": "{count, plural, one {# entry needs} other {# entries need}} review",
       "description": "These manual entries might be duplicates of bank transactions. Review them to ensure accurate totals.",
-      "reviewButton": "Review Now"
+      "reviewButton": "Review Now",
+      "comingSoon": "Reconciliation review UI coming in next update"
     }
   },
   "loans": {
