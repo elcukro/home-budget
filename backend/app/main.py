@@ -380,6 +380,9 @@ class ExpenseBase(BaseModel):
     is_recurring: bool = False
     date: date  # Start date (for recurring) or occurrence date (for one-off)
     end_date: date | None = None  # Optional end date for recurring items (null = forever)
+    source: str = "manual"  # "manual" or "bank_import"
+    bank_transaction_id: int | None = None  # Link to bank transaction if created from bank import
+    reconciliation_status: str = "unreviewed"  # For future reconciliation features
 
 class ExpenseCreate(ExpenseBase):
     pass
@@ -413,6 +416,9 @@ class IncomeBase(BaseModel):
     is_gross: bool = Field(default=False, description="Whether the entered amount was gross (true) or net (false)")
     kup_type: str | None = Field(default=None, description="KUP type: 'standard', 'author_50', 'none' (null = use global setting)")
     owner: str | None = Field(default=None, description="Income owner: 'self', 'partner' (null = 'self')")
+    source: str = "manual"  # "manual" or "bank_import"
+    bank_transaction_id: int | None = None  # Link to bank transaction if created from bank import
+    reconciliation_status: str = "unreviewed"  # For future reconciliation features
 
 class IncomeCreate(IncomeBase):
     pass
