@@ -977,6 +977,26 @@
       "title": "Usuń przychód",
       "description": "Czy na pewno chcesz usunąć ten przychód? Tego działania nie można cofnąć.",
       "confirm": "Usuń"
+    },
+    "filters": {
+      "source": {
+        "all": "Wszystkie",
+        "bank": "Bank",
+        "manual": "Ręczne",
+        "needs_review": "Wymaga weryfikacji"
+      }
+    },
+    "monthlyBreakdown": {
+      "title": "Podział na źródła",
+      "fromBank": "Z banku",
+      "manualEntries": "Ręczne wpisy",
+      "totalActual": "Suma rzeczywista",
+      "duplicatesExcluded": "{count, plural, one {# duplikat wykluczony} few {# duplikaty wykluczone} other {# duplikatów wykluczonych}}"
+    },
+    "needsReview": {
+      "title": "{count, plural, one {# wpis wymaga} other {# wpisów wymaga}} weryfikacji",
+      "description": "Te ręczne wpisy mogą być duplikatami transakcji bankowych. Sprawdź je, aby zapewnić dokładne podsumowanie.",
+      "reviewButton": "Sprawdź teraz"
     }
   },
   "expenses": {
@@ -1054,6 +1074,12 @@
         "all": "Wszystkie",
         "recurring": "Cykliczne",
         "oneoff": "Jednorazowe"
+      },
+      "source": {
+        "all": "Wszystkie",
+        "bank": "Bank",
+        "manual": "Ręczne",
+        "needs_review": "Wymaga weryfikacji"
       }
     },
     "timeline": {
@@ -1113,6 +1139,18 @@
       "healthcare": "Zdrowie, leki oraz profilaktyka.",
       "entertainment": "Rozrywka, hobby i przyjemności.",
       "other": "Pozostałe wydatki, których nie da się łatwo przypisać."
+    },
+    "monthlyBreakdown": {
+      "title": "Podział na źródła",
+      "fromBank": "Z banku",
+      "manualEntries": "Ręczne wpisy",
+      "totalActual": "Suma rzeczywista",
+      "duplicatesExcluded": "{count, plural, one {# duplikat wykluczony} few {# duplikaty wykluczone} other {# duplikatów wykluczonych}}"
+    },
+    "needsReview": {
+      "title": "{count, plural, one {# wpis wymaga} other {# wpisów wymaga}} weryfikacji",
+      "description": "Te ręczne wpisy mogą być duplikatami transakcji bankowych. Sprawdź je, aby zapewnić dokładne podsumowanie.",
+      "reviewButton": "Sprawdź teraz"
     }
   },
   "loans": {

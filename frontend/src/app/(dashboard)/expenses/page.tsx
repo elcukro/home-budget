@@ -8,6 +8,8 @@ import { z } from "zod";
 import type { LucideIcon } from "lucide-react";
 import {
   Archive,
+  AlertCircle,
+  Building2,
   Car,
   Check,
   ChevronDown,
@@ -73,6 +75,12 @@ interface Expense {
   end_date: string | null;  // Optional end date for recurring items
   is_recurring: boolean;
   created_at: string;
+  // Reconciliation fields
+  source?: "manual" | "bank_import";
+  bank_transaction_id?: number | null;
+  reconciliation_status?: "unreviewed" | "bank_backed" | "manual_confirmed" | "duplicate_of_bank" | "pre_bank_era";
+  reconciliation_note?: string | null;
+  reconciliation_reviewed_at?: string | null;
 }
 
 // Use Next.js API proxy for all backend calls (adds auth headers automatically)
@@ -228,6 +236,41 @@ const DEFAULT_CATEGORY_META: {
   descriptionId: "expenses.hints.other",
 };
 
+// SourceBadge component - shows if expense is from bank or manual
+interface SourceBadgeProps {
+  expense: Expense;
+}
+
+function SourceBadge({ expense }: SourceBadgeProps) {
+  // Bank-backed expense (created from bank transaction)
+  if (expense.bank_transaction_id) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
+        <Building2 className="h-3 w-3" />
+        Bank
+      </span>
+    );
+  }
+
+  // Manual expense that needs review
+  if (expense.reconciliation_status === "unreviewed") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
+        <AlertCircle className="h-3 w-3" />
+        Needs Review
+      </span>
+    );
+  }
+
+  // Manual expense (confirmed or pre-bank era)
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
+      <Pencil className="h-3 w-3" />
+      Manual
+    </span>
+  );
+}
+
 const expenseFieldConfig: FormFieldConfig<ExpenseFormValues>[] = [
   {
     name: "category",
@@ -375,6 +418,21 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  // Monthly totals breakdown (bank + manual)
+  interface MonthlyTotalsBreakdown {
+    month: string;
+    total: number;
+    from_bank: number;
+    from_manual: number;
+    breakdown: {
+      bank_count: number;
+      manual_count: number;
+      duplicate_count: number;
+      unreviewed_count: number;
+    };
+  }
+  const [monthlyTotalsBreakdown, setMonthlyTotalsBreakdown] = useState<MonthlyTotalsBreakdown | null>(null);
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [activeExpense, setActiveExpense] = useState<Expense | null>(null);
@@ -398,6 +456,7 @@ export default function ExpensesPage() {
 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [recurringFilter, setRecurringFilter] = useState<"all" | "recurring" | "oneoff">("all");
+  const [sourceFilter, setSourceFilter] = useState<"all" | "bank" | "manual" | "needs_review">("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
 
   // Budget tab: month for BudgetView (1-12), synced from ExpenseChart clicks
@@ -530,6 +589,39 @@ export default function ExpensesPage() {
     void loadExpenses();
   }, [userEmail, intl]);
 
+  // Load monthly totals breakdown when selectedMonth changes
+  useEffect(() => {
+    const loadMonthlyTotals = async () => {
+      if (!userEmail || selectedMonth === "all") {
+        setMonthlyTotalsBreakdown(null);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/backend/users/${encodeURIComponent(userEmail)}/expenses/monthly?month=${selectedMonth}&include_bank=true`,
+          {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          },
+        );
+
+        if (!response.ok) {
+          // If endpoint doesn't exist yet, silently fail (backward compatibility)
+          setMonthlyTotalsBreakdown(null);
+          return;
+        }
+
+        const data: MonthlyTotalsBreakdown = await response.json();
+        setMonthlyTotalsBreakdown(data);
+      } catch (error) {
+        logger.error("[Expenses] Failed to load monthly totals", error);
+        setMonthlyTotalsBreakdown(null);
+      }
+    };
+
+    void loadMonthlyTotals();
+  }, [userEmail, selectedMonth]);
 
   // Helper to check if expense is active in selected month
   const isExpenseActiveInMonth = (expense: Expense, monthKey: string): boolean => {
@@ -556,15 +648,31 @@ export default function ExpensesPage() {
     }
   };
 
-  // Filter expenses by selected month and recurring filter
+  // Filter expenses by selected month, recurring filter, and source filter
   const expensesForDisplay = useMemo(() => {
     return expenses.filter((expense) => {
+      // Month filter
       if (!isExpenseActiveInMonth(expense, selectedMonth)) return false;
-      if (recurringFilter === "recurring") return expense.is_recurring;
-      if (recurringFilter === "oneoff") return !expense.is_recurring;
+
+      // Recurring filter
+      if (recurringFilter === "recurring") {
+        if (!expense.is_recurring) return false;
+      } else if (recurringFilter === "oneoff") {
+        if (expense.is_recurring) return false;
+      }
+
+      // Source filter
+      if (sourceFilter === "bank") {
+        if (!expense.bank_transaction_id) return false;
+      } else if (sourceFilter === "manual") {
+        if (expense.bank_transaction_id) return false;
+      } else if (sourceFilter === "needs_review") {
+        if (expense.bank_transaction_id || expense.reconciliation_status !== "unreviewed") return false;
+      }
+
       return true;
     });
-  }, [expenses, recurringFilter, selectedMonth]);
+  }, [expenses, recurringFilter, sourceFilter, selectedMonth]);
 
   const expensesByCategory = useMemo(() => {
     const grouped = expensesForDisplay.reduce<Record<string, { items: Expense[]; total: number; activeTotal: number }>>(
@@ -1250,7 +1358,112 @@ export default function ExpensesPage() {
             </option>
           </select>
         </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <label htmlFor="expenses-filter-source" className="text-xs uppercase tracking-wide">
+            Source
+          </label>
+          <select
+            id="expenses-filter-source"
+            value={sourceFilter}
+            onChange={(event) => setSourceFilter(event.target.value as typeof sourceFilter)}
+            className="rounded-md border border-muted bg-card px-2 py-1 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option value="all">
+              {intl.formatMessage({ id: "expenses.filters.source.all" })}
+            </option>
+            <option value="bank">
+              {intl.formatMessage({ id: "expenses.filters.source.bank" })}
+            </option>
+            <option value="manual">
+              {intl.formatMessage({ id: "expenses.filters.source.manual" })}
+            </option>
+            <option value="needs_review">
+              {intl.formatMessage({ id: "expenses.filters.source.needs_review" })}
+            </option>
+          </select>
+        </div>
       </div>
+
+      {/* Monthly totals breakdown (bank + manual) */}
+      {monthlyTotalsBreakdown && (
+        <Card className="border-emerald-200 bg-emerald-50/30">
+          <CardContent className="pt-6">
+            <h3 className="text-sm font-semibold text-slate-700 mb-4">
+              {intl.formatMessage({
+                id: "expenses.monthlyBreakdown.title",
+                defaultMessage: "Monthly Breakdown"
+              })}
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-600 flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-emerald-600" />
+                  {intl.formatMessage({ id: "expenses.monthlyBreakdown.fromBank" })} ({monthlyTotalsBreakdown.breakdown.bank_count})
+                </span>
+                <span className="text-sm font-semibold text-emerald-700">
+                  {formatCurrency(monthlyTotalsBreakdown.from_bank)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-600 flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-slate-600" />
+                  {intl.formatMessage({ id: "expenses.monthlyBreakdown.manualEntries" })} ({monthlyTotalsBreakdown.breakdown.manual_count})
+                </span>
+                <span className="text-sm font-semibold text-slate-700">
+                  {formatCurrency(monthlyTotalsBreakdown.from_manual)}
+                </span>
+              </div>
+              <div className="h-px bg-slate-200" />
+              <div className="flex justify-between items-center">
+                <span className="text-base font-bold text-slate-900">
+                  {intl.formatMessage({ id: "expenses.monthlyBreakdown.totalActual" })}
+                </span>
+                <span className="text-base font-bold text-rose-600">
+                  {formatCurrency(monthlyTotalsBreakdown.total)}
+                </span>
+              </div>
+              {monthlyTotalsBreakdown.breakdown.duplicate_count > 0 && (
+                <p className="text-xs text-slate-500 italic">
+                  {intl.formatMessage(
+                    { id: "expenses.monthlyBreakdown.duplicatesExcluded" },
+                    { count: monthlyTotalsBreakdown.breakdown.duplicate_count }
+                  )}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Needs Review Alert */}
+      {monthlyTotalsBreakdown && monthlyTotalsBreakdown.breakdown.unreviewed_count > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900 mb-1">
+                  {intl.formatMessage(
+                    { id: "expenses.needsReview.title" },
+                    { count: monthlyTotalsBreakdown.breakdown.unreviewed_count }
+                  )}
+                </p>
+                <p className="text-xs text-amber-700">
+                  {intl.formatMessage({ id: "expenses.needsReview.description" })}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-300 bg-white hover:bg-amber-100 text-amber-900"
+                onClick={() => setSourceFilter("needs_review")}
+              >
+                {intl.formatMessage({ id: "expenses.needsReview.reviewButton" })}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {apiError && (
         <Card className="border-destructive/50 bg-destructive/10 text-destructive">
@@ -1431,10 +1644,13 @@ export default function ExpensesPage() {
                                           └─
                                         </span>
                                       ) : null}
-                                      <div className="flex flex-col">
-                                        <span className={cn(!isMain && "text-slate-500 text-xs")}>
-                                          {isMain ? expense.description : intl.formatMessage({ id: "common.historical" })}
-                                        </span>
+                                      <div className="flex flex-col gap-1.5">
+                                        <div className="flex items-center gap-2">
+                                          <span className={cn(!isMain && "text-slate-500 text-xs")}>
+                                            {isMain ? expense.description : intl.formatMessage({ id: "common.historical" })}
+                                          </span>
+                                          {isMain && <SourceBadge expense={expense} />}
+                                        </div>
                                         {isMain && hasHistory && (
                                           <button
                                             type="button"

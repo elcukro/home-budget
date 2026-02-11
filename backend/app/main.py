@@ -16,7 +16,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget, reconciliation
 from datetime import timezone
 from .routers.stripe_billing import TRIAL_DAYS
 from .database import engine, Base
@@ -27,6 +27,7 @@ import httpx
 from .logging_utils import make_conditional_print
 from .services.subscription_service import SubscriptionService
 from .services.gamification_service import GamificationService
+from .services.monthly_totals_service import MonthlyTotalsService
 from .services.scheduler_service import (
     initialize_scheduler,
     start_scheduler,
@@ -273,6 +274,8 @@ app.include_router(gamification.router, prefix="/internal-api")
 app.include_router(admin.router)
 # Budget planning (annual budgets from onboarding)
 app.include_router(budget.router)
+# Reconciliation (bank/manual transaction deduplication)
+app.include_router(reconciliation.router)
 
 # Loan models
 VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]
@@ -1128,50 +1131,68 @@ def delete_expense(
 @app.get("/users/{user_id}/expenses/monthly")
 def get_monthly_expenses(
     user_id: str,
+    month: Optional[str] = None,  # Format: YYYY-MM (e.g., "2026-02")
+    include_bank: bool = True,
     current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
-    """Get total monthly recurring expenses for the authenticated user (for Baby Step 3 calculation)."""
+    """
+    Get monthly expenses with bank/manual breakdown.
+
+    Combines bank-backed and manual entries, excludes duplicates.
+    If month not specified, uses current month.
+
+    Returns:
+        - total: Combined total (bank + manual, after deduplication)
+        - from_bank: Total from bank transactions
+        - from_manual: Total from manual entries (deduplicated)
+        - breakdown: Detailed counts
+        - month: YYYY-MM format
+    """
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Getting monthly expenses for user: {current_user.id}")
-        today = datetime.now()
-        month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        print(f"[FastAPI] Getting monthly expenses for user: {current_user.id}, month: {month}")
 
-        # Non-recurring expenses in current month
-        non_recurring = db.query(func.sum(models.Expense.amount)).filter(
-            models.Expense.user_id == current_user.id,
-            models.Expense.is_recurring == False,
-            models.Expense.date >= month_start,
-            models.Expense.date <= month_end
-        ).scalar() or 0
+        # Parse month parameter or use current month
+        if month:
+            try:
+                year, month_num = map(int, month.split('-'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+        else:
+            today = datetime.now()
+            year = today.year
+            month_num = today.month
+            month = today.strftime("%Y-%m")
 
-        # Recurring expenses active in current month
-        recurring = db.query(func.sum(models.Expense.amount)).filter(
-            models.Expense.user_id == current_user.id,
-            models.Expense.is_recurring == True,
-            models.Expense.date <= month_end,  # Started before or during this month
-            or_(
-                models.Expense.end_date == None,  # No end date (ongoing)
-                models.Expense.end_date >= month_start  # Or end_date is this month or later
-            )
-        ).scalar() or 0
+        # Use MonthlyTotalsService for deduplication logic
+        totals = MonthlyTotalsService.calculate_monthly_expenses(
+            user_id=current_user.id,
+            year=year,
+            month=month_num,
+            db=db
+        )
 
-        total_monthly = non_recurring + recurring
-        print(f"[FastAPI] Monthly expenses: non_recurring={non_recurring}, recurring={recurring}, total={total_monthly}")
+        print(f"[FastAPI] Monthly expenses: total={totals['total']}, from_bank={totals['from_bank']}, from_manual={totals['from_manual']}")
 
         return {
-            "total": float(total_monthly),
-            "non_recurring": float(non_recurring),
-            "recurring": float(recurring),
-            "month": month_start.strftime("%Y-%m")
+            "month": month,
+            "total": float(totals["total"]),
+            "from_bank": float(totals["from_bank"]),
+            "from_manual": float(totals["from_manual"]),
+            "breakdown": {
+                "bank_count": totals["bank_count"],
+                "manual_count": totals["manual_count"],
+                "duplicate_count": totals["duplicate_count"],
+                "unreviewed_count": totals["unreviewed_count"]
+            }
         }
     except HTTPException:
         raise
     except Exception as e:
         print(f"[FastAPI] Error in get_monthly_expenses: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 # Income endpoints
@@ -1295,6 +1316,73 @@ def delete_income(
         raise
     except Exception as e:
         print(f"[FastAPI] Error in delete_income: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/users/{user_id}/income/monthly")
+def get_monthly_income(
+    user_id: str,
+    month: Optional[str] = None,  # Format: YYYY-MM (e.g., "2026-02")
+    include_bank: bool = True,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db)
+):
+    """
+    Get monthly income with bank/manual breakdown.
+
+    Combines bank-backed and manual entries, excludes duplicates.
+    If month not specified, uses current month.
+
+    Returns:
+        - total: Combined total (bank + manual, after deduplication)
+        - from_bank: Total from bank transactions
+        - from_manual: Total from manual entries (deduplicated)
+        - breakdown: Detailed counts
+        - month: YYYY-MM format
+    """
+    validate_user_access(user_id, current_user)
+
+    try:
+        print(f"[FastAPI] Getting monthly income for user: {current_user.id}, month: {month}")
+
+        # Parse month parameter or use current month
+        if month:
+            try:
+                year, month_num = map(int, month.split('-'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM")
+        else:
+            today = datetime.now()
+            year = today.year
+            month_num = today.month
+            month = today.strftime("%Y-%m")
+
+        # Use MonthlyTotalsService for deduplication logic
+        totals = MonthlyTotalsService.calculate_monthly_income(
+            user_id=current_user.id,
+            year=year,
+            month=month_num,
+            db=db
+        )
+
+        print(f"[FastAPI] Monthly income: total={totals['total']}, from_bank={totals['from_bank']}, from_manual={totals['from_manual']}")
+
+        return {
+            "month": month,
+            "total": float(totals["total"]),
+            "from_bank": float(totals["from_bank"]),
+            "from_manual": float(totals["from_manual"]),
+            "breakdown": {
+                "bank_count": totals["bank_count"],
+                "manual_count": totals["manual_count"],
+                "duplicate_count": totals["duplicate_count"],
+                "unreviewed_count": totals["unreviewed_count"]
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[FastAPI] Error in get_monthly_income: {str(e)}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 # ── Tax calculation (stateless utility, no auth required) ──────────────────────
