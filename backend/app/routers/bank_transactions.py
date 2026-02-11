@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, date
 from typing import List, Optional
 from pydantic import BaseModel
 from enum import Enum
+import os
 
 # Rate limiting
 from slowapi import Limiter
@@ -249,9 +250,12 @@ async def sync_transactions(
             merchant_name = merchant_info.get("merchantName")
             merchant_category_code = merchant_info.get("merchantCategoryCode")
 
-            # Parse Tink categories
-            categories = tx.get("categories", {})
-            pfm_category = categories.get("pfm", {})
+            # Parse Tink categories - check enriched_data first (enrichment API), fallback to categories (basic API)
+            enriched_categories = tx.get("enrichedData", {}).get("categories", {}) or tx.get("enriched_data", {}).get("categories", {})
+            basic_categories = tx.get("categories", {})
+
+            # Prefer enriched data, fallback to basic
+            pfm_category = enriched_categories.get("pfm", {}) or basic_categories.get("pfm", {})
             tink_category_id = pfm_category.get("id")
             tink_category_name = pfm_category.get("name")
 
@@ -427,15 +431,28 @@ async def categorize_transactions(
     # Rate limit: 100 categorizations per hour per user (AI categorization, compute-intensive)
     limiter = get_limiter(http_request)
     await limiter.check("100/hour", http_request)
-    # Get API key from user settings
+
+    # Get API key from user settings, fallback to environment variable
     settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
-    if not settings or not settings.ai or not settings.ai.get("apiKey"):
+    api_key = None
+
+    # Priority 1: User's own API key from settings
+    if settings and settings.ai and settings.ai.get("apiKey"):
+        api_key = settings.ai["apiKey"]
+        logger.info(f"Using user-configured API key for categorization (user {current_user.id})")
+
+    # Priority 2: Environment variable (for sandbox/development)
+    if not api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            logger.info(f"Using environment OPENAI_API_KEY for categorization (user {current_user.id})")
+
+    # If still no API key, raise error
+    if not api_key:
         raise HTTPException(
             status_code=400,
-            detail="AI API key not configured. Please add your Anthropic API key in Settings."
+            detail="AI API key not configured. Please add your OpenAI API key in Settings or configure OPENAI_API_KEY environment variable."
         )
-
-    api_key = settings.ai["apiKey"]
 
     # Get transactions to categorize
     query = db.query(BankTransaction).filter(

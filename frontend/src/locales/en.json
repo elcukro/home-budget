@@ -248,6 +248,12 @@
     "categorize": "Categorize AI",
     "categorizing": "Categorizing...",
     "allCategorized": "All categorized",
+    "categorization": {
+      "cta": {
+        "title": "Run AI to see category breakdown",
+        "description": "AI will analyze transaction descriptions and automatically assign categories. This will show you a detailed spending breakdown."
+      }
+    },
     "categorizeModal": {
       "title": "AI Categorization",
       "step1": "Preparing transactions...",
@@ -299,7 +305,20 @@
       "error": "Error adding to budget"
     },
     "filters": {
-      "search": "Search transactions..."
+      "search": "Search transactions...",
+      "category": "Category",
+      "type": "Type",
+      "period": "Period",
+      "allCategories": "All categories",
+      "allTypes": "All types",
+      "expenses": "Expenses",
+      "income": "Income",
+      "allTime": "All time",
+      "lastWeek": "Last week",
+      "lastMonth": "Last month",
+      "lastQuarter": "Last quarter",
+      "lastYear": "Last year",
+      "clearAll": "Clear filters"
     },
     "convert": {
       "asExpense": "As expense",

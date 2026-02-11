@@ -58,6 +58,7 @@ import { useToast } from "@/hooks/use-toast";
 import { TablePageSkeleton } from "@/components/LoadingSkeleton";
 import { useSettings } from "@/contexts/SettingsContext";
 import Link from "next/link";
+import { mapTinkCategoryToApp } from "@/lib/tink-category-mapping";
 
 // API calls now go through Next.js proxy at /api/backend/* which adds auth headers
 
@@ -199,6 +200,11 @@ export default function BankTransactionsPage() {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [sortField, setSortField] = useState<"date" | "category" | "amount">("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Filters
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
+  const [periodFilter, setPeriodFilter] = useState<"week" | "month" | "quarter" | "year" | "all">("all");
 
   // Add to budget modal
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -363,8 +369,8 @@ export default function BankTransactionsPage() {
     // Identify patterns (recurring small purchases)
     const patterns: SpendingPattern[] = [];
 
-    // Coffee shops pattern
-    const coffeeKeywords = ["caff", "coffee", "starbucks", "costa", "nero", "kawa"];
+    // Coffee shops pattern (Polish + English keywords)
+    const coffeeKeywords = ["caff", "coffee", "starbucks", "costa", "nero", "kawa", "kawiar", "cafe"];
     const coffeeSpending = Object.entries(merchantGroups)
       .filter(([key]) => coffeeKeywords.some((kw) => key.includes(kw)))
       .reduce((sum, [, data]) => ({ count: sum.count + data.count, total: sum.total + data.total }), { count: 0, total: 0 });
@@ -380,8 +386,8 @@ export default function BankTransactionsPage() {
       });
     }
 
-    // Food delivery pattern
-    const deliveryKeywords = ["pyszne", "uber eats", "glovo", "wolt", "bolt food", "takeaway"];
+    // Food delivery pattern (Polish + English keywords)
+    const deliveryKeywords = ["pyszne", "uber eats", "glovo", "wolt", "bolt food", "takeaway", "dostawa", "delivery"];
     const deliverySpending = Object.entries(merchantGroups)
       .filter(([key]) => deliveryKeywords.some((kw) => key.includes(kw)))
       .reduce((sum, [, data]) => ({ count: sum.count + data.count, total: sum.total + data.total }), { count: 0, total: 0 });
@@ -397,8 +403,8 @@ export default function BankTransactionsPage() {
       });
     }
 
-    // Restaurants pattern
-    const restaurantKeywords = ["restaur", "bar", "pub", "pizza", "kebab", "sushi"];
+    // Restaurants pattern (Polish + English keywords)
+    const restaurantKeywords = ["restaur", "bar", "pub", "pizza", "kebab", "sushi", "pizzeria", "lokal", "gastro"];
     const restaurantSpending = Object.entries(merchantGroups)
       .filter(([key]) => restaurantKeywords.some((kw) => key.includes(kw)))
       .reduce((sum, [, data]) => ({ count: sum.count + data.count, total: sum.total + data.total }), { count: 0, total: 0 });
@@ -417,10 +423,19 @@ export default function BankTransactionsPage() {
     // Large purchases (potential impulse buys)
     const largePurchases = expenses.filter((t) => Math.abs(t.amount) > 300);
 
-    // Category breakdown
+    // Category breakdown - use Tink categories with mapping, fallback to AI suggestions
     const categoryTotals: Record<string, { total: number; count: number }> = {};
     expenses.forEach((tx) => {
-      const cat = tx.tink_category_name?.split(".").pop() || tx.suggested_category || "other";
+      // Priority: AI suggested category > Mapped Tink category > other
+      let cat: string;
+      if (tx.suggested_category && tx.confidence_score && tx.confidence_score > 0.5) {
+        cat = tx.suggested_category;
+      } else if (tx.tink_category_name) {
+        cat = mapTinkCategoryToApp(tx.tink_category_name);
+      } else {
+        cat = "other";
+      }
+
       if (!categoryTotals[cat]) {
         categoryTotals[cat] = { total: 0, count: 0 };
       }
@@ -483,6 +498,48 @@ export default function BankTransactionsPage() {
       );
     }
 
+    // Filter by type (income/expense)
+    if (typeFilter !== "all") {
+      result = result.filter((tx) => {
+        if (typeFilter === "income") return tx.amount > 0;
+        if (typeFilter === "expense") return tx.amount < 0;
+        return true;
+      });
+    }
+
+    // Filter by category
+    if (categoryFilter !== "all") {
+      result = result.filter((tx) => {
+        const category = tx.suggested_category || mapTinkCategoryToApp(tx.tink_category_name);
+        return category === categoryFilter;
+      });
+    }
+
+    // Filter by period
+    if (periodFilter !== "all") {
+      const now = new Date();
+      const txDate = (tx: BankTransaction) => new Date(tx.date);
+
+      result = result.filter((tx) => {
+        const date = txDate(tx);
+        const diffMs = now.getTime() - date.getTime();
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+        switch (periodFilter) {
+          case "week":
+            return diffDays <= 7;
+          case "month":
+            return diffDays <= 30;
+          case "quarter":
+            return diffDays <= 90;
+          case "year":
+            return diffDays <= 365;
+          default:
+            return true;
+        }
+      });
+    }
+
     // Sort
     result.sort((a, b) => {
       let comparison = 0;
@@ -505,7 +562,7 @@ export default function BankTransactionsPage() {
     });
 
     return result.slice(0, showAllTransactions ? undefined : 20);
-  }, [transactions, searchQuery, showAllTransactions, sortField, sortDirection]);
+  }, [transactions, searchQuery, categoryFilter, typeFilter, periodFilter, showAllTransactions, sortField, sortDirection]);
 
   // Add to budget handler
   const openAddModal = (tx: BankTransaction) => {
@@ -633,6 +690,36 @@ export default function BankTransactionsPage() {
         </div>
       </div>
 
+      {/* AI Categorization Banner - show if not all categorized */}
+      {!allCategorized && transactions.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <SparklesIcon className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-900 mb-1">
+                  <FormattedMessage id="bankTransactions.categorization.cta.title" />
+                </h3>
+                <p className="text-sm text-blue-700 mb-3">
+                  <FormattedMessage id="bankTransactions.categorization.cta.description" />
+                </p>
+                <Button
+                  onClick={handleCategorize}
+                  disabled={categorizing}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <SparklesIcon className="h-4 w-4 mr-2" />
+                  <FormattedMessage id="bankTransactions.categorize" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -744,7 +831,11 @@ export default function BankTransactionsPage() {
                   <div className="p-1.5 bg-muted rounded">{cat.icon}</div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium capitalize">{cat.category}</span>
+                      <span className="text-sm font-medium">
+                        {categoryTranslationKeys[cat.category]
+                          ? intl.formatMessage({ id: categoryTranslationKeys[cat.category] })
+                          : cat.category}
+                      </span>
                       <span className="text-sm font-mono">{formatCurrency(cat.total)}</span>
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -810,18 +901,129 @@ export default function BankTransactionsPage() {
       {/* Transaction List */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex flex-col gap-3">
             <CardTitle className="text-lg">
               <FormattedMessage id="bankTransactions.list.title" />
             </CardTitle>
-            <div className="relative w-full sm:w-64">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-secondary" />
-              <Input
-                placeholder={intl.formatMessage({ id: "bankTransactions.filters.search" })}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
+
+            {/* Search + Filters Row */}
+            <div className="flex flex-wrap gap-2">
+              {/* Search Input */}
+              <div className="relative w-full sm:w-64">
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-secondary" />
+                <Input
+                  placeholder={intl.formatMessage({ id: "bankTransactions.filters.search" })}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+              {/* Category Filter */}
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder={intl.formatMessage({ id: "bankTransactions.filters.category" })} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <FormattedMessage id="bankTransactions.filters.allCategories" />
+                  </SelectItem>
+                  <SelectItem value="housing">
+                    <FormattedMessage id="expenses.categories.housing" />
+                  </SelectItem>
+                  <SelectItem value="transportation">
+                    <FormattedMessage id="expenses.categories.transportation" />
+                  </SelectItem>
+                  <SelectItem value="food">
+                    <FormattedMessage id="expenses.categories.food" />
+                  </SelectItem>
+                  <SelectItem value="utilities">
+                    <FormattedMessage id="expenses.categories.utilities" />
+                  </SelectItem>
+                  <SelectItem value="insurance">
+                    <FormattedMessage id="expenses.categories.insurance" />
+                  </SelectItem>
+                  <SelectItem value="healthcare">
+                    <FormattedMessage id="expenses.categories.healthcare" />
+                  </SelectItem>
+                  <SelectItem value="entertainment">
+                    <FormattedMessage id="expenses.categories.entertainment" />
+                  </SelectItem>
+                  <SelectItem value="salary">
+                    <FormattedMessage id="income.categories.salary" />
+                  </SelectItem>
+                  <SelectItem value="freelance">
+                    <FormattedMessage id="income.categories.freelance" />
+                  </SelectItem>
+                  <SelectItem value="investments">
+                    <FormattedMessage id="income.categories.investments" />
+                  </SelectItem>
+                  <SelectItem value="rental">
+                    <FormattedMessage id="income.categories.rental" />
+                  </SelectItem>
+                  <SelectItem value="other">
+                    <FormattedMessage id="expenses.categories.other" />
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Type Filter */}
+              <Select value={typeFilter} onValueChange={(val) => setTypeFilter(val as "all" | "income" | "expense")}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder={intl.formatMessage({ id: "bankTransactions.filters.type" })} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <FormattedMessage id="bankTransactions.filters.allTypes" />
+                  </SelectItem>
+                  <SelectItem value="expense">
+                    <FormattedMessage id="bankTransactions.filters.expenses" />
+                  </SelectItem>
+                  <SelectItem value="income">
+                    <FormattedMessage id="bankTransactions.filters.income" />
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Period Filter */}
+              <Select value={periodFilter} onValueChange={(val) => setPeriodFilter(val as any)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder={intl.formatMessage({ id: "bankTransactions.filters.period" })} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    <FormattedMessage id="bankTransactions.filters.allTime" />
+                  </SelectItem>
+                  <SelectItem value="week">
+                    <FormattedMessage id="bankTransactions.filters.lastWeek" />
+                  </SelectItem>
+                  <SelectItem value="month">
+                    <FormattedMessage id="bankTransactions.filters.lastMonth" />
+                  </SelectItem>
+                  <SelectItem value="quarter">
+                    <FormattedMessage id="bankTransactions.filters.lastQuarter" />
+                  </SelectItem>
+                  <SelectItem value="year">
+                    <FormattedMessage id="bankTransactions.filters.lastYear" />
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Clear Filters Button (only show if any filter is active) */}
+              {(categoryFilter !== "all" || typeFilter !== "all" || periodFilter !== "all" || searchQuery) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setCategoryFilter("all");
+                    setTypeFilter("all");
+                    setPeriodFilter("all");
+                    setSearchQuery("");
+                  }}
+                  className="text-xs"
+                >
+                  <FormattedMessage id="bankTransactions.filters.clearAll" />
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>

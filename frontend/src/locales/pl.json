@@ -249,7 +249,20 @@
       "error": "Błąd dodawania do budżetu"
     },
     "filters": {
-      "search": "Szukaj transakcji..."
+      "search": "Szukaj transakcji...",
+      "category": "Kategoria",
+      "type": "Typ",
+      "period": "Przedział",
+      "allCategories": "Wszystkie kategorie",
+      "allTypes": "Wszystkie typy",
+      "expenses": "Wydatki",
+      "income": "Wpływy",
+      "allTime": "Cały czas",
+      "lastWeek": "Ostatni tydzień",
+      "lastMonth": "Ostatni miesiąc",
+      "lastQuarter": "Ostatni kwartał",
+      "lastYear": "Ostatni rok",
+      "clearAll": "Wyczyść filtry"
     },
     "convert": {
       "asExpense": "Jako wydatek",
