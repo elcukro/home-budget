@@ -198,6 +198,12 @@
     "categorize": "Kategoryzuj AI",
     "categorizing": "Kategoryzuję...",
     "allCategorized": "Wszystko skategoryzowane",
+    "categorization": {
+      "cta": {
+        "title": "Uruchom AI, aby zobaczyć podział wg kategorii",
+        "description": "AI przeanalizuje opisy transakcji i automatycznie przypisze kategorie. Dzięki temu zobaczysz szczegółowy podział wydatków."
+      }
+    },
     "categorizeModal": {
       "title": "Kategoryzacja AI",
       "step1": "Przygotowywanie transakcji...",

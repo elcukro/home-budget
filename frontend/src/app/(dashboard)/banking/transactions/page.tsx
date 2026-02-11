@@ -709,7 +709,7 @@ export default function BankTransactionsPage() {
                   onClick={handleCategorize}
                   disabled={categorizing}
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-500 hover:bg-blue-600 text-white"
                 >
                   <SparklesIcon className="h-4 w-4 mr-2" />
                   <FormattedMessage id="bankTransactions.categorize" />
