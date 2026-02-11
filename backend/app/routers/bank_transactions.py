@@ -435,9 +435,10 @@ async def sync_transactions(
         # Check if it's a 401 Unauthorized (token expired)
         if "401" in str(e) or "Unauthorized" in str(e):
             error = token_expired_error()
+            return JSONResponse(status_code=401, content=error.model_dump())
         else:
             error = auth_failed_error()
-        return JSONResponse(status_code=500, content=error.model_dump())
+            return JSONResponse(status_code=403, content=error.model_dump())
     except Exception as e:
         logger.error(f"Error syncing transactions: {str(e)}")
         # Audit sync failure
@@ -453,8 +454,14 @@ async def sync_transactions(
             result="failure",
             request=http_request,
         )
-        error = internal_error(str(e))
-        return JSONResponse(status_code=500, content=error.model_dump())
+        # Check if it's a token expiration error
+        error_str = str(e).lower()
+        if "token expired" in error_str or "refresh token" in error_str:
+            error = token_expired_error()
+            return JSONResponse(status_code=401, content=error.model_dump())
+        else:
+            error = internal_error(str(e))
+            return JSONResponse(status_code=500, content=error.model_dump())
 
 
 @router.post("/categorize", response_model=CategorizeResponse)

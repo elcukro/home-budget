@@ -270,6 +270,11 @@
       "lastYear": "Ostatni rok",
       "clearAll": "Wyczyść filtry"
     },
+    "tokenExpired": {
+      "title": "Połączenie z bankiem wygasło",
+      "description": "Token dostępu do banku wygasł. Połącz się ponownie z bankiem, aby kontynuować synchronizację transakcji.",
+      "reconnect": "Połącz ponownie"
+    },
     "convert": {
       "asExpense": "Jako wydatek",
       "asIncome": "Jako przychód",
