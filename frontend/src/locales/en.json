@@ -320,6 +320,11 @@
       "lastYear": "Last year",
       "clearAll": "Clear filters"
     },
+    "tokenExpired": {
+      "title": "Bank Connection Expired",
+      "description": "Your bank access token has expired. Please reconnect your bank to continue syncing transactions.",
+      "reconnect": "Reconnect Bank"
+    },
     "convert": {
       "asExpense": "As expense",
       "asIncome": "As income",

@@ -85,6 +85,7 @@ interface TinkConnection {
   id: number;
   is_active: boolean;
   last_sync_at: string | null;
+  token_expires_at: string | null;
 }
 
 interface SpendingPattern {
@@ -630,6 +631,11 @@ export default function BankTransactionsPage() {
     }
   };
 
+  // Check if token is expired
+  const isTokenExpired = connection?.token_expires_at
+    ? new Date(connection.token_expires_at) < new Date()
+    : false;
+
   if (loading || sessionStatus === "loading") {
     return <TablePageSkeleton />;
   }
@@ -695,7 +701,7 @@ export default function BankTransactionsPage() {
               </span>
             )}
           </div>
-          <Button onClick={handleSync} disabled={syncing}>
+          <Button onClick={handleSync} disabled={syncing || isTokenExpired}>
             <ArrowPathIcon className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
             {syncing ? (
               <FormattedMessage id="bankTransactions.syncing" />
@@ -705,6 +711,32 @@ export default function BankTransactionsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Token Expired Warning Banner */}
+      {isTokenExpired && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <ExclamationTriangleIcon className="h-5 w-5 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-amber-900 mb-1">
+                  <FormattedMessage id="bankTransactions.tokenExpired.title" />
+                </h3>
+                <p className="text-sm text-amber-700 mb-3">
+                  <FormattedMessage id="bankTransactions.tokenExpired.description" />
+                </p>
+                <Link href="/settings?tab=banking">
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                    <FormattedMessage id="bankTransactions.tokenExpired.reconnect" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* AI Categorization Banner - show if not all categorized */}
       {!allCategorized && transactions.length > 0 && (
