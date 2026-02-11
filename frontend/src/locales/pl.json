@@ -998,10 +998,10 @@
       "totalActual": "Suma rzeczywista",
       "duplicatesExcluded": "{count, plural, one {# duplikat wykluczony} few {# duplikaty wykluczone} other {# duplikatów wykluczonych}}"
     },
-    "needsReview": {
-      "title": "{count, plural, one {# wpis wymaga} other {# wpisów wymaga}} weryfikacji",
-      "description": "Te ręczne wpisy mogą być duplikatami transakcji bankowych. Sprawdź je, aby zapewnić dokładne podsumowanie.",
-      "reviewButton": "Sprawdź teraz"
+    "bankNotice": {
+      "title": "Dodano integrację z bankiem",
+      "message": "Po dodaniu integracji z bankiem i pobraniu transakcji, niektóre wpisy mogą wymagać weryfikacji, aby uniknąć duplikatów. Przejrzyj wpisy i usuń te, które wprowadziłeś ręcznie, aby umożliwić nam śledzenie rzeczywistych danych. W dowolnym momencie możesz dodać ręcznie wpisy, które mogą brakować z bieżącego miesiąca (np. z powodu płatności gotówkowych lub innych przyczyn). To jednorazowe powiadomienie.",
+      "dismiss": "Rozumiem, zamknij"
     }
   },
   "expenses": {
