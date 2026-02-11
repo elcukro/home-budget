@@ -127,9 +127,31 @@ class Expense(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Reconciliation fields for bank/manual deduplication
+    reconciliation_status = Column(
+        String,
+        default="unreviewed",
+        nullable=False,
+        comment="unreviewed | bank_backed | manual_confirmed | duplicate_of_bank | pre_bank_era"
+    )
+    duplicate_bank_transaction_id = Column(
+        Integer,
+        ForeignKey("bank_transactions.id"),
+        nullable=True,
+        comment="If marked as duplicate, links to the bank transaction it duplicates"
+    )
+    reconciliation_note = Column(String, nullable=True)
+    reconciliation_reviewed_at = Column(DateTime(timezone=True), nullable=True)
+
     # Relationship
     user = relationship("User", back_populates="expenses")
     bank_transaction = relationship("BankTransaction", foreign_keys=[bank_transaction_id])
+    duplicate_bank_transaction = relationship("BankTransaction", foreign_keys=[duplicate_bank_transaction_id])
+
+    __table_args__ = (
+        Index('idx_expenses_reconciliation_status', 'reconciliation_status'),
+        Index('idx_expenses_source_status', 'source', 'reconciliation_status'),
+    )
 
 class Income(Base):
     __tablename__ = "income"
@@ -153,9 +175,31 @@ class Income(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Reconciliation fields for bank/manual deduplication
+    reconciliation_status = Column(
+        String,
+        default="unreviewed",
+        nullable=False,
+        comment="unreviewed | bank_backed | manual_confirmed | duplicate_of_bank | pre_bank_era"
+    )
+    duplicate_bank_transaction_id = Column(
+        Integer,
+        ForeignKey("bank_transactions.id"),
+        nullable=True,
+        comment="If marked as duplicate, links to the bank transaction it duplicates"
+    )
+    reconciliation_note = Column(String, nullable=True)
+    reconciliation_reviewed_at = Column(DateTime(timezone=True), nullable=True)
+
     # Relationship
     user = relationship("User", back_populates="income")
     bank_transaction = relationship("BankTransaction", foreign_keys=[bank_transaction_id])
+    duplicate_bank_transaction = relationship("BankTransaction", foreign_keys=[duplicate_bank_transaction_id])
+
+    __table_args__ = (
+        Index('idx_income_reconciliation_status', 'reconciliation_status'),
+        Index('idx_income_source_status', 'source', 'reconciliation_status'),
+    )
 
 class Settings(Base):
     __tablename__ = "settings"

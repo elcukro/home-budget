@@ -10,6 +10,7 @@ from ..schemas.budget import (
     BudgetFromOnboardingRequest,
 )
 from ..dependencies import get_current_user as get_authenticated_user
+from ..services.monthly_totals_service import MonthlyTotalsService
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +42,16 @@ def _get_budget_year(user_id: str, year: int, db: Session) -> models.BudgetYear:
     return budget_year
 
 
-def _compute_monthly_summaries(entries: list) -> List[MonthSummary]:
-    """Compute monthly summaries from a list of budget entries."""
+def _compute_monthly_summaries(budget_year: models.BudgetYear, entries: list, db: Session) -> List[MonthSummary]:
+    """
+    Compute monthly summaries from budget entries + actual data from Expense/Income tables.
+
+    Planned amounts come from BudgetEntry.planned_amount.
+    Actual amounts are calculated using MonthlyTotalsService (combines bank + manual, excludes duplicates).
+    """
     months = {}
+
+    # Step 1: Aggregate planned amounts from budget entries
     for entry in entries:
         m = entry.month
         if m not in months:
@@ -53,13 +61,38 @@ def _compute_monthly_summaries(entries: list) -> List[MonthSummary]:
 
         if entry.entry_type == "income":
             summary.planned_income += entry.planned_amount or 0
-            summary.actual_income += entry.actual_amount or 0
         elif entry.entry_type == "expense":
             summary.planned_expenses += entry.planned_amount or 0
-            summary.actual_expenses += entry.actual_amount or 0
         elif entry.entry_type == "loan_payment":
             summary.planned_loan_payments += entry.planned_amount or 0
-            summary.actual_loan_payments += entry.actual_amount or 0
+
+    # Step 2: Calculate ACTUAL amounts from Expense/Income tables using MonthlyTotalsService
+    # This replaces the manual entry.actual_amount with real data from bank + manual sources
+    for month_num in range(1, 13):
+        if month_num not in months:
+            months[month_num] = MonthSummary(month=month_num)
+
+        # Get actual expenses for this month (bank + manual, deduplicated)
+        expense_totals = MonthlyTotalsService.calculate_monthly_expenses(
+            user_id=budget_year.user_id,
+            year=budget_year.year,
+            month=month_num,
+            db=db
+        )
+
+        # Get actual income for this month (bank + manual, deduplicated)
+        income_totals = MonthlyTotalsService.calculate_monthly_income(
+            user_id=budget_year.user_id,
+            year=budget_year.year,
+            month=month_num,
+            db=db
+        )
+
+        months[month_num].actual_expenses = expense_totals["total"]
+        months[month_num].actual_income = income_totals["total"]
+
+        # TODO: Calculate actual_loan_payments from LoanPayment table
+        # For now, leave at 0 (would require similar service method)
 
     return sorted(months.values(), key=lambda s: s.month)
 
@@ -133,7 +166,7 @@ async def get_budget_year(
     ).all()
 
     response = BudgetYearResponse.model_validate(budget_year)
-    response.monthly_summaries = _compute_monthly_summaries(entries)
+    response.monthly_summaries = _compute_monthly_summaries(budget_year, entries, db)
     return response
 
 

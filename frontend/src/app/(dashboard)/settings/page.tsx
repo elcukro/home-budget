@@ -75,6 +75,7 @@ interface TinkConnection {
   is_active: boolean;
   last_sync_at: string | null;
   created_at: string;
+  token_expires_at: string | null;
   accounts: TinkAccount[];
 }
 
@@ -1456,19 +1457,47 @@ export default function SettingsPage() {
                         key={connection.id}
                         className="flex flex-col gap-2 rounded-lg border p-4"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-green-500" />
-                            <span className="font-medium">Connected</span>
-                          </div>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => void handleTinkDisconnect(connection.id)}
-                          >
-                            Disconnect
-                          </Button>
-                        </div>
+                        {(() => {
+                          const isExpired = connection.token_expires_at
+                            ? new Date(connection.token_expires_at) < new Date()
+                            : false;
+
+                          return (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-2 w-2 rounded-full ${isExpired ? 'bg-amber-500' : 'bg-green-500'}`} />
+                                  <span className="font-medium">
+                                    {isExpired ? 'Expired - Needs Reconnection' : 'Connected'}
+                                  </span>
+                                </div>
+                                {isExpired ? (
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => void handleTinkConnect()}
+                                    disabled={tinkConnecting}
+                                  >
+                                    {tinkConnecting ? 'Connecting...' : 'Reconnect'}
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => void handleTinkDisconnect(connection.id)}
+                                  >
+                                    Disconnect
+                                  </Button>
+                                )}
+                              </div>
+                              {isExpired && connection.token_expires_at && (
+                                <p className="text-xs text-amber-600">
+                                  Token expired: {new Date(connection.token_expires_at).toLocaleString()}
+                                </p>
+                              )}
+                            </>
+                          );
+                        })()}
                         {connection.accounts.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-medium text-muted-foreground mb-1">

@@ -64,6 +64,40 @@ class Subscription(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class BankTransaction(Base):
+    __tablename__ = "bank_transactions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"))
+    tink_transaction_id = Column(String, unique=True, nullable=False)
+    tink_account_id = Column(String, nullable=False)
+    provider_transaction_id = Column(String, nullable=True)
+    amount = Column(Float, nullable=False)
+    currency = Column(String, nullable=False, default="PLN")
+    date = Column(Date, nullable=False)
+    booked_datetime = Column(DateTime(timezone=True), nullable=True)
+    description_display = Column(String, nullable=False)
+    description_original = Column(String, nullable=True)
+    description_detailed = Column(String, nullable=True)
+    merchant_name = Column(String, nullable=True)
+    merchant_category_code = Column(String, nullable=True)
+    tink_category_id = Column(String, nullable=True)
+    tink_category_name = Column(String, nullable=True)
+    suggested_type = Column(String, nullable=True)
+    suggested_category = Column(String, nullable=True)
+    confidence_score = Column(Float, default=0.0)
+    status = Column(String, default="pending", nullable=False)
+    linked_income_id = Column(Integer, nullable=True)
+    linked_expense_id = Column(Integer, nullable=True)
+    raw_data = Column(JSON, nullable=True)
+    is_duplicate = Column(Boolean, default=False)
+    duplicate_of = Column(Integer, nullable=True)
+    duplicate_confidence = Column(Float, nullable=True)
+    duplicate_reason = Column(String, nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 class Expense(Base):
     __tablename__ = "expenses"
     id = Column(Integer, primary_key=True, index=True)
@@ -72,7 +106,17 @@ class Expense(Base):
     description = Column(String)
     amount = Column(Float)
     is_recurring = Column(Boolean, default=False)
+    date = Column(Date)
+    end_date = Column(Date, nullable=True)
+    source = Column(String, default="manual")
+    bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
+    # Reconciliation fields
+    reconciliation_status = Column(String, default="unreviewed", nullable=False)
+    duplicate_bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
+    reconciliation_note = Column(String, nullable=True)
+    reconciliation_reviewed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class Income(Base):
@@ -83,7 +127,23 @@ class Income(Base):
     description = Column(String)
     amount = Column(Float)
     is_recurring = Column(Boolean, default=False)
+    date = Column(Date)
+    end_date = Column(Date, nullable=True)
+    source = Column(String, default="manual")
+    bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
+    # Polish tax fields
+    employment_type = Column(String, nullable=True)
+    gross_amount = Column(Float, nullable=True)
+    is_gross = Column(Boolean, default=False)
+    kup_type = Column(String, nullable=True)
+    owner = Column(String, nullable=True)
+    # Reconciliation fields
+    reconciliation_status = Column(String, default="unreviewed", nullable=False)
+    duplicate_bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
+    reconciliation_note = Column(String, nullable=True)
+    reconciliation_reviewed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
 class Loan(Base):

@@ -98,6 +98,7 @@ class TinkConnectionResponse(BaseModel):
     is_active: bool
     last_sync_at: Optional[datetime] = None
     created_at: datetime
+    token_expires_at: Optional[datetime] = None
     accounts: List[AccountDetail] = []
 
     class Config:
@@ -322,6 +323,7 @@ async def get_connections(
                 is_active=conn.is_active,
                 last_sync_at=conn.last_sync_at,
                 created_at=conn.created_at,
+                token_expires_at=conn.token_expires_at,
                 accounts=accounts
             ))
 

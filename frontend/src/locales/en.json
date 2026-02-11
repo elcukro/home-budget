@@ -1020,6 +1020,26 @@
       "title": "Remove income entry",
       "description": "Are you sure you want to delete this income? This action cannot be undone.",
       "confirm": "Delete"
+    },
+    "filters": {
+      "source": {
+        "all": "All",
+        "bank": "Bank",
+        "manual": "Manual",
+        "needs_review": "Needs Review"
+      }
+    },
+    "monthlyBreakdown": {
+      "title": "Source Breakdown",
+      "fromBank": "From Bank",
+      "manualEntries": "Manual Entries",
+      "totalActual": "Total Actual",
+      "duplicatesExcluded": "{count, plural, one {# duplicate excluded} other {# duplicates excluded}}"
+    },
+    "needsReview": {
+      "title": "{count, plural, one {# entry needs} other {# entries need}} review",
+      "description": "These manual entries might be duplicates of bank transactions. Review them to ensure accurate totals.",
+      "reviewButton": "Review Now"
     }
   },
   "expenses": {
@@ -1097,6 +1117,12 @@
         "all": "All",
         "recurring": "Recurring",
         "oneoff": "One-off"
+      },
+      "source": {
+        "all": "All",
+        "bank": "Bank",
+        "manual": "Manual",
+        "needs_review": "Needs Review"
       }
     },
     "timeline": {
@@ -1155,7 +1181,19 @@
       "insurance": "Policies that protect your income and assets.",
       "healthcare": "Medical care and wellness costs.",
       "entertainment": "Fun money for experiences, media, and hobbies.",
-      "other": "Miscellaneous spending that doesn’t fit elsewhere."
+      "other": "Miscellaneous spending that doesn't fit elsewhere."
+    },
+    "monthlyBreakdown": {
+      "title": "Source Breakdown",
+      "fromBank": "From Bank",
+      "manualEntries": "Manual Entries",
+      "totalActual": "Total Actual",
+      "duplicatesExcluded": "{count, plural, one {# duplicate excluded} other {# duplicates excluded}}"
+    },
+    "needsReview": {
+      "title": "{count, plural, one {# entry needs} other {# entries need}} review",
+      "description": "These manual entries might be duplicates of bank transactions. Review them to ensure accurate totals.",
+      "reviewButton": "Review Now"
     }
   },
   "loans": {

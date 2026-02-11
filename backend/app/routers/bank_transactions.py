@@ -560,7 +560,68 @@ async def categorize_transactions(
 
     db.commit()
 
-    logger.info(f"Categorized {categorized_count}/{len(transactions)} transactions")
+    # Auto-convert categorized transactions to Expense/Income records
+    converted_count = 0
+    for tx in transactions:
+        if tx.id in results_map and tx.suggested_type and tx.suggested_category:
+            # Skip if already converted
+            if tx.status == "converted":
+                continue
+
+            result = results_map[tx.id]
+            amount = abs(tx.amount)
+
+            try:
+                if result.get("type") == "expense":
+                    # Create expense record
+                    new_expense = Expense(
+                        user_id=current_user.id,
+                        category=result.get("category"),
+                        description=tx.description_display,
+                        amount=amount,
+                        date=tx.date,
+                        is_recurring=False,
+                        source="bank_import",
+                        bank_transaction_id=tx.id,
+                        reconciliation_status="bank_backed"
+                    )
+                    db.add(new_expense)
+                    db.flush()
+
+                    tx.status = "converted"
+                    tx.linked_expense_id = new_expense.id
+                    tx.reviewed_at = datetime.now()
+                    converted_count += 1
+
+                elif result.get("type") == "income":
+                    # Create income record
+                    new_income = Income(
+                        user_id=current_user.id,
+                        category=result.get("category"),
+                        description=tx.description_display,
+                        amount=amount,
+                        date=tx.date,
+                        is_recurring=False,
+                        source="bank_import",
+                        bank_transaction_id=tx.id,
+                        reconciliation_status="bank_backed"
+                    )
+                    db.add(new_income)
+                    db.flush()
+
+                    tx.status = "converted"
+                    tx.linked_income_id = new_income.id
+                    tx.reviewed_at = datetime.now()
+                    converted_count += 1
+
+            except Exception as e:
+                logger.error(f"Failed to auto-convert transaction {tx.id}: {e}")
+                # Continue with other transactions even if one fails
+                continue
+
+    db.commit()
+
+    logger.info(f"Categorized {categorized_count}/{len(transactions)} transactions, auto-converted {converted_count} to Expense/Income")
 
     # Audit: AI categorization requested
     audit_categorization_requested(

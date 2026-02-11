@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { FormattedDate, FormattedMessage, useIntl } from "react-intl";
 import { z } from "zod";
 import {
+  AlertCircle,
   Archive,
   ArrowDownRight,
   ArrowUpRight,
@@ -39,6 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Separator } from "@/components/ui/separator";
 import IncomeChart from "@/components/charts/IncomeChart";
 import IncomeBudgetChart from "@/components/budget/IncomeBudgetChart";
 import MonthBar from "@/components/budget/MonthBar";
@@ -84,6 +86,12 @@ interface Income {
   kup_type?: string | null;  // "standard", "author_50", "none"
   owner?: string | null;  // "self", "partner"
   created_at: string;
+  // Reconciliation fields
+  source?: "manual" | "bank_import";
+  bank_transaction_id?: number | null;
+  reconciliation_status?: "unreviewed" | "bank_backed" | "manual_confirmed" | "duplicate_of_bank" | "pre_bank_era";
+  reconciliation_note?: string | null;
+  reconciliation_reviewed_at?: string | null;
 }
 
 // Use Next.js API proxy for all backend calls (adds auth headers automatically)
@@ -522,6 +530,7 @@ const mapIncomeToFormValues = (income: Income): IncomeFormValues => ({
   owner: income.owner || null,
 });
 
+// SourceBadge component to show income source (bank vs manual)
 export default function IncomePage() {
   const { data: session } = useSession();
   const intl = useIntl();
@@ -552,6 +561,20 @@ export default function IncomePage() {
   const [incomes, setIncomes] = useState<Income[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  // Reconciliation states
+  const [monthlyTotalsBreakdown, setMonthlyTotalsBreakdown] = useState<{
+    month: string;
+    total: number;
+    from_bank: number;
+    from_manual: number;
+    breakdown: {
+      bank_count: number;
+      manual_count: number;
+      duplicate_count: number;
+      unreviewed_count: number;
+    };
+  } | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
@@ -663,6 +686,42 @@ export default function IncomePage() {
 
     void loadIncomes();
   }, [userEmail, intl]);
+
+  // Load monthly totals breakdown (bank vs manual)
+  useEffect(() => {
+    const loadMonthlyTotals = async () => {
+      if (!userEmail || selectedMonth === 0) {
+        setMonthlyTotalsBreakdown(null);
+        return;
+      }
+
+      const year = new Date().getFullYear();
+      const monthStr = `${year}-${String(selectedMonth).padStart(2, "0")}`;
+
+      try {
+        const response = await fetch(
+          `/api/backend/users/${encodeURIComponent(userEmail)}/income/monthly?month=${monthStr}&include_bank=true`,
+          {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          },
+        );
+
+        if (!response.ok) {
+          setMonthlyTotalsBreakdown(null);
+          return;
+        }
+
+        const data = await response.json();
+        setMonthlyTotalsBreakdown(data);
+      } catch (error) {
+        logger.error("[Income] Failed to load monthly totals", error);
+        setMonthlyTotalsBreakdown(null);
+      }
+    };
+
+    void loadMonthlyTotals();
+  }, [userEmail, selectedMonth]);
 
   // Group incomes by category + description, with current and historical items
   interface IncomeGroup {
@@ -1200,6 +1259,83 @@ export default function IncomePage() {
         incomes={incomes}
         selectedMonth={`${new Date().getFullYear()}-${String(selectedMonth).padStart(2, "0")}`}
       />
+
+      {/* Monthly Breakdown (Bank vs Manual) */}
+      {monthlyTotalsBreakdown && (
+        <Card className="mb-6 rounded-3xl border border-muted/60 bg-card shadow-sm">
+          <CardHeader className="rounded-t-3xl border-b border-muted/40 bg-muted/20 py-4">
+            <CardTitle className="text-base font-semibold text-primary">
+              {intl.formatMessage({ id: "income.monthlyBreakdown.title" })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {intl.formatMessage({ id: "income.monthlyBreakdown.fromBank" })} ({monthlyTotalsBreakdown.breakdown.bank_count})
+                </span>
+                <span className="font-semibold">
+                  {formatCurrency(monthlyTotalsBreakdown.from_bank)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-muted-foreground">
+                  {intl.formatMessage({ id: "income.monthlyBreakdown.manualEntries" })} ({monthlyTotalsBreakdown.breakdown.manual_count})
+                </span>
+                <span className="font-semibold">
+                  {formatCurrency(monthlyTotalsBreakdown.from_manual)}
+                </span>
+              </div>
+              <Separator />
+              <div className="flex justify-between text-lg">
+                <span className="font-bold">
+                  {intl.formatMessage({ id: "income.monthlyBreakdown.totalActual" })}
+                </span>
+                <span className="font-bold">
+                  {formatCurrency(monthlyTotalsBreakdown.total)}
+                </span>
+              </div>
+              {monthlyTotalsBreakdown.breakdown.duplicate_count > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {intl.formatMessage(
+                    { id: "income.monthlyBreakdown.duplicatesExcluded" },
+                    { count: monthlyTotalsBreakdown.breakdown.duplicate_count }
+                  )}
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Needs Review Alert */}
+      {monthlyTotalsBreakdown && monthlyTotalsBreakdown.breakdown.unreviewed_count > 0 && (
+        <Card className="mb-6 border-amber-200 bg-amber-50">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900 mb-1">
+                  {intl.formatMessage(
+                    { id: "income.needsReview.title" },
+                    { count: monthlyTotalsBreakdown.breakdown.unreviewed_count }
+                  )}
+                </p>
+                <p className="text-xs text-amber-700">
+                  {intl.formatMessage({ id: "income.needsReview.description" })}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-300 bg-white hover:bg-amber-100 text-amber-900"
+              >
+                {intl.formatMessage({ id: "income.needsReview.reviewButton" })}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="rounded-3xl border border-muted/60 bg-card shadow-sm">
         <CardHeader className="rounded-t-3xl border-b border-muted/40 bg-muted/20 py-5">
