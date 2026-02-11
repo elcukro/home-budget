@@ -9,7 +9,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   Archive,
   AlertCircle,
-  Building2,
   Car,
   Check,
   ChevronDown,
@@ -18,6 +17,7 @@ import {
   CircleDot,
   HeartPulse,
   Home,
+  Landmark,
   Minus,
   Pencil,
   Plus,
@@ -246,7 +246,7 @@ function SourceBadge({ expense }: SourceBadgeProps) {
   if (expense.bank_transaction_id) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
-        <Building2 className="h-3 w-3" />
+        <Landmark className="h-3 w-3" />
         Bank
       </span>
     );
