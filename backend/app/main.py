@@ -1135,6 +1135,10 @@ def delete_expense(
             print(f"[FastAPI] Clearing linked_expense_id from bank transaction {bank_tx.id}")
             bank_tx.linked_expense_id = None
 
+        # Flush changes to clear FK references before deleting
+        if bank_txs:
+            db.flush()
+
         db.delete(db_expense)
         db.commit()
         print(f"[FastAPI] Deleted expense: {db_expense}")
@@ -1335,6 +1339,10 @@ def delete_income(
         for bank_tx in bank_txs:
             print(f"[FastAPI] Clearing linked_income_id from bank transaction {bank_tx.id}")
             bank_tx.linked_income_id = None
+
+        # Flush changes to clear FK references before deleting
+        if bank_txs:
+            db.flush()
 
         db.delete(db_income)
         db.commit()
