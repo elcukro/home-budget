@@ -10,7 +10,6 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Briefcase,
-  Building2,
   CalendarDays,
   Check,
   ChevronDown,
