@@ -41,7 +41,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import IncomeChart from "@/components/charts/IncomeChart";
 import IncomeBudgetChart from "@/components/budget/IncomeBudgetChart";
@@ -1356,21 +1355,31 @@ export default function IncomePage() {
 
       {/* Needs Review Alert */}
       {monthlyTotalsBreakdown && monthlyTotalsBreakdown.breakdown.unreviewed_count > 0 && (
-        <Alert className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>
-            {intl.formatMessage(
-              { id: "income.needsReview.title" },
-              { count: monthlyTotalsBreakdown.breakdown.unreviewed_count }
-            )}
-          </AlertTitle>
-          <AlertDescription>
-            {intl.formatMessage({ id: "income.needsReview.description" })}
-            <Button size="sm" variant="outline" className="ml-2">
-              {intl.formatMessage({ id: "income.needsReview.reviewButton" })}
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <Card className="mb-6 border-amber-200 bg-amber-50">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900 mb-1">
+                  {intl.formatMessage(
+                    { id: "income.needsReview.title" },
+                    { count: monthlyTotalsBreakdown.breakdown.unreviewed_count }
+                  )}
+                </p>
+                <p className="text-xs text-amber-700">
+                  {intl.formatMessage({ id: "income.needsReview.description" })}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-amber-300 bg-white hover:bg-amber-100 text-amber-900"
+              >
+                {intl.formatMessage({ id: "income.needsReview.reviewButton" })}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Card className="rounded-3xl border border-muted/60 bg-card shadow-sm">
