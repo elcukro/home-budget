@@ -532,37 +532,6 @@ const mapIncomeToFormValues = (income: Income): IncomeFormValues => ({
 });
 
 // SourceBadge component to show income source (bank vs manual)
-interface SourceBadgeProps {
-  income: Income;
-}
-
-function SourceBadge({ income }: SourceBadgeProps) {
-  if (income.bank_transaction_id) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-xs font-medium text-emerald-700">
-        <Building2 className="h-3 w-3" />
-        Bank
-      </span>
-    );
-  }
-
-  if (income.reconciliation_status === "unreviewed") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs font-medium text-amber-700">
-        <AlertCircle className="h-3 w-3" />
-        Needs Review
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">
-      <Pencil className="h-3 w-3" />
-      Manual
-    </span>
-  );
-}
-
 export default function IncomePage() {
   const { data: session } = useSession();
   const intl = useIntl();
@@ -595,7 +564,6 @@ export default function IncomePage() {
   const [apiError, setApiError] = useState<string | null>(null);
 
   // Reconciliation states
-  const [sourceFilter, setSourceFilter] = useState<"all" | "bank" | "manual" | "needs_review">("all");
   const [monthlyTotalsBreakdown, setMonthlyTotalsBreakdown] = useState<{
     month: string;
     total: number;
