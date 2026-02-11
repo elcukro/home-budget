@@ -1118,6 +1118,17 @@ def delete_expense(
             print(f"[FastAPI] Expense not found with ID: {expense_id}")
             raise HTTPException(status_code=404, detail="Expense not found")
 
+        # Clear any bank transaction references before deleting
+        # This handles the case where bank_transactions.linked_expense_id points to this expense
+        bank_txs = db.query(models.BankTransaction).filter(
+            models.BankTransaction.linked_expense_id == expense_id,
+            models.BankTransaction.user_id == current_user.id
+        ).all()
+
+        for bank_tx in bank_txs:
+            print(f"[FastAPI] Clearing linked_expense_id from bank transaction {bank_tx.id}")
+            bank_tx.linked_expense_id = None
+
         db.delete(db_expense)
         db.commit()
         print(f"[FastAPI] Deleted expense: {db_expense}")
@@ -1307,6 +1318,17 @@ def delete_income(
         if not db_income:
             print(f"[FastAPI] Income not found with ID: {income_id}")
             raise HTTPException(status_code=404, detail="Income not found")
+
+        # Clear any bank transaction references before deleting
+        # This handles the case where bank_transactions.linked_income_id points to this income
+        bank_txs = db.query(models.BankTransaction).filter(
+            models.BankTransaction.linked_income_id == income_id,
+            models.BankTransaction.user_id == current_user.id
+        ).all()
+
+        for bank_tx in bank_txs:
+            print(f"[FastAPI] Clearing linked_income_id from bank transaction {bank_tx.id}")
+            bank_tx.linked_income_id = None
 
         db.delete(db_income)
         db.commit()
