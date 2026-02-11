@@ -166,14 +166,14 @@ async def lifespan(app: FastAPI):
             start_scheduler()
             logger.info("Scheduler initialized and started")
 
-            # Add Tink sync job
-            from .jobs.tink_sync_job import run_sync_job
+            # Add Tink sync job (use async function directly with AsyncIOScheduler)
+            from .jobs.tink_sync_job import sync_all_tink_connections
 
             # Get sync interval from environment (default: 6 hours)
             sync_interval_hours = int(os.getenv("TINK_SYNC_INTERVAL_HOURS", "6"))
 
             add_job(
-                func=run_sync_job,
+                func=sync_all_tink_connections,
                 trigger='interval',
                 hours=sync_interval_hours,
                 id='tink_sync_job',

@@ -18,12 +18,12 @@ logger = get_secure_logger(__name__)
 
 def run_sync_job():
     """
-    Wrapper function for APScheduler to run the async sync job.
+    DEPRECATED: This wrapper is no longer needed with AsyncIOScheduler.
+    Use sync_all_tink_connections() directly instead.
 
-    APScheduler can't directly schedule async functions, so this wrapper
-    uses asyncio.run() to execute the async sync_all_tink_connections().
+    Kept for backward compatibility only.
     """
-    logger.info("Tink sync job triggered")
+    logger.warning("run_sync_job wrapper called - should use async function directly")
     asyncio.run(sync_all_tink_connections())
 
 

@@ -733,7 +733,8 @@ const AIAnalysisPage = () => {
     if (session?.user?.email) {
       fetchInsights();
     }
-  }, [session?.user?.email, fetchInsights]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.email]);
 
   // Extract all insights into a flat list for insight cards
   const allInsights = useMemo(() => {
