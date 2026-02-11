@@ -734,22 +734,10 @@ export default function IncomePage() {
   }
 
   const groupedIncomes = useMemo(() => {
-    // Filter by source
-    let filteredIncomes = incomes;
-    if (sourceFilter === "bank") {
-      filteredIncomes = incomes.filter((i) => i.bank_transaction_id);
-    } else if (sourceFilter === "manual") {
-      filteredIncomes = incomes.filter((i) => !i.bank_transaction_id);
-    } else if (sourceFilter === "needs_review") {
-      filteredIncomes = incomes.filter(
-        (i) => !i.bank_transaction_id && i.reconciliation_status === "unreviewed"
-      );
-    }
-
     const groups = new Map<string, IncomeGroup>();
 
     // Group by category + description
-    filteredIncomes.forEach((income) => {
+    incomes.forEach((income) => {
       const key = `${income.category}::${income.description}`;
 
       if (!groups.has(key)) {
@@ -812,7 +800,7 @@ export default function IncomePage() {
     });
 
     return groupArray;
-  }, [incomes, intl.locale, sortDirection, sortKey, sourceFilter]);
+  }, [incomes, intl.locale, sortDirection, sortKey]);
 
   const toggleGroupExpanded = (key: string) => {
     setExpandedGroups((prev) => {
