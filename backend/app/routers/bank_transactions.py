@@ -19,6 +19,7 @@ Rate Limits (per user):
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, date
 from typing import List, Optional
@@ -32,7 +33,7 @@ from slowapi import Limiter
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User, TinkConnection, BankTransaction, Expense, Income, Settings
-from ..services.tink_service import tink_service
+from ..services.tink_service import tink_service, TinkAPIError, TinkAPIRetryExhausted
 from ..services.categorization_service import categorize_in_batches
 from ..services.audit_service import (
     audit_transactions_synced,
@@ -45,6 +46,14 @@ from ..services.duplicate_detection_service import (
     create_fingerprint,
 )
 from ..logging_utils import get_secure_logger
+from ..schemas.errors import (
+    token_expired_error,
+    rate_limited_error,
+    bank_unavailable_error,
+    auth_failed_error,
+    network_error,
+    internal_error,
+)
 
 logger = get_secure_logger(__name__)
 
@@ -391,6 +400,44 @@ async def sync_transactions(
             message=", ".join(message_parts)
         )
 
+    except TinkAPIRetryExhausted as e:
+        logger.error(f"Tink API retry exhausted during sync: {str(e)}")
+        # Audit sync failure
+        audit_transactions_synced(
+            db=db,
+            user_id=current_user.id,
+            connection_id=connection.id if connection else None,
+            synced_count=0,
+            exact_duplicate_count=0,
+            fuzzy_duplicate_count=0,
+            total_fetched=0,
+            date_range_days=days,
+            result="failure",
+            request=http_request,
+        )
+        error = bank_unavailable_error("Tink")
+        return JSONResponse(status_code=503, content=error.model_dump())
+    except TinkAPIError as e:
+        logger.error(f"Tink API error during sync: {str(e)}")
+        # Audit sync failure
+        audit_transactions_synced(
+            db=db,
+            user_id=current_user.id,
+            connection_id=connection.id if connection else None,
+            synced_count=0,
+            exact_duplicate_count=0,
+            fuzzy_duplicate_count=0,
+            total_fetched=0,
+            date_range_days=days,
+            result="failure",
+            request=http_request,
+        )
+        # Check if it's a 401 Unauthorized (token expired)
+        if "401" in str(e) or "Unauthorized" in str(e):
+            error = token_expired_error()
+        else:
+            error = auth_failed_error()
+        return JSONResponse(status_code=500, content=error.model_dump())
     except Exception as e:
         logger.error(f"Error syncing transactions: {str(e)}")
         # Audit sync failure
@@ -406,7 +453,8 @@ async def sync_transactions(
             result="failure",
             request=http_request,
         )
-        raise HTTPException(status_code=500, detail=f"Error syncing transactions: {str(e)}")
+        error = internal_error(str(e))
+        return JSONResponse(status_code=500, content=error.model_dump())
 
 
 @router.post("/categorize", response_model=CategorizeResponse)

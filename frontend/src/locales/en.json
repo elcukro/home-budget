@@ -334,6 +334,48 @@
       "categorizeSuccess": "Categorized {count} transactions with AI",
       "categorizeError": "AI categorization error",
       "categorizeNoApiKey": "AI categorization is available for trial and paid users"
+    },
+    "errors": {
+      "token_expired": {
+        "title": "Bank connection expired",
+        "description": "You need to reconnect your bank account in settings.",
+        "action": "Reconnect"
+      },
+      "rate_limited": {
+        "title": "Too many requests",
+        "description": "Please wait a moment and try again.",
+        "action": "Try later"
+      },
+      "bank_unavailable": {
+        "title": "Bank is unavailable",
+        "description": "Your bank is temporarily unavailable. Try again in a few minutes.",
+        "action": "Try later"
+      },
+      "auth_failed": {
+        "title": "Authorization failed",
+        "description": "Could not connect to your bank. Try connecting again.",
+        "action": "Reconnect"
+      },
+      "subscription_required": {
+        "title": "Premium subscription required",
+        "description": "This feature is only available in the Premium plan.",
+        "action": "Upgrade"
+      },
+      "network_error": {
+        "title": "Connection error",
+        "description": "Check your internet connection and try again.",
+        "action": "Try again"
+      },
+      "internal_error": {
+        "title": "An error occurred",
+        "description": "Something went wrong. Please try again later.",
+        "action": "Contact support"
+      },
+      "tink_api_error": {
+        "title": "Bank API error",
+        "description": "Could not fetch data from your bank. Try again.",
+        "action": "Try again"
+      }
     }
   },
   "aiAnalysis": {

@@ -16,6 +16,7 @@ Rate Limits (per user):
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -24,7 +25,7 @@ from pydantic import BaseModel
 from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User, TinkConnection, BankTransaction
-from ..services.tink_service import tink_service
+from ..services.tink_service import tink_service, TinkAPIError, TinkAPIRetryExhausted
 from ..services.subscription_service import SubscriptionService
 from ..services.tink_metrics_service import tink_metrics_service
 from ..services.tink_sync_service import sync_tink_connection
@@ -39,6 +40,17 @@ from ..services.audit_service import (
 )
 from ..security import require_debug_mode, is_debug_enabled, require_internal_access
 from ..logging_utils import get_secure_logger
+from ..schemas.errors import (
+    StructuredErrorResponse,
+    token_expired_error,
+    rate_limited_error,
+    bank_unavailable_error,
+    auth_failed_error,
+    subscription_required_error,
+    network_error,
+    internal_error,
+    configuration_error,
+)
 
 # Rate limiting
 from slowapi import Limiter
@@ -147,11 +159,23 @@ async def initiate_connection(
     except ValueError as e:
         logger.error(f"Configuration error: {str(e)}")
         audit_connection_failed(db, current_user.id, "configuration_error", http_request)
-        raise HTTPException(status_code=500, detail=str(e))
+        error = configuration_error("Tink API")
+        return JSONResponse(status_code=500, content=error.model_dump())
+    except TinkAPIRetryExhausted as e:
+        logger.error(f"Tink API retry exhausted: {str(e)}")
+        audit_connection_failed(db, current_user.id, "api_unavailable", http_request)
+        error = bank_unavailable_error("Tink")
+        return JSONResponse(status_code=503, content=error.model_dump())
+    except TinkAPIError as e:
+        logger.error(f"Tink API error: {str(e)}")
+        audit_connection_failed(db, current_user.id, "api_error", http_request)
+        error = auth_failed_error()
+        return JSONResponse(status_code=500, content=error.model_dump())
     except Exception as e:
         logger.error(f"Error initiating Tink connection: {str(e)}")
         audit_connection_failed(db, current_user.id, "initiation_error", http_request)
-        raise HTTPException(status_code=500, detail=f"Error initiating connection: {str(e)}")
+        error = internal_error(str(e))
+        return JSONResponse(status_code=500, content=error.model_dump())
 
 
 @router.post("/callback", response_model=CallbackResponse)
@@ -221,10 +245,16 @@ async def handle_callback(
 
     except HTTPException:
         raise
+    except TinkAPIError as e:
+        logger.error(f"Tink API error during callback: {str(e)}")
+        audit_connection_failed(db, current_user.id, "api_error", http_request)
+        error = auth_failed_error()
+        return JSONResponse(status_code=500, content=error.model_dump())
     except Exception as e:
         logger.error(f"Error handling Tink callback: {str(e)}")
         audit_connection_failed(db, current_user.id, "callback_error", http_request)
-        raise HTTPException(status_code=500, detail=f"Error connecting bank account: {str(e)}")
+        error = internal_error(str(e))
+        return JSONResponse(status_code=500, content=error.model_dump())
 
 
 @router.get("/callback")
@@ -457,9 +487,22 @@ async def refresh_tink_data(
         result = await sync_tink_connection(connection, db, http_request)
         return result
 
+    except TinkAPIRetryExhausted as e:
+        logger.error(f"Tink API retry exhausted: {str(e)}")
+        error = bank_unavailable_error("Tink")
+        return {"error": error.model_dump(), "success": False}
+    except TinkAPIError as e:
+        logger.error(f"Tink API error: {str(e)}")
+        # Check if it's a 401 Unauthorized (token expired)
+        if "401" in str(e) or "Unauthorized" in str(e):
+            error = token_expired_error()
+        else:
+            error = auth_failed_error()
+        return {"error": error.model_dump(), "success": False}
     except Exception as e:
         logger.error(f"Error refreshing Tink data: {str(e)}")
-        return {"error": str(e), "success": False}
+        error = internal_error(str(e))
+        return {"error": error.model_dump(), "success": False}
 
 
 @router.get("/debug-data")

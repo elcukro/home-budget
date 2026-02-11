@@ -284,6 +284,48 @@
       "categorizeSuccess": "Skategoryzowano {count} transakcji przez AI",
       "categorizeError": "Błąd kategoryzacji AI",
       "categorizeNoApiKey": "Kategoryzacja AI jest dostępna dla użytkowników trial i płatnych"
+    },
+    "errors": {
+      "token_expired": {
+        "title": "Połączenie z bankiem wygasło",
+        "description": "Musisz ponownie połączyć swoje konto bankowe w ustawieniach.",
+        "action": "Połącz ponownie"
+      },
+      "rate_limited": {
+        "title": "Zbyt wiele żądań",
+        "description": "Poczekaj chwilę i spróbuj ponownie.",
+        "action": "Spróbuj później"
+      },
+      "bank_unavailable": {
+        "title": "Bank jest niedostępny",
+        "description": "Twój bank jest tymczasowo niedostępny. Spróbuj ponownie za kilka minut.",
+        "action": "Spróbuj później"
+      },
+      "auth_failed": {
+        "title": "Błąd autoryzacji",
+        "description": "Nie udało się połączyć z bankiem. Spróbuj połączyć ponownie.",
+        "action": "Połącz ponownie"
+      },
+      "subscription_required": {
+        "title": "Wymagana subskrypcja Premium",
+        "description": "Ta funkcja jest dostępna tylko w planie Premium.",
+        "action": "Uaktualnij"
+      },
+      "network_error": {
+        "title": "Błąd połączenia",
+        "description": "Sprawdź swoje połączenie internetowe i spróbuj ponownie.",
+        "action": "Spróbuj ponownie"
+      },
+      "internal_error": {
+        "title": "Wystąpił błąd",
+        "description": "Coś poszło nie tak. Spróbuj ponownie później.",
+        "action": "Skontaktuj się z pomocą"
+      },
+      "tink_api_error": {
+        "title": "Błąd API banku",
+        "description": "Nie udało się pobrać danych z banku. Spróbuj ponownie.",
+        "action": "Spróbuj ponownie"
+      }
     }
   },
   "aiAnalysis": {

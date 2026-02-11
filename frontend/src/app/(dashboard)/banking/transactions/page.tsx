@@ -266,7 +266,23 @@ export default function BankTransactionsPage() {
         });
         fetchData();
       } else {
-        throw new Error("Sync failed");
+        // Parse structured error response
+        const errorData = await response.json();
+
+        // Check if it's a structured error
+        if (errorData.error_code) {
+          // Use error-specific translation keys
+          const errorKey = `bankTransactions.errors.${errorData.error_code.toLowerCase()}`;
+
+          toast({
+            title: intl.formatMessage({ id: `${errorKey}.title` }),
+            description: intl.formatMessage({ id: `${errorKey}.description` }),
+            variant: "destructive",
+          });
+        } else {
+          // Fallback to generic error
+          throw new Error("Sync failed");
+        }
       }
     } catch (_error) {
       toast({
