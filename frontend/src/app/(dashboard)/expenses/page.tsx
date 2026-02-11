@@ -1392,57 +1392,6 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Monthly totals breakdown (bank + manual) */}
-      {monthlyTotalsBreakdown && (
-        <Card className="border-emerald-200 bg-emerald-50/30">
-          <CardContent className="pt-6">
-            <h3 className="text-sm font-semibold text-slate-700 mb-4">
-              {intl.formatMessage({
-                id: "expenses.monthlyBreakdown.title",
-                defaultMessage: "Monthly Breakdown"
-              })}
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-600 flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-emerald-600" />
-                  {intl.formatMessage({ id: "expenses.monthlyBreakdown.fromBank" })} ({monthlyTotalsBreakdown.breakdown.bank_count})
-                </span>
-                <span className="text-sm font-semibold text-emerald-700">
-                  {formatCurrency(monthlyTotalsBreakdown.from_bank)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-slate-600 flex items-center gap-2">
-                  <Pencil className="h-4 w-4 text-slate-600" />
-                  {intl.formatMessage({ id: "expenses.monthlyBreakdown.manualEntries" })} ({monthlyTotalsBreakdown.breakdown.manual_count})
-                </span>
-                <span className="text-sm font-semibold text-slate-700">
-                  {formatCurrency(monthlyTotalsBreakdown.from_manual)}
-                </span>
-              </div>
-              <div className="h-px bg-slate-200" />
-              <div className="flex justify-between items-center">
-                <span className="text-base font-bold text-slate-900">
-                  {intl.formatMessage({ id: "expenses.monthlyBreakdown.totalActual" })}
-                </span>
-                <span className="text-base font-bold text-rose-600">
-                  {formatCurrency(monthlyTotalsBreakdown.total)}
-                </span>
-              </div>
-              {monthlyTotalsBreakdown.breakdown.duplicate_count > 0 && (
-                <p className="text-xs text-slate-500 italic">
-                  {intl.formatMessage(
-                    { id: "expenses.monthlyBreakdown.duplicatesExcluded" },
-                    { count: monthlyTotalsBreakdown.breakdown.duplicate_count }
-                  )}
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* One-time Bank Integration Notice */}
       {monthlyTotalsBreakdown && monthlyTotalsBreakdown.breakdown.unreviewed_count > 0 && !bankNoticeDismissed && (
         <Card className="mb-6 border-blue-200 bg-blue-50">
