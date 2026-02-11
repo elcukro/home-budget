@@ -40,11 +40,6 @@ from ..services.audit_service import (
     audit_transaction_reviewed,
     audit_categorization_requested,
 )
-from ..services.duplicate_detection_service import (
-    detect_duplicate_for_new_transaction,
-    check_pending_to_booked_update,
-    create_fingerprint,
-)
 from ..logging_utils import get_secure_logger
 from ..schemas.errors import (
     token_expired_error,
@@ -220,15 +215,20 @@ async def sync_transactions(
 
         for tx in transactions:
             tink_tx_id = tx.get("id")
+            provider_tx_id = tx.get("identifiers", {}).get("providerTransactionId")
 
-            # Step 1: Check for exact tink_transaction_id match (100% duplicate)
-            existing = db.query(BankTransaction).filter(
-                BankTransaction.tink_transaction_id == tink_tx_id
-            ).first()
+            # Step 1: Check for exact provider_transaction_id match (100% duplicate)
+            # The bank's transaction ID is stable across Tink reconnections,
+            # while Tink's internal ID may change (especially in sandbox)
+            if provider_tx_id:
+                existing = db.query(BankTransaction).filter(
+                    BankTransaction.user_id == current_user.id,
+                    BankTransaction.provider_transaction_id == provider_tx_id
+                ).first()
 
-            if existing:
-                exact_duplicate_count += 1
-                continue
+                if existing:
+                    exact_duplicate_count += 1
+                    continue
 
             # Parse transaction data
             amount_data = tx.get("amount", {})
@@ -274,74 +274,14 @@ async def sync_transactions(
             # Map Tink category to our category (basic mapping)
             suggested_category = map_tink_category(tink_category_id, suggested_type)
 
-            # Step 2: Check for pending → booked update scenario
             tink_account_id = tx.get("accountId", "")
-            fingerprint = create_fingerprint(
-                amount=amount,
-                currency=currency,
-                tx_date=tx_date,
-                description=description_display,
-                merchant_category_code=merchant_category_code,
-                tink_account_id=tink_account_id,
-            )
-
-            # Check if this is a booked version of a pending transaction
-            pending_tx_id = check_pending_to_booked_update(
-                db=db,
-                user_id=current_user.id,
-                fingerprint=fingerprint,
-                raw_data=tx,
-            )
-
-            if pending_tx_id:
-                # Update existing pending transaction instead of creating new one
-                pending_tx = db.query(BankTransaction).filter(
-                    BankTransaction.id == pending_tx_id
-                ).first()
-                if pending_tx:
-                    pending_tx.tink_transaction_id = tink_tx_id
-                    pending_tx.raw_data = tx
-                    # Don't count as synced or duplicate
-                    logger.info(f"Updated pending transaction {pending_tx_id} to booked status")
-                    continue
-
-            # Step 3: Check for fuzzy duplicates (fingerprint matching)
-            is_fuzzy_duplicate = False
-            duplicate_of_id = None
-            duplicate_confidence = None
-            duplicate_reason = None
-
-            fuzzy_match = detect_duplicate_for_new_transaction(
-                db=db,
-                user_id=current_user.id,
-                tink_transaction_id=tink_tx_id,
-                amount=amount,
-                currency=currency,
-                tx_date=tx_date,
-                description=description_display,
-                merchant_category_code=merchant_category_code,
-                tink_account_id=tink_account_id,
-            )
-
-            if fuzzy_match:
-                # Skip exact matches that somehow weren't caught above
-                if fuzzy_match.confidence >= 1.0:
-                    exact_duplicate_count += 1
-                    continue
-
-                # Flag as fuzzy duplicate for user review
-                is_fuzzy_duplicate = True
-                duplicate_of_id = fuzzy_match.original_transaction_id
-                duplicate_confidence = fuzzy_match.confidence
-                duplicate_reason = fuzzy_match.match_reason
-                fuzzy_duplicate_count += 1
 
             # Create bank transaction record
             bank_tx = BankTransaction(
                 user_id=current_user.id,
                 tink_transaction_id=tink_tx_id,
                 tink_account_id=tink_account_id,
-                provider_transaction_id=tx.get("identifiers", {}).get("providerTransactionId"),
+                provider_transaction_id=provider_tx_id,
                 amount=amount,
                 currency=currency,
                 date=tx_date,
@@ -356,11 +296,6 @@ async def sync_transactions(
                 suggested_category=suggested_category,
                 status="pending",
                 raw_data=tx,
-                # Duplicate detection fields
-                is_duplicate=is_fuzzy_duplicate,
-                duplicate_of=duplicate_of_id,
-                duplicate_confidence=duplicate_confidence,
-                duplicate_reason=duplicate_reason,
             )
 
             db.add(bank_tx)
