@@ -633,6 +633,15 @@ export default function ExpensesPage() {
 
   // Helper to check if expense is active in selected month
   const isExpenseActiveInMonth = (expense: Expense, monthKey: string): boolean => {
+    // CRITICAL: Exclude historical expenses (end_date in the past) from totals
+    // This prevents duplicate counting when showing historical versions in the UI
+    if (expense.end_date) {
+      const endDate = new Date(expense.end_date);
+      if (endDate < new Date()) {
+        return false;  // Historical expense - don't count in totals
+      }
+    }
+
     if (monthKey === "all") return true;
 
     const expenseDate = new Date(expense.date);
