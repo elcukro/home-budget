@@ -1155,7 +1155,8 @@
     "needsReview": {
       "title": "{count, plural, one {# wpis wymaga} other {# wpisów wymaga}} weryfikacji",
       "description": "Te ręczne wpisy mogą być duplikatami transakcji bankowych. Sprawdź je, aby zapewnić dokładne podsumowanie.",
-      "reviewButton": "Sprawdź teraz"
+      "reviewButton": "Sprawdź teraz",
+      "comingSoon": "Interfejs weryfikacji będzie dostępny w następnej aktualizacji"
     }
   },
   "loans": {
