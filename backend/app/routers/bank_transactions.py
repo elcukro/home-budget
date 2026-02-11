@@ -521,7 +521,9 @@ async def categorize_transactions(
             (BankTransaction.confidence_score == 0)
         )
 
-    transactions = query.order_by(BankTransaction.date.desc()).limit(200).all()
+    # Limit to 50 transactions per request to avoid gateway timeout (504)
+    # Users can call multiple times if they have more uncategorized transactions
+    transactions = query.order_by(BankTransaction.date.desc()).limit(50).all()
 
     if not transactions:
         return CategorizeResponse(
