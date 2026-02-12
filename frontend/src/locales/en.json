@@ -1932,7 +1932,9 @@
     },
     "retirementLimits": {
       "title": "Pillar III Retirement",
+      "partnerTitle": "Pillar III Retirement — {name}",
       "subtitle": "Retirement account contributions in {year}",
+      "partnerSubtitle": "{name}'s retirement accounts in {year}",
       "tooltip": "Annual contribution limits for IKE and IKZE are set by the Ministry of Finance. Exceeding limits may result in tax penalties.",
       "contributed": "Contributed",
       "ofLimit": "of limit",
