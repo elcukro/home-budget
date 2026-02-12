@@ -1,0 +1,39 @@
+Zaproszenie do wspólnego budżetu — FiredUp
+============================================
+
+Cześć!
+
+{inviter_name} zaprasza Cię do wspólnego zarządzania budżetem
+domowym w FiredUp. Razem łatwiej kontrolować finanse!
+
+
+  DOŁĄCZ DO BUDŻETU:
+  {accept_url}
+
+
+Co zyskujesz:
+
+  * Wspólny widok finansów — Wszystkie wydatki i przychody
+    w jednym miejscu
+
+  * Wspólne cele — Oszczędzajcie razem na to, co ważne
+
+  * Plan Premium — Pełny dostęp bez dodatkowych opłat
+
+  * Twoje dane — Możesz pobrać kopię przed dołączeniem
+
+
+------------------------------------------------------------
+
+Zaproszenie wygasa za 7 dni.
+
+Jeśli nie spodziewałeś/aś się tej wiadomości, po prostu
+ją zignoruj — nie zostanie wykonana żadna akcja.
+
+------------------------------------------------------------
+
+FiredUp — Twój osobisty asystent finansowy
+https://firedup.app
+
+Ten email został wysłany na adres {to_email}, ponieważ
+{inviter_name} zaprosił/a Cię do wspólnego budżetu.
