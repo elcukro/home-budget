@@ -6,10 +6,10 @@ from datetime import datetime, date, timedelta
 import logging
 
 from ..database import get_db
-from ..models import User, Saving, Settings, SavingsGoal
+from ..models import User, Saving, Settings, SavingsGoal, Income
 from ..schemas.savings import (
     SavingCreate, SavingUpdate, Saving as SavingSchema, SavingsSummary,
-    SavingCategory, AccountType, RetirementAccountLimit, RetirementLimitsResponse,
+    SavingCategory, AccountType, EntryType, RetirementAccountLimit, RetirementLimitsResponse,
     SavingsGoalCreate, SavingsGoalUpdate, SavingsGoal as SavingsGoalSchema,
     SavingsGoalWithSavings, GoalStatus
 )
@@ -67,6 +67,23 @@ async def create_saving(
     """Create a new saving entry."""
     try:
         logger.info(f"Creating saving for user: {current_user.id}")
+
+        # Validate: only ONE opening_balance entry per account/year
+        if saving.entry_type == EntryType.OPENING_BALANCE:
+            current_year = saving.date.year
+            existing = db.query(Saving).filter(
+                Saving.user_id == current_user.id,
+                Saving.account_type == saving.account_type.value,
+                Saving.entry_type == EntryType.OPENING_BALANCE.value,
+                extract('year', Saving.date) == current_year
+            ).first()
+
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Opening balance for {saving.account_type.value.upper()} {current_year} already exists. Delete the existing entry first or update it."
+                )
+
         db_saving = Saving(
             **saving.dict(),
             user_id=current_user.id
@@ -223,6 +240,19 @@ async def get_savings_summary(
 
         emergency_fund = emergency_fund_deposits - emergency_fund_withdrawals
 
+        # Calculate PPK balance separately (only active items)
+        ppk_deposits_query = db.query(func.sum(Saving.amount)).filter(
+            Saving.account_type == AccountType.PPK
+        )
+        ppk_deposits = active_savings_filter(ppk_deposits_query, 'deposit').scalar() or 0.0
+
+        ppk_withdrawals_query = db.query(func.sum(Saving.amount)).filter(
+            Saving.account_type == AccountType.PPK
+        )
+        ppk_withdrawals = active_savings_filter(ppk_withdrawals_query, 'withdrawal').scalar() or 0.0
+
+        ppk_balance = ppk_deposits - ppk_withdrawals
+
         # Calculate monthly contribution (net: deposits - withdrawals for current month)
         month_start = today.replace(day=1)
         month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
@@ -302,6 +332,7 @@ async def get_savings_summary(
             emergency_fund_target=emergency_fund_target,
             emergency_fund_progress=emergency_fund_progress,
             monthly_contribution=monthly_contribution,
+            ppk_balance=ppk_balance,
             category_totals=category_totals,
             recent_transactions=recent_transactions
         )
@@ -359,31 +390,70 @@ async def get_retirement_limits(
         accounts = []
         total_contributions = 0.0
 
-        # Calculate contributions for each retirement account type
+        # Calculate contributions for each retirement account type with multi-year tracking
         for account_type in [AccountType.IKE, AccountType.IKZE, AccountType.PPK, AccountType.OIPE]:
-            # Get deposits for this account type in the target year
-            deposits = db.query(func.sum(Saving.amount)).filter(
+            # === STEP 1: Calculate OPENING BALANCE (historical balance from previous years) ===
+
+            # Historical deposits from all years BEFORE target year (excluding opening_balance entries)
+            historical_deposits = db.query(func.sum(Saving.amount)).filter(
                 Saving.user_id == current_user.id,
                 Saving.account_type == account_type.value,
                 Saving.saving_type == 'deposit',
-                Saving.date >= year_start,
-                Saving.date <= year_end
+                Saving.entry_type != EntryType.OPENING_BALANCE.value,
+                Saving.date < year_start
             ).scalar() or 0.0
 
-            # Get withdrawals for this account type in the target year
-            withdrawals = db.query(func.sum(Saving.amount)).filter(
+            # Historical withdrawals from all years BEFORE target year
+            historical_withdrawals = db.query(func.sum(Saving.amount)).filter(
                 Saving.user_id == current_user.id,
                 Saving.account_type == account_type.value,
                 Saving.saving_type == 'withdrawal',
+                Saving.entry_type != EntryType.OPENING_BALANCE.value,
+                Saving.date < year_start
+            ).scalar() or 0.0
+
+            # Add any manual opening balance entry FOR this year
+            manual_opening = db.query(func.sum(Saving.amount)).filter(
+                Saving.user_id == current_user.id,
+                Saving.account_type == account_type.value,
+                Saving.entry_type == EntryType.OPENING_BALANCE.value,
+                extract('year', Saving.date) == target_year
+            ).scalar() or 0.0
+
+            opening_balance = (historical_deposits - historical_withdrawals) + manual_opening
+
+            # === STEP 2: Calculate CURRENT YEAR CONTRIBUTIONS (only 'contribution' type entries) ===
+
+            # Current year deposits (only contribution type - for limit calculation)
+            current_year_deposits = db.query(func.sum(Saving.amount)).filter(
+                Saving.user_id == current_user.id,
+                Saving.account_type == account_type.value,
+                Saving.saving_type == 'deposit',
+                Saving.entry_type == EntryType.CONTRIBUTION.value,
                 Saving.date >= year_start,
                 Saving.date <= year_end
             ).scalar() or 0.0
 
-            # Net contributions (deposits minus withdrawals)
-            current_contributions = max(0, deposits - withdrawals)
+            # Current year withdrawals (only contribution type)
+            current_year_withdrawals = db.query(func.sum(Saving.amount)).filter(
+                Saving.user_id == current_user.id,
+                Saving.account_type == account_type.value,
+                Saving.saving_type == 'withdrawal',
+                Saving.entry_type == EntryType.CONTRIBUTION.value,
+                Saving.date >= year_start,
+                Saving.date <= year_end
+            ).scalar() or 0.0
+
+            # Net contributions for limit calculation (only deposits count, withdrawals reduce it)
+            current_contributions = max(0, current_year_deposits - current_year_withdrawals)
             total_contributions += current_contributions
 
-            # Determine limit based on account type
+            # Total balance = opening balance + current year net movement
+            total_balance = opening_balance + (current_year_deposits - current_year_withdrawals)
+
+            # === STEP 3: Calculate LIMITS and PERCENTAGES ===
+
+            # Determine annual limit based on account type
             if account_type == AccountType.IKE:
                 annual_limit = ike_limit
             elif account_type == AccountType.IKZE:
@@ -396,14 +466,51 @@ async def get_retirement_limits(
             remaining = max(0, annual_limit - current_contributions) if annual_limit > 0 else 0
             percentage = (current_contributions / annual_limit * 100) if annual_limit > 0 else 0
 
+            # === STEP 4: PPK-specific manual baseline and monthly contribution ===
+            last_manual_balance = None
+            last_manual_update = None
+            monthly_contribution = 0.0
+
+            if account_type == AccountType.PPK:
+                # Find most recent opening_balance entry for PPK
+                manual_correction = db.query(Saving).filter(
+                    Saving.user_id == current_user.id,
+                    Saving.account_type == AccountType.PPK.value,
+                    Saving.entry_type == EntryType.OPENING_BALANCE.value
+                ).order_by(Saving.date.desc()).first()
+
+                if manual_correction:
+                    last_manual_balance = manual_correction.amount
+                    last_manual_update = manual_correction.created_at
+
+                # Calculate current monthly PPK contribution
+                user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+                if user_settings and user_settings.ppk_employee_rate and user_settings.ppk_employer_rate:
+                    # Get most recent recurring salary (UoP employment)
+                    recent_salary = db.query(Income).filter(
+                        Income.user_id == current_user.id,
+                        Income.is_recurring == True,
+                        Income.employment_type == 'uop',
+                        or_(Income.end_date == None, Income.end_date >= date.today())
+                    ).order_by(Income.date.desc()).first()
+
+                    if recent_salary and recent_salary.gross_amount:
+                        total_ppk_rate = (user_settings.ppk_employee_rate or 0) + (user_settings.ppk_employer_rate or 0)
+                        monthly_contribution = recent_salary.gross_amount * total_ppk_rate / 100
+
             accounts.append(RetirementAccountLimit(
                 account_type=account_type,
                 year=target_year,
                 annual_limit=annual_limit,
+                opening_balance=opening_balance,
                 current_contributions=current_contributions,
+                total_balance=total_balance,
                 remaining_limit=remaining,
                 percentage_used=round(percentage, 1),
-                is_over_limit=current_contributions > annual_limit if annual_limit > 0 else False
+                is_over_limit=current_contributions > annual_limit if annual_limit > 0 else False,
+                last_manual_balance=last_manual_balance,
+                last_manual_update=last_manual_update,
+                monthly_contribution=monthly_contribution
             ))
 
         return RetirementLimitsResponse(

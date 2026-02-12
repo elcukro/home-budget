@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useIntl } from 'react-intl';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, BadgePercent, Building2, CheckCircle, Globe, Info, Landmark, Plus, TrendingUp, Wallet } from 'lucide-react';
+import { AlertTriangle, BadgePercent, Building2, Globe, Info, Landmark, Plus, TrendingUp, Wallet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,7 @@ interface RetirementLimitsCardProps {
   isSelfEmployed?: boolean;
   className?: string;
   onQuickAddSaving?: (params: QuickAddSavingParams) => void;
+  onPpkUpdate?: () => void;  // Called after PPK update/withdrawal to refresh parent table
   refreshKey?: number;
 }
 
@@ -75,6 +76,7 @@ export default function RetirementLimitsCard({
   isSelfEmployed = false,
   className,
   onQuickAddSaving,
+  onPpkUpdate,
   refreshKey = 0,
 }: RetirementLimitsCardProps) {
   const intl = useIntl();
@@ -92,6 +94,14 @@ export default function RetirementLimitsCard({
   const [ppkInputAmount, setPpkInputAmount] = useState('');
   const [ppkWithdrawConfirmed, setPpkWithdrawConfirmed] = useState(false);
   const [ppkSubmitting, setPpkSubmitting] = useState(false);
+
+  // Opening balance state (for IKE/IKZE/OIPE multi-year tracking)
+  const [openingBalanceDialog, setOpeningBalanceDialog] = useState<{
+    accountType: AccountType;
+    currentBalance: number;
+  } | null>(null);
+  const [openingBalanceInput, setOpeningBalanceInput] = useState('');
+  const [openingBalanceSubmitting, setOpeningBalanceSubmitting] = useState(false);
 
   const ppkEnrolled = settings?.ppk_enrolled === true;
   const ppkEmployeeRate = settings?.ppk_employee_rate ?? 2;
@@ -132,31 +142,79 @@ export default function RetirementLimitsCard({
   const stateContributions = months > 0 ? PPK_WELCOME_BONUS + (fullYears * PPK_ANNUAL_BONUS) : 0;
   const estimatedBalance = monthlyPpk * months + stateContributions;
 
-  // Always use estimate as primary. Actual balance (from "Wprowadź aktualny stan")
-  // only overrides when it's clearly a manual correction (user entered via dialog).
-  // PPK contributions are automatic from payroll — the estimate is the real source of truth.
-  const displayBalance = estimatedBalance > 0 ? estimatedBalance : currentPpkBalance;
+  // NEW: Baseline + Auto-Growth Logic for PPK
+  // If user has manually set a baseline, add contributions on top. Otherwise use full estimate.
+  const hasManualBaseline = ppkAccount?.last_manual_balance !== null && ppkAccount?.last_manual_balance !== undefined;
+  const employmentType = settings?.employment_type;
+  const isUoP = employmentType === 'uop';  // Only UoP employees get automatic PPK contributions
+
+  let displayBalance: number;
+  let growthSinceBaseline = 0;
+  let monthsSinceBaseline = 0;
+
+  if (hasManualBaseline && ppkAccount?.last_manual_update) {
+    // User has manually updated PPK balance - use that as baseline
+    monthsSinceBaseline = Math.max(0, monthDiff(ppkAccount.last_manual_update, new Date()));
+
+    // Only add auto-growth if user is employed via UoP (Umowa o pracę)
+    if (isUoP && ppkAccount.monthly_contribution) {
+      growthSinceBaseline = monthsSinceBaseline * ppkAccount.monthly_contribution;
+      displayBalance = (ppkAccount.last_manual_balance ?? 0) + growthSinceBaseline;
+    } else {
+      // Not UoP or no contribution data - just show the baseline
+      displayBalance = ppkAccount.last_manual_balance ?? 0;
+    }
+  } else if (estimatedBalance > 0 && isUoP) {
+    // No manual baseline yet, use full estimate (only if UoP employee)
+    displayBalance = estimatedBalance;
+  } else {
+    // Fallback: use current balance from database
+    displayBalance = currentPpkBalance;
+  }
 
   const handlePpkUpdate = async () => {
     const newAmount = parseFloat(ppkInputAmount);
     if (isNaN(newAmount) || newAmount < 0) return;
 
-    const delta = newAmount - currentPpkBalance;
-    if (delta === 0) {
-      setPpkDialogMode(null);
-      return;
-    }
-
     setPpkSubmitting(true);
     try {
+      // STEP 1: Delete previous "Korekta stanu PPK" entry if exists
+      // This ensures we're setting absolute balance, not adding delta
+      if (userEmail) {
+        const response = await fetch('/api/backend/savings', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (response.ok) {
+          const savings = await response.json();
+          const previousCorrection = savings
+            .filter((s: any) =>
+              s.account_type === 'ppk' &&
+              s.description === 'Korekta stanu PPK'
+            )
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+          // Delete previous correction if exists
+          if (previousCorrection) {
+            await fetch(`/api/backend/savings/${previousCorrection.id}`, {
+              method: 'DELETE',
+            });
+          }
+        }
+      }
+
+      // STEP 2: Create new PPK correction entry with ABSOLUTE value
       await createSaving({
         category: 'retirement',
-        saving_type: delta > 0 ? 'deposit' : 'withdrawal',
-        amount: Math.abs(delta),
+        saving_type: 'deposit',
+        amount: newAmount,
         date: new Date().toISOString().split('T')[0],
         description: 'Korekta stanu PPK',
         account_type: 'ppk',
+        entry_type: 'opening_balance',  // Mark as opening balance to not count toward limits
       });
+
       invalidateSavingsCache();
       await fetchData();
       toast({
@@ -164,10 +222,13 @@ export default function RetirementLimitsCard({
       });
       setPpkDialogMode(null);
       setPpkInputAmount('');
-    } catch {
+
+      // Notify parent to refresh transaction table
+      onPpkUpdate?.();
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to update PPK balance',
+        description: error.message || 'Failed to update PPK balance',
         variant: 'destructive',
       });
     } finally {
@@ -218,6 +279,9 @@ export default function RetirementLimitsCard({
       setPpkDialogMode(null);
       setPpkInputAmount('');
       setPpkWithdrawConfirmed(false);
+
+      // Notify parent to refresh transaction table
+      onPpkUpdate?.();
     } catch {
       toast({
         title: 'Error',
@@ -240,6 +304,95 @@ export default function RetirementLimitsCard({
     setPpkDialogMode('withdraw');
   };
 
+  const openOpeningBalanceDialog = (accountType: AccountType) => {
+    const account = limits?.accounts.find((a) => a.account_type === accountType);
+    setOpeningBalanceInput(account?.opening_balance?.toString() || '');
+    setOpeningBalanceDialog({
+      accountType,
+      currentBalance: account?.opening_balance || 0,
+    });
+  };
+
+  const handleOpeningBalanceUpdate = async () => {
+    if (!openingBalanceDialog) return;
+
+    const newBalance = parseFloat(openingBalanceInput);
+
+    // Validation: must be a valid number
+    if (isNaN(newBalance)) {
+      toast({
+        title: intl.formatMessage({ id: 'common.error' }),
+        description: intl.formatMessage({ id: 'savings.openingBalance.invalidAmount' }),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validation: cannot be negative
+    if (newBalance < 0) {
+      toast({
+        title: intl.formatMessage({ id: 'common.error' }),
+        description: intl.formatMessage({ id: 'savings.openingBalance.cannotBeNegative' }),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Special case: 0 means "no opening balance" - just close dialog
+    if (newBalance === 0) {
+      toast({
+        title: intl.formatMessage({ id: 'savings.openingBalance.zeroNotNeeded' }),
+        description: intl.formatMessage({ id: 'savings.openingBalance.zeroNotNeededHint' }),
+      });
+      setOpeningBalanceDialog(null);
+      return;
+    }
+
+    setOpeningBalanceSubmitting(true);
+    try {
+      const currentYear = new Date().getFullYear();
+      const accountLabel = openingBalanceDialog.accountType.toUpperCase();
+
+      await createSaving({
+        category: SavingCategory.RETIREMENT,
+        saving_type: 'deposit',
+        amount: newBalance,
+        date: `${currentYear}-01-01`,
+        description: `Saldo początkowe ${accountLabel} ${currentYear}`,
+        account_type: openingBalanceDialog.accountType,
+        entry_type: 'opening_balance',  // CRITICAL: Mark as opening balance, not contribution!
+      });
+
+      invalidateSavingsCache();
+      await fetchData();
+      onPpkUpdate?.(); // Refresh parent table
+      toast({
+        title: intl.formatMessage({ id: 'savings.openingBalance.updateSuccess' }),
+      });
+      setOpeningBalanceDialog(null);
+    } catch (error: any) {
+      // Better error handling for 422 validation errors
+      let errorMessage = intl.formatMessage({ id: 'savings.openingBalance.updateError' });
+
+      if (error.message) {
+        // Check if it's a duplicate entry error
+        if (error.message.includes('already exists')) {
+          errorMessage = intl.formatMessage({ id: 'savings.openingBalance.duplicateEntry' });
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      toast({
+        title: intl.formatMessage({ id: 'common.error' }),
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setOpeningBalanceSubmitting(false);
+    }
+  };
+
   const getProgressColor = (percentage: number, isOverLimit: boolean) => {
     if (isOverLimit) return 'bg-red-500';
     if (percentage >= 90) return 'bg-amber-500';
@@ -247,23 +400,10 @@ export default function RetirementLimitsCard({
     return 'bg-emerald-500';
   };
 
-  const getStatusIcon = (account: RetirementAccountLimit) => {
-    if (account.is_over_limit) {
-      return <AlertTriangle className="h-4 w-4 text-red-500" />;
-    }
-    if (account.percentage_used >= 100) {
-      return <CheckCircle className="h-4 w-4 text-emerald-500" />;
-    }
-    if (account.percentage_used >= 90) {
-      return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-    }
-    return <TrendingUp className="h-4 w-4 text-blue-500" />;
-  };
-
   const renderAccountCard = (account: RetirementAccountLimit) => {
-    // Skip PPK (handled separately) and accounts with no limit and no contributions
+    // Skip PPK (handled separately) and accounts with no limit and no balance
     if (account.account_type === AccountType.PPK) return null;
-    if (account.annual_limit === 0 && account.current_contributions === 0) return null;
+    if (account.annual_limit === 0 && account.total_balance === 0) return null;
 
     const accountName = intl.formatMessage({
       id: `savings.retirementLimits.accounts.${account.account_type}`,
@@ -280,24 +420,52 @@ export default function RetirementLimitsCard({
             : 'border-border bg-card'
         )}
       >
+        {/* Header with account name and opening balance button */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-1.5">
             {accountTypeIcons[account.account_type]}
             <span className="font-medium text-sm text-primary">{accountName}</span>
           </div>
-          {getStatusIcon(account)}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs h-6 px-2 text-secondary hover:text-primary"
+            onClick={() => openOpeningBalanceDialog(account.account_type)}
+          >
+            {intl.formatMessage({ id: 'savings.openingBalance.update' })}
+          </Button>
         </div>
 
         <div className="space-y-1.5">
+          {/* Total Balance */}
           <div className="flex justify-between text-xs">
-            <span className={cn('font-semibold', account.is_over_limit ? 'text-red-600' : 'text-primary')}>
-              {formatCurrency(account.current_contributions)}
-            </span>
             <span className="text-secondary">
-              / {formatCurrency(account.annual_limit)}
+              {intl.formatMessage({ id: 'savings.totalBalance' })}
+            </span>
+            <span className="font-semibold text-primary">
+              {formatCurrency(account.total_balance)}
             </span>
           </div>
 
+          {/* Opening Balance (if exists) */}
+          {account.opening_balance > 0 && (
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{intl.formatMessage({ id: 'savings.openingBalance.label' })}</span>
+              <span>{formatCurrency(account.opening_balance)}</span>
+            </div>
+          )}
+
+          {/* Current Year Contributions vs Limit */}
+          <div className="flex justify-between text-xs mb-1">
+            <span className="font-semibold">
+              {intl.formatMessage({ id: 'savings.currentYearContributions' }, { year: account.year })}
+            </span>
+            <span>
+              {formatCurrency(account.current_contributions)} / {formatCurrency(account.annual_limit)}
+            </span>
+          </div>
+
+          {/* Progress bar (based on current year contributions) */}
           <Progress
             value={Math.min(account.percentage_used, 100)}
             className="h-1.5"
@@ -305,19 +473,21 @@ export default function RetirementLimitsCard({
           />
 
           <div className="text-xs text-secondary">
-            {account.percentage_used.toFixed(0)}% wykorzystane
+            {account.percentage_used.toFixed(0)}% {intl.formatMessage({ id: 'savings.limitUsed' })}
           </div>
 
+          {/* Remaining limit */}
           {account.remaining_limit > 0 && !account.is_over_limit && (
             <div className="text-xs text-emerald-600 dark:text-emerald-400">
-              Pozostało: {formatCurrency(account.remaining_limit)}
+              {intl.formatMessage({ id: 'savings.remainingLimit' }, { amount: formatCurrency(account.remaining_limit) })}
             </div>
           )}
 
+          {/* Over limit warning */}
           {account.is_over_limit && (
             <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
               <AlertTriangle className="h-3 w-3" />
-              Przekroczono o {formatCurrency(account.current_contributions - account.annual_limit)}
+              {intl.formatMessage({ id: 'savings.overLimit' })}
             </div>
           )}
         </div>
@@ -375,14 +545,43 @@ export default function RetirementLimitsCard({
 
               <div className="flex items-baseline justify-between">
                 <div className="text-xs text-secondary">
-                  {intl.formatMessage({ id: 'savings.ppk.estimatedBalance' })}
-                  {' · '}
-                  {intl.formatMessage({ id: 'savings.ppk.monthsAccumulated' }, { months })}
+                  {hasManualBaseline
+                    ? intl.formatMessage({ id: 'savings.ppk.actualBalance' })
+                    : intl.formatMessage({ id: 'savings.ppk.estimatedBalance' })}
+                  {!hasManualBaseline && ' · '}
+                  {!hasManualBaseline && intl.formatMessage({ id: 'savings.ppk.monthsAccumulated' }, { months })}
                 </div>
                 <div className="font-semibold text-primary">
                   {formatCurrency(displayBalance)}
                 </div>
               </div>
+
+              {/* Manual baseline indicator */}
+              {hasManualBaseline && ppkAccount?.last_manual_update && (
+                <div className="text-xs text-muted-foreground">
+                  {intl.formatMessage({ id: 'savings.ppk.baselineValue' }, {
+                    baseline: formatCurrency(ppkAccount.last_manual_balance ?? 0),
+                    date: new Date(ppkAccount.last_manual_update).toLocaleDateString(),
+                  })}
+                  {isUoP && growthSinceBaseline > 0 && (
+                    <>
+                      {' · '}
+                      {intl.formatMessage({ id: 'savings.ppk.growth' }, {
+                        growth: formatCurrency(growthSinceBaseline),
+                        months: monthsSinceBaseline,
+                      })}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Non-UoP employee warning */}
+              {!isUoP && (
+                <div className="flex items-start gap-1 text-xs text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                  <div>{intl.formatMessage({ id: 'savings.ppk.notUopWarning' })}</div>
+                </div>
+              )}
 
               <div className="text-xs text-secondary">
                 {intl.formatMessage({ id: 'savings.ppk.monthlyContribution' })}:{' '}
@@ -697,6 +896,59 @@ export default function RetirementLimitsCard({
               }
             >
               {intl.formatMessage({ id: 'savings.ppk.withdraw' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Opening Balance Dialog (IKE/IKZE/OIPE) */}
+      <Dialog open={!!openingBalanceDialog} onOpenChange={(open) => !open && setOpeningBalanceDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {openingBalanceDialog &&
+                intl.formatMessage(
+                  { id: 'savings.openingBalance.title' },
+                  { account: openingBalanceDialog.accountType.toUpperCase() }
+                )}
+            </DialogTitle>
+            <DialogDescription>
+              {intl.formatMessage({ id: 'savings.openingBalance.description' })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="opening-balance">
+                {intl.formatMessage({ id: 'savings.openingBalance.label' })}
+              </Label>
+              <Input
+                id="opening-balance"
+                type="number"
+                min="0"
+                step="0.01"
+                value={openingBalanceInput}
+                onChange={(e) => setOpeningBalanceInput(e.target.value)}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-secondary">
+                {intl.formatMessage({ id: 'savings.openingBalance.hint' })}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpeningBalanceDialog(null)}>
+              {intl.formatMessage({ id: 'common.cancel' })}
+            </Button>
+            <Button
+              onClick={handleOpeningBalanceUpdate}
+              disabled={
+                openingBalanceSubmitting ||
+                openingBalanceInput === '' ||
+                isNaN(parseFloat(openingBalanceInput)) ||
+                parseFloat(openingBalanceInput) <= 0
+              }
+            >
+              {intl.formatMessage({ id: 'common.save' })}
             </Button>
           </DialogFooter>
         </DialogContent>

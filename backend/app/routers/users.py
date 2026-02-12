@@ -4,7 +4,7 @@ import traceback
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date
 import os
 from .. import models, database
 from ..dependencies import get_or_create_current_user, get_current_user, INTERNAL_SERVICE_SECRET
@@ -52,6 +52,8 @@ class SettingsBase(BaseModel):
     ppk_enrolled: bool | None = None          # PPK enrollment status
     ppk_employee_rate: float | None = None    # PPK employee contribution (0.5% - 4%)
     ppk_employer_rate: float | None = None    # PPK employer contribution (1.5% - 4%)
+    ppk_enrollment_date: date | None = None   # Date when user enrolled in PPK (employment contract start)
+    employment_type: str | None = None        # Employment type: 'uop' (Umowa o pracę), 'b2b', 'jdg', etc.
     children_count: int | None = 0            # For child tax relief calculation
     # Life data from onboarding
     marital_status: str | None = None

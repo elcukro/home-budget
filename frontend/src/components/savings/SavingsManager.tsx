@@ -1350,6 +1350,10 @@ export const SavingsManager = () => {
       <RetirementLimitsCard
         className="rounded-3xl"
         onQuickAddSaving={handleQuickAddRetirement}
+        onPpkUpdate={() => {
+          void fetchSavings();
+          void fetchSummary();
+        }}
         refreshKey={retirementLimitsRefreshKey}
       />
 

@@ -223,6 +223,8 @@ class Settings(Base):
     ppk_enrolled = Column(Boolean, nullable=True)          # PPK enrollment status
     ppk_employee_rate = Column(Float, nullable=True)       # PPK employee contribution (0.5% - 4%)
     ppk_employer_rate = Column(Float, nullable=True)       # PPK employer contribution (1.5% - 4%)
+    ppk_enrollment_date = Column(Date, nullable=True)      # Date when user enrolled in PPK (employment contract start)
+    employment_type = Column(String, nullable=True)        # Employment type: 'uop' (Umowa o pracę), 'b2b', 'jdg', etc.
     children_count = Column(Integer, default=0)            # For child tax relief calculation
 
     # Onboarding status
@@ -392,6 +394,7 @@ class Saving(Base):
     account_type = Column(String, default='standard')  # standard, ike, ikze, ppk, oipe
     annual_return_rate = Column(Float, nullable=True)  # Expected annual return rate for compound interest (e.g., 0.05 for 5%)
     owner = Column(String, nullable=True)  # "self", "partner" (null = "self" for backwards compat)
+    entry_type = Column(String, default='contribution', nullable=False)  # 'contribution', 'opening_balance', 'correction'
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -404,6 +407,7 @@ class Saving(Base):
         Index('idx_savings_date', 'date'),
         Index('idx_savings_account_type', 'account_type'),
         Index('idx_savings_goal_id', 'goal_id'),
+        Index('idx_savings_entry_type', 'entry_type'),
     )
 
 class BankingConnection(Base):

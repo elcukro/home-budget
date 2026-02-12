@@ -66,6 +66,7 @@ export const createSaving = async (data: {
   date: string;
   description: string;
   account_type?: string;
+  entry_type?: string;  // 'contribution' | 'opening_balance' | 'correction'
 }): Promise<Saving> => {
   const response = await fetch('/api/savings', {
     method: 'POST',
@@ -238,16 +239,26 @@ export const getMonthlyRecurringExpenses = async (): Promise<number> => {
 };
 
 /**
- * Individual retirement account limit tracking
+ * Individual retirement account limit tracking with multi-year support
  */
 export interface RetirementAccountLimit {
   account_type: AccountType;
   year: number;
   annual_limit: number;
-  current_contributions: number;
+
+  // Multi-year tracking fields
+  opening_balance: number;           // Historical balance accumulated before current year
+  current_contributions: number;     // Net contributions in current year (for limit calculation)
+  total_balance: number;             // opening_balance + current year net balance
+
   remaining_limit: number;
   percentage_used: number;
   is_over_limit: boolean;
+
+  // PPK manual baseline tracking (kept for backward compatibility)
+  last_manual_balance?: number | null;  // Manual baseline amount from last "Korekta stanu PPK"
+  last_manual_update?: string | null;   // When user last manually updated PPK balance
+  monthly_contribution?: number;         // Current monthly PPK contribution (salary × rates)
 }
 
 /**
