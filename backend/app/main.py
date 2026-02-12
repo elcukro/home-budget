@@ -1596,9 +1596,10 @@ async def get_user_summary(
 ):
     """Get financial summary for the authenticated user."""
     validate_user_access(user_id, current_user)
+    hid = current_user.household_id  # Use household_id for all data queries (partner sees shared data)
 
     try:
-        print(f"[FastAPI] Getting summary for user: {current_user.household_id}")
+        print(f"[FastAPI] Getting summary for user: {hid}")
         # Get current month's start and end dates
         today = datetime.now()
         month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -1606,7 +1607,7 @@ async def get_user_summary(
 
         # Fetch monthly income (non-recurring, within current month)
         monthly_income_non_recurring = db.query(func.sum(models.Income.amount)).filter(
-            models.Income.user_id == user_id,
+            models.Income.user_id == hid,
             models.Income.date >= month_start,
             models.Income.date <= month_end,
             models.Income.is_recurring == False
@@ -1615,7 +1616,7 @@ async def get_user_summary(
         # Fetch recurring income (active in current month)
         # Must have started before/during this month AND not ended before this month
         monthly_income_recurring = db.query(func.sum(models.Income.amount)).filter(
-            models.Income.user_id == user_id,
+            models.Income.user_id == hid,
             models.Income.is_recurring == True,
             models.Income.date <= month_end,  # Started before or during this month
             or_(
@@ -1629,7 +1630,7 @@ async def get_user_summary(
 
         # Fetch monthly expenses (non-recurring, within current month)
         monthly_expenses_non_recurring = db.query(func.sum(models.Expense.amount)).filter(
-            models.Expense.user_id == user_id,
+            models.Expense.user_id == hid,
             models.Expense.date >= month_start,
             models.Expense.date <= month_end,
             models.Expense.is_recurring == False
@@ -1638,7 +1639,7 @@ async def get_user_summary(
         # Fetch recurring expenses (active in current month)
         # Must have started before/during this month AND not ended before this month
         monthly_expenses_recurring = db.query(func.sum(models.Expense.amount)).filter(
-            models.Expense.user_id == user_id,
+            models.Expense.user_id == hid,
             models.Expense.is_recurring == True,
             models.Expense.date <= month_end,  # Started before or during this month
             or_(
@@ -1652,14 +1653,14 @@ async def get_user_summary(
 
         # Fetch monthly loan payments (exclude archived loans)
         monthly_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
-            models.Loan.user_id == user_id,
+            models.Loan.user_id == hid,
             models.Loan.start_date <= month_end,
             (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
         ).scalar() or 0
 
         # Fetch total loan balance (exclude archived loans)
         total_loan_balance = db.query(func.sum(models.Loan.remaining_balance)).filter(
-            models.Loan.user_id == user_id,
+            models.Loan.user_id == hid,
             (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
         ).scalar() or 0
 
@@ -1684,7 +1685,7 @@ async def get_user_summary(
             models.Income.category,
             func.sum(models.Income.amount).label("total_amount")
         ).filter(
-            models.Income.user_id == user_id,
+            models.Income.user_id == hid,
             models.Income.is_recurring == False,
             models.Income.date >= month_start,
             models.Income.date <= month_end
@@ -1695,7 +1696,7 @@ async def get_user_summary(
             models.Income.category,
             func.sum(models.Income.amount).label("total_amount")
         ).filter(
-            models.Income.user_id == user_id,
+            models.Income.user_id == hid,
             models.Income.is_recurring == True,
             models.Income.date <= month_end,  # Started before or during this month
             or_(
@@ -1728,7 +1729,7 @@ async def get_user_summary(
             models.Expense.category,
             func.sum(models.Expense.amount).label("total_amount")
         ).filter(
-            models.Expense.user_id == user_id,
+            models.Expense.user_id == hid,
             models.Expense.is_recurring == False,
             models.Expense.date >= month_start,
             models.Expense.date <= month_end
@@ -1739,7 +1740,7 @@ async def get_user_summary(
             models.Expense.category,
             func.sum(models.Expense.amount).label("total_amount")
         ).filter(
-            models.Expense.user_id == user_id,
+            models.Expense.user_id == hid,
             models.Expense.is_recurring == True,
             models.Expense.date <= month_end,  # Started before or during this month
             or_(
@@ -1777,7 +1778,7 @@ async def get_user_summary(
             
             # Calculate recurring income for THIS specific month
             month_income_recurring = db.query(func.sum(models.Income.amount)).filter(
-                models.Income.user_id == user_id,
+                models.Income.user_id == hid,
                 models.Income.is_recurring == True,
                 models.Income.date <= month_end_date,  # Started before or during this month
                 or_(
@@ -1788,7 +1789,7 @@ async def get_user_summary(
 
             # Calculate recurring expenses for THIS specific month
             month_expenses_recurring = db.query(func.sum(models.Expense.amount)).filter(
-                models.Expense.user_id == user_id,
+                models.Expense.user_id == hid,
                 models.Expense.is_recurring == True,
                 models.Expense.date <= month_end_date,  # Started before or during this month
                 or_(
@@ -1801,7 +1802,7 @@ async def get_user_summary(
             if month <= today.month:
                 # Non-recurring income for this month
                 month_income_non_recurring = db.query(func.sum(models.Income.amount)).filter(
-                    models.Income.user_id == user_id,
+                    models.Income.user_id == hid,
                     models.Income.date >= month_start_date,
                     models.Income.date <= month_end_date,
                     models.Income.is_recurring == False
@@ -1812,7 +1813,7 @@ async def get_user_summary(
 
                 # Non-recurring expenses for this month
                 month_expenses_non_recurring = db.query(func.sum(models.Expense.amount)).filter(
-                    models.Expense.user_id == user_id,
+                    models.Expense.user_id == hid,
                     models.Expense.date >= month_start_date,
                     models.Expense.date <= month_end_date,
                     models.Expense.is_recurring == False
@@ -1823,7 +1824,7 @@ async def get_user_summary(
 
                 # Loan payments for this month (exclude archived)
                 month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
-                    models.Loan.user_id == user_id,
+                    models.Loan.user_id == hid,
                     models.Loan.start_date <= month_end_date,
                     (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
                 ).scalar() or 0
@@ -1834,7 +1835,7 @@ async def get_user_summary(
 
                 # Loan payments for future months (assuming all current loans continue, exclude archived)
                 month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
-                    models.Loan.user_id == user_id,
+                    models.Loan.user_id == hid,
                     models.Loan.start_date <= today,
                     (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
                 ).scalar() or 0
@@ -1853,7 +1854,7 @@ async def get_user_summary(
 
         # Fetch active loans for the user (exclude archived)
         active_loans = db.query(models.Loan).filter(
-            models.Loan.user_id == user_id,
+            models.Loan.user_id == hid,
             (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
         ).all()
         
@@ -1878,12 +1879,12 @@ async def get_user_summary(
         # Fetch savings data for the user
         # Total savings balance (all time deposits - withdrawals)
         total_deposits = db.query(func.sum(models.Saving.amount)).filter(
-            models.Saving.user_id == user_id,
+            models.Saving.user_id == hid,
             models.Saving.saving_type == 'deposit'
         ).scalar() or 0
 
         total_withdrawals = db.query(func.sum(models.Saving.amount)).filter(
-            models.Saving.user_id == user_id,
+            models.Saving.user_id == hid,
             models.Saving.saving_type == 'withdrawal'
         ).scalar() or 0
 
@@ -1891,7 +1892,7 @@ async def get_user_summary(
 
         # Monthly savings (current month non-recurring + all recurring deposits/withdrawals)
         monthly_deposits_non_recurring = db.query(func.sum(models.Saving.amount)).filter(
-            models.Saving.user_id == user_id,
+            models.Saving.user_id == hid,
             models.Saving.saving_type == 'deposit',
             models.Saving.is_recurring == False,
             models.Saving.date >= month_start,
@@ -1899,7 +1900,7 @@ async def get_user_summary(
         ).scalar() or 0
 
         monthly_deposits_recurring = db.query(func.sum(models.Saving.amount)).filter(
-            models.Saving.user_id == user_id,
+            models.Saving.user_id == hid,
             models.Saving.saving_type == 'deposit',
             models.Saving.is_recurring == True,
             models.Saving.date <= month_end,  # Started before or during this month
@@ -1910,7 +1911,7 @@ async def get_user_summary(
         ).scalar() or 0
 
         monthly_withdrawals_non_recurring = db.query(func.sum(models.Saving.amount)).filter(
-            models.Saving.user_id == user_id,
+            models.Saving.user_id == hid,
             models.Saving.saving_type == 'withdrawal',
             models.Saving.is_recurring == False,
             models.Saving.date >= month_start,
@@ -1918,7 +1919,7 @@ async def get_user_summary(
         ).scalar() or 0
 
         monthly_withdrawals_recurring = db.query(func.sum(models.Saving.amount)).filter(
-            models.Saving.user_id == user_id,
+            models.Saving.user_id == hid,
             models.Saving.saving_type == 'withdrawal',
             models.Saving.is_recurring == True,
             models.Saving.date <= month_end,  # Started before or during this month
@@ -1943,7 +1944,7 @@ async def get_user_summary(
             ).label('current_amount'),
             func.max(models.Saving.target_amount).label('target_amount')
         ).filter(
-            models.Saving.user_id == user_id
+            models.Saving.user_id == hid
         ).group_by(models.Saving.category).all()
 
         for goal in savings_by_category:
@@ -1958,7 +1959,7 @@ async def get_user_summary(
             })
 
         recent_activities = db.query(models.Activity).filter(
-            models.Activity.user_id == user_id
+            models.Activity.user_id == hid
         ).order_by(models.Activity.timestamp.desc()).limit(20).all()
 
         numeric_fields = {
