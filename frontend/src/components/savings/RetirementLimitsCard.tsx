@@ -337,6 +337,7 @@ export default function RetirementLimitsCard({
         date: `${currentYear}-01-01`,
         description: `Saldo początkowe ${accountLabel} ${currentYear}`,
         account_type: openingBalanceDialog.accountType,
+        entry_type: 'opening_balance',  // CRITICAL: Mark as opening balance, not contribution!
       });
 
       invalidateSavingsCache();
