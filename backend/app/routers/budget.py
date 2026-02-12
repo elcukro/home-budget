@@ -26,8 +26,8 @@ def _get_user_or_404(email: str, db: Session) -> models.User:
 
 
 def _validate_access(user: models.User, current_user: models.User):
-    """Validate authenticated user matches the requested user."""
-    if user.id != current_user.household_id:
+    """Validate authenticated user matches the requested user or is in same household."""
+    if user.id != current_user.id and user.id != current_user.household_id:
         raise HTTPException(status_code=403, detail="Access denied: You can only access your own data")
 
 
@@ -110,16 +110,18 @@ async def create_budget_year(
     user = _get_user_or_404(email, db)
     _validate_access(user, current_user)
 
+    hid = current_user.household_id
+
     # Check for duplicate
     existing = db.query(models.BudgetYear).filter(
-        models.BudgetYear.user_id == user.id,
+        models.BudgetYear.user_id == hid,
         models.BudgetYear.year == data.year
     ).first()
     if existing:
         raise HTTPException(status_code=409, detail=f"Budget year {data.year} already exists")
 
     budget_year = models.BudgetYear(
-        user_id=user.id,
+        user_id=hid,
         year=data.year,
         source=data.source,
         template_data=data.template_data,
@@ -128,7 +130,7 @@ async def create_budget_year(
     db.add(budget_year)
     db.commit()
     db.refresh(budget_year)
-    logger.info(f"Created budget year {data.year} for user {user.id}")
+    logger.info(f"Created budget year {data.year} for user {hid}")
     return budget_year
 
 
@@ -143,7 +145,7 @@ async def list_budget_years(
     _validate_access(user, current_user)
 
     years = db.query(models.BudgetYear).filter(
-        models.BudgetYear.user_id == user.id
+        models.BudgetYear.user_id == current_user.household_id
     ).order_by(models.BudgetYear.year.desc()).all()
     return years
 
@@ -159,7 +161,7 @@ async def get_budget_year(
     user = _get_user_or_404(email, db)
     _validate_access(user, current_user)
 
-    budget_year = _get_budget_year(user.id, year, db)
+    budget_year = _get_budget_year(current_user.household_id, year, db)
 
     entries = db.query(models.BudgetEntry).filter(
         models.BudgetEntry.budget_year_id == budget_year.id
@@ -182,7 +184,7 @@ async def get_month_entries(
     user = _get_user_or_404(email, db)
     _validate_access(user, current_user)
 
-    budget_year = _get_budget_year(user.id, year, db)
+    budget_year = _get_budget_year(current_user.household_id, year, db)
 
     entries = db.query(models.BudgetEntry).filter(
         models.BudgetEntry.budget_year_id == budget_year.id,
@@ -205,6 +207,7 @@ async def create_budget_entry(
     """Create a single budget entry (budget_year_id required in body)."""
     user = _get_user_or_404(email, db)
     _validate_access(user, current_user)
+    hid = current_user.household_id
 
     if not entry.budget_year_id:
         raise HTTPException(status_code=400, detail="budget_year_id is required")
@@ -212,14 +215,14 @@ async def create_budget_entry(
     # Verify budget year belongs to user
     budget_year = db.query(models.BudgetYear).filter(
         models.BudgetYear.id == entry.budget_year_id,
-        models.BudgetYear.user_id == user.id,
+        models.BudgetYear.user_id == hid,
     ).first()
     if not budget_year:
         raise HTTPException(status_code=404, detail="Budget year not found")
 
     db_entry = models.BudgetEntry(
         budget_year_id=entry.budget_year_id,
-        user_id=user.id,
+        user_id=hid,
         month=entry.month,
         entry_type=entry.entry_type,
         category=entry.category,
@@ -249,7 +252,7 @@ async def update_budget_entry(
 
     db_entry = db.query(models.BudgetEntry).filter(
         models.BudgetEntry.id == entry_id,
-        models.BudgetEntry.user_id == user.id,
+        models.BudgetEntry.user_id == current_user.household_id,
     ).first()
     if not db_entry:
         raise HTTPException(status_code=404, detail="Budget entry not found")
@@ -278,7 +281,7 @@ async def delete_budget_entry(
 
     db_entry = db.query(models.BudgetEntry).filter(
         models.BudgetEntry.id == entry_id,
-        models.BudgetEntry.user_id == user.id,
+        models.BudgetEntry.user_id == current_user.household_id,
     ).first()
     if not db_entry:
         raise HTTPException(status_code=404, detail="Budget entry not found")
@@ -304,10 +307,11 @@ async def create_budget_from_onboarding(
     """
     user = _get_user_or_404(email, db)
     _validate_access(user, current_user)
+    hid = current_user.household_id
 
     # Get or create budget year
     existing = db.query(models.BudgetYear).filter(
-        models.BudgetYear.user_id == user.id,
+        models.BudgetYear.user_id == hid,
         models.BudgetYear.year == data.year,
     ).first()
 
@@ -320,10 +324,10 @@ async def create_budget_from_onboarding(
         existing.status = "active"
         existing.closed_at = None
         budget_year = existing
-        logger.info(f"Replacing budget year {data.year} entries for user {user.id}")
+        logger.info(f"Replacing budget year {data.year} entries for user {hid}")
     else:
         budget_year = models.BudgetYear(
-            user_id=user.id,
+            user_id=hid,
             year=data.year,
             source="onboarding",
             status="active",
@@ -336,7 +340,7 @@ async def create_budget_from_onboarding(
     for entry_data in data.income_entries + data.expense_entries + data.loan_entries:
         all_entries.append(models.BudgetEntry(
             budget_year_id=budget_year.id,
-            user_id=user.id,
+            user_id=hid,
             month=entry_data.month,
             entry_type=entry_data.entry_type,
             category=entry_data.category,
@@ -350,7 +354,7 @@ async def create_budget_from_onboarding(
     db.commit()
     db.refresh(budget_year)
 
-    logger.info(f"Created budget from onboarding: year={data.year}, entries={len(all_entries)} for user {user.id}")
+    logger.info(f"Created budget from onboarding: year={data.year}, entries={len(all_entries)} for user {hid}")
 
     return {
         "budget_year_id": budget_year.id,
