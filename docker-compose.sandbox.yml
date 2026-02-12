@@ -51,6 +51,7 @@ services:
       # Mount source for hot reload
       - ./backend/app:/app/app
       - ./backend/init_db.py:/app/init_db.py:ro
+      - ./backend/email_templates:/app/email_templates:ro
     depends_on:
       db:
         condition: service_healthy
