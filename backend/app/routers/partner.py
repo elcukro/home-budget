@@ -22,9 +22,16 @@ logger = logging.getLogger(__name__)
 
 
 def _utcnow():
-    """Return current UTC time as a naive datetime for safe comparison with DB values.
-    SQLite strips timezone info, so we compare naive-to-naive."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    """Return current UTC time as timezone-aware datetime.
+    PostgreSQL with DateTime(timezone=True) returns aware datetimes."""
+    return datetime.now(timezone.utc)
+
+
+def _ensure_aware(dt):
+    """Ensure a datetime is timezone-aware (UTC). Handles SQLite naive datetimes."""
+    if dt is not None and dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 router = APIRouter(
@@ -165,7 +172,7 @@ def validate_invitation(
     if invitation.accepted_at is not None:
         return PartnerInviteValidation(valid=False)
 
-    if invitation.expires_at < _utcnow():
+    if _ensure_aware(invitation.expires_at) < _utcnow():
         return PartnerInviteValidation(valid=False, expired=True)
 
     inviter = db.query(models.User).filter(
@@ -197,7 +204,7 @@ def accept_preflight(
     ).first()
     if not invitation:
         raise HTTPException(status_code=404, detail="Invitation not found or already used")
-    if invitation.expires_at < _utcnow():
+    if _ensure_aware(invitation.expires_at) < _utcnow():
         raise HTTPException(status_code=410, detail="Invitation has expired")
 
     # Count user's existing data
@@ -242,7 +249,7 @@ def export_own_data(
     ).first()
     if not invitation:
         raise HTTPException(status_code=404, detail="Invitation not found or already used")
-    if invitation.expires_at < _utcnow():
+    if _ensure_aware(invitation.expires_at) < _utcnow():
         raise HTTPException(status_code=410, detail="Invitation has expired")
 
     uid = current_user.id  # Always own data, never household_id
@@ -367,7 +374,7 @@ def accept_invitation(
     if not invitation:
         raise HTTPException(status_code=404, detail="Invitation not found or already used")
 
-    if invitation.expires_at < _utcnow():
+    if _ensure_aware(invitation.expires_at) < _utcnow():
         raise HTTPException(status_code=410, detail="Invitation has expired")
 
     # If invitation was restricted to specific email, validate
