@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useIntl } from 'react-intl';
 import { useSession } from 'next-auth/react';
-import { AlertTriangle, BadgePercent, Building2, CheckCircle, Globe, Info, Landmark, Plus, TrendingUp, Wallet } from 'lucide-react';
+import { AlertTriangle, BadgePercent, Building2, Globe, Info, Landmark, Plus, TrendingUp, Wallet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -398,19 +398,6 @@ export default function RetirementLimitsCard({
     if (percentage >= 90) return 'bg-amber-500';
     if (percentage >= 75) return 'bg-yellow-500';
     return 'bg-emerald-500';
-  };
-
-  const getStatusIcon = (account: RetirementAccountLimit) => {
-    if (account.is_over_limit) {
-      return <AlertTriangle className="h-4 w-4 text-red-500" />;
-    }
-    if (account.percentage_used >= 100) {
-      return <CheckCircle className="h-4 w-4 text-emerald-500" />;
-    }
-    if (account.percentage_used >= 90) {
-      return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-    }
-    return <TrendingUp className="h-4 w-4 text-blue-500" />;
   };
 
   const renderAccountCard = (account: RetirementAccountLimit) => {
