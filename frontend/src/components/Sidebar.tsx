@@ -159,7 +159,13 @@ export default function Sidebar() {
                     <p className="text-sm font-medium text-primary truncate">
                       {session.user.name}
                     </p>
-                    <SubscriptionBadge />
+                    {session.user.isPartner ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-violet-100 text-violet-700">
+                        {intl.formatMessage({ id: "partner.badge" })}
+                      </span>
+                    ) : (
+                      <SubscriptionBadge />
+                    )}
                   </div>
                   <p className="text-xs text-secondary truncate">
                     {session.user.email}

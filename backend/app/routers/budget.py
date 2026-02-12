@@ -27,7 +27,7 @@ def _get_user_or_404(email: str, db: Session) -> models.User:
 
 def _validate_access(user: models.User, current_user: models.User):
     """Validate authenticated user matches the requested user."""
-    if user.id != current_user.id:
+    if user.id != current_user.household_id:
         raise HTTPException(status_code=403, detail="Access denied: You can only access your own data")
 
 

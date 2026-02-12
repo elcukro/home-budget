@@ -29,16 +29,16 @@ async def get_financial_freedom(
 ):
     """Get the financial freedom data for the current user."""
     try:
-        logger.info(f"Getting financial freedom data for user: {current_user.id}")
+        logger.info(f"Getting financial freedom data for user: {current_user.household_id}")
         financial_freedom = db.query(FinancialFreedom).filter(
-            FinancialFreedom.userId == current_user.id
+            FinancialFreedom.userId == current_user.household_id
         ).first()
         
         if not financial_freedom:
-            logger.info(f"No existing data found for user {current_user.id}, retrieving settings and creating default data")
+            logger.info(f"No existing data found for user {current_user.household_id}, retrieving settings and creating default data")
             
             # Get user settings for financial freedom configuration
-            user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+            user_settings = db.query(Settings).filter(Settings.user_id == current_user.household_id).first()
             
             # Default values if settings don't exist
             emergency_fund_target = 1000
@@ -52,7 +52,7 @@ async def get_financial_freedom(
             logger.info(f"Using settings: emergency_fund_target={emergency_fund_target}, emergency_fund_months={emergency_fund_months}")
             
             return FinancialFreedomResponse(
-                userId=current_user.id,
+                userId=current_user.household_id,
                 steps=[
                     {
                         "id": 1,
@@ -136,7 +136,7 @@ async def get_financial_freedom(
                 lastUpdated=datetime.now()
             )
         
-        logger.info(f"Found existing data for user {current_user.id}")
+        logger.info(f"Found existing data for user {current_user.household_id}")
         return financial_freedom
     except Exception as e:
         logger.error(f"Error in get_financial_freedom: {str(e)}")
@@ -156,15 +156,15 @@ async def get_financial_freedom_calculated(
     This endpoint calculates progress based on actual financial data (savings, loans, expenses).
     """
     try:
-        logger.info(f"Getting calculated financial freedom data for user: {current_user.id}")
+        logger.info(f"Getting calculated financial freedom data for user: {current_user.household_id}")
 
         # Get base financial freedom data (or defaults)
         financial_freedom = db.query(FinancialFreedom).filter(
-            FinancialFreedom.userId == current_user.id
+            FinancialFreedom.userId == current_user.household_id
         ).first()
 
         # Get user settings
-        user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+        user_settings = db.query(Settings).filter(Settings.user_id == current_user.household_id).first()
         emergency_fund_target = user_settings.emergency_fund_target if user_settings else 3000
         emergency_fund_months = user_settings.emergency_fund_months if user_settings else 3
 
@@ -174,7 +174,7 @@ async def get_financial_freedom_calculated(
         def active_savings_filter(query, saving_type: str):
             """Filter for active savings (non-recurring or active recurring)"""
             return query.filter(
-                Saving.user_id == current_user.id,
+                Saving.user_id == current_user.household_id,
                 Saving.saving_type == saving_type,
                 Saving.date <= today,
                 or_(
@@ -215,18 +215,18 @@ async def get_financial_freedom_calculated(
         # ============== Calculate Loan Data ==============
         # Non-mortgage loans (Baby Step 2 debts - exclude mortgage and leasing)
         non_mortgage_debt = db.query(func.sum(Loan.remaining_balance)).filter(
-            Loan.user_id == current_user.id,
+            Loan.user_id == current_user.household_id,
             ~Loan.loan_type.in_(['mortgage', 'leasing'])
         ).scalar() or 0.0
 
         non_mortgage_principal = db.query(func.sum(Loan.principal_amount)).filter(
-            Loan.user_id == current_user.id,
+            Loan.user_id == current_user.household_id,
             ~Loan.loan_type.in_(['mortgage', 'leasing'])
         ).scalar() or 0.0
 
         # Mortgage data (Baby Step 6)
         mortgage = db.query(Loan).filter(
-            Loan.user_id == current_user.id,
+            Loan.user_id == current_user.household_id,
             Loan.loan_type == 'mortgage'
         ).first()
 
@@ -240,7 +240,7 @@ async def get_financial_freedom_calculated(
 
         # Non-recurring expenses this month
         monthly_expenses_non_recurring = db.query(func.sum(Expense.amount)).filter(
-            Expense.user_id == current_user.id,
+            Expense.user_id == current_user.household_id,
             Expense.date >= month_start,
             Expense.date <= today,
             Expense.is_recurring == False
@@ -248,7 +248,7 @@ async def get_financial_freedom_calculated(
 
         # Active recurring expenses
         monthly_expenses_recurring = db.query(func.sum(Expense.amount)).filter(
-            Expense.user_id == current_user.id,
+            Expense.user_id == current_user.household_id,
             Expense.is_recurring == True,
             Expense.date <= today,
             or_(
@@ -375,7 +375,7 @@ async def get_financial_freedom_calculated(
                     })
 
         return FinancialFreedomResponse(
-            userId=current_user.id,
+            userId=current_user.household_id,
             steps=updated_steps,
             startDate=start_date,
             lastUpdated=datetime.now()
@@ -397,15 +397,15 @@ async def update_financial_freedom(
 ):
     """Update the financial freedom data for the current user."""
     try:
-        logger.info(f"Updating financial freedom data for user: {current_user.id}")
+        logger.info(f"Updating financial freedom data for user: {current_user.household_id}")
         
         # Get existing financial freedom data to compare with updates
         existing_ff = db.query(FinancialFreedom).filter(
-            FinancialFreedom.userId == current_user.id
+            FinancialFreedom.userId == current_user.household_id
         ).first()
         
         # Get user settings for steps 1-3 reference values
-        user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+        user_settings = db.query(Settings).filter(Settings.user_id == current_user.household_id).first()
         
         # Prevent manual updates to steps 1-3 which are auto-calculated
         # We'll preserve the steps from the database when they're available
@@ -431,23 +431,23 @@ async def update_financial_freedom(
             
             # Create or update the financial freedom record
             if not existing_ff:
-                logger.info(f"Creating new financial freedom record for user {current_user.id}")
+                logger.info(f"Creating new financial freedom record for user {current_user.household_id}")
                 financial_freedom = FinancialFreedom(
-                    userId=current_user.id,
+                    userId=current_user.household_id,
                     steps=updated_steps,
                     startDate=financial_freedom_data.startDate or datetime.now(),
                     lastUpdated=datetime.now()
                 )
                 db.add(financial_freedom)
             else:
-                logger.info(f"Updating existing record for user {current_user.id}")
+                logger.info(f"Updating existing record for user {current_user.household_id}")
                 existing_ff.steps = updated_steps
                 existing_ff.lastUpdated = datetime.now()
                 financial_freedom = existing_ff
             
             db.commit()
             db.refresh(financial_freedom)
-            logger.info(f"Successfully updated data for user {current_user.id}")
+            logger.info(f"Successfully updated data for user {current_user.household_id}")
 
             # Check for FIRE-related achievements
             try:
@@ -458,9 +458,9 @@ async def update_financial_freedom(
             return financial_freedom
         else:
             # If no existing record, create a new one (should be rare since GET creates a default)
-            logger.info(f"Creating new financial freedom record for user {current_user.id}")
+            logger.info(f"Creating new financial freedom record for user {current_user.household_id}")
             financial_freedom = FinancialFreedom(
-                userId=current_user.id,
+                userId=current_user.household_id,
                 steps=[step.dict() for step in financial_freedom_data.steps],
                 startDate=financial_freedom_data.startDate or datetime.now(),
                 lastUpdated=datetime.now()
@@ -484,17 +484,17 @@ async def reset_financial_freedom(
 ):
     """Reset the financial freedom data for the current user."""
     try:
-        logger.info(f"Resetting financial freedom data for user: {current_user.id}")
+        logger.info(f"Resetting financial freedom data for user: {current_user.household_id}")
         financial_freedom = db.query(FinancialFreedom).filter(
-            FinancialFreedom.userId == current_user.id
+            FinancialFreedom.userId == current_user.household_id
         ).first()
         
         if financial_freedom:
             db.delete(financial_freedom)
             db.commit()
-            logger.info(f"Successfully reset data for user {current_user.id}")
+            logger.info(f"Successfully reset data for user {current_user.household_id}")
         else:
-            logger.info(f"No data found to reset for user {current_user.id}")
+            logger.info(f"No data found to reset for user {current_user.household_id}")
         
         return None
     except Exception as e:

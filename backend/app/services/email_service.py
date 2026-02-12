@@ -52,6 +52,7 @@ class EmailType(Enum):
     TRIAL_ENDED = "trial_ended"
     SUBSCRIPTION_CANCELED = "subscription_canceled"
     PAYMENT_FAILED = "payment_failed"
+    PARTNER_INVITATION = "partner_invitation"
 
 
 def _format_currency(amount_grosze: int) -> str:
@@ -714,4 +715,78 @@ def send_payment_failed_email(
         html_content=html_content,
         email_type=EmailType.PAYMENT_FAILED,
         user_name=user_name,
+    )
+
+
+def send_partner_invitation_email(
+    to_email: str,
+    inviter_name: Optional[str] = None,
+    token: str = "",
+) -> bool:
+    """
+    Send partner invitation email.
+
+    Args:
+        to_email: Partner's email address
+        inviter_name: Name of the person who sent the invitation
+        token: Invitation token for the accept link
+    """
+    inviter_display = inviter_name or "Ktoś"
+    accept_url = f"{FRONTEND_URL}/partner/accept?token={token}"
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }}
+        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
+        .info-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+        .button {{ display: inline-block; background: #667eea; color: white !important; padding: 14px 36px; border-radius: 6px; text-decoration: none; margin: 20px 0; font-size: 16px; font-weight: bold; }}
+        .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👥 Zaproszenie do wspólnego budżetu</h1>
+    </div>
+    <div class="content">
+        <p>Cześć!</p>
+
+        <p><strong>{inviter_display}</strong> zaprasza Cię do wspólnego zarządzania budżetem domowym w FiredUp.</p>
+
+        <div class="info-box">
+            <h3>Co to oznacza?</h3>
+            <ul>
+                <li>📊 Wspólny widok wszystkich finansów domowych</li>
+                <li>💰 Śledzenie wydatków i przychodów obu osób</li>
+                <li>🎯 Wspólne cele oszczędnościowe</li>
+                <li>🔥 Wspólna droga do finansowej wolności</li>
+            </ul>
+            <p style="color: #666; font-size: 14px;">Twoje konto będzie korzystać z planu Premium partnera — bez dodatkowych opłat.</p>
+        </div>
+
+        <p style="text-align: center;">
+            <a href="{accept_url}" class="button">Dołącz do budżetu →</a>
+        </p>
+
+        <p style="color: #666; font-size: 13px;">Zaproszenie jest ważne przez 7 dni. Jeśli nie spodziewałeś/aś się tego zaproszenia, zignoruj tę wiadomość.</p>
+
+        <p>Zespół FiredUp</p>
+    </div>
+    <div class="footer">
+        <p>FiredUp - Twój osobisty asystent finansowy<br>
+        <a href="{FRONTEND_URL}">firedup.app</a></p>
+    </div>
+</body>
+</html>
+"""
+
+    return _send_email(
+        to_email=to_email,
+        subject=f"👥 {inviter_display} zaprasza Cię do wspólnego zarządzania budżetem",
+        html_content=html_content,
+        email_type=EmailType.PARTNER_INVITATION,
     )

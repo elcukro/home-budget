@@ -38,8 +38,8 @@ async def get_savings(
 ):
     """Get user's savings with optional filtering."""
     try:
-        logger.info(f"Getting savings for user: {current_user.id}")
-        query = db.query(Saving).filter(Saving.user_id == current_user.id)
+        logger.info(f"Getting savings for user: {current_user.household_id}")
+        query = db.query(Saving).filter(Saving.user_id == current_user.household_id)
         
         if category:
             query = query.filter(Saving.category == category)
@@ -66,7 +66,7 @@ async def create_saving(
 ):
     """Create a new saving entry."""
     try:
-        logger.info(f"Creating saving for user: {current_user.id}")
+        logger.info(f"Creating saving for user: {current_user.household_id}")
 
         # Validate: only ONE opening_balance entry per account/year/owner
         if saving.entry_type == EntryType.OPENING_BALANCE:
@@ -77,7 +77,7 @@ async def create_saving(
             else:
                 ob_owner_filter = or_(Saving.owner == None, Saving.owner == 'self')
             existing = db.query(Saving).filter(
-                Saving.user_id == current_user.id,
+                Saving.user_id == current_user.household_id,
                 Saving.account_type == saving.account_type.value,
                 Saving.entry_type == EntryType.OPENING_BALANCE.value,
                 extract('year', Saving.date) == current_year,
@@ -92,7 +92,7 @@ async def create_saving(
 
         db_saving = Saving(
             **saving.dict(),
-            user_id=current_user.id
+            user_id=current_user.household_id
         )
         db.add(db_saving)
         db.commit()
@@ -129,10 +129,10 @@ async def update_saving(
 ):
     """Update a saving entry."""
     try:
-        logger.info(f"Updating saving {saving_id} for user: {current_user.id}")
+        logger.info(f"Updating saving {saving_id} for user: {current_user.household_id}")
         db_saving = db.query(Saving).filter(
             Saving.id == saving_id,
-            Saving.user_id == current_user.id
+            Saving.user_id == current_user.household_id
         ).first()
         
         if not db_saving:
@@ -166,10 +166,10 @@ async def delete_saving(
 ):
     """Delete a saving entry."""
     try:
-        logger.info(f"Deleting saving {saving_id} for user: {current_user.id}")
+        logger.info(f"Deleting saving {saving_id} for user: {current_user.household_id}")
         db_saving = db.query(Saving).filter(
             Saving.id == saving_id,
-            Saving.user_id == current_user.id
+            Saving.user_id == current_user.household_id
         ).first()
         
         if not db_saving:
@@ -199,7 +199,7 @@ async def get_savings_summary(
 ):
     """Get a summary of user's savings."""
     try:
-        logger.info(f"Getting savings summary for user: {current_user.id}")
+        logger.info(f"Getting savings summary for user: {current_user.household_id}")
 
         today = datetime.now().date()
 
@@ -208,7 +208,7 @@ async def get_savings_summary(
         # Recurring items only count if: date <= today AND (end_date IS NULL OR end_date >= today)
         def active_savings_filter(query, saving_type: str):
             return query.filter(
-                Saving.user_id == current_user.id,
+                Saving.user_id == current_user.household_id,
                 Saving.saving_type == saving_type,
                 Saving.date <= today,  # Must have started
                 or_(
@@ -267,7 +267,7 @@ async def get_savings_summary(
         monthly_non_recurring_deposits = db.query(
             func.sum(Saving.amount)
         ).filter(
-            Saving.user_id == current_user.id,
+            Saving.user_id == current_user.household_id,
             Saving.saving_type == 'deposit',
             Saving.is_recurring == False,
             Saving.date >= month_start,
@@ -278,7 +278,7 @@ async def get_savings_summary(
         monthly_non_recurring_withdrawals = db.query(
             func.sum(Saving.amount)
         ).filter(
-            Saving.user_id == current_user.id,
+            Saving.user_id == current_user.household_id,
             Saving.saving_type == 'withdrawal',
             Saving.is_recurring == False,
             Saving.date >= month_start,
@@ -289,7 +289,7 @@ async def get_savings_summary(
         monthly_recurring = db.query(
             func.sum(Saving.amount)
         ).filter(
-            Saving.user_id == current_user.id,
+            Saving.user_id == current_user.household_id,
             Saving.saving_type == 'deposit',
             Saving.is_recurring == True,
             Saving.date <= month_end,  # Started before or during this month
@@ -318,13 +318,13 @@ async def get_savings_summary(
         
         # Get recent transactions
         recent_transactions = db.query(Saving).filter(
-            Saving.user_id == current_user.id
+            Saving.user_id == current_user.household_id
         ).order_by(
             Saving.date.desc()
         ).limit(5).all()
         
         # Get user settings for emergency fund target
-        user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+        user_settings = db.query(Settings).filter(Settings.user_id == current_user.household_id).first()
         emergency_fund_target = 3000  # Default Baby Step 1 target
         if user_settings and hasattr(user_settings, 'emergency_fund_target') and user_settings.emergency_fund_target:
             emergency_fund_target = user_settings.emergency_fund_target
@@ -343,7 +343,7 @@ async def get_savings_summary(
             recent_transactions=recent_transactions
         )
         
-        logger.info(f"Generated savings summary for user {current_user.id}")
+        logger.info(f"Generated savings summary for user {current_user.household_id}")
         return summary
     except Exception as e:
         logger.error(f"Error in get_savings_summary: {str(e)}")
@@ -387,7 +387,7 @@ async def get_retirement_limits(
         year_start = date(target_year, 1, 1)
         year_end = date(target_year, 12, 31)
 
-        logger.info(f"Getting retirement limits for user {current_user.id}, year {target_year}, owner={owner}")
+        logger.info(f"Getting retirement limits for user {current_user.household_id}, year {target_year}, owner={owner}")
 
         # Build owner filter (null/"self" = user's own accounts, "partner" = partner's)
         if owner == 'partner':
@@ -409,7 +409,7 @@ async def get_retirement_limits(
 
             # Historical deposits from all years BEFORE target year (excluding opening_balance entries)
             historical_deposits = db.query(func.sum(Saving.amount)).filter(
-                Saving.user_id == current_user.id,
+                Saving.user_id == current_user.household_id,
                 Saving.account_type == account_type.value,
                 Saving.saving_type == 'deposit',
                 Saving.entry_type != EntryType.OPENING_BALANCE.value,
@@ -419,7 +419,7 @@ async def get_retirement_limits(
 
             # Historical withdrawals from all years BEFORE target year
             historical_withdrawals = db.query(func.sum(Saving.amount)).filter(
-                Saving.user_id == current_user.id,
+                Saving.user_id == current_user.household_id,
                 Saving.account_type == account_type.value,
                 Saving.saving_type == 'withdrawal',
                 Saving.entry_type != EntryType.OPENING_BALANCE.value,
@@ -429,7 +429,7 @@ async def get_retirement_limits(
 
             # Add any manual opening balance entry FOR this year
             manual_opening = db.query(func.sum(Saving.amount)).filter(
-                Saving.user_id == current_user.id,
+                Saving.user_id == current_user.household_id,
                 Saving.account_type == account_type.value,
                 Saving.entry_type == EntryType.OPENING_BALANCE.value,
                 extract('year', Saving.date) == target_year,
@@ -442,7 +442,7 @@ async def get_retirement_limits(
 
             # Current year deposits (only contribution type - for limit calculation)
             current_year_deposits = db.query(func.sum(Saving.amount)).filter(
-                Saving.user_id == current_user.id,
+                Saving.user_id == current_user.household_id,
                 Saving.account_type == account_type.value,
                 Saving.saving_type == 'deposit',
                 Saving.entry_type == EntryType.CONTRIBUTION.value,
@@ -453,7 +453,7 @@ async def get_retirement_limits(
 
             # Current year withdrawals (only contribution type)
             current_year_withdrawals = db.query(func.sum(Saving.amount)).filter(
-                Saving.user_id == current_user.id,
+                Saving.user_id == current_user.household_id,
                 Saving.account_type == account_type.value,
                 Saving.saving_type == 'withdrawal',
                 Saving.entry_type == EntryType.CONTRIBUTION.value,
@@ -492,7 +492,7 @@ async def get_retirement_limits(
             if account_type == AccountType.PPK:
                 # Find most recent opening_balance entry for PPK
                 manual_correction = db.query(Saving).filter(
-                    Saving.user_id == current_user.id,
+                    Saving.user_id == current_user.household_id,
                     Saving.account_type == AccountType.PPK.value,
                     Saving.entry_type == EntryType.OPENING_BALANCE.value,
                     owner_filter
@@ -503,7 +503,7 @@ async def get_retirement_limits(
                     last_manual_update = manual_correction.created_at
 
                 # Calculate current monthly PPK contribution
-                user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+                user_settings = db.query(Settings).filter(Settings.user_id == current_user.household_id).first()
 
                 # Use partner-specific PPK settings when owner=partner
                 if owner == 'partner' and user_settings:
@@ -523,7 +523,7 @@ async def get_retirement_limits(
                         else or_(Income.owner == None, Income.owner == 'self')
                     )
                     recent_salary = db.query(Income).filter(
-                        Income.user_id == current_user.id,
+                        Income.user_id == current_user.household_id,
                         Income.is_recurring == True,
                         Income.employment_type == 'uop',
                         or_(Income.end_date == None, Income.end_date >= date.today()),
@@ -646,8 +646,8 @@ async def get_savings_goals(
 ):
     """Get all savings goals for the current user."""
     try:
-        logger.info(f"Getting savings goals for user: {current_user.id}")
-        query = db.query(SavingsGoal).filter(SavingsGoal.user_id == current_user.id)
+        logger.info(f"Getting savings goals for user: {current_user.household_id}")
+        query = db.query(SavingsGoal).filter(SavingsGoal.user_id == current_user.household_id)
 
         if status:
             query = query.filter(SavingsGoal.status == status.value)
@@ -673,10 +673,10 @@ async def get_savings_goal(
 ):
     """Get a specific savings goal with its linked savings entries."""
     try:
-        logger.info(f"Getting savings goal {goal_id} for user: {current_user.id}")
+        logger.info(f"Getting savings goal {goal_id} for user: {current_user.household_id}")
         goal = db.query(SavingsGoal).filter(
             SavingsGoal.id == goal_id,
-            SavingsGoal.user_id == current_user.id
+            SavingsGoal.user_id == current_user.household_id
         ).first()
 
         if not goal:
@@ -714,10 +714,10 @@ async def create_savings_goal(
 ):
     """Create a new savings goal."""
     try:
-        logger.info(f"Creating savings goal for user: {current_user.id}")
+        logger.info(f"Creating savings goal for user: {current_user.household_id}")
         db_goal = SavingsGoal(
             **goal.dict(),
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             status='active',
             current_amount=0
         )
@@ -745,10 +745,10 @@ async def update_savings_goal(
 ):
     """Update a savings goal."""
     try:
-        logger.info(f"Updating savings goal {goal_id} for user: {current_user.id}")
+        logger.info(f"Updating savings goal {goal_id} for user: {current_user.household_id}")
         db_goal = db.query(SavingsGoal).filter(
             SavingsGoal.id == goal_id,
-            SavingsGoal.user_id == current_user.id
+            SavingsGoal.user_id == current_user.household_id
         ).first()
 
         if not db_goal:
@@ -791,10 +791,10 @@ async def delete_savings_goal(
 ):
     """Delete a savings goal. Linked savings entries will have their goal_id set to NULL."""
     try:
-        logger.info(f"Deleting savings goal {goal_id} for user: {current_user.id}")
+        logger.info(f"Deleting savings goal {goal_id} for user: {current_user.household_id}")
         db_goal = db.query(SavingsGoal).filter(
             SavingsGoal.id == goal_id,
-            SavingsGoal.user_id == current_user.id
+            SavingsGoal.user_id == current_user.household_id
         ).first()
 
         if not db_goal:
@@ -827,10 +827,10 @@ async def mark_goal_complete(
 ):
     """Mark a savings goal as complete."""
     try:
-        logger.info(f"Marking goal {goal_id} as complete for user: {current_user.id}")
+        logger.info(f"Marking goal {goal_id} as complete for user: {current_user.household_id}")
         db_goal = db.query(SavingsGoal).filter(
             SavingsGoal.id == goal_id,
-            SavingsGoal.user_id == current_user.id
+            SavingsGoal.user_id == current_user.household_id
         ).first()
 
         if not db_goal:

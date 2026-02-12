@@ -3327,5 +3327,52 @@
       "legendClose": "W normie (±10%)",
       "legendOver": "Powyżej budżetu (>10%)"
     }
+  },
+  "partner": {
+    "accept": {
+      "title": "Zaproszenie do wspólnego budżetu",
+      "description": "{name} zaprasza Cię do wspólnego zarządzania budżetem w FiredUp.",
+      "signIn": "Zaloguj się przez Google, aby dołączyć do wspólnego budżetu.",
+      "signInButton": "Zaloguj się przez Google",
+      "processing": "Akceptowanie zaproszenia...",
+      "checking": "Sprawdzanie konta...",
+      "success": "Dołączono do budżetu domowego!",
+      "redirecting": "Przekierowanie do panelu...",
+      "expired": "Zaproszenie wygasło. Poproś partnera o nowe zaproszenie.",
+      "alreadyLinked": "Masz już powiązane konto partnerskie.",
+      "goToDashboard": "Przejdź do panelu",
+      "hasDataWarning": "Masz już dane finansowe na swoim koncie",
+      "hasDataDetails": "Twoje konto zawiera {count} rekordów. Jeśli dołączysz do budżetu partnera, będziesz widzieć tylko wspólne dane gospodarstwa domowego — Twoje dotychczasowe dane nie będą widoczne.",
+      "dataExpenses": "{count} wydatków",
+      "dataIncome": "{count} przychodów",
+      "dataLoans": "{count} kredytów",
+      "dataSavings": "{count} oszczędności",
+      "downloadData": "Pobierz kopię swoich danych (JSON)",
+      "joinHousehold": "Dołącz do budżetu {name}",
+      "joinHouseholdNote": "Będziesz widzieć wspólne dane finansowe partnera. Twoje dotychczasowe dane pozostaną w systemie, ale nie będą widoczne.",
+      "or": "lub",
+      "keepOwnAccount": "Zostań na swoim koncie",
+      "keepOwnAccountNote": "Zachowasz swoje dane i będziesz kontynuować samodzielnie. Zaproszenie zostanie odrzucone.",
+      "declinedMessage": "Zaproszenie zostało odrzucone. Kontynuujesz na swoim koncie."
+    },
+    "badge": "Partner",
+    "settings": {
+      "title": "Partner",
+      "invite": "Zaproś partnera",
+      "inviteDescription": "Partner otrzyma dostęp do wszystkich danych finansowych w ramach Twojego planu.",
+      "emailPlaceholder": "Email partnera (opcjonalnie)",
+      "sendInvite": "Wyślij zaproszenie",
+      "inviteSent": "Zaproszenie wysłane!",
+      "inviteSentDescription": "Link do zaproszenia został wysłany na {email}.",
+      "inviteCopied": "Link skopiowany do schowka!",
+      "linked": "Powiązany z {name}",
+      "linkedEmail": "({email})",
+      "linkedSince": "Od {date}",
+      "removeLink": "Usuń powiązanie",
+      "removeLinkConfirm": "Czy na pewno chcesz usunąć powiązanie z partnerem? Partner straci natychmiastowy dostęp.",
+      "asPartner": "Konto partnerskie",
+      "asPartnerDescription": "Powiązane z {name}. Masz dostęp do wspólnych danych finansowych.",
+      "noPartner": "Brak powiązanego partnera"
+    }
   }
 }

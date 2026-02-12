@@ -8,6 +8,8 @@ declare module "next-auth" {
       email?: string | null
       image?: string | null
       isFirstLogin?: boolean
+      isPartner?: boolean
+      householdId?: string
     }
   }
 
@@ -19,5 +21,7 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     isFirstLogin?: boolean
+    isPartner?: boolean
+    householdId?: string
   }
-} 
+}
