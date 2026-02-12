@@ -83,10 +83,13 @@ export const authOptions: NextAuthOptions = {
         session.user.email = (token.email as string | undefined) ?? session.user.email
         session.user.name = (token.name as string | undefined) ?? session.user.name
         session.user.isFirstLogin = token.isFirstLogin
+        session.user.isPartner = token.isPartner ?? false
+        session.user.householdId = token.householdId
 
         console.log('[auth][session] Session callback:', {
           tokenIsFirstLogin: token.isFirstLogin,
-          sessionIsFirstLogin: session.user.isFirstLogin
+          sessionIsFirstLogin: session.user.isFirstLogin,
+          isPartner: session.user.isPartner,
         })
       }
       return session
@@ -139,6 +142,28 @@ export const authOptions: NextAuthOptions = {
               isFirstLogin: token.isFirstLogin
             })
             logger.debug(`[auth] Fetched/created user ${token.email}, is_first_login: ${token.isFirstLogin}`)
+
+            // Fetch partner status
+            try {
+              const partnerResponse = await fetch(`${API_URL}/partner/status`, {
+                headers: {
+                  'X-User-ID': token.email as string,
+                  'X-Internal-Secret': secret || '',
+                },
+              })
+              if (partnerResponse.ok) {
+                const partnerData = await partnerResponse.json()
+                token.isPartner = partnerData.is_partner ?? false
+                token.householdId = partnerData.household_id
+                console.log('[auth][DEBUG] Partner status:', {
+                  isPartner: token.isPartner,
+                  householdId: token.householdId,
+                })
+              }
+            } catch (partnerError) {
+              console.error('[auth][DEBUG] Partner status fetch failed:', partnerError)
+              token.isPartner = false
+            }
           } else {
             const errorText = await response.text()
             console.error('[auth][ERROR] Backend error:', errorText)

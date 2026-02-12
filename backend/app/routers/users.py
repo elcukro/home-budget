@@ -138,9 +138,11 @@ def get_user_settings(
     Uses X-User-ID + X-Internal-Secret headers or Bearer token for authentication.
     Users can only access their own settings.
     """
-    # SECURITY: Verify user can only access their own settings
+    # SECURITY: Verify user can only access their own settings (or household settings for partners)
     if email != current_user.email and email != current_user.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        # Allow partner to read household settings
+        if not (current_user.is_partner and email == current_user.household_id):
+            raise HTTPException(status_code=403, detail="Forbidden")
 
     settings = db.query(models.Settings).filter(models.Settings.user_id == email).first()
     if not settings:
@@ -159,15 +161,28 @@ def update_user_settings(
     Uses X-User-ID + X-Internal-Secret headers or Bearer token for authentication.
     Users can only update their own settings.
     """
-    # SECURITY: Verify user can only update their own settings
+    # SECURITY: Verify user can only update their own settings (or household settings for partners)
     if email != current_user.email and email != current_user.id:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        # Allow partner to access household settings
+        if not (current_user.is_partner and email == current_user.household_id):
+            raise HTTPException(status_code=403, detail="Forbidden")
 
     settings = db.query(models.Settings).filter(models.Settings.user_id == email).first()
     if not settings:
         raise HTTPException(status_code=404, detail="Settings not found")
 
-    for key, value in settings_update.dict().items():
+    # Partners can only update partner-specific fields
+    PARTNER_ALLOWED_FIELDS = {
+        'partner_name', 'partner_employment_status', 'partner_tax_form',
+        'partner_birth_year', 'partner_use_authors_costs',
+        'partner_ppk_enrolled', 'partner_ppk_employee_rate', 'partner_ppk_employer_rate',
+    }
+
+    update_data = settings_update.dict()
+    if current_user.is_partner:
+        update_data = {k: v for k, v in update_data.items() if k in PARTNER_ALLOWED_FIELDS}
+
+    for key, value in update_data.items():
         setattr(settings, key, value)
     settings.updated_at = datetime.utcnow()
 

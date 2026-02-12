@@ -230,7 +230,7 @@ async def get_subscription_status(
     """Get current subscription status."""
     # Ensure subscription exists (creates trial for new users)
     # User is already authenticated via dependency, so this should always work
-    subscription = ensure_subscription_exists(current_user.id, db)
+    subscription = ensure_subscription_exists(current_user.household_id, db)
 
     if not subscription:
         # This shouldn't happen since user is authenticated, but handle gracefully
@@ -273,7 +273,7 @@ async def get_usage_stats(
     db: Session = Depends(database.get_db)
 ):
     """Get current usage statistics."""
-    stats = SubscriptionService.get_usage_stats(current_user.id, db)
+    stats = SubscriptionService.get_usage_stats(current_user.household_id, db)
     return UsageStatsResponse(**stats)
 
 
@@ -346,7 +346,7 @@ async def create_portal_session(
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
     subscription = db.query(models.Subscription).filter(
-        models.Subscription.user_id == current_user.id
+        models.Subscription.user_id == current_user.household_id
     ).first()
 
     if not subscription or not subscription.stripe_customer_id:

@@ -186,7 +186,7 @@ async def sync_transactions(
     await limiter.check("50/day", http_request)
     # Get active Tink connection
     connection = db.query(TinkConnection).filter(
-        TinkConnection.user_id == current_user.id,
+        TinkConnection.user_id == current_user.household_id,
         TinkConnection.is_active == True
     ).first()
 
@@ -222,7 +222,7 @@ async def sync_transactions(
             # while Tink's internal ID may change (especially in sandbox)
             if provider_tx_id:
                 existing = db.query(BankTransaction).filter(
-                    BankTransaction.user_id == current_user.id,
+                    BankTransaction.user_id == current_user.household_id,
                     BankTransaction.provider_transaction_id == provider_tx_id
                 ).first()
 
@@ -278,7 +278,7 @@ async def sync_transactions(
 
             # Create bank transaction record
             bank_tx = BankTransaction(
-                user_id=current_user.id,
+                user_id=current_user.household_id,
                 tink_transaction_id=tink_tx_id,
                 tink_account_id=tink_account_id,
                 provider_transaction_id=provider_tx_id,
@@ -308,7 +308,7 @@ async def sync_transactions(
         # Audit: Transactions synced (one summary entry, not per-transaction)
         audit_transactions_synced(
             db=db,
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             connection_id=connection.id,
             synced_count=synced_count,
             exact_duplicate_count=exact_duplicate_count,
@@ -340,7 +340,7 @@ async def sync_transactions(
         # Audit sync failure
         audit_transactions_synced(
             db=db,
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             connection_id=connection.id if connection else None,
             synced_count=0,
             exact_duplicate_count=0,
@@ -357,7 +357,7 @@ async def sync_transactions(
         # Audit sync failure
         audit_transactions_synced(
             db=db,
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             connection_id=connection.id if connection else None,
             synced_count=0,
             exact_duplicate_count=0,
@@ -379,7 +379,7 @@ async def sync_transactions(
         # Audit sync failure
         audit_transactions_synced(
             db=db,
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             connection_id=connection.id if connection else None,
             synced_count=0,
             exact_duplicate_count=0,
@@ -423,19 +423,19 @@ async def categorize_transactions(
     await limiter.check("100/hour", http_request)
 
     # Get API key from user settings, fallback to environment variable
-    settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
+    settings = db.query(Settings).filter(Settings.user_id == current_user.household_id).first()
     api_key = None
 
     # Priority 1: User's own API key from settings
     if settings and settings.ai and settings.ai.get("apiKey"):
         api_key = settings.ai["apiKey"]
-        logger.info(f"Using user-configured API key for categorization (user {current_user.id})")
+        logger.info(f"Using user-configured API key for categorization (user {current_user.household_id})")
 
     # Priority 2: Environment variable (for sandbox/development)
     if not api_key:
         api_key = os.getenv("OPENAI_API_KEY")
         if api_key:
-            logger.info(f"Using environment OPENAI_API_KEY for categorization (user {current_user.id})")
+            logger.info(f"Using environment OPENAI_API_KEY for categorization (user {current_user.household_id})")
 
     # If still no API key, raise error
     if not api_key:
@@ -446,7 +446,7 @@ async def categorize_transactions(
 
     # Get transactions to categorize
     query = db.query(BankTransaction).filter(
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     )
 
     if not force:
@@ -480,7 +480,7 @@ async def categorize_transactions(
         for tx in transactions
     ]
 
-    logger.info(f"Categorizing {len(tx_data)} transactions for user {current_user.id}")
+    logger.info(f"Categorizing {len(tx_data)} transactions for user {current_user.household_id}")
 
     # Call AI service
     try:
@@ -525,7 +525,7 @@ async def categorize_transactions(
                 if result.get("type") == "expense":
                     # Create expense record
                     new_expense = Expense(
-                        user_id=current_user.id,
+                        user_id=current_user.household_id,
                         category=result.get("category"),
                         description=tx.description_display,
                         amount=amount,
@@ -546,7 +546,7 @@ async def categorize_transactions(
                 elif result.get("type") == "income":
                     # Create income record
                     new_income = Income(
-                        user_id=current_user.id,
+                        user_id=current_user.household_id,
                         category=result.get("category"),
                         description=tx.description_display,
                         amount=amount,
@@ -576,7 +576,7 @@ async def categorize_transactions(
     # Audit: AI categorization requested
     audit_categorization_requested(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         transaction_count=len(transactions),
         categorized_count=categorized_count,
         request=http_request,
@@ -613,7 +613,7 @@ async def get_transactions(
     limiter = get_limiter(http_request)
     await limiter.check("120/minute", http_request)
     query = db.query(BankTransaction).filter(
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     )
 
     # Apply filters
@@ -669,7 +669,7 @@ async def get_transaction_stats(
         BankTransaction.status,
         func.count(BankTransaction.id).label("count")
     ).filter(
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).group_by(BankTransaction.status).all()
 
     result = {
@@ -705,7 +705,7 @@ async def get_pending_transactions(
     limiter = get_limiter(http_request)
     await limiter.check("120/minute", http_request)
     transactions = db.query(BankTransaction).filter(
-        BankTransaction.user_id == current_user.id,
+        BankTransaction.user_id == current_user.household_id,
         BankTransaction.status == "pending"
     ).order_by(
         BankTransaction.date.desc()
@@ -735,7 +735,7 @@ async def convert_transaction(
     # Get the bank transaction
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).first()
 
     if not bank_tx:
@@ -761,7 +761,7 @@ async def convert_transaction(
         amount = abs(bank_tx.amount)
 
         new_record = Expense(
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             category=request.category,
             description=description,
             amount=amount,
@@ -784,7 +784,7 @@ async def convert_transaction(
         amount = abs(bank_tx.amount)
 
         new_record = Income(
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             category=request.category,
             description=description,
             amount=amount,
@@ -807,7 +807,7 @@ async def convert_transaction(
     # Audit: Transaction reviewed (convert)
     audit_transaction_reviewed(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         action=f"convert_to_{request.type.value}",
         transaction_count=1,
         request=http_request,
@@ -839,7 +839,7 @@ async def reject_transaction(
     await limiter.check("200/hour", http_request)
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).first()
 
     if not bank_tx:
@@ -852,7 +852,7 @@ async def reject_transaction(
     # Audit: Transaction reviewed (reject)
     audit_transaction_reviewed(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         action="reject",
         transaction_count=1,
         request=http_request,
@@ -881,7 +881,7 @@ async def accept_transaction(
     await limiter.check("200/hour", http_request)
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).first()
 
     if not bank_tx:
@@ -894,7 +894,7 @@ async def accept_transaction(
     # Audit: Transaction reviewed (accept)
     audit_transaction_reviewed(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         action="accept",
         transaction_count=1,
         request=http_request,
@@ -924,7 +924,7 @@ async def reset_transaction(
     await limiter.check("100/hour", http_request)
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).first()
 
     if not bank_tx:
@@ -935,7 +935,7 @@ async def reset_transaction(
         if bank_tx.linked_expense_id:
             linked_expense = db.query(Expense).filter(
                 Expense.id == bank_tx.linked_expense_id,
-                Expense.user_id == current_user.id
+                Expense.user_id == current_user.household_id
             ).first()
             if linked_expense:
                 db.delete(linked_expense)
@@ -945,7 +945,7 @@ async def reset_transaction(
         if bank_tx.linked_income_id:
             linked_income = db.query(Income).filter(
                 Income.id == bank_tx.linked_income_id,
-                Income.user_id == current_user.id
+                Income.user_id == current_user.household_id
             ).first()
             if linked_income:
                 db.delete(linked_income)
@@ -988,7 +988,7 @@ async def confirm_duplicate(
 
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).first()
 
     if not bank_tx:
@@ -1009,7 +1009,7 @@ async def confirm_duplicate(
     # Audit: Transaction reviewed (confirm duplicate)
     audit_transaction_reviewed(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         action="confirm_duplicate",
         transaction_count=1,
         request=http_request,
@@ -1043,7 +1043,7 @@ async def mark_not_duplicate(
 
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == transaction_id,
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).first()
 
     if not bank_tx:
@@ -1067,7 +1067,7 @@ async def mark_not_duplicate(
     # Audit: Transaction reviewed (not duplicate)
     audit_transaction_reviewed(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         action="mark_not_duplicate",
         transaction_count=1,
         request=http_request,
@@ -1098,7 +1098,7 @@ async def get_potential_duplicates(
     await limiter.check("120/minute", http_request)
 
     transactions = db.query(BankTransaction).filter(
-        BankTransaction.user_id == current_user.id,
+        BankTransaction.user_id == current_user.household_id,
         BankTransaction.is_duplicate == True,
         BankTransaction.status == "pending"
     ).order_by(
@@ -1129,7 +1129,7 @@ async def bulk_reject_transactions(
     await limiter.check("30/hour", http_request)
     updated = db.query(BankTransaction).filter(
         BankTransaction.id.in_(request.transaction_ids),
-        BankTransaction.user_id == current_user.id,
+        BankTransaction.user_id == current_user.household_id,
         BankTransaction.status == "pending"
     ).update(
         {"status": "rejected", "reviewed_at": datetime.now()},
@@ -1141,7 +1141,7 @@ async def bulk_reject_transactions(
     # Audit: Bulk transaction review (reject)
     audit_transaction_reviewed(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         action="bulk_reject",
         transaction_count=updated,
         request=http_request,
@@ -1171,7 +1171,7 @@ async def bulk_accept_transactions(
     await limiter.check("30/hour", http_request)
     updated = db.query(BankTransaction).filter(
         BankTransaction.id.in_(request.transaction_ids),
-        BankTransaction.user_id == current_user.id,
+        BankTransaction.user_id == current_user.household_id,
         BankTransaction.status == "pending"
     ).update(
         {"status": "accepted", "reviewed_at": datetime.now()},
@@ -1183,7 +1183,7 @@ async def bulk_accept_transactions(
     # Audit: Bulk transaction review (accept)
     audit_transaction_reviewed(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         action="bulk_accept",
         transaction_count=updated,
         request=http_request,
@@ -1213,7 +1213,7 @@ async def bulk_convert_transactions(
     await limiter.check("30/hour", http_request)
     transactions = db.query(BankTransaction).filter(
         BankTransaction.id.in_(request.transaction_ids),
-        BankTransaction.user_id == current_user.id,
+        BankTransaction.user_id == current_user.household_id,
         BankTransaction.status == "pending"
     ).all()
 
@@ -1231,7 +1231,7 @@ async def bulk_convert_transactions(
 
         if request.type == ConvertType.expense:
             new_record = Expense(
-                user_id=current_user.id,
+                user_id=current_user.household_id,
                 category=request.category,
                 description=description,
                 amount=amount,
@@ -1245,7 +1245,7 @@ async def bulk_convert_transactions(
             bank_tx.linked_expense_id = new_record.id
         else:
             new_record = Income(
-                user_id=current_user.id,
+                user_id=current_user.household_id,
                 category=request.category,
                 description=description,
                 amount=amount,
@@ -1267,7 +1267,7 @@ async def bulk_convert_transactions(
     # Audit: Bulk transaction review (convert)
     audit_transaction_reviewed(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         action=f"bulk_convert_to_{request.type.value}",
         transaction_count=converted_count,
         request=http_request,

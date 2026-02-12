@@ -3,9 +3,9 @@ import logging
 from datetime import datetime, timezone
 import jwt
 from fastapi import Depends, HTTPException, status, Header
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from .database import get_db
-from .models import User
+from .models import User, PartnerLink, PartnerInvitation
 
 logger = logging.getLogger(__name__)
 
@@ -100,14 +100,20 @@ async def get_current_user(
             detail="Authentication required"
         )
 
-    # Look up user
+    # Look up user (eager-load partner link for household_id property)
     if lookup_by_email:
-        user = db.query(User).filter(User.email == user_identifier).first()
+        user = db.query(User).options(
+            joinedload(User.partner_link_as_partner)
+        ).filter(User.email == user_identifier).first()
         # Fallback: try by ID for backwards compatibility
         if not user:
-            user = db.query(User).filter(User.id == user_identifier).first()
+            user = db.query(User).options(
+                joinedload(User.partner_link_as_partner)
+            ).filter(User.id == user_identifier).first()
     else:
-        user = db.query(User).filter(User.id == user_identifier).first()
+        user = db.query(User).options(
+            joinedload(User.partner_link_as_partner)
+        ).filter(User.id == user_identifier).first()
 
     if not user:
         # SECURITY: Don't expose which user was requested
@@ -182,13 +188,19 @@ async def get_or_create_current_user(
             detail="Authentication required"
         )
 
-    # Look up user
+    # Look up user (eager-load partner link for household_id property)
     if lookup_by_email:
-        user = db.query(User).filter(User.email == user_identifier).first()
+        user = db.query(User).options(
+            joinedload(User.partner_link_as_partner)
+        ).filter(User.email == user_identifier).first()
         if not user:
-            user = db.query(User).filter(User.id == user_identifier).first()
+            user = db.query(User).options(
+                joinedload(User.partner_link_as_partner)
+            ).filter(User.id == user_identifier).first()
     else:
-        user = db.query(User).filter(User.id == user_identifier).first()
+        user = db.query(User).options(
+            joinedload(User.partner_link_as_partner)
+        ).filter(User.id == user_identifier).first()
 
     # Auto-create user if not found (OAuth registration)
     is_new_user = False
@@ -215,6 +227,23 @@ async def get_or_create_current_user(
 
         db.commit()
         db.refresh(user)
+
+        # Auto-accept pending partner invitation if email matches
+        invitation = db.query(PartnerInvitation).filter(
+            PartnerInvitation.email == user.email,
+            PartnerInvitation.accepted_at == None,
+            PartnerInvitation.expires_at > datetime.now(timezone.utc).replace(tzinfo=None)
+        ).first()
+        if invitation:
+            link = PartnerLink(
+                primary_user_id=invitation.inviter_user_id,
+                partner_user_id=user.id
+            )
+            db.add(link)
+            invitation.accepted_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.commit()
+            db.refresh(user)
+            logger.info(f"Auto-linked new user {user.email} as partner via invitation {invitation.id}")
 
     # Send welcome email for new users or users who haven't received it yet
     if is_new_user or not user.welcome_email_sent_at:

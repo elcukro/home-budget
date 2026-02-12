@@ -80,7 +80,7 @@ async def get_reconciliation_suggestions(
 
     # Get suggestions from service
     suggestions = MonthlyTotalsService.suggest_duplicates(
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         limit=limit,
         db=db
     )
@@ -147,7 +147,7 @@ async def mark_expense_as_duplicate(
     # Get expense
     expense = db.query(Expense).filter(
         Expense.id == expense_id,
-        Expense.user_id == current_user.id
+        Expense.user_id == current_user.household_id
     ).first()
 
     if not expense:
@@ -163,7 +163,7 @@ async def mark_expense_as_duplicate(
     # Verify bank transaction exists and belongs to user
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == request.bank_transaction_id,
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).first()
 
     if not bank_tx:
@@ -214,7 +214,7 @@ async def confirm_expense_separate(
     # Get expense
     expense = db.query(Expense).filter(
         Expense.id == expense_id,
-        Expense.user_id == current_user.id
+        Expense.user_id == current_user.household_id
     ).first()
 
     if not expense:
@@ -262,7 +262,7 @@ async def mark_income_as_duplicate(
     # Get income
     income = db.query(Income).filter(
         Income.id == income_id,
-        Income.user_id == current_user.id
+        Income.user_id == current_user.household_id
     ).first()
 
     if not income:
@@ -278,7 +278,7 @@ async def mark_income_as_duplicate(
     # Verify bank transaction exists and belongs to user
     bank_tx = db.query(BankTransaction).filter(
         BankTransaction.id == request.bank_transaction_id,
-        BankTransaction.user_id == current_user.id
+        BankTransaction.user_id == current_user.household_id
     ).first()
 
     if not bank_tx:
@@ -321,7 +321,7 @@ async def confirm_income_separate(
     # Get income
     income = db.query(Income).filter(
         Income.id == income_id,
-        Income.user_id == current_user.id
+        Income.user_id == current_user.household_id
     ).first()
 
     if not income:

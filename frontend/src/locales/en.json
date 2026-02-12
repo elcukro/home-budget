@@ -3375,5 +3375,52 @@
       "legendClose": "On track (±10%)",
       "legendOver": "Over budget (>10%)"
     }
+  },
+  "partner": {
+    "accept": {
+      "title": "Budget Invitation",
+      "description": "{name} invites you to manage your household budget together in FiredUp.",
+      "signIn": "Sign in with Google to join the shared budget.",
+      "signInButton": "Sign in with Google",
+      "processing": "Accepting invitation...",
+      "checking": "Checking your account...",
+      "success": "You've joined the household budget!",
+      "redirecting": "Redirecting to dashboard...",
+      "expired": "This invitation has expired. Ask your partner for a new one.",
+      "alreadyLinked": "You already have a linked partner account.",
+      "goToDashboard": "Go to Dashboard",
+      "hasDataWarning": "You already have financial data on your account",
+      "hasDataDetails": "Your account contains {count} records. If you join your partner's budget, you'll only see the shared household data — your existing data won't be visible.",
+      "dataExpenses": "{count} expenses",
+      "dataIncome": "{count} income records",
+      "dataLoans": "{count} loans",
+      "dataSavings": "{count} savings",
+      "downloadData": "Download a copy of your data (JSON)",
+      "joinHousehold": "Join {name}'s budget",
+      "joinHouseholdNote": "You'll see your partner's shared financial data. Your existing data will remain in the system but won't be visible.",
+      "or": "or",
+      "keepOwnAccount": "Keep my own account",
+      "keepOwnAccountNote": "You'll keep your data and continue independently. The invitation will be declined.",
+      "declinedMessage": "Invitation declined. You'll continue on your own account."
+    },
+    "badge": "Partner",
+    "settings": {
+      "title": "Partner",
+      "invite": "Invite Partner",
+      "inviteDescription": "Your partner will get access to all financial data under your plan.",
+      "emailPlaceholder": "Partner's email (optional)",
+      "sendInvite": "Send Invitation",
+      "inviteSent": "Invitation sent!",
+      "inviteSentDescription": "The invitation link has been sent to {email}.",
+      "inviteCopied": "Link copied to clipboard!",
+      "linked": "Linked with {name}",
+      "linkedEmail": "({email})",
+      "linkedSince": "Since {date}",
+      "removeLink": "Remove Link",
+      "removeLinkConfirm": "Are you sure you want to unlink your partner? They will immediately lose access.",
+      "asPartner": "Partner Account",
+      "asPartnerDescription": "Linked with {name}. You have access to shared financial data.",
+      "noPartner": "No linked partner"
+    }
   }
 }

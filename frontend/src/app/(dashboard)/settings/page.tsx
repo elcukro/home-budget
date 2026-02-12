@@ -223,7 +223,20 @@ export default function SettingsPage() {
   const [_hasCompleteData, setHasCompleteData] = useState(false);
   const [exportBackups, setExportBackups] = useState<ExportBackup[]>([]);
   const [deletingBackupId, setDeletingBackupId] = useState<number | null>(null);
+  const [partnerStatus, setPartnerStatus] = useState<{
+    is_partner: boolean;
+    has_partner: boolean;
+    partner_name?: string;
+    partner_email?: string;
+    linked_since?: string;
+    household_id?: string;
+    primary_name?: string;
+  } | null>(null);
+  const [partnerInviteEmail, setPartnerInviteEmail] = useState("");
+  const [partnerInviting, setPartnerInviting] = useState(false);
+  const [partnerInviteLink, setPartnerInviteLink] = useState<string | null>(null);
 
+  const isPartner = session?.user?.isPartner ?? false;
   const userEmail = session?.user?.email ?? null;
 
   const fetchSettings = async () => {
@@ -252,6 +265,62 @@ export default function SettingsPage() {
       setError(intl.formatMessage({ id: "settings.messages.error" }));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPartnerStatus = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/partner/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setPartnerStatus(data);
+      }
+    } catch (err) {
+      logger.error("[Settings] Failed to fetch partner status", err);
+    }
+  };
+
+  const handlePartnerInvite = async () => {
+    setPartnerInviting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/partner/invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: partnerInviteEmail || undefined }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || "Failed to send invitation");
+      }
+      const data = await response.json();
+      setPartnerInviteLink(data.invite_url);
+      toast({
+        title: intl.formatMessage({ id: "partner.settings.inviteSent" }),
+        description: partnerInviteEmail
+          ? intl.formatMessage({ id: "partner.settings.inviteSentDescription" }, { email: partnerInviteEmail })
+          : undefined,
+      });
+    } catch (err: any) {
+      toast({ title: err.message, variant: "destructive" });
+    } finally {
+      setPartnerInviting(false);
+    }
+  };
+
+  const handlePartnerUnlink = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/partner/link`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || "Failed to unlink partner");
+      }
+      setPartnerStatus(null);
+      toast({ title: "Partner unlinked successfully" });
+      fetchPartnerStatus();
+    } catch (err: any) {
+      toast({ title: err.message, variant: "destructive" });
     }
   };
 
@@ -418,6 +487,7 @@ export default function SettingsPage() {
     void fetchTinkConnections();
     void fetchOnboardingBackups();
     void checkUserHasCompleteData();
+    void fetchPartnerStatus();
   }, [userEmail]);
 
   // Refetch Tink connections when integrations tab becomes active (e.g., after returning from callback)
@@ -752,22 +822,30 @@ export default function SettingsPage() {
             <FontAwesomeIcon icon={faPiggyBank} className="w-4 h-4" />
             <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.finance" })}</span>
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-2">
-            <FontAwesomeIcon icon={faBuilding} className="w-4 h-4" />
-            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.integrations" })}</span>
-          </TabsTrigger>
-          <TabsTrigger value="data" className="gap-2">
-            <FontAwesomeIcon icon={faDatabase} className="w-4 h-4" />
-            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.data" })}</span>
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="gap-2">
-            <FontAwesomeIcon icon={faCrown} className="w-4 h-4" />
-            <span className="hidden sm:inline">{intl.formatMessage({ id: "billing.title" })}</span>
-          </TabsTrigger>
-          <TabsTrigger value="account" className="gap-2">
-            <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
-            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.account" })}</span>
-          </TabsTrigger>
+          {!isPartner && (
+            <TabsTrigger value="integrations" className="gap-2">
+              <FontAwesomeIcon icon={faBuilding} className="w-4 h-4" />
+              <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.integrations" })}</span>
+            </TabsTrigger>
+          )}
+          {!isPartner && (
+            <TabsTrigger value="data" className="gap-2">
+              <FontAwesomeIcon icon={faDatabase} className="w-4 h-4" />
+              <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.data" })}</span>
+            </TabsTrigger>
+          )}
+          {!isPartner && (
+            <TabsTrigger value="billing" className="gap-2">
+              <FontAwesomeIcon icon={faCrown} className="w-4 h-4" />
+              <span className="hidden sm:inline">{intl.formatMessage({ id: "billing.title" })}</span>
+            </TabsTrigger>
+          )}
+          {!isPartner && (
+            <TabsTrigger value="account" className="gap-2">
+              <FontAwesomeIcon icon={faUser} className="w-4 h-4" />
+              <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.account" })}</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* General Settings Tab */}
@@ -1399,6 +1477,132 @@ export default function SettingsPage() {
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
+            </CardContent>
+          </Card>
+
+          {/* Partner Section */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FontAwesomeIcon icon={faUser} className="w-5 h-5 text-violet-500" />
+                {intl.formatMessage({ id: "partner.settings.title" })}
+              </CardTitle>
+              <CardDescription>
+                {isPartner
+                  ? intl.formatMessage({ id: "partner.settings.asPartnerDescription" }, {
+                      name: partnerStatus?.primary_name || "—"
+                    })
+                  : intl.formatMessage({ id: "partner.settings.inviteDescription" })}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isPartner ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-violet-50 border border-violet-200">
+                  <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
+                    <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-violet-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">
+                      {intl.formatMessage({ id: "partner.settings.asPartner" })}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {intl.formatMessage({ id: "partner.settings.asPartnerDescription" }, {
+                        name: partnerStatus?.primary_name || "—"
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ) : partnerStatus?.has_partner ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <FontAwesomeIcon icon={faUser} className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">
+                        {intl.formatMessage({ id: "partner.settings.linked" }, {
+                          name: partnerStatus.partner_name || partnerStatus.partner_email || "—"
+                        })}
+                      </p>
+                      {partnerStatus.partner_email && (
+                        <p className="text-xs text-muted-foreground">
+                          {partnerStatus.partner_email}
+                        </p>
+                      )}
+                      {partnerStatus.linked_since && (
+                        <p className="text-xs text-muted-foreground">
+                          {intl.formatMessage({ id: "partner.settings.linkedSince" }, {
+                            date: new Date(partnerStatus.linked_since).toLocaleDateString()
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-destructive">
+                        {intl.formatMessage({ id: "partner.settings.removeLink" })}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          {intl.formatMessage({ id: "partner.settings.removeLink" })}
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {intl.formatMessage({ id: "partner.settings.removeLinkConfirm" })}
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          {intl.formatMessage({ id: "settings.account.deleteDialog.cancel" })}
+                        </AlertDialogCancel>
+                        <Button variant="destructive" onClick={handlePartnerUnlink}>
+                          {intl.formatMessage({ id: "partner.settings.removeLink" })}
+                        </Button>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder={intl.formatMessage({ id: "partner.settings.emailPlaceholder" })}
+                      value={partnerInviteEmail}
+                      onChange={(e) => setPartnerInviteEmail(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handlePartnerInvite}
+                      disabled={partnerInviting}
+                    >
+                      {partnerInviting ? "..." : intl.formatMessage({ id: "partner.settings.sendInvite" })}
+                    </Button>
+                  </div>
+                  {partnerInviteLink && (
+                    <div className="p-3 rounded-lg bg-muted text-sm">
+                      <p className="font-medium mb-1">
+                        {intl.formatMessage({ id: "partner.settings.inviteSent" })}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs flex-1 truncate">{partnerInviteLink}</code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(partnerInviteLink);
+                            toast({ title: intl.formatMessage({ id: "partner.settings.inviteCopied" }) });
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

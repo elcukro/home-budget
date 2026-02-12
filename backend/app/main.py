@@ -16,7 +16,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget, reconciliation
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget, reconciliation, partner
 from datetime import timezone
 from .routers.stripe_billing import TRIAL_DAYS
 from .database import engine, Base
@@ -139,12 +139,19 @@ print = make_conditional_print(__name__)
 
 
 def validate_user_access(user_id_from_path: str, authenticated_user: models.User) -> None:
-    """Validate that the authenticated user matches the user_id in the path."""
-    if user_id_from_path != authenticated_user.id:
-        raise HTTPException(
-            status_code=403,
-            detail="Access denied: You can only access your own data"
-        )
+    """Validate that the authenticated user matches the user_id in the path.
+
+    Supports partner access: partners can access their household's data
+    via the primary user's ID.
+    """
+    if user_id_from_path == authenticated_user.id:
+        return
+    if user_id_from_path == authenticated_user.household_id:
+        return  # Partner accessing household data
+    raise HTTPException(
+        status_code=403,
+        detail="Access denied: You can only access your own data"
+    )
 
 
 @asynccontextmanager
@@ -276,6 +283,8 @@ app.include_router(admin.router)
 app.include_router(budget.router)
 # Reconciliation (bank/manual transaction deduplication)
 app.include_router(reconciliation.router)
+# Partner access (invite, accept, status, unlink)
+app.include_router(partner.router)
 
 # Loan models
 VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]
@@ -524,14 +533,14 @@ def get_or_create_current_user_deprecated(
     # User already authenticated and fetched by dependency
     # Check if subscription exists, create trial if not
     subscription = db.query(models.Subscription).filter(
-        models.Subscription.user_id == current_user.id
+        models.Subscription.user_id == current_user.household_id
     ).first()
 
     if not subscription:
         now = datetime.now(timezone.utc)
         trial_end = now + timedelta(days=TRIAL_DAYS)
         subscription = models.Subscription(
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             status="trialing",
             plan_type="trial",
             trial_start=now,
@@ -598,16 +607,16 @@ def get_user_settings(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Getting settings for user: {current_user.id}")
+        print(f"[FastAPI] Getting settings for user: {current_user.household_id}")
 
         # Get or create settings
-        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
+        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.household_id).first()
 
         if not settings:
-            print(f"[FastAPI] No settings found for user: {current_user.id}, creating default settings")
+            print(f"[FastAPI] No settings found for user: {current_user.household_id}, creating default settings")
             # Create default settings
             settings = models.Settings(
-                user_id=current_user.id,
+                user_id=current_user.household_id,
                 language="en",
                 currency="USD",
                 ai={"apiKey": None}
@@ -643,12 +652,12 @@ def update_user_settings(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Updating settings for user: {current_user.id}")
-        db_settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
+        print(f"[FastAPI] Updating settings for user: {current_user.household_id}")
+        db_settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.household_id).first()
 
         if not db_settings:
-            print(f"[FastAPI] No settings found for user: {current_user.id}, creating new settings")
-            db_settings = models.Settings(user_id=current_user.id)
+            print(f"[FastAPI] No settings found for user: {current_user.household_id}, creating new settings")
+            db_settings = models.Settings(user_id=current_user.household_id)
             db.add(db_settings)
 
         for key, value in settings.model_dump().items():
@@ -672,7 +681,7 @@ def get_loans(
     db: Session = Depends(database.get_db)
 ):
     """Get all loans for the authenticated user. Excludes archived loans by default."""
-    query = db.query(models.Loan).filter(models.Loan.user_id == current_user.id)
+    query = db.query(models.Loan).filter(models.Loan.user_id == current_user.household_id)
     if not include_archived:
         query = query.filter(
             (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
@@ -690,7 +699,7 @@ def archive_loan(
     """Archive a paid-off loan."""
     loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
     if not loan:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -712,7 +721,7 @@ def get_loan(
     """Get a specific loan by ID for the authenticated user."""
     loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
     if not loan:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -726,12 +735,12 @@ def create_loan(
 ):
     """Create a new loan for the authenticated user."""
     # Check subscription limits
-    can_add, message = SubscriptionService.can_add_loan(current_user.id, db)
+    can_add, message = SubscriptionService.can_add_loan(current_user.household_id, db)
     if not can_add:
         raise HTTPException(status_code=403, detail=message)
 
     db_loan = models.Loan(
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         loan_type=loan.loan_type,
         description=loan.description,
         principal_amount=loan.principal_amount,
@@ -757,7 +766,7 @@ def update_loan(
     """Update a loan owned by the authenticated user."""
     db_loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
 
     if not db_loan:
@@ -782,7 +791,7 @@ def delete_loan(
 
     db_loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
 
     if not db_loan:
@@ -807,7 +816,7 @@ def get_loan_payments(
     # Verify loan exists and belongs to user
     db_loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
     if not db_loan:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -832,7 +841,7 @@ def create_loan_payment(
     # Verify loan exists and belongs to user
     db_loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
     if not db_loan:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -855,7 +864,7 @@ def create_loan_payment(
     db_payment = models.LoanPayment(
         **payment.model_dump(),
         loan_id=loan_id,
-        user_id=current_user.id
+        user_id=current_user.household_id
     )
     db.add(db_payment)
 
@@ -901,7 +910,7 @@ def delete_loan_payment(
     # Verify loan exists and belongs to user
     db_loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
     if not db_loan:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -935,7 +944,7 @@ def get_loans_internal(
     db: Session = Depends(database.get_db)
 ):
     """Get all loans for the authenticated user (mobile API)."""
-    query = db.query(models.Loan).filter(models.Loan.user_id == current_user.id)
+    query = db.query(models.Loan).filter(models.Loan.user_id == current_user.household_id)
     if not include_archived:
         query = query.filter(
             (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
@@ -951,12 +960,12 @@ def create_loan_internal(
     db: Session = Depends(database.get_db)
 ):
     """Create a new loan for the authenticated user (mobile API)."""
-    can_add, message = SubscriptionService.can_add_loan(current_user.id, db)
+    can_add, message = SubscriptionService.can_add_loan(current_user.household_id, db)
     if not can_add:
         raise HTTPException(status_code=403, detail=message)
 
     db_loan = models.Loan(
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         loan_type=loan.loan_type,
         description=loan.description,
         principal_amount=loan.principal_amount,
@@ -982,7 +991,7 @@ def get_loan_internal(
     """Get a specific loan by ID (mobile API)."""
     loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
     if not loan:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -998,7 +1007,7 @@ def archive_loan_internal(
     """Archive a paid-off loan (mobile API)."""
     loan = db.query(models.Loan).filter(
         models.Loan.id == loan_id,
-        models.Loan.user_id == current_user.id
+        models.Loan.user_id == current_user.household_id
     ).first()
     if not loan:
         raise HTTPException(status_code=404, detail="Loan not found")
@@ -1022,8 +1031,8 @@ def get_user_expenses(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Getting expenses for user: {current_user.id}")
-        expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
+        print(f"[FastAPI] Getting expenses for user: {current_user.household_id}")
+        expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.household_id).all()
         print(f"[FastAPI] Found {len(expenses)} expenses")
         return expenses
     except HTTPException:
@@ -1043,13 +1052,13 @@ def create_expense(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Creating expense for user: {current_user.id}")
+        print(f"[FastAPI] Creating expense for user: {current_user.household_id}")
         # Check subscription limits
-        can_add, message = SubscriptionService.can_add_expense(current_user.id, db)
+        can_add, message = SubscriptionService.can_add_expense(current_user.household_id, db)
         if not can_add:
             raise HTTPException(status_code=403, detail=message)
 
-        db_expense = models.Expense(**expense.model_dump(), user_id=current_user.id)
+        db_expense = models.Expense(**expense.model_dump(), user_id=current_user.household_id)
         db.add(db_expense)
         db.commit()
         db.refresh(db_expense)
@@ -1080,10 +1089,10 @@ def update_expense(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Updating expense {expense_id} for user: {current_user.id}")
+        print(f"[FastAPI] Updating expense {expense_id} for user: {current_user.household_id}")
         db_expense = db.query(models.Expense).filter(
             models.Expense.id == expense_id,
-            models.Expense.user_id == current_user.id
+            models.Expense.user_id == current_user.household_id
         ).first()
 
         if not db_expense:
@@ -1114,10 +1123,10 @@ def delete_expense(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Deleting expense {expense_id} for user: {current_user.id}")
+        print(f"[FastAPI] Deleting expense {expense_id} for user: {current_user.household_id}")
         db_expense = db.query(models.Expense).filter(
             models.Expense.id == expense_id,
-            models.Expense.user_id == current_user.id
+            models.Expense.user_id == current_user.household_id
         ).first()
 
         if not db_expense:
@@ -1128,7 +1137,7 @@ def delete_expense(
         # This handles the case where bank_transactions.linked_expense_id points to this expense
         bank_txs = db.query(models.BankTransaction).filter(
             models.BankTransaction.linked_expense_id == expense_id,
-            models.BankTransaction.user_id == current_user.id
+            models.BankTransaction.user_id == current_user.household_id
         ).all()
 
         for bank_tx in bank_txs:
@@ -1173,7 +1182,7 @@ def get_monthly_expenses(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Getting monthly expenses for user: {current_user.id}, month: {month}")
+        print(f"[FastAPI] Getting monthly expenses for user: {current_user.household_id}, month: {month}")
 
         # Parse month parameter or use current month
         if month:
@@ -1189,7 +1198,7 @@ def get_monthly_expenses(
 
         # Use MonthlyTotalsService for deduplication logic
         totals = MonthlyTotalsService.calculate_monthly_expenses(
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             year=year,
             month=month_num,
             db=db
@@ -1227,8 +1236,8 @@ def get_user_income(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Getting income for user: {current_user.id}")
-        income = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
+        print(f"[FastAPI] Getting income for user: {current_user.household_id}")
+        income = db.query(models.Income).filter(models.Income.user_id == current_user.household_id).all()
         print(f"[FastAPI] Found {len(income)} income entries")
         return income
     except HTTPException:
@@ -1248,13 +1257,13 @@ def create_income(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Creating income for user: {current_user.id}")
+        print(f"[FastAPI] Creating income for user: {current_user.household_id}")
         # Check subscription limits
-        can_add, message = SubscriptionService.can_add_income(current_user.id, db)
+        can_add, message = SubscriptionService.can_add_income(current_user.household_id, db)
         if not can_add:
             raise HTTPException(status_code=403, detail=message)
 
-        db_income = models.Income(**income.model_dump(), user_id=current_user.id)
+        db_income = models.Income(**income.model_dump(), user_id=current_user.household_id)
         db.add(db_income)
         db.commit()
         db.refresh(db_income)
@@ -1285,10 +1294,10 @@ def update_income(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Updating income {income_id} for user: {current_user.id}")
+        print(f"[FastAPI] Updating income {income_id} for user: {current_user.household_id}")
         db_income = db.query(models.Income).filter(
             models.Income.id == income_id,
-            models.Income.user_id == current_user.id
+            models.Income.user_id == current_user.household_id
         ).first()
 
         if not db_income:
@@ -1319,10 +1328,10 @@ def delete_income(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Deleting income {income_id} for user: {current_user.id}")
+        print(f"[FastAPI] Deleting income {income_id} for user: {current_user.household_id}")
         db_income = db.query(models.Income).filter(
             models.Income.id == income_id,
-            models.Income.user_id == current_user.id
+            models.Income.user_id == current_user.household_id
         ).first()
 
         if not db_income:
@@ -1333,7 +1342,7 @@ def delete_income(
         # This handles the case where bank_transactions.linked_income_id points to this income
         bank_txs = db.query(models.BankTransaction).filter(
             models.BankTransaction.linked_income_id == income_id,
-            models.BankTransaction.user_id == current_user.id
+            models.BankTransaction.user_id == current_user.household_id
         ).all()
 
         for bank_tx in bank_txs:
@@ -1378,7 +1387,7 @@ def get_monthly_income(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Getting monthly income for user: {current_user.id}, month: {month}")
+        print(f"[FastAPI] Getting monthly income for user: {current_user.household_id}, month: {month}")
 
         # Parse month parameter or use current month
         if month:
@@ -1394,7 +1403,7 @@ def get_monthly_income(
 
         # Use MonthlyTotalsService for deduplication logic
         totals = MonthlyTotalsService.calculate_monthly_income(
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             year=year,
             month=month_num,
             db=db
@@ -1589,7 +1598,7 @@ async def get_user_summary(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Getting summary for user: {current_user.id}")
+        print(f"[FastAPI] Getting summary for user: {current_user.household_id}")
         # Get current month's start and end dates
         today = datetime.now()
         month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -2063,9 +2072,9 @@ def create_activity(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Creating activity for user: {current_user.id}")
+        print(f"[FastAPI] Creating activity for user: {current_user.household_id}")
         db_activity = models.Activity(
-            user_id=current_user.id,
+            user_id=current_user.household_id,
             entity_type=activity.entity_type,
             operation_type=activity.operation_type,
             entity_id=activity.entity_id,
@@ -2095,9 +2104,9 @@ def get_user_activities(
     validate_user_access(user_id, current_user)
 
     try:
-        print(f"[FastAPI] Getting activities for user: {current_user.id}")
+        print(f"[FastAPI] Getting activities for user: {current_user.household_id}")
         activities = db.query(models.Activity)\
-            .filter(models.Activity.user_id == current_user.id)\
+            .filter(models.Activity.user_id == current_user.household_id)\
             .order_by(models.Activity.timestamp.desc())\
             .offset(skip)\
             .limit(limit)\
@@ -2119,7 +2128,7 @@ def get_yearly_budget(
 ):
     """Get yearly budget report for the authenticated user."""
     try:
-        print(f"[FastAPI] Getting budget for user: {current_user.id}, period: {start_date} to {end_date}")
+        print(f"[FastAPI] Getting budget for user: {current_user.household_id}, period: {start_date} to {end_date}")
         
         try:
             # Parse date strings to datetime objects
@@ -2140,7 +2149,7 @@ def get_yearly_budget(
         # Get all non-recurring incomes for the period
         try:
             regular_incomes = db.query(models.Income).filter(
-                models.Income.user_id == current_user.id,
+                models.Income.user_id == current_user.household_id,
                 models.Income.date >= start_datetime,
                 models.Income.date <= end_datetime,
                 models.Income.is_recurring == False
@@ -2153,7 +2162,7 @@ def get_yearly_budget(
         # Get recurring incomes
         try:
             recurring_incomes = db.query(models.Income).filter(
-                models.Income.user_id == current_user.id,
+                models.Income.user_id == current_user.household_id,
                 models.Income.is_recurring == True,
                 models.Income.date <= end_datetime
             ).all()
@@ -2165,7 +2174,7 @@ def get_yearly_budget(
         # Get all non-recurring expenses for the period
         try:
             regular_expenses = db.query(models.Expense).filter(
-                models.Expense.user_id == current_user.id,
+                models.Expense.user_id == current_user.household_id,
                 models.Expense.date >= start_datetime,
                 models.Expense.date <= end_datetime,
                 models.Expense.is_recurring == False
@@ -2178,7 +2187,7 @@ def get_yearly_budget(
         # Get recurring expenses
         try:
             recurring_expenses = db.query(models.Expense).filter(
-                models.Expense.user_id == current_user.id,
+                models.Expense.user_id == current_user.household_id,
                 models.Expense.is_recurring == True,
                 models.Expense.date <= end_datetime
             ).all()
@@ -2190,7 +2199,7 @@ def get_yearly_budget(
         # Get all loans that could be active during this period
         try:
             loans = db.query(models.Loan).filter(
-                models.Loan.user_id == current_user.id,
+                models.Loan.user_id == current_user.household_id,
                 models.Loan.start_date <= end_datetime
             ).all()
             print(f"[FastAPI] Found {len(loans)} loans")
@@ -2203,7 +2212,7 @@ def get_yearly_budget(
         # Get all non-recurring savings for the period
         try:
             regular_savings = db.query(models.Saving).filter(
-                models.Saving.user_id == current_user.id,
+                models.Saving.user_id == current_user.household_id,
                 models.Saving.date >= start_datetime,
                 models.Saving.date <= end_datetime,
                 models.Saving.is_recurring == False
@@ -2216,7 +2225,7 @@ def get_yearly_budget(
         # Get recurring savings
         try:
             recurring_savings = db.query(models.Saving).filter(
-                models.Saving.user_id == current_user.id,
+                models.Saving.user_id == current_user.household_id,
                 models.Saving.is_recurring == True,
                 models.Saving.date <= end_datetime
             ).all()
@@ -2435,20 +2444,20 @@ async def export_user_data(
 
     try:
         # Check subscription for export format
-        can_export, message = SubscriptionService.can_export_format(current_user.id, format, db)
+        can_export, message = SubscriptionService.can_export_format(current_user.household_id, format, db)
         if not can_export:
             raise HTTPException(status_code=403, detail=message)
 
         # Fetch all user data
-        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
-        expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
-        incomes = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
-        loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
-        savings = db.query(models.Saving).filter(models.Saving.user_id == current_user.id).all()
+        settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.household_id).first()
+        expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.household_id).all()
+        incomes = db.query(models.Income).filter(models.Income.user_id == current_user.household_id).all()
+        loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.household_id).all()
+        savings = db.query(models.Saving).filter(models.Saving.user_id == current_user.household_id).all()
 
         # Fetch additional data
-        loan_payments = db.query(models.LoanPayment).filter(models.LoanPayment.user_id == current_user.id).all()
-        savings_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == current_user.id).all()
+        loan_payments = db.query(models.LoanPayment).filter(models.LoanPayment.user_id == current_user.household_id).all()
+        savings_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == current_user.household_id).all()
 
         # Build goal_id -> goal name lookup for savings
         goal_names = {g.id: g.name for g in savings_goals}
@@ -2563,7 +2572,7 @@ async def export_user_data(
                 data_json = json.dumps(data)
                 filename = f"home_budget_export_{user_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
                 backup = models.DataExportBackup(
-                    user_id=current_user.id,
+                    user_id=current_user.household_id,
                     data=data,
                     format="json",
                     filename=filename,
@@ -2779,7 +2788,7 @@ async def list_export_backups(
     validate_user_access(user_id, current_user)
 
     backups = db.query(models.DataExportBackup).filter(
-        models.DataExportBackup.user_id == current_user.id
+        models.DataExportBackup.user_id == current_user.household_id
     ).order_by(models.DataExportBackup.created_at.desc()).all()
 
     return [
@@ -2806,7 +2815,7 @@ async def download_export_backup(
 
     backup = db.query(models.DataExportBackup).filter(
         models.DataExportBackup.id == backup_id,
-        models.DataExportBackup.user_id == current_user.id
+        models.DataExportBackup.user_id == current_user.household_id
     ).first()
 
     if not backup:
@@ -2832,7 +2841,7 @@ async def delete_export_backup(
 
     backup = db.query(models.DataExportBackup).filter(
         models.DataExportBackup.id == backup_id,
-        models.DataExportBackup.user_id == current_user.id
+        models.DataExportBackup.user_id == current_user.household_id
     ).first()
 
     if not backup:
@@ -2906,7 +2915,7 @@ async def import_user_data(
             new_values: Optional[dict] = None,
         ):
             activity = models.Activity(
-                user_id=current_user.id,
+                user_id=current_user.household_id,
                 entity_type=entity_type,
                 operation_type=operation,
                 entity_id=entity_id,
@@ -2917,7 +2926,7 @@ async def import_user_data(
 
         # Clear existing data if requested
         if clear_existing:
-            existing_expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.id).all()
+            existing_expenses = db.query(models.Expense).filter(models.Expense.user_id == current_user.household_id).all()
             for expense in existing_expenses:
                 add_activity(
                     entity_type="Expense",
@@ -2927,7 +2936,7 @@ async def import_user_data(
                 )
                 db.delete(expense)
 
-            existing_incomes = db.query(models.Income).filter(models.Income.user_id == current_user.id).all()
+            existing_incomes = db.query(models.Income).filter(models.Income.user_id == current_user.household_id).all()
             for income in existing_incomes:
                 add_activity(
                     entity_type="Income",
@@ -2937,7 +2946,7 @@ async def import_user_data(
                 )
                 db.delete(income)
 
-            existing_loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.id).all()
+            existing_loans = db.query(models.Loan).filter(models.Loan.user_id == current_user.household_id).all()
             for loan in existing_loans:
                 add_activity(
                     entity_type="Loan",
@@ -2947,7 +2956,7 @@ async def import_user_data(
                 )
                 db.delete(loan)
 
-            existing_savings = db.query(models.Saving).filter(models.Saving.user_id == current_user.id).all()
+            existing_savings = db.query(models.Saving).filter(models.Saving.user_id == current_user.household_id).all()
             for saving in existing_savings:
                 add_activity(
                     entity_type="Saving",
@@ -2958,16 +2967,16 @@ async def import_user_data(
                 db.delete(saving)
 
             # Clear savings goals
-            existing_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == current_user.id).all()
+            existing_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == current_user.household_id).all()
             for goal in existing_goals:
                 db.delete(goal)
 
             db.commit()
-            print(f"[FastAPI] Cleared existing data for user: {current_user.id}")
+            print(f"[FastAPI] Cleared existing data for user: {current_user.household_id}")
 
         # Import settings
         if "settings" in data:
-            settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
+            settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.household_id).first()
             if settings:
                 s = data["settings"]
                 settings.language = s.get("language", settings.language)
@@ -2990,7 +2999,7 @@ async def import_user_data(
         if "expenses" in data:
             for expense_data in data["expenses"]:
                 expense = models.Expense(
-                    user_id=current_user.id,
+                    user_id=current_user.household_id,
                     category=expense_data["category"],
                     description=expense_data["description"],
                     amount=expense_data["amount"],
@@ -3011,7 +3020,7 @@ async def import_user_data(
         if "incomes" in data:
             for income_data in data["incomes"]:
                 income = models.Income(
-                    user_id=current_user.id,
+                    user_id=current_user.household_id,
                     category=income_data["category"],
                     description=income_data["description"],
                     amount=income_data["amount"],
@@ -3035,7 +3044,7 @@ async def import_user_data(
         if "loans" in data:
             for loan_data in data["loans"]:
                 loan = models.Loan(
-                    user_id=current_user.id,
+                    user_id=current_user.household_id,
                     loan_type=loan_data["loan_type"],
                     description=loan_data["description"],
                     principal_amount=loan_data["principal_amount"],
@@ -3061,7 +3070,7 @@ async def import_user_data(
                 for payment_data in loan_data.get("payments", []):
                     payment = models.LoanPayment(
                         loan_id=loan.id,
-                        user_id=current_user.id,
+                        user_id=current_user.household_id,
                         amount=payment_data["amount"],
                         payment_date=datetime.fromisoformat(payment_data["payment_date"].replace("Z", "+00:00")),
                         payment_type=payment_data["payment_type"],
@@ -3075,7 +3084,7 @@ async def import_user_data(
         if "savings" in data:
             for saving_data in data["savings"]:
                 saving = models.Saving(
-                    user_id=current_user.id,
+                    user_id=current_user.household_id,
                     category=saving_data["category"],
                     description=saving_data["description"],
                     amount=saving_data["amount"],
@@ -3100,7 +3109,7 @@ async def import_user_data(
         if "savings_goals" in data:
             for goal_data in data["savings_goals"]:
                 goal = models.SavingsGoal(
-                    user_id=current_user.id,
+                    user_id=current_user.household_id,
                     name=goal_data["name"],
                     category=goal_data["category"],
                     target_amount=goal_data["target_amount"],
@@ -3140,10 +3149,10 @@ async def get_user_insights(
 
         # If manual refresh requested, bypass cache
         if refresh:
-            return await _refresh_insights_internal(current_user.id, db)
+            return await _refresh_insights_internal(current_user.household_id, db)
 
         # Get current financial data
-        current_data = await get_user_financial_data(current_user.id, db)
+        current_data = await get_user_financial_data(current_user.household_id, db)
 
         # Get user's language preference
         language = current_data.get("settings", {}).get("language", "en")
@@ -3155,7 +3164,7 @@ async def get_user_insights(
 
         # Check for valid cache for the current language
         cache = db.query(models.InsightsCache).filter(
-            models.InsightsCache.user_id == current_user.id,
+            models.InsightsCache.user_id == current_user.household_id,
             models.InsightsCache.language == language,
             models.InsightsCache.is_stale == False
         ).order_by(models.InsightsCache.created_at.desc()).first()
@@ -3165,7 +3174,7 @@ async def get_user_insights(
             days_since_refresh = (datetime.now() - cache.last_refresh_date).days
             if days_since_refresh >= 7:
                 print(f"[Insights] Cache expired due to time (7+ days old)")
-                return await _refresh_insights_internal(current_user.id, db)
+                return await _refresh_insights_internal(current_user.household_id, db)
 
             # Check data change threshold (10%)
             cached_income = cache.total_income
@@ -3179,7 +3188,7 @@ async def get_user_insights(
             # If any metric changed by more than 10%, refresh
             if income_change > 0.1 or expenses_change > 0.1 or loans_change > 0.1:
                 print(f"[Insights] Cache invalidated due to data changes: income={income_change:.2f}, expenses={expenses_change:.2f}, loans={loans_change:.2f}")
-                return await _refresh_insights_internal(current_user.id, db)
+                return await _refresh_insights_internal(current_user.household_id, db)
 
             # Cache is valid, return it with metadata
             return {
@@ -3199,7 +3208,7 @@ async def get_user_insights(
             }
 
         # No valid cache exists for this language, generate new insights
-        return await _refresh_insights_internal(current_user.id, db)
+        return await _refresh_insights_internal(current_user.household_id, db)
     except HTTPException:
         raise
     except Exception as e:
@@ -3215,7 +3224,7 @@ async def refresh_user_insights(
     """Refresh AI insights for the authenticated user."""
     validate_user_access(user_id, current_user)
 
-    return await _refresh_insights_internal(current_user.id, db)
+    return await _refresh_insights_internal(current_user.household_id, db)
 
 
 async def _refresh_insights_internal(user_id: str, db: Session):
@@ -4074,7 +4083,7 @@ async def create_savings_goal(
 ):
     validate_user_access(user_id, current_user)
     goal = models.SavingsGoal(
-        user_id=current_user.id,
+        user_id=current_user.household_id,
         name=goal_data.name,
         category=goal_data.category,
         target_amount=goal_data.target_amount,

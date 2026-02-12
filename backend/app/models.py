@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base, IS_TEST_MODE
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 # Use JSON for SQLite (test mode), JSONB for PostgreSQL (production)
 if IS_TEST_MODE:
@@ -51,6 +52,31 @@ class User(Base):
     achievements = relationship("Achievement", back_populates="user", cascade="all, delete-orphan")
     streak_history = relationship("StreakHistory", back_populates="user", cascade="all, delete-orphan")
     gamification_events = relationship("GamificationEvent", back_populates="user", cascade="all, delete-orphan")
+
+    # Partner access relationships
+    partner_link_as_partner = relationship(
+        "PartnerLink",
+        foreign_keys="PartnerLink.partner_user_id",
+        uselist=False,
+        lazy="joined",
+    )
+    partner_link_as_primary = relationship(
+        "PartnerLink",
+        foreign_keys="PartnerLink.primary_user_id",
+        uselist=False,
+    )
+
+    @property
+    def household_id(self) -> str:
+        """Returns primary user's ID if this is a partner, else own ID."""
+        if self.partner_link_as_partner:
+            return self.partner_link_as_partner.primary_user_id
+        return self.id
+
+    @property
+    def is_partner(self) -> bool:
+        """Returns True if this user is linked as a partner to another user."""
+        return self.partner_link_as_partner is not None
 
 class Loan(Base):
     __tablename__ = "loans"
@@ -934,4 +960,48 @@ class TinkAuditLog(Base):
         Index('idx_tink_audit_logs_created_at', 'created_at'),
         # Composite for common queries
         Index('idx_tink_audit_logs_user_date', 'user_id', 'created_at'),
+    )
+
+
+# ==========================================
+# PARTNER ACCESS MODELS
+# ==========================================
+
+class PartnerLink(Base):
+    """Links a partner user to a primary (household owner) user."""
+    __tablename__ = "partner_links"
+
+    id = Column(Integer, primary_key=True)
+    primary_user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    partner_user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True)
+    role = Column(String, default="partner")  # future: "child", "advisor"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    primary_user = relationship("User", foreign_keys=[primary_user_id])
+    partner_user = relationship("User", foreign_keys=[partner_user_id])
+
+    __table_args__ = (
+        UniqueConstraint('partner_user_id', name='uq_partner_link'),
+        Index('idx_partner_links_primary_user_id', 'primary_user_id'),
+        Index('idx_partner_links_partner_user_id', 'partner_user_id'),
+    )
+
+
+class PartnerInvitation(Base):
+    """Stores pending partner invitations with secure tokens."""
+    __tablename__ = "partner_invitations"
+
+    id = Column(Integer, primary_key=True)
+    inviter_user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, nullable=True)  # optional: restrict to specific email
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    inviter = relationship("User", foreign_keys=[inviter_user_id])
+
+    __table_args__ = (
+        Index('idx_partner_invitations_token', 'token'),
+        Index('idx_partner_invitations_inviter', 'inviter_user_id'),
     )
