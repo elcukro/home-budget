@@ -68,14 +68,20 @@ async def create_saving(
     try:
         logger.info(f"Creating saving for user: {current_user.id}")
 
-        # Validate: only ONE opening_balance entry per account/year
+        # Validate: only ONE opening_balance entry per account/year/owner
         if saving.entry_type == EntryType.OPENING_BALANCE:
             current_year = saving.date.year
+            owner_val = saving.owner if saving.owner else None
+            if owner_val and owner_val == 'partner':
+                ob_owner_filter = Saving.owner == 'partner'
+            else:
+                ob_owner_filter = or_(Saving.owner == None, Saving.owner == 'self')
             existing = db.query(Saving).filter(
                 Saving.user_id == current_user.id,
                 Saving.account_type == saving.account_type.value,
                 Saving.entry_type == EntryType.OPENING_BALANCE.value,
-                extract('year', Saving.date) == current_year
+                extract('year', Saving.date) == current_year,
+                ob_owner_filter
             ).first()
 
             if existing:
