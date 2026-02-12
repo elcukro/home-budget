@@ -718,13 +718,21 @@ def send_payment_failed_email(
     )
 
 
+def _load_template(filename: str) -> str:
+    """Load an email template from the email_templates directory."""
+    template_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), '..', 'email_templates')
+    template_path = os.path.join(template_dir, filename)
+    with open(template_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+
 def send_partner_invitation_email(
     to_email: str,
     inviter_name: Optional[str] = None,
     token: str = "",
 ) -> bool:
     """
-    Send partner invitation email.
+    Send partner invitation email using the HTML template.
 
     Args:
         to_email: Partner's email address
@@ -734,59 +742,51 @@ def send_partner_invitation_email(
     inviter_display = inviter_name or "Ktoś"
     accept_url = f"{FRONTEND_URL}/partner/accept?token={token}"
 
-    html_content = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }}
-        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; text-align: center; }}
-        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }}
-        .info-box {{ background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }}
-        .button {{ display: inline-block; background: #667eea; color: white !important; padding: 14px 36px; border-radius: 6px; text-decoration: none; margin: 20px 0; font-size: 16px; font-weight: bold; }}
-        .footer {{ text-align: center; color: #666; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>👥 Zaproszenie do wspólnego budżetu</h1>
-    </div>
-    <div class="content">
-        <p>Cześć!</p>
+    replacements = {
+        "{inviter_name}": inviter_display,
+        "{accept_url}": accept_url,
+        "{to_email}": to_email,
+        "{frontend_url}": FRONTEND_URL,
+    }
 
-        <p><strong>{inviter_display}</strong> zaprasza Cię do wspólnego zarządzania budżetem domowym w FiredUp.</p>
+    try:
+        html_content = _load_template('partner_invitation.html')
+        text_content = _load_template('partner_invitation.txt')
+        for placeholder, value in replacements.items():
+            html_content = html_content.replace(placeholder, value)
+            text_content = text_content.replace(placeholder, value)
+    except FileNotFoundError:
+        logger.error("Partner invitation email template not found, using fallback")
+        html_content = f"<p>{inviter_display} zaprasza Cię do wspólnego budżetu w FiredUp.</p><p><a href='{accept_url}'>Dołącz</a></p>"
+        text_content = None
 
-        <div class="info-box">
-            <h3>Co to oznacza?</h3>
-            <ul>
-                <li>📊 Wspólny widok wszystkich finansów domowych</li>
-                <li>💰 Śledzenie wydatków i przychodów obu osób</li>
-                <li>🎯 Wspólne cele oszczędnościowe</li>
-                <li>🔥 Wspólna droga do finansowej wolności</li>
-            </ul>
-            <p style="color: #666; font-size: 14px;">Twoje konto będzie korzystać z planu Premium partnera — bez dodatkowych opłat.</p>
-        </div>
+    if not _resend_available:
+        logger.info(f"Email not sent (service unavailable): {EmailType.PARTNER_INVITATION.value} to {to_email[:20]}...")
+        return False
 
-        <p style="text-align: center;">
-            <a href="{accept_url}" class="button">Dołącz do budżetu →</a>
-        </p>
+    if not to_email:
+        logger.warning(f"Cannot send {EmailType.PARTNER_INVITATION.value} email: no recipient email")
+        return False
 
-        <p style="color: #666; font-size: 13px;">Zaproszenie jest ważne przez 7 dni. Jeśli nie spodziewałeś/aś się tego zaproszenia, zignoruj tę wiadomość.</p>
+    params = {
+        "from": f"{EMAIL_FROM_NAME} <{EMAIL_FROM_ADDRESS}>",
+        "to": [to_email],
+        "subject": f"{inviter_display} zaprasza Cię do wspólnego zarządzania budżetem",
+        "html": html_content,
+        "text": text_content or "",
+    }
 
-        <p>Zespół FiredUp</p>
-    </div>
-    <div class="footer">
-        <p>FiredUp - Twój osobisty asystent finansowy<br>
-        <a href="{FRONTEND_URL}">firedup.app</a></p>
-    </div>
-</body>
-</html>
-"""
-
-    return _send_email(
-        to_email=to_email,
-        subject=f"👥 {inviter_display} zaprasza Cię do wspólnego zarządzania budżetem",
-        html_content=html_content,
-        email_type=EmailType.PARTNER_INVITATION,
-    )
+    for attempt in range(3):
+        try:
+            response = _resend.Emails.send(params)
+            logger.info(
+                f"Email sent: {EmailType.PARTNER_INVITATION.value} to {to_email[:20]}... "
+                f"(id: {response.get('id', 'unknown')})"
+            )
+            return True
+        except Exception as e:
+            if attempt == 2:
+                logger.error(f"Failed to send partner invitation email after 3 attempts: {e}")
+                sentry_sdk.capture_exception(e)
+                return False
+            time.sleep(2 ** attempt)
