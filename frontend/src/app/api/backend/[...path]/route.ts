@@ -37,7 +37,10 @@ const PUBLIC_PATHS = new Set([
 
 const isPublicPath = (pathSegments: string[]): boolean => {
   if (pathSegments.length === 0) return true
-  return PUBLIC_PATHS.has(pathSegments[0])
+  if (PUBLIC_PATHS.has(pathSegments[0])) return true
+  // Partner invitation validation is public (no auth required)
+  if (pathSegments[0] === "partner" && pathSegments[1] === "invite") return true
+  return false
 }
 
 const createForwardHeaders = async (request: NextRequest): Promise<{ headers: Headers; session: any }> => {
