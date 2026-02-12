@@ -110,6 +110,7 @@ class Expense(Base):
     end_date = Column(Date, nullable=True)
     source = Column(String, default="manual")
     bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)
+    owner = Column(String, nullable=True)  # "self", "partner" (null = "self")
     # Reconciliation fields
     reconciliation_status = Column(String, default="unreviewed", nullable=False)
     duplicate_bank_transaction_id = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)

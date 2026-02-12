@@ -90,8 +90,11 @@ async def create_saving(
                     detail=f"Opening balance for {saving.account_type.value.upper()} {current_year} already exists. Delete the existing entry first or update it."
                 )
 
+        saving_data = saving.dict()
+        if saving_data.get("owner") is None:
+            saving_data["owner"] = "partner" if current_user.is_partner else "self"
         db_saving = Saving(
-            **saving.dict(),
+            **saving_data,
             user_id=current_user.household_id
         )
         db.add(db_saving)

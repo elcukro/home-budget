@@ -389,6 +389,7 @@ class ExpenseBase(BaseModel):
     is_recurring: bool = False
     date: date  # Start date (for recurring) or occurrence date (for one-off)
     end_date: date | None = None  # Optional end date for recurring items (null = forever)
+    owner: str | None = Field(default=None, description="Expense owner: 'self', 'partner' (null = 'self')")
     source: str = "manual"  # "manual" or "bank_import"
     bank_transaction_id: int | None = None  # Link to bank transaction if created from bank import
     reconciliation_status: str = "unreviewed"  # For future reconciliation features
@@ -1058,7 +1059,10 @@ def create_expense(
         if not can_add:
             raise HTTPException(status_code=403, detail=message)
 
-        db_expense = models.Expense(**expense.model_dump(), user_id=current_user.household_id)
+        expense_data = expense.model_dump()
+        if expense_data.get("owner") is None:
+            expense_data["owner"] = "partner" if current_user.is_partner else "self"
+        db_expense = models.Expense(**expense_data, user_id=current_user.household_id)
         db.add(db_expense)
         db.commit()
         db.refresh(db_expense)
@@ -1263,7 +1267,10 @@ def create_income(
         if not can_add:
             raise HTTPException(status_code=403, detail=message)
 
-        db_income = models.Income(**income.model_dump(), user_id=current_user.household_id)
+        income_data = income.model_dump()
+        if income_data.get("owner") is None:
+            income_data["owner"] = "partner" if current_user.is_partner else "self"
+        db_income = models.Income(**income_data, user_id=current_user.household_id)
         db.add(db_income)
         db.commit()
         db.refresh(db_income)
