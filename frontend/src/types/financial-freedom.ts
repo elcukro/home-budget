@@ -34,6 +34,12 @@ export enum SavingType {
   WITHDRAWAL = "withdrawal"
 }
 
+export enum EntryType {
+  CONTRIBUTION = "contribution",         // Regular deposit/withdrawal (counts toward annual limit)
+  OPENING_BALANCE = "opening_balance",  // Historical balance from previous years (does NOT count toward limit)
+  CORRECTION = "correction"              // Manual adjustment/correction
+}
+
 // Polish III Pillar retirement accounts and standard savings
 export enum AccountType {
   STANDARD = "standard",     // Regular savings account
@@ -57,6 +63,7 @@ export interface Saving {
   account_type?: AccountType;  // Type of savings account (IKE/IKZE/PPK/OIPE/standard)
   annual_return_rate?: number; // Expected annual return rate for compound interest (e.g., 0.05 for 5%)
   goal_id?: number | null;  // Link to a savings goal
+  entry_type?: EntryType;  // Type of entry (contribution/opening_balance/correction)
   created_at: string;
   updated_at: string;
 }
@@ -124,6 +131,7 @@ export interface SavingsSummary {
   total_savings: number;
   category_totals: Record<SavingCategory, number>;
   monthly_contribution: number;
+  ppk_balance?: number;  // PPK (Employee Capital Plans) total balance
   recent_transactions: Saving[];
   emergency_fund: number;
   emergency_fund_target: number;

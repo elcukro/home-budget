@@ -26,6 +26,8 @@ interface Settings {
   ppk_enrolled?: boolean; // PPK enrollment status
   ppk_employee_rate?: number; // PPK employee contribution (0.5% - 4%)
   ppk_employer_rate?: number; // PPK employer contribution (1.5% - 4%)
+  ppk_enrollment_date?: string; // Date when user enrolled in PPK (employment contract start)
+  employment_type?: string; // Employment type: 'uop', 'b2b', 'jdg', etc.
   children_count?: number; // For child tax relief calculation
   // Life data
   include_partner_finances?: boolean;

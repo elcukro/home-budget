@@ -780,6 +780,8 @@
       "monthly_payment": "rata miesięczna",
       "end_date": "data końcowa",
       "is_gross": "kwota brutto",
+      "bank_transaction_id": "ID transakcji bankowej",
+      "reconciliation_status": "status uzgodnienia",
       "timestamp": "{date} o {time}",
       "updated_at": "Zaktualizowano {date} o {time}",
       "details": {
@@ -1685,6 +1687,17 @@
       "ppkNo": "Nie",
       "ppkEmployeeRate": "Twoja składka (%)",
       "ppkEmployerRate": "Składka pracodawcy (%)",
+      "employmentType": "Rodzaj zatrudnienia",
+      "selectEmploymentType": "Wybierz rodzaj zatrudnienia",
+      "employmentTypes": {
+        "uop": "Umowa o pracę (UoP)",
+        "b2b": "B2B",
+        "jdg": "Jednoosobowa działalność gospodarcza (JDG)",
+        "other": "Inne"
+      },
+      "employmentTypeHint": "Określa, czy PPK jest automatycznie potrącane z wynagrodzenia",
+      "ppkEnrollmentDate": "Data rozpoczęcia PPK",
+      "ppkEnrollmentDateHint": "Data zawarcia umowy o pracę lub zapisu do PPK",
       "authorsCosts": "Koszty autorskie (50% KUP)",
       "authorsCostsHint": "Domyślne ustawienie dla nowych przychodów. Każdy przychód może mieć własny typ KUP w formularzu.",
       "includePartner": "Wspólne budżetowanie",
@@ -1965,8 +1978,30 @@
       "updateSuccess": "Stan PPK został zaktualizowany",
       "withdrawSuccess": "Wypłata z PPK została zarejestrowana",
       "withdrawAmount": "Kwota wypłaty",
-      "maxAmount": "Maks: {amount}"
+      "maxAmount": "Maks: {amount}",
+      "baselineValue": "Bazowa wartość: {baseline} (od {date})",
+      "growth": "Składki od aktualizacji: +{growth} ({months} mies.)",
+      "notUopWarning": "PPK dostępne tylko dla umowy o pracę"
     },
+    "openingBalance": {
+      "label": "Saldo początkowe",
+      "update": "Wprowadź saldo początkowe",
+      "title": "Saldo początkowe {account}",
+      "description": "Wprowadź całkowite saldo zgromadzone przed bieżącym rokiem. To będzie punkt wyjścia do obliczenia limitu wpłat.",
+      "hint": "Uwaga: To NIE wlicza się do limitu wpłat na bieżący rok.",
+      "updateSuccess": "Saldo początkowe zaktualizowane",
+      "updateError": "Nie udało się zaktualizować salda początkowego",
+      "invalidAmount": "Nieprawidłowa kwota",
+      "cannotBeNegative": "Kwota nie może być ujemna",
+      "zeroNotNeeded": "Saldo początkowe równe 0",
+      "zeroNotNeededHint": "Jeśli nie masz historycznego salda, nie musisz wprowadzać wpisu. Saldo początkowe równe 0 nie jest potrzebne.",
+      "duplicateEntry": "Saldo początkowe dla tego konta i roku już istnieje. Usuń istniejący wpis, aby wprowadzić nowy."
+    },
+    "currentYearContributions": "Wpłaty {year}",
+    "totalBalance": "Całkowite saldo",
+    "remainingLimit": "Pozostało: {amount}",
+    "overLimit": "Przekroczono limit",
+    "limitUsed": "wykorzystane",
     "summary": {
       "totalSavings": "Łączne oszczędności",
       "monthlyContribution": "Wpłaty w tym miesiącu",

@@ -97,6 +97,8 @@ interface UserSettings {
   ppk_enrolled?: boolean | null;
   ppk_employee_rate?: number | null;
   ppk_employer_rate?: number | null;
+  ppk_enrollment_date?: string | null;  // Date when user enrolled in PPK (employment contract start)
+  employment_type?: string | null;      // Employment type: 'uop', 'b2b', 'jdg', etc.
   children_count?: number;
   // Life data
   include_partner_finances?: boolean;
@@ -464,6 +466,8 @@ export default function SettingsPage() {
         ppk_enrolled: settings.ppk_enrolled ?? undefined,
         ppk_employee_rate: settings.ppk_employee_rate ?? undefined,
         ppk_employer_rate: settings.ppk_employer_rate ?? undefined,
+        ppk_enrollment_date: settings.ppk_enrollment_date ?? undefined,
+        employment_type: settings.employment_type ?? undefined,
         children_count: settings.children_count ?? undefined,
         // Partner profile
         include_partner_finances: settings.include_partner_finances ?? undefined,
@@ -514,6 +518,8 @@ export default function SettingsPage() {
         ppk_enrolled: settings.ppk_enrolled ?? undefined,
         ppk_employee_rate: settings.ppk_employee_rate ?? undefined,
         ppk_employer_rate: settings.ppk_employer_rate ?? undefined,
+        ppk_enrollment_date: settings.ppk_enrollment_date ?? undefined,
+        employment_type: settings.employment_type ?? undefined,
         children_count: settings.children_count ?? undefined,
         // Partner profile
         include_partner_finances: settings.include_partner_finances ?? undefined,
@@ -1018,6 +1024,56 @@ export default function SettingsPage() {
                           />
                           <p className="text-xs text-muted-foreground">1.5% - 4%</p>
                         </div>
+                      </div>
+                    )}
+
+                    {/* Employment Type */}
+                    {settings.ppk_enrolled === true && (
+                      <div className="space-y-2 pt-2">
+                        <Label htmlFor="employment_type">
+                          {intl.formatMessage({ id: "settings.taxProfile.employmentType" })}
+                        </Label>
+                        <Select
+                          value={settings.employment_type ?? ""}
+                          onValueChange={(value) =>
+                            setSettings((prev) => prev && { ...prev, employment_type: value || null })
+                          }
+                        >
+                          <SelectTrigger id="employment_type">
+                            <SelectValue placeholder={intl.formatMessage({ id: "settings.taxProfile.selectEmploymentType" })} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="uop">{intl.formatMessage({ id: "settings.taxProfile.employmentTypes.uop" })}</SelectItem>
+                            <SelectItem value="b2b">{intl.formatMessage({ id: "settings.taxProfile.employmentTypes.b2b" })}</SelectItem>
+                            <SelectItem value="jdg">{intl.formatMessage({ id: "settings.taxProfile.employmentTypes.jdg" })}</SelectItem>
+                            <SelectItem value="other">{intl.formatMessage({ id: "settings.taxProfile.employmentTypes.other" })}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {intl.formatMessage({ id: "settings.taxProfile.employmentTypeHint" })}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* PPK Enrollment Date */}
+                    {settings.ppk_enrolled === true && (
+                      <div className="space-y-2">
+                        <Label htmlFor="ppk_enrollment_date">
+                          {intl.formatMessage({ id: "settings.taxProfile.ppkEnrollmentDate" })}
+                        </Label>
+                        <Input
+                          id="ppk_enrollment_date"
+                          type="date"
+                          value={settings.ppk_enrollment_date ?? ""}
+                          onChange={(event) =>
+                            setSettings((prev) =>
+                              prev && { ...prev, ppk_enrollment_date: event.target.value || null }
+                            )
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {intl.formatMessage({ id: "settings.taxProfile.ppkEnrollmentDateHint" })}
+                        </p>
                       </div>
                     )}
                   </div>

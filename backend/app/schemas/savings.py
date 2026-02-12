@@ -26,6 +26,13 @@ class AccountType(str, Enum):
     OIPE = "oipe"               # Ogólnoeuropejski Indywidualny Produkt Emerytalny
 
 
+class EntryType(str, Enum):
+    """Type of savings entry for retirement account tracking."""
+    CONTRIBUTION = "contribution"         # Regular deposit/withdrawal (counts toward annual limit)
+    OPENING_BALANCE = "opening_balance"  # Historical balance from previous years (does NOT count toward limit)
+    CORRECTION = "correction"             # Manual adjustment/correction
+
+
 class GoalStatus(str, Enum):
     """Status of a savings goal."""
     ACTIVE = "active"
@@ -112,6 +119,7 @@ class SavingBase(BaseModel):
     annual_return_rate: Optional[float] = None  # Expected annual return rate for compound interest (e.g., 0.05 for 5%)
     goal_id: Optional[int] = None  # Link to a savings goal
     owner: Optional[str] = None  # "self", "partner" (null = "self")
+    entry_type: EntryType = EntryType.CONTRIBUTION  # Type of entry (contribution/opening_balance/correction)
 
     @validator('target_amount')
     def target_amount_must_be_positive(cls, v):
@@ -152,6 +160,7 @@ class SavingsSummary(BaseModel):
     emergency_fund_target: float = 1000  # Default target for baby step 1
     emergency_fund_progress: float
     monthly_contribution: float
+    ppk_balance: float = 0  # PPK (Employee Capital Plans) total balance
     category_totals: dict[SavingCategory, float]
     recent_transactions: List[Saving]
 
@@ -160,14 +169,24 @@ class SavingsSummary(BaseModel):
 
 
 class RetirementAccountLimit(BaseModel):
-    """Individual retirement account limit tracking."""
+    """Individual retirement account limit tracking with multi-year support."""
     account_type: AccountType
     year: int
     annual_limit: float
-    current_contributions: float
+
+    # Multi-year tracking fields
+    opening_balance: float  # Historical balance accumulated before current year
+    current_contributions: float  # Net contributions in current year (for limit calculation)
+    total_balance: float  # opening_balance + current year net balance
+
     remaining_limit: float
     percentage_used: float
     is_over_limit: bool
+
+    # PPK manual baseline tracking (kept for backward compatibility)
+    last_manual_balance: Optional[float] = None  # Manual baseline amount from last "Korekta stanu PPK"
+    last_manual_update: Optional[datetime] = None  # When user last manually updated PPK balance
+    monthly_contribution: float = 0  # Current monthly PPK contribution (salary × rates)
 
 
 class RetirementLimitsResponse(BaseModel):
