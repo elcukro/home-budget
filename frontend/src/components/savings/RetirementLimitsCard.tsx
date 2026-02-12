@@ -28,6 +28,7 @@ import Tooltip from '@/components/Tooltip';
 export interface QuickAddSavingParams {
   accountType: AccountType;
   category: SavingCategory;
+  owner?: string;
 }
 
 interface RetirementLimitsCardProps {
@@ -36,6 +37,7 @@ interface RetirementLimitsCardProps {
   onQuickAddSaving?: (params: QuickAddSavingParams) => void;
   onPpkUpdate?: () => void;  // Called after PPK update/withdrawal to refresh parent table
   refreshKey?: number;
+  owner?: 'self' | 'partner';
 }
 
 const accountTypeIcons: Record<AccountType, React.ReactNode> = {
@@ -78,6 +80,7 @@ export default function RetirementLimitsCard({
   onQuickAddSaving,
   onPpkUpdate,
   refreshKey = 0,
+  owner,
 }: RetirementLimitsCardProps) {
   const intl = useIntl();
   const { settings, formatCurrency } = useSettings();
@@ -103,9 +106,10 @@ export default function RetirementLimitsCard({
   const [openingBalanceInput, setOpeningBalanceInput] = useState('');
   const [openingBalanceSubmitting, setOpeningBalanceSubmitting] = useState(false);
 
-  const ppkEnrolled = settings?.ppk_enrolled === true;
-  const ppkEmployeeRate = settings?.ppk_employee_rate ?? 2;
-  const ppkEmployerRate = settings?.ppk_employer_rate ?? 1.5;
+  const isPartner = owner === 'partner';
+  const ppkEnrolled = isPartner ? settings?.partner_ppk_enrolled === true : settings?.ppk_enrolled === true;
+  const ppkEmployeeRate = isPartner ? settings?.partner_ppk_employee_rate ?? 2 : settings?.ppk_employee_rate ?? 2;
+  const ppkEmployerRate = isPartner ? settings?.partner_ppk_employer_rate ?? 1.5 : settings?.ppk_employer_rate ?? 1.5;
 
   // Find PPK account from limits data
   const ppkAccount = limits?.accounts.find((a) => a.account_type === AccountType.PPK);
@@ -113,10 +117,10 @@ export default function RetirementLimitsCard({
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const data = await getRetirementLimits(undefined, isSelfEmployed);
+    const data = await getRetirementLimits(undefined, isSelfEmployed, isPartner ? 'partner' : undefined);
     setLimits(data);
     setLoading(false);
-  }, [isSelfEmployed]);
+  }, [isSelfEmployed, isPartner]);
 
   useEffect(() => {
     fetchData();
@@ -125,8 +129,8 @@ export default function RetirementLimitsCard({
   // Fetch earliest salary for PPK estimate
   useEffect(() => {
     if (!ppkEnrolled || !userEmail) return;
-    getEarliestRecurringSalary(userEmail).then(setSalaryData);
-  }, [ppkEnrolled, userEmail]);
+    getEarliestRecurringSalary(userEmail, isPartner ? 'partner' : undefined).then(setSalaryData);
+  }, [ppkEnrolled, userEmail, isPartner]);
 
   // PPK calculations
   const monthlyPpk = salaryData
@@ -145,8 +149,9 @@ export default function RetirementLimitsCard({
   // NEW: Baseline + Auto-Growth Logic for PPK
   // If user has manually set a baseline, add contributions on top. Otherwise use full estimate.
   const hasManualBaseline = ppkAccount?.last_manual_balance !== null && ppkAccount?.last_manual_balance !== undefined;
-  const employmentType = settings?.employment_type;
-  const isUoP = employmentType === 'uop';  // Only UoP employees get automatic PPK contributions
+  const isUoP = isPartner
+    ? settings?.partner_employment_status === 'uop'
+    : settings?.employment_type === 'uop';  // Only UoP employees get automatic PPK contributions
 
   let displayBalance: number;
   let growthSinceBaseline = 0;
@@ -191,7 +196,8 @@ export default function RetirementLimitsCard({
           const previousCorrection = savings
             .filter((s: any) =>
               s.account_type === 'ppk' &&
-              s.description === 'Korekta stanu PPK'
+              s.description === 'Korekta stanu PPK' &&
+              (isPartner ? s.owner === 'partner' : (!s.owner || s.owner === 'self'))
             )
             .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
@@ -213,6 +219,7 @@ export default function RetirementLimitsCard({
         description: 'Korekta stanu PPK',
         account_type: 'ppk',
         entry_type: 'opening_balance',  // Mark as opening balance to not count toward limits
+        owner: isPartner ? 'partner' : undefined,
       });
 
       invalidateSavingsCache();
@@ -250,6 +257,7 @@ export default function RetirementLimitsCard({
         date: new Date().toISOString().split('T')[0],
         description: 'Wypłata z PPK',
         account_type: 'ppk',
+        owner: isPartner ? 'partner' : undefined,
       });
 
       // 2. Create income entry (~70% net after deductions)
@@ -361,6 +369,7 @@ export default function RetirementLimitsCard({
         description: `Saldo początkowe ${accountLabel} ${currentYear}`,
         account_type: openingBalanceDialog.accountType,
         entry_type: 'opening_balance',  // CRITICAL: Mark as opening balance, not contribution!
+        owner: isPartner ? 'partner' : undefined,
       });
 
       invalidateSavingsCache();
@@ -634,7 +643,9 @@ export default function RetirementLimitsCard({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
-            {intl.formatMessage({ id: 'savings.retirementLimits.title' })}
+            {isPartner
+              ? intl.formatMessage({ id: 'savings.retirementLimits.partnerTitle' }, { name: settings?.partner_name || 'Partner' })
+              : intl.formatMessage({ id: 'savings.retirementLimits.title' })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -665,7 +676,9 @@ export default function RetirementLimitsCard({
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              {intl.formatMessage({ id: 'savings.retirementLimits.title' })}
+              {isPartner
+                ? intl.formatMessage({ id: 'savings.retirementLimits.partnerTitle' }, { name: settings?.partner_name || 'Partner' })
+                : intl.formatMessage({ id: 'savings.retirementLimits.title' })}
             </CardTitle>
             <Tooltip
               content={intl.formatMessage({ id: 'savings.retirementLimits.tooltip' })}
@@ -674,7 +687,9 @@ export default function RetirementLimitsCard({
             </Tooltip>
           </div>
           <p className="text-sm text-secondary">
-            {intl.formatMessage({ id: 'savings.retirementLimits.subtitle' }, { year: limits.year })}
+            {isPartner
+              ? intl.formatMessage({ id: 'savings.retirementLimits.partnerSubtitle' }, { name: settings?.partner_name || 'Partner', year: limits.year })
+              : intl.formatMessage({ id: 'savings.retirementLimits.subtitle' }, { year: limits.year })}
           </p>
         </CardHeader>
         <CardContent>
@@ -696,6 +711,7 @@ export default function RetirementLimitsCard({
                         onQuickAddSaving({
                           accountType: account.accountType,
                           category: SavingCategory.RETIREMENT,
+                          owner: isPartner ? 'partner' : undefined,
                         })
                       }
                       className={cn(
@@ -760,6 +776,7 @@ export default function RetirementLimitsCard({
                         onQuickAddSaving({
                           accountType: account.accountType,
                           category: SavingCategory.RETIREMENT,
+                          owner: isPartner ? 'partner' : undefined,
                         })
                       }
                       className={cn(

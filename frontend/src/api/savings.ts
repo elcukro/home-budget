@@ -67,6 +67,7 @@ export const createSaving = async (data: {
   description: string;
   account_type?: string;
   entry_type?: string;  // 'contribution' | 'opening_balance' | 'correction'
+  owner?: string;       // 'self' | 'partner' (null/undefined = self)
 }): Promise<Saving> => {
   const response = await fetch('/api/savings', {
     method: 'POST',
@@ -282,12 +283,14 @@ export interface RetirementLimitsResponse {
  */
 export const getRetirementLimits = async (
   year?: number,
-  isSelfEmployed: boolean = false
+  isSelfEmployed: boolean = false,
+  owner?: string
 ): Promise<RetirementLimitsResponse | null> => {
   try {
     const params = new URLSearchParams();
     if (year) params.append('year', year.toString());
     if (isSelfEmployed) params.append('is_self_employed', 'true');
+    if (owner) params.append('owner', owner);
 
     const url = `/api/savings/retirement-limits${params.toString() ? '?' + params.toString() : ''}`;
     const response = await fetch(url);
@@ -318,7 +321,8 @@ export interface SalaryForPpk {
  * Used for PPK balance estimation — PPK only applies to UoP (employment contract).
  */
 export const getEarliestRecurringSalary = async (
-  email: string
+  email: string,
+  owner?: string
 ): Promise<SalaryForPpk | null> => {
   try {
     const res = await fetch(
@@ -326,9 +330,14 @@ export const getEarliestRecurringSalary = async (
     );
     if (!res.ok) return null;
     const incomes = await res.json();
+    const isPartnerOwner = owner === 'partner';
     const salary = incomes
       .filter((i: { is_recurring?: boolean; category?: string; owner?: string | null }) =>
-        i.is_recurring && i.category === 'salary' && (i.owner === 'self' || i.owner === null || i.owner === undefined)
+        i.is_recurring && i.category === 'salary' && (
+          isPartnerOwner
+            ? i.owner === 'partner'
+            : (i.owner === 'self' || i.owner === null || i.owner === undefined)
+        )
       )
       .sort((a: { date: string }, b: { date: string }) => a.date.localeCompare(b.date))[0];
     if (!salary) return null;

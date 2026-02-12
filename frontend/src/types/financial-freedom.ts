@@ -64,6 +64,7 @@ export interface Saving {
   annual_return_rate?: number; // Expected annual return rate for compound interest (e.g., 0.05 for 5%)
   goal_id?: number | null;  // Link to a savings goal
   entry_type?: EntryType;  // Type of entry (contribution/opening_balance/correction)
+  owner?: string | null;   // "self" | "partner" (null = "self")
   created_at: string;
   updated_at: string;
 }

@@ -20,10 +20,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const year = searchParams.get('year');
     const isSelfEmployed = searchParams.get('is_self_employed');
+    const owner = searchParams.get('owner');
 
     const params = new URLSearchParams();
     if (year) params.append('year', year);
     if (isSelfEmployed) params.append('is_self_employed', isSelfEmployed);
+    if (owner) params.append('owner', owner);
 
     const queryString = params.toString();
     const url = `${API_BASE_URL}/savings/retirement-limits${queryString ? `?${queryString}` : ''}`;

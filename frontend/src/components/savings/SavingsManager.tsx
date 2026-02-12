@@ -209,6 +209,7 @@ const savingSchema = z
         return parseNumber(value) ?? undefined;
       }),
     account_type: z.string().default(AccountType.STANDARD),
+    owner: z.string().optional(),
     annual_return_rate: z
       .preprocess((value) => {
         if (value === null || value === undefined) {
@@ -426,7 +427,7 @@ const formatSavingAmount = (saving: Saving, formatCurrency: (value: number) => s
 export const SavingsManager = () => {
   const intl = useIntl();
   const session = useSession();
-  const { formatCurrency } = useSettings();
+  const { formatCurrency, settings } = useSettings();
   const { toast } = useToast();
 
   const [savings, setSavings] = useState<Saving[]>([]);
@@ -703,6 +704,7 @@ export const SavingsManager = () => {
       saving_type: SavingType.DEPOSIT,
       category: params.category,
       account_type: params.accountType,
+      owner: params.owner,
     });
     setDialogOpen(true);
   };
@@ -1355,7 +1357,22 @@ export const SavingsManager = () => {
           void fetchSummary();
         }}
         refreshKey={retirementLimitsRefreshKey}
+        owner="self"
       />
+
+      {/* Partner Retirement Account Limits (only if partner finances enabled) */}
+      {settings?.include_partner_finances && (
+        <RetirementLimitsCard
+          className="rounded-3xl"
+          onQuickAddSaving={handleQuickAddRetirement}
+          onPpkUpdate={() => {
+            void fetchSavings();
+            void fetchSummary();
+          }}
+          refreshKey={retirementLimitsRefreshKey}
+          owner="partner"
+        />
+      )}
 
       <Card ref={tableRef} className="rounded-3xl border border-muted/60 bg-card shadow-sm">
         <CardHeader>

@@ -1926,7 +1926,9 @@
     },
     "retirementLimits": {
       "title": "Emerytura III Filar",
+      "partnerTitle": "Emerytura III Filar — {name}",
       "subtitle": "Wpłaty na konta emerytalne w {year} roku",
+      "partnerSubtitle": "Konta emerytalne {name} w {year} roku",
       "tooltip": "Roczne limity wpłat na IKE i IKZE są ustalane przez Ministerstwo Finansów. Przekroczenie limitu może skutkować sankcjami podatkowymi.",
       "contributed": "Wpłacono",
       "ofLimit": "limitu",

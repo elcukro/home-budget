@@ -362,6 +362,7 @@ RETIREMENT_LIMITS_2026 = {
 async def get_retirement_limits(
     year: Optional[int] = None,
     is_self_employed: bool = False,
+    owner: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -380,7 +381,13 @@ async def get_retirement_limits(
         year_start = date(target_year, 1, 1)
         year_end = date(target_year, 12, 31)
 
-        logger.info(f"Getting retirement limits for user {current_user.id}, year {target_year}")
+        logger.info(f"Getting retirement limits for user {current_user.id}, year {target_year}, owner={owner}")
+
+        # Build owner filter (null/"self" = user's own accounts, "partner" = partner's)
+        if owner == 'partner':
+            owner_filter = Saving.owner == 'partner'
+        else:
+            owner_filter = or_(Saving.owner == None, Saving.owner == 'self')
 
         # Polish 2026 limits
         ike_limit = 28260.0
@@ -400,7 +407,8 @@ async def get_retirement_limits(
                 Saving.account_type == account_type.value,
                 Saving.saving_type == 'deposit',
                 Saving.entry_type != EntryType.OPENING_BALANCE.value,
-                Saving.date < year_start
+                Saving.date < year_start,
+                owner_filter
             ).scalar() or 0.0
 
             # Historical withdrawals from all years BEFORE target year
@@ -409,7 +417,8 @@ async def get_retirement_limits(
                 Saving.account_type == account_type.value,
                 Saving.saving_type == 'withdrawal',
                 Saving.entry_type != EntryType.OPENING_BALANCE.value,
-                Saving.date < year_start
+                Saving.date < year_start,
+                owner_filter
             ).scalar() or 0.0
 
             # Add any manual opening balance entry FOR this year
@@ -417,7 +426,8 @@ async def get_retirement_limits(
                 Saving.user_id == current_user.id,
                 Saving.account_type == account_type.value,
                 Saving.entry_type == EntryType.OPENING_BALANCE.value,
-                extract('year', Saving.date) == target_year
+                extract('year', Saving.date) == target_year,
+                owner_filter
             ).scalar() or 0.0
 
             opening_balance = (historical_deposits - historical_withdrawals) + manual_opening
@@ -431,7 +441,8 @@ async def get_retirement_limits(
                 Saving.saving_type == 'deposit',
                 Saving.entry_type == EntryType.CONTRIBUTION.value,
                 Saving.date >= year_start,
-                Saving.date <= year_end
+                Saving.date <= year_end,
+                owner_filter
             ).scalar() or 0.0
 
             # Current year withdrawals (only contribution type)
@@ -441,7 +452,8 @@ async def get_retirement_limits(
                 Saving.saving_type == 'withdrawal',
                 Saving.entry_type == EntryType.CONTRIBUTION.value,
                 Saving.date >= year_start,
-                Saving.date <= year_end
+                Saving.date <= year_end,
+                owner_filter
             ).scalar() or 0.0
 
             # Net contributions for limit calculation (only deposits count, withdrawals reduce it)
@@ -476,7 +488,8 @@ async def get_retirement_limits(
                 manual_correction = db.query(Saving).filter(
                     Saving.user_id == current_user.id,
                     Saving.account_type == AccountType.PPK.value,
-                    Saving.entry_type == EntryType.OPENING_BALANCE.value
+                    Saving.entry_type == EntryType.OPENING_BALANCE.value,
+                    owner_filter
                 ).order_by(Saving.date.desc()).first()
 
                 if manual_correction:
@@ -485,17 +498,34 @@ async def get_retirement_limits(
 
                 # Calculate current monthly PPK contribution
                 user_settings = db.query(Settings).filter(Settings.user_id == current_user.id).first()
-                if user_settings and user_settings.ppk_employee_rate and user_settings.ppk_employer_rate:
-                    # Get most recent recurring salary (UoP employment)
+
+                # Use partner-specific PPK settings when owner=partner
+                if owner == 'partner' and user_settings:
+                    ppk_employee_rate = user_settings.partner_ppk_employee_rate
+                    ppk_employer_rate = user_settings.partner_ppk_employer_rate
+                    is_ppk_relevant = (user_settings.partner_employment_status == 'uop')
+                else:
+                    ppk_employee_rate = user_settings.ppk_employee_rate if user_settings else None
+                    ppk_employer_rate = user_settings.ppk_employer_rate if user_settings else None
+                    is_ppk_relevant = True  # Self PPK eligibility checked on frontend
+
+                if ppk_employee_rate and ppk_employer_rate and is_ppk_relevant:
+                    # Get most recent recurring salary, filtered by owner
+                    income_owner_filter = (
+                        Income.owner == 'partner'
+                        if owner == 'partner'
+                        else or_(Income.owner == None, Income.owner == 'self')
+                    )
                     recent_salary = db.query(Income).filter(
                         Income.user_id == current_user.id,
                         Income.is_recurring == True,
                         Income.employment_type == 'uop',
-                        or_(Income.end_date == None, Income.end_date >= date.today())
+                        or_(Income.end_date == None, Income.end_date >= date.today()),
+                        income_owner_filter
                     ).order_by(Income.date.desc()).first()
 
                     if recent_salary and recent_salary.gross_amount:
-                        total_ppk_rate = (user_settings.ppk_employee_rate or 0) + (user_settings.ppk_employer_rate or 0)
+                        total_ppk_rate = (ppk_employee_rate or 0) + (ppk_employer_rate or 0)
                         monthly_contribution = recent_salary.gross_amount * total_ppk_rate / 100
 
             accounts.append(RetirementAccountLimit(
