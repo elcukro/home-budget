@@ -154,6 +154,9 @@ class Expense(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Reconciliation fields for bank/manual deduplication
+    owner = Column(String, nullable=True)  # "self", "partner" (null = "self" for backwards compat)
+
+    # Reconciliation fields for bank/manual deduplication
     reconciliation_status = Column(
         String,
         default="unreviewed",

@@ -1147,7 +1147,13 @@
       "date": "Date",
       "startDate": "Start date",
       "endDate": "End date (optional)",
-      "recurring": "Recurring monthly expense"
+      "recurring": "Recurring monthly expense",
+      "owner": "Expense owner",
+      "ownerOptions": {
+        "self": "Mine",
+        "partnerDefault": "Partner",
+        "shared": "Shared"
+      }
     },
     "table": {
       "category": "Category",
@@ -2082,7 +2088,12 @@
       "accountTypeHint": "IKE/IKZE limits are tracked automatically",
       "annualReturnRate": "Expected annual return (%)",
       "annualReturnRate.placeholder": "e.g. 5 for 5%",
-      "annualReturnRateHint": "Used for compound interest projections"
+      "annualReturnRateHint": "Used for compound interest projections",
+      "owner": "Saving owner",
+      "ownerOptions": {
+        "self": "Mine",
+        "partnerDefault": "Partner"
+      }
     },
     "goalProjection": {
       "title": "Goal Projection (Compound Interest)",

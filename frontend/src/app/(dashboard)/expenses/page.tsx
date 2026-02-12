@@ -74,6 +74,7 @@ interface Expense {
   date: string;  // Start date for recurring, occurrence date for one-off
   end_date: string | null;  // Optional end date for recurring items
   is_recurring: boolean;
+  owner?: string | null;  // "self", "partner"
   created_at: string;
   // Reconciliation fields
   source?: "manual" | "bank_import";
@@ -139,6 +140,7 @@ const expenseSchema = z.object({
     .optional()
     .transform((value) => value || null),
   is_recurring: z.boolean().default(false),
+  owner: z.string().optional(),
 });
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
@@ -271,7 +273,7 @@ function SourceBadge({ expense }: SourceBadgeProps) {
   );
 }
 
-const expenseFieldConfig: FormFieldConfig<ExpenseFormValues>[] = [
+const baseExpenseFieldConfig: FormFieldConfig<ExpenseFormValues>[] = [
   {
     name: "category",
     labelId: "expenses.form.category",
@@ -378,6 +380,7 @@ const mapExpenseToFormValues = (expense: Expense): ExpenseFormValues => ({
   date: expense.date.slice(0, 10),
   end_date: expense.end_date ? expense.end_date.slice(0, 10) : null,
   is_recurring: expense.is_recurring,
+  owner: expense.owner ?? undefined,
 });
 
 const getMonthKey = (date: Date): string => {
@@ -397,9 +400,32 @@ export default function ExpensesPage() {
   const { data: session } = useSession();
   const intl = useIntl();
   const { toast } = useToast();
-  const { formatCurrency } = useSettings();
+  const { formatCurrency, settings } = useSettings();
   const { trackExpense } = useAnalytics();
   const searchParams = useSearchParams();
+
+  const ownerOptions = useMemo(() => [
+    { value: "self", labelId: "expenses.form.ownerOptions.self", label: intl.formatMessage({ id: "expenses.form.ownerOptions.self" }) },
+    {
+      value: "partner",
+      labelId: "expenses.form.ownerOptions.partnerDefault",
+      label: settings?.partner_name || intl.formatMessage({ id: "expenses.form.ownerOptions.partnerDefault" }),
+    },
+  ], [settings?.partner_name, intl]);
+
+  const expenseFieldConfig = useMemo<FormFieldConfig<ExpenseFormValues>[]>(() => {
+    const fields = [...baseExpenseFieldConfig];
+    if (settings?.include_partner_finances) {
+      // Insert owner field after description (index 1)
+      fields.splice(2, 0, {
+        name: "owner" as const,
+        labelId: "expenses.form.owner",
+        component: "select" as const,
+        options: ownerOptions,
+      });
+    }
+    return fields;
+  }, [settings?.include_partner_finances, ownerOptions]);
 
   const [activeTab, setActiveTab] = useState(() => {
     const tabFromUrl = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("tab") : null;
@@ -1612,6 +1638,25 @@ export default function ExpensesPage() {
                                       ) : null}
                                       <div className="flex flex-col gap-1.5">
                                         <div className="flex items-center gap-2">
+                                          {settings?.include_partner_finances && isMain && expense.owner === "partner" ? (
+                                            <span className="group relative shrink-0">
+                                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-[11px] font-bold text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                                                {(settings?.partner_name || "P")[0].toUpperCase()}
+                                              </span>
+                                              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                                                {settings?.partner_name || intl.formatMessage({ id: "expenses.form.ownerOptions.partnerDefault" })}
+                                              </span>
+                                            </span>
+                                          ) : settings?.include_partner_finances && isMain && (!expense.owner || expense.owner === "self") ? (
+                                            <span className="group relative shrink-0">
+                                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700 dark:bg-sky-900 dark:text-sky-300">
+                                                {(session?.user?.name || "?")[0].toUpperCase()}
+                                              </span>
+                                              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                                                {session?.user?.name || intl.formatMessage({ id: "expenses.form.ownerOptions.self" })}
+                                              </span>
+                                            </span>
+                                          ) : null}
                                           <span className={cn(!isMain && "text-slate-500 text-xs")}>
                                             {isMain ? expense.description : intl.formatMessage({ id: "common.historical" })}
                                           </span>

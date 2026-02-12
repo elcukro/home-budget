@@ -631,8 +631,22 @@ export const SavingsManager = () => {
           values.account_type !== AccountType.STANDARD &&
           values.account_type !== undefined,
       },
+      // 9. Owner selector - only when partner finances enabled
+      ...(settings?.include_partner_finances ? [{
+        name: "owner" as const,
+        labelId: "savings.form.owner",
+        component: "select" as const,
+        options: [
+          { value: "self", labelId: "savings.form.ownerOptions.self", label: intl.formatMessage({ id: "savings.form.ownerOptions.self" }) },
+          {
+            value: "partner",
+            labelId: "savings.form.ownerOptions.partnerDefault",
+            label: settings?.partner_name || intl.formatMessage({ id: "savings.form.ownerOptions.partnerDefault" }),
+          },
+        ],
+      }] : []),
     ];
-  }, [categoryTargetDefaults, dialogMode]);
+  }, [categoryTargetDefaults, dialogMode, settings?.include_partner_finances, settings?.partner_name, intl]);
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -1602,7 +1616,28 @@ export const SavingsManager = () => {
                         </div>
                       </TableCell>
                       <TableCell className={cn("text-sm", isHistorical ? "text-slate-500" : "text-slate-600")}>
-                        {saving.description}
+                        <div className="flex items-center gap-2">
+                          {settings?.include_partner_finances && saving.owner === "partner" ? (
+                            <span className="group relative shrink-0">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-[11px] font-bold text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                                {(settings?.partner_name || "P")[0].toUpperCase()}
+                              </span>
+                              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                                {settings?.partner_name || intl.formatMessage({ id: "savings.form.ownerOptions.partnerDefault" })}
+                              </span>
+                            </span>
+                          ) : settings?.include_partner_finances && (!saving.owner || saving.owner === "self") ? (
+                            <span className="group relative shrink-0">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700 dark:bg-sky-900 dark:text-sky-300">
+                                {(session?.data?.user?.name || "?")[0].toUpperCase()}
+                              </span>
+                              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                                {session?.data?.user?.name || intl.formatMessage({ id: "savings.form.ownerOptions.self" })}
+                              </span>
+                            </span>
+                          ) : null}
+                          {saving.description}
+                        </div>
                       </TableCell>
                       <TableCell className={cn("text-right text-base font-semibold", amountClass)}>
                         <span className="inline-flex items-center justify-end gap-2">
@@ -1747,7 +1782,30 @@ export const SavingsManager = () => {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm text-slate-600">{saving.description}</TableCell>
+                    <TableCell className="text-sm text-slate-600">
+                      <div className="flex items-center gap-2">
+                        {settings?.include_partner_finances && saving.owner === "partner" ? (
+                          <span className="group relative shrink-0">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-[11px] font-bold text-violet-700 dark:bg-violet-900 dark:text-violet-300">
+                              {(settings?.partner_name || "P")[0].toUpperCase()}
+                            </span>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                              {settings?.partner_name || intl.formatMessage({ id: "savings.form.ownerOptions.partnerDefault" })}
+                            </span>
+                          </span>
+                        ) : settings?.include_partner_finances && (!saving.owner || saving.owner === "self") ? (
+                          <span className="group relative shrink-0">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-[11px] font-bold text-sky-700 dark:bg-sky-900 dark:text-sky-300">
+                              {(session?.data?.user?.name || "?")[0].toUpperCase()}
+                            </span>
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-foreground px-2 py-1 text-xs text-background opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+                              {session?.data?.user?.name || intl.formatMessage({ id: "savings.form.ownerOptions.self" })}
+                            </span>
+                          </span>
+                        ) : null}
+                        {saving.description}
+                      </div>
+                    </TableCell>
                     <TableCell className={cn("text-right text-base font-semibold", amountClass)}>
                       <span className="inline-flex items-center justify-end gap-2">
                         {amountIcon}

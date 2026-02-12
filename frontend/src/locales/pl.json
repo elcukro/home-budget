@@ -1104,7 +1104,13 @@
       "date": "Data",
       "startDate": "Data rozpoczęcia",
       "endDate": "Data zakończenia (opcjonalnie)",
-      "recurring": "Wydatek cykliczny miesięczny"
+      "recurring": "Wydatek cykliczny miesięczny",
+      "owner": "Czyj wydatek",
+      "ownerOptions": {
+        "self": "Mój",
+        "partnerDefault": "Partner/ka",
+        "shared": "Wspólne"
+      }
     },
     "table": {
       "category": "Kategoria",
@@ -2076,7 +2082,12 @@
       "accountTypeHint": "Dla IKE/IKZE limity są śledzone automatycznie",
       "annualReturnRate": "Oczekiwana stopa zwrotu (%)",
       "annualReturnRate.placeholder": "np. 5 dla 5%",
-      "annualReturnRateHint": "Używane do prognoz z procentem składanym"
+      "annualReturnRateHint": "Używane do prognoz z procentem składanym",
+      "owner": "Czyja oszczędność",
+      "ownerOptions": {
+        "self": "Mój",
+        "partnerDefault": "Partner/ka"
+      }
     },
     "goalProjection": {
       "title": "Prognoza celów (procent składany)",
