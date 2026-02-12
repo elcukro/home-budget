@@ -176,22 +176,45 @@ export default function RetirementLimitsCard({
     const newAmount = parseFloat(ppkInputAmount);
     if (isNaN(newAmount) || newAmount < 0) return;
 
-    const delta = newAmount - currentPpkBalance;
-    if (delta === 0) {
-      setPpkDialogMode(null);
-      return;
-    }
-
     setPpkSubmitting(true);
     try {
+      // STEP 1: Delete previous "Korekta stanu PPK" entry if exists
+      // This ensures we're setting absolute balance, not adding delta
+      if (userEmail) {
+        const response = await fetch('/api/backend/savings', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (response.ok) {
+          const savings = await response.json();
+          const previousCorrection = savings
+            .filter((s: any) =>
+              s.account_type === 'ppk' &&
+              s.description === 'Korekta stanu PPK'
+            )
+            .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+          // Delete previous correction if exists
+          if (previousCorrection) {
+            await fetch(`/api/backend/savings/${previousCorrection.id}`, {
+              method: 'DELETE',
+            });
+          }
+        }
+      }
+
+      // STEP 2: Create new PPK correction entry with ABSOLUTE value
       await createSaving({
         category: 'retirement',
-        saving_type: delta > 0 ? 'deposit' : 'withdrawal',
-        amount: Math.abs(delta),
+        saving_type: 'deposit',
+        amount: newAmount,
         date: new Date().toISOString().split('T')[0],
         description: 'Korekta stanu PPK',
         account_type: 'ppk',
+        entry_type: 'opening_balance',  // Mark as opening balance to not count toward limits
       });
+
       invalidateSavingsCache();
       await fetchData();
       toast({
@@ -202,10 +225,10 @@ export default function RetirementLimitsCard({
 
       // Notify parent to refresh transaction table
       onPpkUpdate?.();
-    } catch {
+    } catch (error: any) {
       toast({
         title: 'Error',
-        description: 'Failed to update PPK balance',
+        description: error.message || 'Failed to update PPK balance',
         variant: 'destructive',
       });
     } finally {
