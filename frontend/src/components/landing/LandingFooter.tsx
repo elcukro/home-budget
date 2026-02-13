@@ -35,6 +35,12 @@ export default function LandingFooter() {
               >
                 Regulamin
               </Link>
+              <Link
+                href="/manual"
+                className="text-emerald-700/70 hover:text-emerald-800 transition-colors text-sm font-medium"
+              >
+                Podręcznik
+              </Link>
             </nav>
 
             {/* Copyright */}

@@ -48,12 +48,27 @@ const faqItems: FAQItem[] = [
   {
     category: 'product',
     question: 'Czy mogę korzystać z aplikacji razem z partnerem/rodziną?',
-    answer: 'Tak! Możesz udostępnić dostęp do konta partnerowi - wspólne zarządzanie budżetem to klucz do sukcesu finansowego w związku. Widzicie te same dane, cele i postępy. W przyszłości planujemy też dedykowane konta rodzinne z oddzielnymi widokami dla każdego członka rodziny.',
+    answer: 'Tak! W ustawieniach możesz zaprosić partnera do wspólnego budżetu domowego. Oboje widzicie te same dane, cele i postępy — wspólne zarządzanie finansami to klucz do sukcesu w związku. Każda osoba loguje się na własne konto Google, ale pracujecie na jednym budżecie.',
   },
   {
     category: 'debt',
     question: 'Mam nieregularne dochody (freelancer/własna firma). Czy ta metoda zadziała?',
     answer: 'Tak, metoda Baby Steps świetnie sprawdza się przy nieregularnych dochodach - właściwie jest dla nich idealna. Kluczem jest budżetowanie w oparciu o "najgorszy miesiąc" i priorytetyzacja wydatków. Aplikacja pomoże Ci stworzyć bufor na miesiące z niższymi przychodami i zarządzać przepływem gotówki.',
+  },
+  {
+    category: 'product',
+    question: 'Ile kosztuje FiredUp?',
+    answer: 'Podstawowy plan jest darmowy na zawsze — możesz dodawać do 20 wydatków miesięcznie, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. Plan Premium kosztuje 29 zł/miesiąc lub 249 zł/rok (oszczędzasz 28%). Premium odblokowuje brak limitów, integrację z bankiem, analizę AI i eksport danych. Każdy nowy użytkownik dostaje 7 dni Premium za darmo, bez podawania karty.',
+  },
+  {
+    category: 'product',
+    question: 'Czy FiredUp obsługuje PPK, IKE i IKZE?',
+    answer: 'Tak! FiredUp został zaprojektowany z myślą o polskim systemie finansowym. Możesz śledzić swoje wpłaty i stan konta w PPK (Pracownicze Plany Kapitałowe), IKE i IKZE jako cele oszczędnościowe z dedykowanymi kategoriami. Aplikacja uwzględnia te produkty w kalkulacji Twojej wolności finansowej.',
+  },
+  {
+    category: 'product',
+    question: 'Czy jest aplikacja mobilna?',
+    answer: 'Aplikacja mobilna na iOS i Android jest w trakcie opracowywania i zostanie opublikowana niedługo. Będzie oferować logowanie przez Google oraz Face ID / Touch ID, z dostępem do wszystkich funkcji — dashboard, wydatki, kredyty, cele oszczędnościowe i metodę 7 Kroków — prosto z telefonu.',
   },
   {
     category: 'security',

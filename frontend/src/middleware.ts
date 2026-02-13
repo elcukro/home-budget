@@ -89,6 +89,6 @@ export const config = {
      * 6. checkout page (/checkout) - handles its own auth redirect
      * 7. landing page (/) - handled separately with client-side auth check
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|auth/.*|partner/accept|pricing|privacy|terms|checkout|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$).+)',
+    '/((?!api|_next/static|_next/image|favicon.ico|auth/.*|partner/accept|pricing|privacy|terms|manual|checkout|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|json)$).+)',
   ],
 };

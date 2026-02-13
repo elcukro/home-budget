@@ -2,21 +2,30 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   LayoutDashboard,
-  Footprints,
+  TrendingUp,
   Receipt,
+  Landmark,
   Target,
+  Footprints,
+  Building2,
+  BarChart3,
+  Sparkles,
+  Settings,
   CheckCircle2,
   X,
   ZoomIn,
   ChevronLeft,
   ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
 
 const modules = [
   {
     id: 'dashboard',
+    slug: 'dashboard',
     icon: LayoutDashboard,
     title: 'Panel główny',
     description: 'Wszystkie najważniejsze informacje o Twoich finansach w jednym miejscu. Otwierasz aplikację i wiesz: ile zostało, czy stać Cię na ten wydatek.',
@@ -26,25 +35,27 @@ const modules = [
       'Wskaźnik oszczędności (savings rate)',
       'Alerty o nietypowych wydatkach',
     ],
-    thumbnail: '/screenshots/dashboard.png',
-    fullSize: '/screenshots/full-dashboard.png',
+    thumbnail: '/images/manual/dashboard-overview.png',
+    fullSize: '/images/manual/dashboard-charts.png',
   },
   {
-    id: 'babySteps',
-    icon: Footprints,
-    title: 'Twoja Roadmapa (7 Kroków)',
-    description: '7-etapowy plan: od funduszu awaryjnego przez spłatę długów po budowanie majątku. Aplikacja pokazuje gdzie jesteś i co robić dalej.',
+    id: 'income',
+    slug: 'income',
+    icon: TrendingUp,
+    title: 'Przychody',
+    description: 'Rejestruj wszystkie źródła przychodu i śledź jak rosną Twoje zarobki. Wynagrodzenie, freelance, inwestycje — wszystko w jednym miejscu.',
     features: [
-      'Automatyczne wykrycie Twojego kroku',
-      'Konkretne cele dla każdego etapu',
-      'Szacowany czas do następnego kroku',
-      'Celebracja każdego sukcesu',
+      'Wiele źródeł przychodu',
+      'Automatyczne obliczanie podatku',
+      'Historia przychodów miesięcznie',
+      'Porównanie rok do roku',
     ],
-    thumbnail: '/screenshots/baby-steps.png',
-    fullSize: '/screenshots/full-baby-steps.png',
+    thumbnail: '/images/manual/income-sources.png',
+    fullSize: '/images/manual/income-sources.png',
   },
   {
     id: 'expenses',
+    slug: 'expenses',
     icon: Receipt,
     title: 'Wydatki pod kontrolą',
     description: 'Śledź każdą złotówkę i zobacz, dokąd naprawdę idą Twoje pieniądze. Wykryj subskrypcje, o których zapomniałeś.',
@@ -52,24 +63,115 @@ const modules = [
       'Automatyczne kategoryzowanie',
       'Wykrywanie wydatków cyklicznych',
       'Porównanie miesiąc do miesiąca',
-      'Alerty o przekroczeniu budżetu',
+      'Rozkład wydatków według kategorii',
     ],
-    thumbnail: '/screenshots/expenses.png',
-    fullSize: '/screenshots/full-expenses.png',
+    thumbnail: '/images/manual/expenses-list.png',
+    fullSize: '/images/manual/expenses-categories.png',
+  },
+  {
+    id: 'loans',
+    slug: 'loans',
+    icon: Landmark,
+    title: 'Kredyty i dług',
+    description: 'Kontroluj wszystkie kredyty i długi w jednym widoku. Zobacz jak nadpłaty skracają czas spłaty i ile oszczędzasz na odsetkach.',
+    features: [
+      'Harmonogram spłat z nadpłatami',
+      'Symulacja wcześniejszej spłaty',
+      'Porównanie strategii spłat',
+      'Śledzenie postępu spłaty',
+    ],
+    thumbnail: '/images/manual/loans-list.png',
+    fullSize: '/images/manual/loans-detail.png',
   },
   {
     id: 'savings',
+    slug: 'savings',
     icon: Target,
     title: 'Cele oszczędnościowe',
-    description: 'Ustal cele, odkładaj regularnie i świętuj osiągnięcia. Wizualizuj postęp i bądź zmotywowany.',
+    description: 'Ustal cele, odkładaj regularnie i świętuj osiągnięcia. Monitoruj III filar emerytalny i PPK w jednym miejscu.',
     features: [
-      'Nieograniczona liczba celów',
-      'Automatyczne wpłaty',
-      'Wizualizacja postępu',
-      'Powiadomienia o kamieniach milowych',
+      'Nieograniczona liczba celów z wizualizacją',
+      'Śledzenie III filaru i PPK',
+      'Wpłaty i wypłaty z pełną historią',
+      'Celebracja osiągniętych celów',
     ],
-    thumbnail: '/screenshots/savings.png',
-    fullSize: '/screenshots/full-savings.png',
+    thumbnail: '/images/manual/savings-goals.png',
+    fullSize: '/images/manual/savings-progress.png',
+  },
+  {
+    id: 'financial-freedom',
+    slug: 'financial-freedom',
+    icon: Footprints,
+    title: 'Wolność finansowa',
+    description: '7-etapowy plan: od funduszu awaryjnego przez spłatę długów po budowanie majątku. Aplikacja pokazuje gdzie jesteś i co robić dalej.',
+    features: [
+      'Automatyczne wykrycie Twojego kroku',
+      'Konkretne cele dla każdego etapu',
+      'Kalkulator FIRE',
+      'Celebracja każdego sukcesu',
+    ],
+    thumbnail: '/images/manual/financial-freedom-steps.png',
+    fullSize: '/images/manual/financial-freedom-fire.png',
+  },
+  {
+    id: 'bank-transactions',
+    slug: 'bank-transactions',
+    icon: Building2,
+    title: 'Transakcje bankowe',
+    description: 'Bezpośrednia integracja z polskimi bankami. Transakcje importują się automatycznie i są kategoryzowane przez AI. Funkcja premium.',
+    features: [
+      'Integracja z PKO BP, mBank, ING, Santander',
+      'Millennium, Pekao, Alior, BNP Paribas',
+      'Automatyczna kategoryzacja AI',
+      'Synchronizacja z budżetem domowym',
+    ],
+    thumbnail: '/images/manual/bank-transactions-list.png',
+    fullSize: '/images/manual/bank-transactions-list.png',
+  },
+  {
+    id: 'reports',
+    slug: 'reports',
+    icon: BarChart3,
+    title: 'Raporty',
+    description: 'Szczegółowe raporty finansowe z wykresami i tabelami. Analizuj trendy, porównuj okresy i podejmuj lepsze decyzje.',
+    features: [
+      'Rozkład wydatków i przychodów',
+      'Trendy miesięczne i roczne',
+      'Porównanie kategorii',
+      'Eksport danych',
+    ],
+    thumbnail: '/images/manual/reports-breakdown.png',
+    fullSize: '/images/manual/reports-charts.png',
+  },
+  {
+    id: 'ai-analysis',
+    slug: 'ai-analysis',
+    icon: Sparkles,
+    title: 'Analiza AI',
+    description: 'Sztuczna inteligencja analizuje Twoje finanse i daje spersonalizowane rekomendacje. Odkryj wzorce, których sam byś nie zauważył.',
+    features: [
+      'Spersonalizowane rekomendacje',
+      'Wykrywanie wzorców wydatków',
+      'Prognoza budżetu',
+      'Alerty o anomaliach',
+    ],
+    thumbnail: '/images/manual/ai-analysis-insights.png',
+    fullSize: '/images/manual/ai-analysis-recommendations.png',
+  },
+  {
+    id: 'settings',
+    slug: 'settings',
+    icon: Settings,
+    title: 'Ustawienia',
+    description: 'Dostosuj aplikację do swoich potrzeb. Zaproś partnera do wspólnego budżetu domowego i zarządzajcie finansami razem.',
+    features: [
+      'Zaproszenie partnera do wspólnego budżetu',
+      'Połączenie z bankiem',
+      'Zarządzanie kategoriami',
+      'Waluta, format i preferencje',
+    ],
+    thumbnail: '/images/manual/settings-profile.png',
+    fullSize: '/images/manual/settings-banking.png',
   },
 ];
 
@@ -87,7 +189,6 @@ function Lightbox({
   onNext: () => void;
   onPrev: () => void;
 }) {
-  // Handle keyboard navigation
   useEffect(() => {
     if (!isOpen) return;
 
@@ -115,10 +216,8 @@ function Lightbox({
       className="fixed inset-0 z-50 flex items-center justify-center animate-in fade-in duration-200"
       onClick={onClose}
     >
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/90 backdrop-blur-sm" />
 
-      {/* Close button */}
       <button
         onClick={onClose}
         className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
@@ -127,7 +226,6 @@ function Lightbox({
         <X className="w-6 h-6" />
       </button>
 
-      {/* Navigation - Previous */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -139,7 +237,6 @@ function Lightbox({
         <ChevronLeft className="w-6 h-6" />
       </button>
 
-      {/* Navigation - Next */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -151,12 +248,10 @@ function Lightbox({
         <ChevronRight className="w-6 h-6" />
       </button>
 
-      {/* Image container */}
       <div
         className="relative max-w-[90vw] max-h-[85vh] animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Title bar */}
         <div className="absolute -top-12 left-0 right-0 text-center">
           <h3 className="text-white text-lg font-medium">{currentModule.title}</h3>
           <p className="text-white/60 text-sm">
@@ -164,7 +259,6 @@ function Lightbox({
           </p>
         </div>
 
-        {/* Image */}
         <div className="rounded-xl overflow-hidden shadow-2xl border border-white/10">
           <Image
             src={currentModule.fullSize}
@@ -173,17 +267,16 @@ function Lightbox({
             height={1200}
             className="w-auto h-auto max-w-[90vw] max-h-[80vh] object-contain"
             priority
+            unoptimized
           />
         </div>
 
-        {/* Dots indicator */}
         <div className="absolute -bottom-10 left-0 right-0 flex justify-center gap-2">
           {modules.map((_, index) => (
             <button
               key={index}
               onClick={(e) => {
                 e.stopPropagation();
-                // Navigate to this index
                 const diff = index - currentIndex;
                 if (diff > 0) {
                   for (let i = 0; i < diff; i++) onNext();
@@ -228,8 +321,8 @@ export default function ModulesShowcase() {
           Każdy moduł FiredUp został zaprojektowany, aby pokazać Ci rzeczy, których nie widzisz w zwykłej aplikacji bankowej.
         </p>
 
-        {/* Module Tabs */}
-        <div className="flex flex-wrap justify-center gap-3 mb-12">
+        {/* Module Tabs - scrollable on mobile */}
+        <div className="flex overflow-x-auto gap-2 sm:gap-3 mb-12 pb-2 scrollbar-hide sm:flex-wrap sm:justify-center">
           {modules.map((module, index) => {
             const Icon = module.icon;
             const isActive = activeModule === index;
@@ -237,13 +330,13 @@ export default function ModulesShowcase() {
               <button
                 key={module.id}
                 onClick={() => setActiveModule(index)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full font-medium transition-all duration-300 whitespace-nowrap flex-shrink-0 text-sm ${
                   isActive
                     ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-200'
                     : 'bg-white/80 backdrop-blur-sm border border-emerald-100 text-emerald-700 hover:border-emerald-200'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{module.title}</span>
               </button>
             );
@@ -259,7 +352,7 @@ export default function ModulesShowcase() {
               <div className="w-3 h-3 rounded-full bg-amber-300" />
               <div className="w-3 h-3 rounded-full bg-emerald-300" />
               <div className="flex-1 h-8 bg-emerald-50 rounded-lg ml-4 flex items-center px-3">
-                <span className="text-xs text-emerald-600/70">firedup.app/{modules[activeModule].id}</span>
+                <span className="text-xs text-emerald-600/70">firedup.app/{modules[activeModule].id === 'bank-transactions' ? 'banking/transactions' : modules[activeModule].id}</span>
               </div>
             </div>
 
@@ -273,7 +366,7 @@ export default function ModulesShowcase() {
                 <p className="text-emerald-700/70 mb-6 leading-relaxed">
                   {modules[activeModule].description}
                 </p>
-                <ul className="space-y-3">
+                <ul className="space-y-3 mb-6">
                   {modules[activeModule].features.map((feature, index) => (
                     <li key={index} className="flex items-center gap-3">
                       <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
@@ -281,6 +374,13 @@ export default function ModulesShowcase() {
                     </li>
                   ))}
                 </ul>
+                <Link
+                  href={`/manual/${modules[activeModule].slug}`}
+                  className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-medium transition-colors group"
+                >
+                  Czytaj więcej w podręczniku
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </Link>
               </div>
 
               {/* Right side - Screenshot with lightbox trigger */}
@@ -296,6 +396,7 @@ export default function ModulesShowcase() {
                     height={500}
                     className="w-full h-auto transition-transform duration-300 group-hover:scale-[1.02]"
                     priority={activeModule === 0}
+                    unoptimized
                   />
                   {/* Zoom overlay */}
                   <div className="absolute inset-0 bg-emerald-500/0 group-hover:bg-emerald-500/5 transition-colors duration-300 flex items-center justify-center">
