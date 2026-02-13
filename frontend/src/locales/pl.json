@@ -826,7 +826,11 @@
       "is_recurring": "Cykliczny",
       "recurring_day": "Dzień cyklu",
       "user_id": "Użytkownik",
-      "id": "ID"
+      "id": "ID",
+      "employment_type": "Typ zatrudnienia",
+      "kup_type": "Koszty uzyskania przychodu",
+      "owner": "Właściciel",
+      "gross_amount": "Kwota brutto"
     },
     "categories": {
       "income": {
@@ -2522,6 +2526,9 @@
     "income": {
       "intro": "Zobaczmy, z jakich źródeł pochodzą Twoje dochody – to pomoże oszacować potencjał oszczędności i inwestycji.",
       "subIntro": "Im dokładniej określisz wpływy, tym trafniejsze będą kolejne rekomendacje.",
+      "consolidated": {
+        "label": "Miesięczny dochód"
+      },
       "fields": {
         "salaryNet": {
           "label": "Wynagrodzenie miesięczne (netto)",

@@ -11,6 +11,7 @@ const navLinks = [
   { id: 'testimonials', label: 'Nasi użytkownicy' },
   { id: 'pricing', label: 'Cennik' },
   { id: 'faq', label: 'FAQ' },
+  { id: 'manual', label: 'Podręcznik' },
 ];
 
 export default function LandingHeader() {
@@ -19,48 +20,41 @@ export default function LandingHeader() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
     const sectionIds = navLinks.map((l) => l.id);
-    const observers: IntersectionObserver[] = [];
 
-    const visibleSections = new Set<string>();
+    const handleScroll = () => {
+      const y = window.scrollY;
+      setIsScrolled(y > 20);
 
-    sectionIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
+      // Scroll-spy: find the last section whose top is above the scroll position
+      const scrollPos = y + 120;
+      let current: string | null = null;
 
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) {
-            visibleSections.add(id);
-          } else {
-            visibleSections.delete(id);
-          }
-          // Pick the first visible section in page order
-          const active = sectionIds.find((s) => visibleSections.has(s)) || null;
-          setActiveSection(active);
-        },
-        { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
-      );
+      for (const id of sectionIds) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (el.offsetTop <= scrollPos) {
+          current = id;
+        }
+      }
 
-      observer.observe(el);
-      observers.push(observer);
-    });
+      // Clear when at the very top (hero area)
+      if (y < 100) current = null;
 
-    return () => observers.forEach((o) => o.disconnect());
+      setActiveSection(current);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      const top = element.getBoundingClientRect().top + window.scrollY - 90;
+      window.scrollTo({ top, behavior: 'smooth' });
       setIsMobileMenuOpen(false);
     }
   };

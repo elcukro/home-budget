@@ -873,7 +873,11 @@
       "is_recurring": "Recurring",
       "recurring_day": "Recurring day",
       "user_id": "User",
-      "id": "ID"
+      "id": "ID",
+      "employment_type": "Employment type",
+      "kup_type": "Tax deductible costs",
+      "owner": "Owner",
+      "gross_amount": "Gross amount"
     },
     "categories": {
       "income": {
@@ -2570,6 +2574,9 @@
     "income": {
       "intro": "Let's see where your income comes from – it helps estimate saving potential.",
       "subIntro": "The more precise you are, the better the recommendations.",
+      "consolidated": {
+        "label": "Monthly income"
+      },
       "fields": {
         "salaryNet": {
           "label": "Monthly salary (net)",

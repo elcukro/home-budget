@@ -1877,7 +1877,10 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         owner?: string | null;
       }> = [];
 
-      // Map life step employment status to income employment_type
+      // Consolidate all income sources into max 2 entries to stay within free tier limit (3 entries/month)
+      // Entry 1: Combined monthly income (salary + partner + additional sources)
+      // Entry 2: Irregular income (if applicable)
+
       const employmentTypeMap: Record<string, string | null> = {
         employee: 'uop',
         b2b: 'b2b',
@@ -1888,47 +1891,31 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       };
       const employmentType = employmentTypeMap[data.life.employmentStatus] ?? null;
 
+      // Calculate total monthly income from all recurring sources
+      let totalMonthlyIncome = data.income.salaryNet;
+      const incomeSourcesDescription: string[] = [];
+
       if (data.income.salaryNet > 0) {
-        incomePayloads.push({
-          category: 'salary',
-          description: intl.formatMessage({
+        incomeSourcesDescription.push(
+          intl.formatMessage({
             id: data.life.includePartnerFinances
               ? 'onboarding.income.fields.salaryNet.yourLabel'
               : 'onboarding.income.fields.salaryNet.label',
-          }),
-          amount: data.income.salaryNet,
-          is_recurring: true,
-          date: todayISO,
-          employment_type: employmentType,
-          kup_type: data.life.useAuthorsCosts ? 'author_50' : 'standard',
-        });
+          })
+        );
       }
 
-      // Partner salary income
+      // Add partner salary
       if (data.life.includePartnerFinances && data.income.partnerSalaryNet > 0) {
-        const partnerEmploymentTypeMap: Record<string, string | null> = {
-          employee: 'uop',
-          b2b: 'b2b',
-          business: 'b2b',
-          contract: 'zlecenie',
-          freelancer: 'other',
-          unemployed: null,
-        };
-        const partnerEmpType = partnerEmploymentTypeMap[data.income.partnerEmploymentType] ?? null;
-        incomePayloads.push({
-          category: 'salary',
-          description: intl.formatMessage({
+        totalMonthlyIncome += data.income.partnerSalaryNet;
+        incomeSourcesDescription.push(
+          intl.formatMessage({
             id: 'onboarding.income.fields.partnerSalaryNet.label',
-          }),
-          amount: data.income.partnerSalaryNet,
-          is_recurring: true,
-          date: todayISO,
-          employment_type: partnerEmpType,
-          kup_type: 'standard',
-          owner: 'partner',
-        });
+          })
+        );
       }
 
+      // Add all additional sources
       (Object.entries(data.income.additionalSources) as Array<
         [
           keyof OnboardingData['income']['additionalSources'],
@@ -1938,20 +1925,33 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
         if (!source.enabled || source.amount <= 0) {
           return;
         }
+        totalMonthlyIncome += source.amount;
         const meta = ADDITIONAL_SOURCE_META[key];
         const labelValues: Record<string, string | number> = {};
         if (key === 'childBenefit') {
           labelValues.limit = intl.formatNumber(data.life.childrenCount * 800, { style: 'currency', currency: 'PLN', maximumFractionDigits: 0 });
         }
-        incomePayloads.push({
-          category: meta.category,
-          description: intl.formatMessage({ id: meta.labelId }, labelValues),
-          amount: source.amount,
-          is_recurring: true,
-          date: todayISO,
-        });
+        incomeSourcesDescription.push(
+          intl.formatMessage({ id: meta.labelId }, labelValues)
+        );
       });
 
+      // Create single consolidated monthly income entry
+      if (totalMonthlyIncome > 0) {
+        incomePayloads.push({
+          category: 'salary',
+          description: incomeSourcesDescription.length > 1
+            ? `${intl.formatMessage({ id: 'onboarding.income.consolidated.label' })} (${incomeSourcesDescription.join(', ')})`
+            : incomeSourcesDescription[0],
+          amount: totalMonthlyIncome,
+          is_recurring: true,
+          date: todayISO,
+          employment_type: employmentType,
+          kup_type: data.life.useAuthorsCosts ? 'author_50' : 'standard',
+        });
+      }
+
+      // Create separate entry for irregular income
       const irregularMonthly = data.income.irregularIncomeAnnual / 12;
       if (irregularMonthly > 0) {
         incomePayloads.push({
@@ -2769,7 +2769,23 @@ export default function OnboardingWizard({ fromPayment = false, mode = 'default'
       setShowSavingDialog(false);
       setSavingDetail(null);
       setActiveSavingPhase('prepare');
-      alert('Nie udało się zapisać danych. Spróbuj ponownie.');
+
+      // Extract meaningful error message from backend
+      let errorMessage = 'Nie udało się zapisać danych. Spróbuj ponownie.';
+      if (error instanceof Error) {
+        const match = error.message.match(/Free tier limit:.*?Upgrade to Premium/i);
+        if (match) {
+          errorMessage = match[0];
+        } else if (error.message.includes('[Onboarding]')) {
+          // Extract the detail from assertOk error format
+          const detailMatch = error.message.match(/failed: (.+)/);
+          if (detailMatch) {
+            errorMessage = detailMatch[1];
+          }
+        }
+      }
+
+      alert(errorMessage);
     }
   }, [data, router, syncFinancialData, t, track, steps.length, mode, session?.user?.email, refreshUser]);
 
