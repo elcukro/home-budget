@@ -2574,6 +2574,9 @@
     "income": {
       "intro": "Let's see where your income comes from – it helps estimate saving potential.",
       "subIntro": "The more precise you are, the better the recommendations.",
+      "consolidated": {
+        "label": "Monthly income"
+      },
       "fields": {
         "salaryNet": {
           "label": "Monthly salary (net)",

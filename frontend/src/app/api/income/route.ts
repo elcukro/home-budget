@@ -39,7 +39,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -53,7 +53,12 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`Failed to create income: ${errorData.detail || response.statusText}`);
+      const statusCode = response.status;
+      logger.error(`Error creating income (${statusCode}):`, errorData.detail || response.statusText);
+      return NextResponse.json(
+        { error: errorData.detail || response.statusText },
+        { status: statusCode }  // Preserve original status code (403, 422, etc.)
+      );
     }
 
     const data = await response.json();
