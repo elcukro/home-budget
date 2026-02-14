@@ -830,7 +830,8 @@
       "employment_type": "Typ zatrudnienia",
       "kup_type": "Koszty uzyskania przychodu",
       "owner": "Właściciel",
-      "gross_amount": "Kwota brutto"
+      "gross_amount": "Kwota brutto",
+      "entry_type": "Typ wpisu"
     },
     "categories": {
       "income": {

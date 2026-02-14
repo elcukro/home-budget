@@ -17,6 +17,7 @@ import PricingSection from '@/components/landing/PricingSection';
 import FAQSection from '@/components/landing/FAQSection';
 import ManualSection from '@/components/landing/ManualSection';
 import FinalCTASection from '@/components/landing/FinalCTASection';
+import BlogPreviewSectionClient from '@/components/blog/BlogPreviewSectionClient';
 import LandingFooter from '@/components/landing/LandingFooter';
 
 export default function LandingPage() {
@@ -56,6 +57,7 @@ export default function LandingPage() {
         <PricingSection />
         <FAQSection />
         <ManualSection />
+        <BlogPreviewSectionClient />
         <FinalCTASection />
       </main>
       <LandingFooter />

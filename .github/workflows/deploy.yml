@@ -24,7 +24,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     environment: production
 
     steps:
@@ -52,6 +52,7 @@ jobs:
             cd /opt/home-budget/backend
             source venv/bin/activate
             pip install -r requirements.txt --quiet
+            alembic upgrade head
             sudo systemctl restart home-budget-backend
 
             # Deploy frontend
@@ -61,11 +62,19 @@ jobs:
             npm run build
             sudo systemctl restart home-budget-frontend
 
+            # Deploy CMS
+            echo "Deploying CMS..."
+            cd /opt/home-budget/cms
+            npm ci --silent
+            npm run build
+            sudo systemctl restart home-budget-cms
+
             # Verify services are running
             echo "Verifying services..."
             sleep 5
             systemctl is-active home-budget-backend || exit 1
             systemctl is-active home-budget-frontend || exit 1
+            systemctl is-active home-budget-cms || exit 1
 
             echo "=== Deployment complete ==="
 

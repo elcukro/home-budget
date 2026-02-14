@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: home-budget-db
+    environment:
+      POSTGRES_DB: homebudget
+      POSTGRES_USER: homebudget
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U homebudget"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: home-budget-backend
+    ports:
+      - "8100:8000"
+    environment:
+      - DATABASE_URL=postgresql://homebudget:devpassword@db:5432/homebudget
+      - POSTGRES_USER=homebudget
+      - POSTGRES_PASSWORD=devpassword
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=homebudget
+      - JWT_SECRET=dev-jwt-secret-minimum-32-characters-long
+      - INTERNAL_SERVICE_SECRET=dev-internal-secret
+      - NEXTAUTH_SECRET=dev-nextauth-secret-minimum-32-chars
+      - ENVIRONMENT=development
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/venv
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: home-budget-frontend
+    ports:
+      - "3100:3000"
+    environment:
+      - DATABASE_URL=postgresql://homebudget:devpassword@db:5432/homebudget
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+      - STRAPI_URL=http://cms:1337
+      - NEXT_PUBLIC_STRAPI_URL=http://localhost:1337
+      - INTERNAL_SERVICE_SECRET=dev-internal-secret
+      - NEXTAUTH_SECRET=dev-nextauth-secret-minimum-32-chars
+      - NEXTAUTH_URL=http://localhost:3100
+    depends_on:
+      - db
+      - backend
+      - cms
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+
+  cms:
+    build:
+      context: ./cms
+      dockerfile: Dockerfile
+    container_name: home-budget-cms
+    ports:
+      - "1337:1337"
+    environment:
+      - DATABASE_CLIENT=postgres
+      - DATABASE_URL=postgresql://homebudget:devpassword@db:5432/homebudget
+      - DATABASE_SCHEMA=strapi
+      - HOST=0.0.0.0
+      - PORT=1337
+      - APP_KEYS=toBeModified1,toBeModified2
+      - API_TOKEN_SALT=toBeModifiedAPITokenSalt
+      - ADMIN_JWT_SECRET=toBeModifiedAdminJWTSecret
+      - TRANSFER_TOKEN_SALT=toBeModifiedTransferTokenSalt
+      - JWT_SECRET=toBeModifiedJWTSecret
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./cms:/app
+      - /app/node_modules
+      - /app/.cache
+      - ./cms/public/uploads:/app/public/uploads
+
+volumes:
+  postgres_data:

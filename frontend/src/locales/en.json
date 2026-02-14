@@ -877,7 +877,8 @@
       "employment_type": "Employment type",
       "kup_type": "Tax deductible costs",
       "owner": "Owner",
-      "gross_amount": "Gross amount"
+      "gross_amount": "Gross amount",
+      "entry_type": "Entry type"
     },
     "categories": {
       "income": {
