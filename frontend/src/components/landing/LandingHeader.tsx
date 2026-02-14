@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Flame } from 'lucide-react';
 
@@ -22,8 +23,13 @@ export default function LandingHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+  const isHomePage = pathname === '/';
 
   useEffect(() => {
+    if (!isHomePage) return;
+
     const sectionIds = scrollLinks.map((l) => l.id);
 
     const handleScroll = () => {
@@ -52,9 +58,23 @@ export default function LandingHeader() {
     handleScroll();
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isHomePage]);
+
+  useEffect(() => {
+    if (!isHomePage) {
+      const handleScroll = () => setIsScrolled(window.scrollY > 20);
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      handleScroll();
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
+  }, [isHomePage]);
 
   const scrollToSection = (sectionId: string) => {
+    if (!isHomePage) {
+      router.push(`/#${sectionId}`);
+      setIsMobileMenuOpen(false);
+      return;
+    }
     const element = document.getElementById(sectionId);
     if (element) {
       const top = element.getBoundingClientRect().top + window.scrollY - 90;
