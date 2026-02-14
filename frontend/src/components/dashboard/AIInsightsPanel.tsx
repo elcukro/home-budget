@@ -192,32 +192,9 @@ const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ className, onInsights
     );
   }
 
-  // No API key - compact upsell
+  // No API key configured server-side - hide the panel entirely
   if (panelState === 'no-api-key') {
-    return (
-      <div className={`rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-6 ${className || ''}`}>
-        <div className="flex items-start gap-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/20 flex-shrink-0">
-            <SparklesIcon className="h-5 w-5 text-primary" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-base font-semibold text-primary mb-1">
-              {intl.formatMessage({ id: 'dashboard.aiInsightsSection.title' })}
-            </h3>
-            <p className="text-sm text-secondary mb-3">
-              {intl.formatMessage({ id: 'dashboard.aiInsightsSection.configureKey' })}
-            </p>
-            <Link
-              href="/settings"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors"
-            >
-              <SparklesIcon className="h-4 w-4" />
-              {intl.formatMessage({ id: 'dashboard.aiInsightsSection.configureKey' })}
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   // Error state

@@ -29,6 +29,12 @@ export default function ManualLayout({ children }: { children: React.ReactNode }
                 Podręcznik
               </Link>
               <Link
+                href="/blog"
+                className="text-sm font-medium text-emerald-700/70 hover:text-emerald-800 transition-colors"
+              >
+                Blog
+              </Link>
+              <Link
                 href="/#pricing"
                 className="text-sm font-medium text-emerald-700/70 hover:text-emerald-800 transition-colors"
               >

@@ -5,13 +5,17 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Flame } from 'lucide-react';
 
-const navLinks = [
+const scrollLinks = [
   { id: 'baby-steps', label: 'Metoda 7 Kroków' },
   { id: 'features', label: 'Funkcje' },
   { id: 'testimonials', label: 'Nasi użytkownicy' },
   { id: 'pricing', label: 'Cennik' },
   { id: 'faq', label: 'FAQ' },
-  { id: 'manual', label: 'Podręcznik' },
+];
+
+const pageLinks = [
+  { href: '/manual', label: 'Podręcznik' },
+  { href: '/blog', label: 'Blog' },
 ];
 
 export default function LandingHeader() {
@@ -20,7 +24,7 @@ export default function LandingHeader() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
   useEffect(() => {
-    const sectionIds = navLinks.map((l) => l.id);
+    const sectionIds = scrollLinks.map((l) => l.id);
 
     const handleScroll = () => {
       const y = window.scrollY;
@@ -79,7 +83,7 @@ export default function LandingHeader() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            {navLinks.map(({ id, label }) => (
+            {scrollLinks.map(({ id, label }) => (
               <button
                 key={id}
                 onClick={() => scrollToSection(id)}
@@ -91,6 +95,15 @@ export default function LandingHeader() {
               >
                 {label}
               </button>
+            ))}
+            {pageLinks.map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className="text-sm font-medium text-emerald-700/70 hover:text-emerald-800 transition-colors"
+              >
+                {label}
+              </Link>
             ))}
           </nav>
 
@@ -128,7 +141,7 @@ export default function LandingHeader() {
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-emerald-100 bg-white/95 backdrop-blur-md">
             <nav className="flex flex-col gap-4">
-              {navLinks.map(({ id, label }) => (
+              {scrollLinks.map(({ id, label }) => (
                 <button
                   key={id}
                   onClick={() => scrollToSection(id)}
@@ -140,6 +153,15 @@ export default function LandingHeader() {
                 >
                   {label}
                 </button>
+              ))}
+              {pageLinks.map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="text-left font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                >
+                  {label}
+                </Link>
               ))}
               <div className="flex items-center gap-4 pt-4 border-t border-emerald-100">
                 <Link href="/auth/signin" className="flex-1">

@@ -3153,7 +3153,7 @@ async def get_user_insights(
     try:
         # Check for server-side OpenAI API key
         if not os.environ.get("OPENAI_API_KEY"):
-            raise HTTPException(status_code=500, detail="AI service not configured")
+            raise HTTPException(status_code=503, detail="API_KEY_MISSING")
 
         # If manual refresh requested, bypass cache
         if refresh:
@@ -3178,27 +3178,7 @@ async def get_user_insights(
         ).order_by(models.InsightsCache.created_at.desc()).first()
 
         if cache:
-            # Check time-based expiration (7 days)
-            days_since_refresh = (datetime.now() - cache.last_refresh_date).days
-            if days_since_refresh >= 7:
-                print(f"[Insights] Cache expired due to time (7+ days old)")
-                return await _refresh_insights_internal(current_user.household_id, db)
-
-            # Check data change threshold (10%)
-            cached_income = cache.total_income
-            cached_expenses = cache.total_expenses
-            cached_loans = cache.total_loans
-
-            income_change = abs((current_income - cached_income) / cached_income) if cached_income else 1
-            expenses_change = abs((current_expenses - cached_expenses) / cached_expenses) if cached_expenses else 1
-            loans_change = abs((current_loans - cached_loans) / cached_loans) if cached_loans else 1
-
-            # If any metric changed by more than 10%, refresh
-            if income_change > 0.1 or expenses_change > 0.1 or loans_change > 0.1:
-                print(f"[Insights] Cache invalidated due to data changes: income={income_change:.2f}, expenses={expenses_change:.2f}, loans={loans_change:.2f}")
-                return await _refresh_insights_internal(current_user.household_id, db)
-
-            # Cache is valid, return it with metadata
+            # Cache exists — always return it (user must manually refresh via button)
             return {
                 **cache.insights,
                 "metadata": {
@@ -3207,11 +3187,6 @@ async def get_user_insights(
                     "lastRefreshDate": cache.last_refresh_date.isoformat(),
                     "language": language,
                     "validityReason": "Using cached insights",
-                    "dataChanges": {
-                        "income": f"{income_change:.2%}",
-                        "expenses": f"{expenses_change:.2%}",
-                        "loans": f"{loans_change:.2%}"
-                    }
                 }
             }
 
@@ -3241,7 +3216,7 @@ async def _refresh_insights_internal(user_id: str, db: Session):
         # Check for server-side OpenAI API key
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise HTTPException(status_code=500, detail="AI service not configured")
+            raise HTTPException(status_code=503, detail="API_KEY_MISSING")
 
         # Get user's financial data
         user_data = await get_user_financial_data(user_id, db)
