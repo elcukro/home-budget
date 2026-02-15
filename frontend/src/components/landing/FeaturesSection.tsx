@@ -49,7 +49,7 @@ const features = [
     icon: Sparkles,
     color: 'bg-violet-100',
     iconColor: 'text-violet-600',
-    title: 'AI wykrywa to, czego nie widzisz',
+    title: 'Sztuczna inteligencja znajdzie wycieki w Twoim budżecie',
     description: 'Subskrypcje o których zapomniałeś, kategorie gdzie przepłacasz, trendy które powinny Cię zaniepokoić.',
   },
 ];
