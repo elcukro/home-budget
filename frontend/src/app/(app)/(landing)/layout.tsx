@@ -79,7 +79,7 @@ const faqJsonLd = {
       name: "Ile kosztuje FiredUp?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Podstawowy plan jest darmowy na zawsze — możesz dodawać do 20 wydatków miesięcznie, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. Plan Premium kosztuje 29 zł/miesiąc lub 249 zł/rok (oszczędzasz 28%). Premium odblokowuje brak limitów, integrację z bankiem, analizę AI i eksport danych. Każdy nowy użytkownik dostaje 7 dni Premium za darmo, bez podawania karty.",
+        text: "Podstawowy plan jest darmowy na zawsze — możesz dodawać do 20 wydatków miesięcznie, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. Plan Premium kosztuje 19,99 zł/miesiąc lub 149 zł/rok (oszczędzasz 37%). Premium odblokowuje brak limitów, integrację z bankiem, analizę AI i eksport danych. Każdy nowy użytkownik dostaje 7 dni Premium za darmo, bez podawania karty.",
       },
     },
     {

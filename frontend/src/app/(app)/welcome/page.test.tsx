@@ -54,7 +54,7 @@ vi.mock('react-intl', () => ({
         'welcome.features.reports.desc': 'Export your data',
         'welcome.start': 'Zaczynajmy!',
         'welcome.finePrint': 'You can upgrade anytime',
-        'welcome.pricing.nudge': 'Plany Premium od 29 PLN/mies.',
+        'welcome.pricing.nudge': 'Plany Premium od 19,99 PLN/mies.',
         'welcome.pricing.link': 'Zobacz plany',
         'auth.loading': 'auth.loading',
       }
@@ -176,7 +176,7 @@ describe('WelcomePage (Simplified New Design)', () => {
 
     it('shows pricing nudge at bottom', () => {
       render(<WelcomePage />)
-      expect(screen.getByText('Plany Premium od 29 PLN/mies.')).toBeDefined()
+      expect(screen.getByText('Plany Premium od 19,99 PLN/mies.')).toBeDefined()
       expect(screen.getByText('Zobacz plany')).toBeDefined()
     })
   })

@@ -114,7 +114,7 @@ const softwareAppJsonLd = {
     },
     {
       "@type": "Offer",
-      price: "29",
+      price: "19.99",
       priceCurrency: "PLN",
       name: "Premium Miesięczny",
       description:
@@ -122,10 +122,10 @@ const softwareAppJsonLd = {
     },
     {
       "@type": "Offer",
-      price: "249",
+      price: "149",
       priceCurrency: "PLN",
       name: "Premium Roczny",
-      description: "Oszczędzasz 28% - pełny dostęp na cały rok",
+      description: "Oszczędzasz 37% - pełny dostęp na cały rok",
     },
   ],
   featureList: [

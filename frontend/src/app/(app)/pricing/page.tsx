@@ -15,7 +15,7 @@ const plans = [
   {
     id: 'monthly',
     nameKey: 'pricing.plans.monthly.name',
-    price: 29,
+    price: 19.99,
     periodKey: 'pricing.plans.monthly.period',
     descriptionKey: 'pricing.plans.monthly.description',
     features: [
@@ -29,7 +29,7 @@ const plans = [
   {
     id: 'annual',
     nameKey: 'pricing.plans.annual.name',
-    price: 249,
+    price: 149,
     periodKey: 'pricing.plans.annual.period',
     descriptionKey: 'pricing.plans.annual.description',
     savingsKey: 'pricing.plans.annual.savings',

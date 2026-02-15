@@ -436,11 +436,11 @@ def send_trial_ending_email(
             <h3>💳 Wybierz plan Premium:</h3>
             <div class="plan">
                 <span><strong>Plan Miesięczny</strong></span>
-                <span>29 zł/miesiąc</span>
+                <span>19,99 zł/miesiąc</span>
             </div>
             <div class="plan">
-                <span><strong>Plan Roczny</strong> <small>(oszczędzasz 20%)</small></span>
-                <span>279 zł/rok</span>
+                <span><strong>Plan Roczny</strong> <small>(oszczędzasz 37%)</small></span>
+                <span>149 zł/rok</span>
             </div>
             <div class="plan">
                 <span><strong>Plan Dożywotni</strong> <small>(płacisz raz!)</small></span>
