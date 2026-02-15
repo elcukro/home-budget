@@ -31,6 +31,25 @@ interface BlogPageProps {
   }>
 }
 
+const blogBreadcrumbJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    {
+      '@type': 'ListItem',
+      position: 1,
+      name: 'Strona główna',
+      item: 'https://firedup.app',
+    },
+    {
+      '@type': 'ListItem',
+      position: 2,
+      name: 'Blog',
+      item: 'https://firedup.app/blog',
+    },
+  ],
+}
+
 export default async function BlogPage({ searchParams }: BlogPageProps) {
   let posts: any[] = []
 
@@ -48,6 +67,10 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogBreadcrumbJsonLd) }}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="text-center mb-8">

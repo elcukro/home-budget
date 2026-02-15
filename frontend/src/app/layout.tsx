@@ -62,6 +62,83 @@ export const metadata: Metadata = {
   },
 };
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "FiredUp",
+  url: siteUrl,
+  logo: `${siteUrl}/logo.png`,
+  description:
+    "Aplikacja do zarządzania budżetem domowym i osiągania wolności finansowej. Metoda Baby Steps dostosowana do polskiego systemu finansowego.",
+  foundingDate: "2025",
+  sameAs: [],
+  contactPoint: {
+    "@type": "ContactPoint",
+    email: "kontakt@firedup.app",
+    contactType: "customer service",
+    availableLanguage: "Polish",
+  },
+};
+
+const webSiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "FiredUp",
+  url: siteUrl,
+  description:
+    "Zarządzaj budżetem domowym, spłacaj długi i osiągnij niezależność finansową.",
+  inLanguage: "pl",
+  publisher: {
+    "@type": "Organization",
+    name: "FiredUp",
+    url: siteUrl,
+  },
+};
+
+const softwareAppJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "FiredUp",
+  url: siteUrl,
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+  description:
+    "Aplikacja do zarządzania budżetem domowym z metodą Baby Steps, śledzeniem wydatków, spłatą długów i planowaniem finansowym.",
+  offers: [
+    {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "PLN",
+      name: "Darmowy",
+      description: "Plan darmowy z podstawowymi funkcjami",
+    },
+    {
+      "@type": "Offer",
+      price: "29",
+      priceCurrency: "PLN",
+      name: "Premium Miesięczny",
+      description:
+        "Pełny dostęp: brak limitów, integracja z bankiem, analiza AI",
+    },
+    {
+      "@type": "Offer",
+      price: "249",
+      priceCurrency: "PLN",
+      name: "Premium Roczny",
+      description: "Oszczędzasz 28% - pełny dostęp na cały rok",
+    },
+  ],
+  featureList: [
+    "Śledzenie wydatków i przychodów",
+    "Metoda Baby Steps (7 kroków)",
+    "Spłacanie kredytów metodą kuli śnieżnej",
+    "Integracja z polskimi bankami",
+    "Rekomendacje AI",
+    "Wsparcie dla IKE, IKZE, PPK",
+  ],
+  inLanguage: "pl",
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -70,6 +147,24 @@ export default function RootLayout({
   return (
     <html lang="pl" suppressHydrationWarning>
       <body className="font-sans antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(webSiteJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(softwareAppJsonLd),
+          }}
+        />
         <ChunkErrorHandler />
         <ErrorBoundary>
           <AuthProvider>
