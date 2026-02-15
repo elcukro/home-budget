@@ -11,6 +11,7 @@ import ProblemsSection from '@/components/landing/ProblemsSection';
 import SolutionSection from '@/components/landing/SolutionSection';
 import BabyStepsExplainer from '@/components/landing/BabyStepsExplainer';
 import FeaturesSection from '@/components/landing/FeaturesSection';
+import SecuritySection from '@/components/landing/SecuritySection';
 import ModulesShowcase from '@/components/landing/ModulesShowcase';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import PricingSection from '@/components/landing/PricingSection';
@@ -52,6 +53,7 @@ export default function LandingPage() {
         <SolutionSection />
         <BabyStepsExplainer />
         <FeaturesSection />
+        <SecuritySection />
         <ModulesShowcase />
         <TestimonialsSection />
         <PricingSection />

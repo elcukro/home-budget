@@ -32,6 +32,20 @@ const nextConfig = {
         pathname: '/uploads/**',
         search: '',
       },
+      {
+        protocol: 'https',
+        hostname: 'assets.stickpng.com',
+        port: '',
+        pathname: '/images/**',
+        search: '',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.brandfetch.io',
+        port: '',
+        pathname: '/**',
+        search: '',
+      },
     ],
   },
   // Generate unique build ID to help with cache invalidation

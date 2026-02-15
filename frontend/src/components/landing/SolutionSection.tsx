@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { Quote } from 'lucide-react';
 
 const principles = [
   {
@@ -60,20 +59,6 @@ export default function SolutionSection() {
           })}
         </div>
 
-        {/* Quote */}
-        <div className="relative max-w-3xl mx-auto">
-          <div className="absolute -top-4 -left-4 text-emerald-200">
-            <Quote className="w-16 h-16" />
-          </div>
-          <blockquote className="relative bg-white/80 backdrop-blur-sm border border-emerald-100 rounded-2xl p-8 text-center shadow-lg shadow-emerald-100/50">
-            <p className="text-xl sm:text-2xl text-emerald-900 font-medium italic mb-4">
-              "Sukces finansowy to nie kwestia szczęścia — to kwestia nawyków."
-            </p>
-            <footer className="text-emerald-600/70">
-              — Dave Ramsey
-            </footer>
-          </blockquote>
-        </div>
       </div>
     </section>
   );

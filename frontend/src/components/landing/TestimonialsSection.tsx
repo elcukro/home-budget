@@ -163,6 +163,14 @@ export default function TestimonialsSection() {
             </div>
           ))}
         </div>
+
+        {/* Disclaimer for generated testimonials */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-emerald-600/50 italic">
+            * Scenariusze użycia na podstawie typowych sytuacji finansowych Polaków.
+            Imiona i dane zmienione w celu ochrony prywatności.
+          </p>
+        </div>
       </div>
     </section>
   );

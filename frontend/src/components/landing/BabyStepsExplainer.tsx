@@ -139,7 +139,7 @@ export default function BabyStepsExplainer() {
                 7 Kroków do Wolności Finansowej
               </h2>
               <p className="text-lg text-emerald-700/70 max-w-2xl mx-auto">
-                Metoda Dave'a Ramseya, zaadaptowana do polskich realiów.
+                Światowy standard 7 Kroków (Baby Steps), zaadaptowany do polskich realiów.
                 Każdy krok buduje na poprzednim - nie przeskakuj, nie kombinuj.
                 Ta kolejność działa.
               </p>
