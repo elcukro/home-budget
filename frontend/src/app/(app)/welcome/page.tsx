@@ -192,7 +192,7 @@ export default function WelcomePage() {
               {intl.formatMessage(
                 {
                   id: 'welcome.pricing.nudge',
-                  defaultMessage: 'Plany Premium od 29 PLN/mies.',
+                  defaultMessage: 'Plany Premium od 19,99 PLN/mies.',
                 }
               )}
             </span>
