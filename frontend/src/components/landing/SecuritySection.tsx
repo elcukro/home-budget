@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, Eye, Check } from 'lucide-react';
+import { Shield, Eye, Check, Lock } from 'lucide-react';
 import Image from 'next/image';
 
 const securityQuestions = [
@@ -51,10 +51,32 @@ const securityQuestions = [
 ];
 
 const trustBadges = [
-  { name: 'Visa', description: 'Właściciel Tink' },
-  { name: 'Tink', description: 'Open Banking Partner' },
-  { name: 'RODO', description: 'GDPR Compliant' },
-  { name: 'SSL', description: 'Szyfrowanie 256-bit' },
+  {
+    name: 'Visa',
+    description: 'Właściciel Tink',
+    type: 'image',
+    url: 'https://assets.stickpng.com/images/58482363cef1014c0b5e49c1.png',
+    alt: 'Visa logo'
+  },
+  {
+    name: 'Tink',
+    description: 'Open Banking Partner',
+    type: 'image',
+    url: 'https://cdn.brandfetch.io/idxUjYnNys/theme/dark/logo.svg',
+    alt: 'Tink logo'
+  },
+  {
+    name: 'RODO',
+    description: 'GDPR Compliant',
+    type: 'icon',
+    icon: Shield
+  },
+  {
+    name: 'SSL',
+    description: 'Szyfrowanie 256-bit',
+    type: 'icon',
+    icon: Lock
+  },
 ];
 
 export default function SecuritySection() {
@@ -118,8 +140,18 @@ export default function SecuritySection() {
                 key={badge.name}
                 className="flex flex-col items-center gap-2"
               >
-                <div className="w-16 h-16 bg-white rounded-xl border border-emerald-200 flex items-center justify-center shadow-sm">
-                  <span className="text-xs font-bold text-emerald-700">{badge.name}</span>
+                <div className="w-20 h-20 bg-white rounded-xl border border-emerald-200 flex items-center justify-center shadow-sm p-3">
+                  {badge.type === 'image' ? (
+                    <Image
+                      src={badge.url}
+                      alt={badge.alt}
+                      width={80}
+                      height={80}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <badge.icon className="w-8 h-8 text-emerald-600" />
+                  )}
                 </div>
                 <span className="text-xs text-emerald-600/60">{badge.description}</span>
               </div>
