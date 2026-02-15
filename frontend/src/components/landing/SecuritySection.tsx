@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, Lock, Eye, Database, Check } from 'lucide-react';
+import { Shield, Eye, Check } from 'lucide-react';
 import Image from 'next/image';
 
 const securityQuestions = [
