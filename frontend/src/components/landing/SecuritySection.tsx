@@ -50,7 +50,11 @@ const securityQuestions = [
   },
 ];
 
-const trustBadges = [
+type ImageBadge = { name: string; description: string; type: 'image'; url: string; alt: string };
+type IconBadge = { name: string; description: string; type: 'icon'; icon: typeof Shield };
+type TrustBadge = ImageBadge | IconBadge;
+
+const trustBadges: TrustBadge[] = [
   {
     name: 'Visa',
     description: 'Właściciel Tink',
