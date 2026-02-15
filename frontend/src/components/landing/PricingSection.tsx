@@ -18,7 +18,7 @@ const plans = [
   {
     id: 'monthly',
     name: 'Miesięczny',
-    price: '29',
+    price: '19.99',
     period: 'miesiąc',
     popular: false,
     description: 'Pełna moc bez zobowiązań',
@@ -28,10 +28,10 @@ const plans = [
   {
     id: 'annual',
     name: 'Roczny',
-    price: '249',
+    price: '149',
     period: 'rok',
     popular: true,
-    savings: '28%',
+    savings: '37%',
     description: 'Najlepsza wartość dla poważnych użytkowników',
     buttonText: 'Wybierz plan',
     buttonStyle: 'primary',
@@ -85,7 +85,7 @@ interface PlanFeatures {
 
 const planFeatures: Record<string, PlanFeatures> = {
   free: {
-    expenses: '20 / miesiąc',
+    expenses: 'Bez limitu',
     income: '3 źródła',
     loans: '3 pozycje',
     savings: '3 cele',
@@ -202,6 +202,19 @@ export default function PricingSection() {
             </div>
             <p className="text-[10px] text-emerald-600/40 text-center mt-3">
               Logotypy są znakami towarowymi należącymi do ich właścicieli.
+            </p>
+          </div>
+        </div>
+
+        {/* Pricing Psychology Banner */}
+        <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 rounded-2xl p-6 mb-8 max-w-3xl mx-auto">
+          <div className="text-center">
+            <p className="text-emerald-900 font-semibold text-lg mb-2">
+              💡 Kosztuje mniej niż jedna pizza
+            </p>
+            <p className="text-emerald-700/70 text-sm">
+              ...a oszczędza <strong>tysiące złotych</strong> na odsetkach kredytowych
+              i ukrytych wydatkach.
             </p>
           </div>
         </div>
