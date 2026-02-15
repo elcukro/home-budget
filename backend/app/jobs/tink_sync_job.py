@@ -107,10 +107,12 @@ async def sync_single_connection(connection: TinkConnection, db: Session, days: 
         # Import here to avoid circular imports
         from ..routers.bank_transactions import (
             BankTransaction,
+            map_tink_category,
+        )
+        from ..services.duplicate_detection_service import (
             create_fingerprint,
             check_pending_to_booked_update,
             detect_duplicate_for_new_transaction,
-            map_tink_category,
         )
         
         # Get valid access token
