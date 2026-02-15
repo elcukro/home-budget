@@ -54,7 +54,7 @@ export default function HeroSection() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-700 text-sm font-medium mb-6 border border-emerald-200/50">
           <Sparkles className="w-4 h-4" />
-          Metoda Baby Steps + polski system finansowy (IKE/IKZE/PPK)
+          Oparta na światowym standardzie 7 Kroków (Baby Steps)
         </div>
 
         {/* Headline */}
@@ -67,14 +67,17 @@ export default function HeroSection() {
 
         {/* Subheadline */}
         <p className="text-xl sm:text-2xl text-emerald-800/70 mb-6 max-w-3xl mx-auto">
-          Gdzie każda złotówka ma sens, a przyszłość jest Twoja
+          Pierwsza w Polsce aplikacja, która automatyzuje Twoją drogę do wolności finansowej
+        </p>
+        <p className="text-base sm:text-lg text-emerald-700/60 mb-2 max-w-2xl mx-auto leading-relaxed font-medium">
+          Połączyliśmy metodę "7 Kroków" z Twoim bankiem (ING, mBank, PKO i inne)
         </p>
 
         {/* Description */}
         <p className="text-base sm:text-lg text-emerald-700/60 mb-10 max-w-2xl mx-auto leading-relaxed">
-          Większość Polaków żyje od wypłaty do wypłaty. Kredyty, rachunki, ciągły stres.
+          Większość Polaków żyje od wypłaty do wypłaty. Pętla zadłużenia, rachunki, ciągły stres.
           Ale nie musi tak być. Wolność finansowa to nie marzenie bogatych —
-          to umiejętność, których możesz się nauczyć.
+          to umiejętność, której możesz się nauczyć.
         </p>
 
         {/* CTA Buttons */}
@@ -84,7 +87,7 @@ export default function HeroSection() {
               size="lg"
               className="text-lg px-8 py-6 h-auto group bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-200 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-300 hover:-translate-y-0.5"
             >
-              Zacznij 7-dniowy test
+              Rozpocznij 7-dniowy test
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
