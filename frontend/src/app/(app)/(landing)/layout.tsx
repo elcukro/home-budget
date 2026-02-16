@@ -47,7 +47,7 @@ const faqJsonLd = {
       name: "Co się stanie po zakończeniu okresu próbnego?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Po 7 dniach przechodzisz na darmowy plan z limitami: do 20 wydatków miesięcznie, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. W trakcie okresu próbnego możesz wyeksportować wszystkie swoje dane (Excel, CSV, JSON) — Twoje dane zawsze należą do Ciebie. Możesz korzystać z darmowego planu bez ograniczeń czasowych. Płatne plany odblokowują brak limitów, integrację z bankiem, eksport danych, zaawansowaną analitykę AI i pełną metodologię Baby Steps z rekomendacjami.",
+        text: "Po 7 dniach przechodzisz na darmowy plan z limitami: bez limitu wydatków, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. W trakcie okresu próbnego możesz wyeksportować wszystkie swoje dane (Excel, CSV, JSON) — Twoje dane zawsze należą do Ciebie. Możesz korzystać z darmowego planu bez ograniczeń czasowych. Płatne plany odblokowują brak limitów, integrację z bankiem, eksport danych, zaawansowaną analitykę AI i pełną metodologię Baby Steps z rekomendacjami.",
       },
     },
     {
@@ -79,7 +79,7 @@ const faqJsonLd = {
       name: "Ile kosztuje FiredUp?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Podstawowy plan jest darmowy na zawsze — możesz dodawać do 20 wydatków miesięcznie, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. Plan Premium kosztuje 19,99 zł/miesiąc lub 149 zł/rok (oszczędzasz 37%). Premium odblokowuje brak limitów, integrację z bankiem, analizę AI i eksport danych. Każdy nowy użytkownik dostaje 7 dni Premium za darmo, bez podawania karty.",
+        text: "Podstawowy plan jest darmowy na zawsze — możesz dodawać bez limitu wydatków, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. Plan Premium kosztuje 19,99 zł/miesiąc lub 149 zł/rok (oszczędzasz 37%). Premium odblokowuje brak limitów, integrację z bankiem, analizę AI i eksport danych. Każdy nowy użytkownik dostaje 7 dni Premium za darmo, bez podawania karty.",
       },
     },
     {
@@ -95,7 +95,7 @@ const faqJsonLd = {
       name: "Czy jest aplikacja mobilna?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Aplikacja mobilna na iOS i Android jest w trakcie opracowywania i zostanie opublikowana niedługo. Będzie oferować logowanie przez Google oraz Face ID / Touch ID, z dostępem do wszystkich funkcji — dashboard, wydatki, kredyty, cele oszczędnościowe i metodę 7 Kroków — prosto z telefonu.",
+        text: "Aplikacja mobilna na iOS i Android jest w trakcie przygotowywania i będzie niedługo dostępna. Będzie oferować logowanie przez Google oraz Face ID / Touch ID, z dostępem do wszystkich funkcji — dashboard, wydatki, kredyty, cele oszczędnościowe i metodę 7 Kroków — prosto z telefonu.",
       },
     },
     {

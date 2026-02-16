@@ -38,7 +38,7 @@ const faqItems: FAQItem[] = [
   {
     category: 'product',
     question: 'Co się stanie po zakończeniu okresu próbnego?',
-    answer: 'Po 7 dniach przechodzisz na darmowy plan z limitami: do 20 wydatków miesięcznie, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. W trakcie okresu próbnego możesz wyeksportować wszystkie swoje dane (Excel, CSV, JSON) — Twoje dane zawsze należą do Ciebie. Możesz korzystać z darmowego planu bez ograniczeń czasowych. Płatne plany odblokowują brak limitów, integrację z bankiem, eksport danych, zaawansowaną analitykę AI i pełną metodologię Baby Steps z rekomendacjami.',
+    answer: 'Po 7 dniach przechodzisz na darmowy plan z limitami: bez limitu wydatków, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. W trakcie okresu próbnego możesz wyeksportować wszystkie swoje dane (Excel, CSV, JSON) — Twoje dane zawsze należą do Ciebie. Możesz korzystać z darmowego planu bez ograniczeń czasowych. Płatne plany odblokowują brak limitów na źródła przychodów/kredyty/cele, integrację z bankiem, eksport danych, zaawansowaną analitykę AI i pełną metodologię Baby Steps z rekomendacjami.',
   },
   {
     category: 'product',
@@ -58,7 +58,7 @@ const faqItems: FAQItem[] = [
   {
     category: 'product',
     question: 'Ile kosztuje FiredUp?',
-    answer: 'Podstawowy plan jest darmowy na zawsze — możesz dodawać do 20 wydatków miesięcznie, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. Plan Premium kosztuje 19,99 zł/miesiąc lub 149 zł/rok (oszczędzasz 37%). Premium odblokowuje brak limitów, integrację z bankiem, analizę AI i eksport danych. Każdy nowy użytkownik dostaje 7 dni Premium za darmo, bez podawania karty.',
+    answer: 'Podstawowy plan jest darmowy na zawsze — bez limitu wydatków, 3 źródła przychodów, 3 kredyty i 3 cele oszczędnościowe. Plan Premium kosztuje 19,99 zł/miesiąc lub 149 zł/rok (oszczędzasz 37%). Premium odblokowuje brak limitów na źródła przychodów/kredyty/cele, integrację z bankiem, analizę AI i eksport danych. Każdy nowy użytkownik dostaje 7 dni Premium za darmo, bez podawania karty.',
   },
   {
     category: 'product',
@@ -68,7 +68,7 @@ const faqItems: FAQItem[] = [
   {
     category: 'product',
     question: 'Czy jest aplikacja mobilna?',
-    answer: 'Aplikacja mobilna na iOS i Android jest w trakcie opracowywania i zostanie opublikowana niedługo. Będzie oferować logowanie przez Google oraz Face ID / Touch ID, z dostępem do wszystkich funkcji — dashboard, wydatki, kredyty, cele oszczędnościowe i metodę 7 Kroków — prosto z telefonu.',
+    answer: 'Aplikacja mobilna na iOS i Android jest w trakcie przygotowywania i będzie niedługo dostępna. Będzie oferować logowanie przez Google oraz Face ID / Touch ID, z dostępem do wszystkich funkcji — dashboard, wydatki, kredyty, cele oszczędnościowe i metodę 7 Kroków — prosto z telefonu.',
   },
   {
     category: 'security',
