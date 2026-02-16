@@ -16,10 +16,13 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://firedup.app";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "FiredUp - Twoja droga do wolności finansowej",
+    default: "FiredUp - Budżet domowy i droga do wolności finansowej",
     template: "%s | FiredUp",
   },
-  description: "Zarządzaj budżetem domowym, spłacaj długi i osiągnij niezależność finansową. Metoda Baby Steps dostosowana do polskiego systemu finansowego.",
+  description: "Zarządzaj budżetem domowym, spłacaj długi i osiągnij wolność finansową z metodą Baby Steps. Aplikacja do budżetowania dostosowana do polskiego systemu finansowego.",
+  alternates: {
+    canonical: "/",
+  },
   keywords: ["budżet domowy", "finanse osobiste", "FIRE", "wolność finansowa", "Baby Steps", "Dave Ramsey", "IKE", "IKZE", "PPK", "oszczędzanie"],
   authors: [{ name: "FiredUp" }],
   creator: "FiredUp",
