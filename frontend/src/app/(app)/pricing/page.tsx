@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useIntl } from 'react-intl';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCheck, faCrown, faStar, faInfinity } from '@fortawesome/free-solid-svg-icons';
-import ProtectedPage from '@/components/ProtectedPage';
 
 const plans = [
   {
@@ -58,7 +58,10 @@ const comparisonRows = [
 function PricingContent() {
   const intl = useIntl();
   const { toast } = useToast();
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const { status } = useSession();
+  const isAuthenticated = status === 'authenticated';
   const { subscription, isPremium, isTrial, trialDaysLeft, createCheckout } = useSubscription();
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -82,6 +85,10 @@ function PricingContent() {
   }
 
   const handleSubscribe = async (planId: string) => {
+    if (!isAuthenticated) {
+      router.push('/auth/signin?callbackUrl=/pricing');
+      return;
+    }
     try {
       setLoading(planId);
       const checkoutUrl = await createCheckout(planId);
@@ -297,9 +304,5 @@ function PricingContent() {
 }
 
 export default function PricingPage() {
-  return (
-    <ProtectedPage>
-      <PricingContent />
-    </ProtectedPage>
-  );
+  return <PricingContent />;
 }
