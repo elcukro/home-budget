@@ -4,8 +4,12 @@ import ManualSidebar from '@/components/manual/ManualSidebar';
 import LandingFooter from '@/components/landing/LandingFooter';
 
 export const metadata = {
-  title: 'Podręcznik - FiredUp',
-  description: 'Poznaj wszystkie funkcje FiredUp. Szczegółowy podręcznik użytkownika z opisami i zrzutami ekranu.',
+  title: 'Podręcznik użytkownika - jak korzystać z aplikacji',
+  description:
+    'Szczegółowy podręcznik FiredUp z opisami funkcji i zrzutami ekranu. Dowiedz się jak śledzić wydatki, planować budżet domowy, spłacać kredyty i osiągnąć wolność finansową.',
+  alternates: {
+    canonical: '/manual',
+  },
 };
 
 export default function ManualLayout({ children }: { children: React.ReactNode }) {
