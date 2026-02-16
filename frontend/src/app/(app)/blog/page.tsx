@@ -4,13 +4,16 @@ import Link from 'next/link'
 import { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Blog FiredUp - Zarządzanie budżetem domowym',
+  title: 'Blog - Budżet domowy, finanse osobiste i oszczędzanie',
   description:
-    'Praktyczne porady o zarządzaniu budżetem, oszczędzaniu i budowaniu wolności finansowej',
+    'Praktyczne porady o zarządzaniu budżetem domowym, oszczędzaniu pieniędzy, spłacaniu długów i budowaniu wolności finansowej. Artykuły o IKE, IKZE, PPK i Baby Steps.',
+  alternates: {
+    canonical: '/blog',
+  },
   openGraph: {
-    title: 'Blog FiredUp - Zarządzanie budżetem domowym',
+    title: 'Blog - Budżet domowy, finanse osobiste i oszczędzanie',
     description:
-      'Praktyczne porady o zarządzaniu budżetem, oszczędzaniu i budowaniu wolności finansowej',
+      'Praktyczne porady o zarządzaniu budżetem domowym, oszczędzaniu pieniędzy, spłacaniu długów i budowaniu wolności finansowej. Artykuły o IKE, IKZE, PPK i Baby Steps.',
     type: 'website',
   },
 }

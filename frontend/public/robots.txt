@@ -9,5 +9,6 @@ Disallow: /banking/
 Disallow: /onboarding/
 Disallow: /auth/
 
-# Sitemap
+# Sitemaps
 Sitemap: https://firedup.app/sitemap.xml
+Sitemap: https://firedup.app/blog/sitemap.xml
