@@ -4,6 +4,7 @@ import { ArrowRight, BarChart3, Check, CheckCircle2, FileText, Footprints, Globe
 import { Button } from '@/components/ui/button';
 import LandingHeader from '@/components/landing/LandingHeader';
 import LandingFooter from '@/components/landing/LandingFooter';
+import FeaturesSection from '@/components/landing/FeaturesSection';
 
 export const metadata: Metadata = {
   title: 'FiredUp - Polska Alternatywa dla YNAB | Tańsza i po Polsku',
@@ -366,6 +367,64 @@ function MethodologyComparison() {
   );
 }
 
+function PricingCta() {
+  return (
+    <section className="py-20 bg-emerald-50/30">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            3x tańszy od YNAB — i więcej w zestawie
+          </h2>
+          <p className="text-lg text-gray-600">
+            Takie same koncepcje budżetowania, ułamek ceny.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          {/* YNAB */}
+          <div className="p-8 rounded-2xl bg-white border border-gray-200">
+            <p className="text-sm font-medium text-gray-400 uppercase tracking-wide mb-2">YNAB</p>
+            <div className="text-4xl font-bold text-gray-900 mb-1">~600 zł</div>
+            <div className="text-sm text-gray-500 mb-6">rocznie (kurs USD)</div>
+            <ul className="space-y-3 text-sm text-gray-600">
+              <li className="flex items-center gap-2"><X className="w-4 h-4 text-red-400" aria-hidden="true" /> Po angielsku</li>
+              <li className="flex items-center gap-2"><X className="w-4 h-4 text-red-400" aria-hidden="true" /> Brak polskich banków</li>
+              <li className="flex items-center gap-2"><X className="w-4 h-4 text-red-400" aria-hidden="true" /> Brak darmowego planu</li>
+              <li className="flex items-center gap-2"><X className="w-4 h-4 text-red-400" aria-hidden="true" /> Rozliczenie w USD</li>
+            </ul>
+          </div>
+
+          {/* FiredUp */}
+          <div className="p-8 rounded-2xl bg-emerald-600 text-white relative overflow-hidden">
+            <div className="absolute top-4 right-4 bg-amber-400 text-amber-900 text-xs font-bold px-2 py-1 rounded-full">
+              POLECANE
+            </div>
+            <p className="text-sm font-medium text-emerald-200 uppercase tracking-wide mb-2">FiredUp</p>
+            <div className="text-4xl font-bold text-white mb-1">149 zł</div>
+            <div className="text-sm text-emerald-200 mb-6">rocznie (lub 19,99 zł/mies)</div>
+            <ul className="space-y-3 text-sm text-emerald-100">
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-300" aria-hidden="true" /> 100% po polsku</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-300" aria-hidden="true" /> ING, mBank, PKO BP i inne</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-300" aria-hidden="true" /> Darmowy plan na zawsze</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-300" aria-hidden="true" /> Rozliczenie w PLN</li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="text-center mt-10">
+          <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-4 text-lg rounded-xl">
+            <Link href="/auth/signin">
+              Zacznij za darmo — bez karty kredytowej
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </Link>
+          </Button>
+          <p className="text-sm text-gray-500 mt-3">7 dni Premium za darmo. Potem darmowy plan lub 149 zł/rok.</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function YnabAlternatywaPage() {
   return (
     <>
@@ -380,6 +439,8 @@ export default function YnabAlternatywaPage() {
         <ComparisonTable />
         <PolishAdvantages />
         <MethodologyComparison />
+        <FeaturesSection />
+        <PricingCta />
       </main>
       <LandingFooter />
     </>
