@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, Check, CheckCircle2, X } from 'lucide-react';
+import { ArrowRight, BarChart3, Check, CheckCircle2, FileText, Footprints, Globe, Landmark, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LandingHeader from '@/components/landing/LandingHeader';
 import LandingFooter from '@/components/landing/LandingFooter';
@@ -248,6 +248,124 @@ function ComparisonTable() {
   );
 }
 
+function PolishAdvantages() {
+  const advantages = [
+    {
+      icon: Landmark,
+      color: 'bg-emerald-100',
+      iconColor: 'text-emerald-600',
+      title: 'Polskie banki — automatycznie',
+      description:
+        'ING, mBank, PKO BP, Santander, Millennium i inne. Twoje transakcje pobierają się automatycznie — koniec z ręcznym wpisywaniem.',
+    },
+    {
+      icon: FileText,
+      color: 'bg-amber-100',
+      iconColor: 'text-amber-600',
+      title: 'IKE, IKZE i PPK',
+      description:
+        'YNAB nie wie co to IKE. FiredUp śledzi Twoje polskie produkty emerytalne i uwzględnia je w planie finansowym.',
+    },
+    {
+      icon: Globe,
+      color: 'bg-sky-100',
+      iconColor: 'text-sky-600',
+      title: '100% po polsku',
+      description:
+        'Interfejs, treści edukacyjne, support i powiadomienia — wszystko w Twoim języku. Bez tłumaczenia głowy.',
+    },
+  ];
+
+  return (
+    <section className="py-20 bg-white">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Zaprojektowany dla polskich finansów
+          </h2>
+          <p className="text-lg text-gray-600">
+            YNAB był tworzony z myślą o dolarach, FiredUp — o złotych.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {advantages.map((adv) => (
+            <div key={adv.title} className="p-6 rounded-2xl border border-gray-100 hover:shadow-md transition-shadow">
+              <div className={`w-12 h-12 ${adv.color} rounded-xl flex items-center justify-center mb-4`}>
+                <adv.icon className={`w-6 h-6 ${adv.iconColor}`} aria-hidden="true" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{adv.title}</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">{adv.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function MethodologyComparison() {
+  return (
+    <section className="py-20 bg-gradient-to-br from-emerald-50 to-amber-50/30">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Inna filozofia, lepsze wyniki dla zadłużonych
+          </h2>
+          <p className="text-lg text-gray-600">
+            Obie aplikacje pomagają zarządzać pieniędzmi — ale w różny sposób.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* YNAB */}
+          <div className="p-8 rounded-2xl bg-white border border-gray-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-gray-500" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-xs text-gray-400 uppercase tracking-wide">YNAB</p>
+                <h3 className="text-lg font-bold text-gray-900">Zero-based budgeting</h3>
+              </div>
+            </div>
+            <p className="text-gray-600 text-sm mb-4 leading-relaxed">
+              Każdy dolar (czy złoty) musi mieć przypisane zadanie. Świetne do śledzenia wydatków,
+              ale nie daje jasnej ścieżki wyjścia z długów — decydujesz sam, co jest priorytetem.
+            </p>
+            <ul className="space-y-2 text-sm text-gray-500">
+              <li className="flex items-start gap-2"><span className="text-gray-300 mt-0.5" aria-hidden="true">•</span> Śledzenie każdego wydatku</li>
+              <li className="flex items-start gap-2"><span className="text-gray-300 mt-0.5" aria-hidden="true">•</span> Własne kategorie i budżety</li>
+              <li className="flex items-start gap-2"><span className="text-gray-300 mt-0.5" aria-hidden="true">•</span> Brak gotowego planu wyjścia z długów</li>
+            </ul>
+          </div>
+
+          {/* FiredUp */}
+          <div className="p-8 rounded-2xl bg-emerald-50 border border-emerald-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <Footprints className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-xs text-emerald-500 uppercase tracking-wide">FiredUp</p>
+                <h3 className="text-lg font-bold text-emerald-900">7 Baby Steps</h3>
+              </div>
+            </div>
+            <p className="text-emerald-800/70 text-sm mb-4 leading-relaxed">
+              Sprawdzona, krok-po-kroku ścieżka: fundusz awaryjny → spłata długów metodą kuli śnieżnej
+              → inwestycje. Wiesz dokładnie co robić teraz i co będzie następne.
+            </p>
+            <ul className="space-y-2 text-sm text-emerald-700">
+              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" aria-hidden="true" /> Gotowy plan dla każdego</li>
+              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" aria-hidden="true" /> Metoda kuli śnieżnej dla długów</li>
+              <li className="flex items-start gap-2"><Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" aria-hidden="true" /> Od funduszu awaryjnego do wolności finansowej</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function YnabAlternatywaPage() {
   return (
     <>
@@ -260,6 +378,8 @@ export default function YnabAlternatywaPage() {
         <HeroYnab />
         <PainPoints />
         <ComparisonTable />
+        <PolishAdvantages />
+        <MethodologyComparison />
       </main>
       <LandingFooter />
     </>
