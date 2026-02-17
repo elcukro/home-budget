@@ -134,3 +134,28 @@ export async function searchPosts(query: string) {
   )
   return data.data
 }
+
+/**
+ * Get related blog posts based on category
+ * Returns posts from the same category, excluding the current post
+ * Used for "Powiązane artykuły" (Related Posts) section
+ * @param category - Post category to match
+ * @param excludeSlug - Slug of current post to exclude
+ * @param limit - Number of related posts to return (default: 3)
+ */
+export async function getRelatedPosts(category: string, excludeSlug: string, limit: number = 3) {
+  try {
+    const data = await strapiFetch<{ data: any[] }>(
+      `/blog-posts?` +
+      `filters[category][$eq]=${encodeURIComponent(category)}&` +
+      `filters[slug][$ne]=${encodeURIComponent(excludeSlug)}&` +
+      `sort=publishedAt:desc&` +
+      `pagination[limit]=${limit}&` +
+      `fields[0]=title&fields[1]=slug&fields[2]=excerpt&fields[3]=category`
+    )
+    return data.data || []
+  } catch (error) {
+    console.error('Error fetching related posts:', error)
+    return []
+  }
+}

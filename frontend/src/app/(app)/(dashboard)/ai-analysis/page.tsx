@@ -772,9 +772,9 @@ const AIAnalysisPage = () => {
               <SparklesIcon className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-primary">
+              <h2 className="text-2xl font-semibold text-primary">
                 {intl.formatMessage({ id: 'aiAnalysis.title' })}
-              </h1>
+              </h2>
               <p className="text-sm text-secondary">
                 {intl.formatMessage({ id: 'aiAnalysis.subtitle' })}
               </p>

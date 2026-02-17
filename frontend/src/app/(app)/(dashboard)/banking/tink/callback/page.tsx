@@ -139,7 +139,7 @@ export default function TinkCallbackPage() {
             {status === 'loading' && (
               <>
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <h1 className="text-xl font-semibold mb-2">Connecting Your Bank</h1>
+                <h2 className="text-xl font-semibold mb-2">Connecting Your Bank</h2>
                 <p className="text-secondary">{message}</p>
               </>
             )}
@@ -193,7 +193,7 @@ export default function TinkCallbackPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <h1 className="text-xl font-semibold mb-2 text-destructive">Connection Failed</h1>
+                <h2 className="text-xl font-semibold mb-2 text-destructive">Connection Failed</h2>
                 <p className="text-secondary mb-2">{message}</p>
                 {error && (
                   <p className="text-sm text-destructive bg-destructive/10 p-3 rounded mb-4">

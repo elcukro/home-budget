@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 
+import Link from 'next/link';
 import LandingHeader from '@/components/landing/LandingHeader';
 import HeroSection from '@/components/landing/HeroSection';
 import StatisticsSection from '@/components/landing/StatisticsSection';
@@ -50,6 +51,17 @@ export default function LandingPage() {
         <HeroSection />
         <StatisticsSection />
         <ProblemsSection />
+
+        {/* YNAB comparison callout */}
+        <div className="bg-emerald-50 border-y border-emerald-100 py-4">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-center gap-2 text-center">
+            <span className="text-emerald-800 text-sm">🇵🇱 Używasz YNAB lub szukasz alternatywy?</span>
+            <Link href="/ynab-alternatywa" className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 underline underline-offset-2">
+              Sprawdź porównanie FiredUp vs YNAB →
+            </Link>
+          </div>
+        </div>
+
         <SolutionSection />
         <BabyStepsExplainer />
         <FeaturesSection />

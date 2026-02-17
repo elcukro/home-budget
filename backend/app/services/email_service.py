@@ -426,10 +426,10 @@ def send_trial_ending_email(
 
         <p>Po zakończeniu okresu próbnego stracisz dostęp do funkcji Premium:</p>
         <ul>
-            <li>❌ Limit 20 wydatków/miesiąc (zamiast nielimitowanych)</li>
             <li>❌ Brak integracji z bankiem</li>
             <li>❌ Brak AI Insights</li>
             <li>❌ Ograniczone eksporty</li>
+            <li>❌ Limity na źródła przychodów (3), kredyty (3), cele (3)</li>
         </ul>
 
         <div class="pricing">
@@ -517,9 +517,10 @@ def send_trial_ended_email(
 
         <p><strong>W planie darmowym masz:</strong></p>
         <ul>
-            <li>✅ Do 20 wydatków miesięcznie</li>
-            <li>✅ Do 3 przychodów miesięcznie</li>
+            <li>✅ Nielimitowane wydatki</li>
+            <li>✅ Do 3 źródeł przychodów</li>
             <li>✅ Do 3 kredytów</li>
+            <li>✅ Do 3 celów oszczędnościowych</li>
             <li>✅ Podstawowe raporty</li>
         </ul>
 

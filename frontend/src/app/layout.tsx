@@ -15,6 +15,9 @@ const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://firedup.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  other: {
+    charset: 'utf-8',
+  },
   title: {
     default: "FiredUp - Budżet domowy i droga do wolności finansowej",
     template: "%s | FiredUp",
