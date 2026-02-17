@@ -40,6 +40,47 @@ const softwareJsonLd = {
     'Polska alternatywa dla YNAB. Budżet domowy online z integracją polskich banków (ING, mBank, PKO), metodą 7 Baby Steps i analizą AI.',
 };
 
+const faqItems = [
+  {
+    question: 'Czy mogę przenieść dane z YNAB do FiredUp?',
+    answer:
+      'Aktualnie nie oferujemy automatycznego importu z YNAB, ale możesz łatwo zacząć od nowa. Połącz swój bank i FiredUp automatycznie pobierze historię transakcji z ostatnich miesięcy. Ręczne przenoszenie budżetów zajmuje zwykle 15-20 minut.',
+  },
+  {
+    question: 'Czy FiredUp jest trudniejszy w obsłudze niż YNAB?',
+    answer:
+      'Nie — większość użytkowników mówi, że FiredUp jest łatwiejszy, bo jest po polsku i ma gotowy plan krok-po-kroku. YNAB wymaga zrozumienia angielskich pojęć i samodzielnego definiowania kategorii. W FiredUp startujesz ze strukturą dopasowaną do polskich finansów.',
+  },
+  {
+    question: 'Czym różni się metoda Baby Steps od zero-based budgeting YNAB?',
+    answer:
+      'YNAB używa "zero-based budgeting" — każdy złoty musi mieć przypisane zadanie. To świetne śledzenie, ale bez gotowego planu. FiredUp opiera się na 7 Baby Steps: zaczyna od funduszu awaryjnego, potem metodą kuli śnieżnej spłacasz długi od najmniejszego do największego, a na końcu budujesz inwestycje. To sprawdzona kolejność priorytetów.',
+  },
+  {
+    question: 'Czy FiredUp działa z moim polskim bankiem?',
+    answer:
+      'FiredUp obsługuje integrację z ING, mBank, PKO BP, Santander, Millennium i innymi polskimi bankami przez certyfikowane API (Open Banking / PSD2). Połączenie zajmuje 2 minuty i nie wymaga podawania hasła — logujesz się bezpośrednio na stronie swojego banku.',
+  },
+  {
+    question: 'Co się stanie z moimi danymi jeśli zrezygnuję?',
+    answer:
+      'Twoje dane zawsze należą do Ciebie. Możesz wyeksportować wszystkie dane (Excel, CSV, JSON) w dowolnym momencie z poziomu ustawień. Jeśli zdecydujesz się usunąć konto, dane są kasowane natychmiastowo i nieodwracalnie — zgodnie z RODO.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqItems.map((item) => ({
+    '@type': 'Question',
+    name: item.question,
+    acceptedAnswer: {
+      '@type': 'Answer',
+      text: item.answer,
+    },
+  })),
+};
+
 function HeroYnab() {
   return (
     <section className="relative min-h-[80vh] flex items-center justify-center pt-24 pb-20 overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-amber-50">
@@ -425,12 +466,62 @@ function PricingCta() {
   );
 }
 
+function FaqYnab() {
+  return (
+    <section className="py-20 bg-white">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Najczęstsze pytania o zmianę z YNAB
+          </h2>
+        </div>
+        <div className="space-y-6">
+          {faqItems.map((item) => (
+            <div key={item.question} className="p-6 rounded-2xl bg-gray-50 border border-gray-100">
+              <h3 className="text-base font-semibold text-gray-900 mb-3">{item.question}</h3>
+              <p className="text-gray-600 text-sm leading-relaxed">{item.answer}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalCta() {
+  return (
+    <section className="py-24 bg-gradient-to-br from-emerald-600 to-emerald-700 text-white text-center">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h2 className="text-4xl font-bold mb-4">
+          Wypróbuj FiredUp za darmo przez 7 dni
+        </h2>
+        <p className="text-xl text-emerald-100 mb-8">
+          Pełna wersja Premium, bez karty kredytowej. Jeśli nie spodoba się — nic nie tracisz.
+        </p>
+        <Button asChild size="lg" className="bg-white text-emerald-700 hover:bg-emerald-50 px-10 py-4 text-lg rounded-xl font-semibold">
+          <Link href="/auth/signin">
+            Zacznij za darmo — to zajmie 2 minuty
+            <ArrowRight className="ml-2 w-5 h-5" aria-hidden="true" />
+          </Link>
+        </Button>
+        <p className="text-emerald-200 text-sm mt-4">
+          Potem darmowy plan lub 149 zł/rok. Rezygnacja jednym kliknięciem.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export default function YnabAlternatywaPage() {
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <LandingHeader />
       <main>
@@ -441,6 +532,8 @@ export default function YnabAlternatywaPage() {
         <MethodologyComparison />
         <FeaturesSection />
         <PricingCta />
+        <FaqYnab />
+        <FinalCta />
       </main>
       <LandingFooter />
     </>
