@@ -172,9 +172,15 @@ const rows: Row[] = [
 function Cell({ value }: { value: boolean | string }) {
   if (typeof value === 'boolean') {
     return value ? (
-      <Check className="w-5 h-5 text-emerald-500 mx-auto" aria-hidden="true" />
+      <>
+        <Check className="w-5 h-5 text-emerald-500 mx-auto" aria-hidden="true" />
+        <span className="sr-only">Tak</span>
+      </>
     ) : (
-      <X className="w-5 h-5 text-red-400 mx-auto" aria-hidden="true" />
+      <>
+        <X className="w-5 h-5 text-red-400 mx-auto" aria-hidden="true" />
+        <span className="sr-only">Nie</span>
+      </>
     );
   }
   return <span className="text-sm text-gray-700">{value}</span>;
