@@ -27,6 +27,7 @@ const softwareJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
   name: 'FiredUp',
+  url: 'https://firedup.app',
   operatingSystem: 'Web, iOS, Android',
   applicationCategory: 'FinanceApplication',
   offers: {
@@ -76,7 +77,7 @@ function HeroYnab() {
             'Polskie banki: ING, mBank, PKO',
           ].map((item) => (
             <span key={item} className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" aria-hidden="true" />
               {item}
             </span>
           ))}
