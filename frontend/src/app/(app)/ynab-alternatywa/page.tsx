@@ -89,8 +89,8 @@ function HeroYnab() {
       <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/40 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
 
-      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 z-10 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.3fr] gap-12 items-center">
           {/* Left: copy */}
           <div>
             {/* Badge */}
@@ -147,13 +147,13 @@ function HeroYnab() {
 
           {/* Right: illustration */}
           <div className="flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-md">
+            <div className="relative w-full">
               <Image
                 src="/images/ynab-comparison-illustration.png"
                 alt="FiredUp app showing savings of 450 zł per year vs YNAB $99/year price tag"
-                width={600}
-                height={450}
-                className="rounded-2xl shadow-2xl shadow-emerald-200/50"
+                width={800}
+                height={600}
+                className="rounded-2xl shadow-2xl shadow-emerald-200/50 w-full h-auto"
                 priority
               />
             </div>
