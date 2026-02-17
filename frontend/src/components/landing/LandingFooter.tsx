@@ -41,6 +41,12 @@ export default function LandingFooter() {
               >
                 Podręcznik
               </Link>
+              <Link
+                href="/ynab-alternatywa"
+                className="text-emerald-700/70 hover:text-emerald-800 transition-colors text-sm font-medium"
+              >
+                Alternatywa dla YNAB
+              </Link>
             </nav>
 
             {/* Copyright */}
