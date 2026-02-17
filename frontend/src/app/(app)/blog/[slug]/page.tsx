@@ -1,4 +1,4 @@
-import { getPost, getAllPosts, getStrapiMediaUrl } from '@/lib/strapi'
+import { getPost, getAllPosts, getStrapiMediaUrl, getRelatedPosts } from '@/lib/strapi'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -87,6 +87,62 @@ const categoryLabels: Record<string, string> = {
   tools: 'Narzędzia',
 }
 
+/**
+ * Calculate reading time for Polish text
+ * Average reading speed: 200 words per minute (Polish is slightly slower than English)
+ * @param markdown - Blog post markdown content
+ * @returns Reading time in minutes
+ */
+function calculateReadingTime(markdown: string): number {
+  // Remove markdown syntax
+  const plainText = markdown
+    .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links but keep text
+    .replace(/[#*_~`]/g, '') // Remove markdown formatting
+    .replace(/\n+/g, ' ') // Replace newlines with spaces
+    .trim();
+
+  // Count words (split by whitespace)
+  const wordCount = plainText.split(/\s+/).filter(word => word.length > 0).length;
+
+  // Calculate reading time (200 words per minute for Polish)
+  const minutes = Math.ceil(wordCount / 200);
+
+  return Math.max(1, minutes); // Minimum 1 minute
+}
+
+/**
+ * Extract FAQ questions and answers from markdown content
+ * Matches headings that start with question words (Czy, Jak, Co, etc.)
+ * @param markdown - Blog post markdown content
+ * @returns Array of {question, answer} objects
+ */
+function extractFAQFromContent(markdown: string) {
+  const faqs: Array<{question: string; answer: string}> = [];
+
+  // Match ### Czy/Jak/Co/Dlaczego... headings (with optional numbering like "6.1. ")
+  const faqRegex = /^### (?:\d+\.?\d*\.\s*)?((?:Czy|Jak|Co|Dlaczego|Kiedy|Gdzie|Ile|Jakie?) .+?)$([\s\S]*?)(?=^### |\Z)/gm;
+
+  let match;
+  while ((match = faqRegex.exec(markdown)) !== null) {
+    const question = match[1].trim();
+    let answer = match[2].trim()
+      .replace(/\n+/g, ' ')  // Remove newlines
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')  // Remove markdown links
+      .replace(/[*_~`]/g, '')  // Remove markdown formatting
+      .substring(0, 500);  // Limit to 500 chars for schema
+
+    // Clean up excessive whitespace
+    answer = answer.replace(/\s+/g, ' ').trim();
+
+    if (answer.length > 0) {
+      faqs.push({ question, answer });
+    }
+  }
+
+  return faqs;
+}
+
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   let post: any
   const { slug } = await params
@@ -173,6 +229,21 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     ],
   }
 
+  // Extract FAQ from content for rich snippets
+  const faqItems = extractFAQFromContent(post.content);
+  const faqJsonLd = faqItems.length > 0 ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  } : null;
+
   return (
     <>
       <script
@@ -183,6 +254,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
 
       <article>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -260,6 +337,40 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           {/* Content */}
           <RichText content={post.content} />
+
+          {/* Related Posts */}
+          {await (async () => {
+            const relatedPosts = await getRelatedPosts(post.category, post.slug, 3);
+
+            if (relatedPosts.length === 0) return null;
+
+            return (
+              <div className="mt-12 pt-8 border-t border-emerald-100">
+                <h3 className="text-2xl font-bold text-emerald-900 mb-6">
+                  📚 Powiązane artykuły
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {relatedPosts.map((related: any) => (
+                    <Link
+                      key={related.slug}
+                      href={`/blog/${related.slug}`}
+                      className="group block p-4 bg-white border border-emerald-100 rounded-xl hover:shadow-lg hover:border-emerald-300 transition-all"
+                    >
+                      <div className="text-xs text-emerald-600 mb-2">
+                        {categoryLabels[related.category as keyof typeof categoryLabels] || related.category}
+                      </div>
+                      <div className="font-semibold text-emerald-900 group-hover:text-emerald-600 transition-colors line-clamp-2">
+                        {related.title}
+                      </div>
+                      <div className="text-sm text-emerald-700/70 mt-2 line-clamp-2">
+                        {related.excerpt}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Back to Blog Button */}
           <div className="mt-12 text-center">

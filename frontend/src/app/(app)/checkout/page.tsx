@@ -120,9 +120,9 @@ export default function CheckoutPage() {
             </div>
           </div>
           <Loader2 className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-4" />
-          <h1 className="text-xl font-semibold text-emerald-900 mb-2">
+          <h2 className="text-xl font-semibold text-emerald-900 mb-2">
             Przygotowujemy płatność...
-          </h1>
+          </h2>
           <p className="text-sm text-emerald-600/50 mt-4">
             Za chwilę zostaniesz przekierowany do bezpiecznej strony płatności Stripe.
           </p>
@@ -141,9 +141,9 @@ export default function CheckoutPage() {
               <AlertCircle className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
             Ups! Coś poszło nie tak
-          </h1>
+          </h2>
           <p className="text-gray-600 mb-6">{error}</p>
           <div className="flex flex-col gap-3">
             <Button
