@@ -163,7 +163,7 @@ function PricingContent() {
       )}
 
       {/* Pricing Cards */}
-      <div className="grid md:grid-cols-3 gap-8 mb-16">
+      <div className="grid md:grid-cols-2 gap-8 mb-16 max-w-2xl mx-auto">
         {plans.map((plan) => (
           <Card
             key={plan.id}
