@@ -84,7 +84,7 @@ const faqJsonLd = {
 
 function HeroYnab() {
   return (
-    <section className="relative min-h-[80vh] flex items-center pt-24 pb-20 overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-amber-50">
+    <section className="relative min-h-[80vh] flex items-center pt-24 pb-10 overflow-hidden bg-gradient-to-br from-emerald-50 via-white to-amber-50">
       {/* Gradient orbs */}
       <div className="absolute top-20 left-10 w-72 h-72 bg-emerald-200/40 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
@@ -187,7 +187,7 @@ function PainPoints() {
   ];
 
   return (
-    <section className="py-20 bg-white">
+    <section className="pt-10 pb-20 bg-white">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
