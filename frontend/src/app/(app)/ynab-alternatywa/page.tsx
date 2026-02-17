@@ -399,9 +399,9 @@ function PricingCta() {
             <div className="absolute top-4 right-4 bg-amber-400 text-amber-900 text-xs font-bold px-2 py-1 rounded-full">
               POLECANE
             </div>
-            <p className="text-sm font-medium text-emerald-200 uppercase tracking-wide mb-2">FiredUp</p>
+            <p className="text-sm font-medium text-white uppercase tracking-wide mb-2">FiredUp</p>
             <div className="text-4xl font-bold text-white mb-1">149 zł</div>
-            <div className="text-sm text-emerald-200 mb-6">rocznie (lub 19,99 zł/mies)</div>
+            <div className="text-sm text-white mb-6">rocznie (lub 19,99 zł/mies)</div>
             <ul className="space-y-3 text-sm text-emerald-100">
               <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-300" aria-hidden="true" /> 100% po polsku</li>
               <li className="flex items-center gap-2"><Check className="w-4 h-4 text-emerald-300" aria-hidden="true" /> ING, mBank, PKO BP i inne</li>
@@ -415,7 +415,7 @@ function PricingCta() {
           <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-4 text-lg rounded-xl">
             <Link href="/auth/signin">
               Zacznij za darmo — bez karty kredytowej
-              <ArrowRight className="ml-2 w-5 h-5" />
+              <ArrowRight className="ml-2 w-5 h-5" aria-hidden="true" />
             </Link>
           </Button>
           <p className="text-sm text-gray-500 mt-3">7 dni Premium za darmo. Potem darmowy plan lub 149 zł/rok.</p>
