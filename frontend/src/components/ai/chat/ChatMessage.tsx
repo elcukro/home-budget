@@ -62,7 +62,7 @@ const mdComponents: Components = {
   ),
   tbody: ({ children }) => <tbody>{children}</tbody>,
   tr: ({ children, ...props }) => {
-    // @ts-ignore — react-markdown passes rowIndex in node
+    // @ts-expect-error — react-markdown passes rowIndex in node
     const isEven = (props as any).node?.position?.start?.line % 2 === 0;
     return (
       <tr style={{ backgroundColor: isEven ? 'var(--color-muted-bg)' : 'transparent' }}>
