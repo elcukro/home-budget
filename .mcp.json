@@ -9,6 +9,16 @@
         "http://127.0.0.1:9222"
       ],
       "env": {}
+    },
+    "firedUp": {
+      "type": "stdio",
+      "command": "/Users/maestro/claude/repos/home-budget/backend/venv/bin/python",
+      "args": ["backend/mcp_server.py"],
+      "cwd": "/Users/maestro/claude/repos/home-budget",
+      "env": {
+        "FIREDUP_USER_ID": "elcukrodev@gmail.com",
+        "ENVIRONMENT": "development"
+      }
     }
   }
 }

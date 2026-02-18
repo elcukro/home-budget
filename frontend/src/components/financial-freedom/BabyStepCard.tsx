@@ -13,11 +13,16 @@ interface BabyStepCardProps {
   onUpdate: (updates: Partial<BabyStep>) => void;
   formatCurrency: (amount: number) => string;
   currency: string;
+  monthlyExpenses?: number;
 }
 
-export default function BabyStepCard({ step, onUpdate, formatCurrency, currency: _currency }: BabyStepCardProps) {
+export default function BabyStepCard({ step, onUpdate, formatCurrency, currency: _currency, monthlyExpenses }: BabyStepCardProps) {
   // Access the settings context to get emergency_fund_months
   const { settings } = useSettings();
+  // Derive months from actual target amount when available (avoids stale settings value)
+  const step3Months = (monthlyExpenses && monthlyExpenses > 0 && step.targetAmount)
+    ? Math.round(step.targetAmount / monthlyExpenses)
+    : (settings?.emergency_fund_months || 6);
   const intl = useIntl();
   const [isEditing, setIsEditing] = useState(false);
   const [currentAmount, setCurrentAmount] = useState(step.currentAmount || 0);
@@ -208,6 +213,9 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency:
                 {intl.formatMessage({ id: 'financialFreedom.steps.step2.tip' })}
               </p>
             )}
+            <p className="text-xs text-secondary italic mt-1">
+              {intl.formatMessage({ id: 'financialFreedom.steps.step2.noMortgageTip' })}
+            </p>
           </div>
         )}
 
@@ -228,7 +236,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency:
             <p className="text-xs text-secondary italic mt-1">
               {intl.formatMessage(
                 { id: 'financialFreedom.steps.step3.tip' },
-                { months: settings?.emergency_fund_months || 3 }
+                { months: step3Months }
               )}
             </p>
           </div>
@@ -325,7 +333,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency:
             {step.id === 1 
               ? intl.formatMessage({ id: step.titleKey }, { amount: formatCurrency(step.targetAmount || 3000) })
               : step.id === 3
-              ? intl.formatMessage({ id: step.titleKey }, { months: settings?.emergency_fund_months || 3 })
+              ? intl.formatMessage({ id: step.titleKey }, { months: step3Months })
               : intl.formatMessage({ id: step.titleKey })
             }
           </h3>
@@ -333,7 +341,7 @@ export default function BabyStepCard({ step, onUpdate, formatCurrency, currency:
             {step.id === 1
               ? intl.formatMessage({ id: step.descriptionKey }, { amount: formatCurrency(step.targetAmount || 3000) })
               : step.id === 3
-              ? intl.formatMessage({ id: step.descriptionKey }, { months: settings?.emergency_fund_months || 3 })
+              ? intl.formatMessage({ id: step.descriptionKey }, { months: step3Months })
               : intl.formatMessage({ id: step.descriptionKey })
             }
           </p>

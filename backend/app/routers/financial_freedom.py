@@ -6,11 +6,12 @@ from datetime import datetime
 import logging
 
 from ..database import get_db
-from ..models import User, FinancialFreedom, Settings, Saving, Loan, Expense
+from ..models import User, FinancialFreedom, Settings, Saving, Loan
 from ..schemas.savings import SavingCategory
 from ..schemas.financial_freedom import FinancialFreedomCreate, FinancialFreedomResponse, FinancialFreedomUpdate
 from ..dependencies import get_current_user
 from ..services.gamification_service import GamificationService
+from ..services.monthly_totals_service import MonthlyTotalsService
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -200,7 +201,18 @@ async def get_financial_freedom_calculated(
         ).scalar() or 0.0
         emergency_fund_savings = ef_deposits - ef_withdrawals
 
-        # Liquid savings for full emergency fund (emergency_fund + six_month_fund + general)
+        # Six month fund savings (six_month_fund category only — for Baby Step 3)
+        smf_deposits = active_savings_filter(
+            db.query(func.sum(Saving.amount)).filter(Saving.category == SavingCategory.SIX_MONTH_FUND),
+            'deposit'
+        ).scalar() or 0.0
+        smf_withdrawals = active_savings_filter(
+            db.query(func.sum(Saving.amount)).filter(Saving.category == SavingCategory.SIX_MONTH_FUND),
+            'withdrawal'
+        ).scalar() or 0.0
+        six_month_fund_savings = smf_deposits - smf_withdrawals
+
+        # Liquid savings total (emergency_fund + six_month_fund + general) — kept for future use
         liquid_categories = [SavingCategory.EMERGENCY_FUND, SavingCategory.SIX_MONTH_FUND, SavingCategory.GENERAL]
         liquid_deposits = active_savings_filter(
             db.query(func.sum(Saving.amount)).filter(Saving.category.in_(liquid_categories)),
@@ -212,16 +224,29 @@ async def get_financial_freedom_calculated(
         ).scalar() or 0.0
         liquid_savings = liquid_deposits - liquid_withdrawals
 
+        # ── Savings goal targets from actual savings entries ──────────────────
+        # Use max(target_amount) from savings entries (same logic as /users/{id}/summary)
+        ef_goal_target = db.query(func.max(Saving.target_amount)).filter(
+            Saving.user_id == current_user.household_id,
+            Saving.category == SavingCategory.EMERGENCY_FUND,
+            Saving.target_amount != None,
+        ).scalar()
+        six_month_goal_target = db.query(func.max(Saving.target_amount)).filter(
+            Saving.user_id == current_user.household_id,
+            Saving.category == SavingCategory.SIX_MONTH_FUND,
+            Saving.target_amount != None,
+        ).scalar()
+
         # ============== Calculate Loan Data ==============
-        # Non-mortgage loans (Baby Step 2 debts - exclude mortgage and leasing)
+        # Non-mortgage loans (Baby Step 2 debts - exclude only mortgage; leasing IS included)
         non_mortgage_debt = db.query(func.sum(Loan.remaining_balance)).filter(
             Loan.user_id == current_user.household_id,
-            ~Loan.loan_type.in_(['mortgage', 'leasing'])
+            ~Loan.loan_type.in_(['mortgage'])
         ).scalar() or 0.0
 
         non_mortgage_principal = db.query(func.sum(Loan.principal_amount)).filter(
             Loan.user_id == current_user.household_id,
-            ~Loan.loan_type.in_(['mortgage', 'leasing'])
+            ~Loan.loan_type.in_(['mortgage'])
         ).scalar() or 0.0
 
         # Mortgage data (Baby Step 6)
@@ -234,36 +259,26 @@ async def get_financial_freedom_calculated(
         mortgage_balance = float(mortgage.remaining_balance) if mortgage else 0.0
         mortgage_principal = float(mortgage.principal_amount) if mortgage else 0.0
 
-        # ============== Calculate Monthly Expenses ==============
-        # Get current month's recurring and non-recurring expenses
-        month_start = today.replace(day=1)
-
-        # Non-recurring expenses this month
-        monthly_expenses_non_recurring = db.query(func.sum(Expense.amount)).filter(
-            Expense.user_id == current_user.household_id,
-            Expense.date >= month_start,
-            Expense.date <= today,
-            Expense.is_recurring == False
-        ).scalar() or 0.0
-
-        # Active recurring expenses
-        monthly_expenses_recurring = db.query(func.sum(Expense.amount)).filter(
-            Expense.user_id == current_user.household_id,
-            Expense.is_recurring == True,
-            Expense.date <= today,
-            or_(
-                Expense.end_date == None,
-                Expense.end_date >= today
-            )
-        ).scalar() or 0.0
-
-        monthly_expenses = monthly_expenses_non_recurring + monthly_expenses_recurring
+        # ============== Calculate Monthly Expenses (same as summary endpoint) ==============
+        # Use MonthlyTotalsService to match what the savings section shows
+        expense_totals = MonthlyTotalsService.calculate_monthly_expenses(
+            current_user.household_id, today.year, today.month, db
+        )
+        monthly_expenses = float(expense_totals.get("total", 0) or 0)
         if monthly_expenses == 0:
             monthly_expenses = 8000  # Default fallback
 
         # ============== Calculate Progress Percentages ==============
-        # Step 1: Starter Emergency Fund (3000 zł)
-        step1_progress = min(100, round((emergency_fund_savings / emergency_fund_target) * 100)) if emergency_fund_target > 0 else 0
+        # Step 1: Starter Emergency Fund
+        # Target = 1 month of expenses (matches savings section logic for emergency_fund category)
+        # Prefer savings-entry target_amount, then 1 month expenses, then settings fallback
+        if ef_goal_target and float(ef_goal_target) > 0:
+            step1_target = float(ef_goal_target)
+        elif monthly_expenses > 0:
+            step1_target = float(monthly_expenses)
+        else:
+            step1_target = float(emergency_fund_target) if emergency_fund_target > 0 else 1000.0
+        step1_progress = min(100, round((emergency_fund_savings / step1_target) * 100)) if step1_target > 0 else 0
         step1_completed = step1_progress >= 100
 
         # Step 2: Pay off all non-mortgage debt
@@ -275,10 +290,17 @@ async def get_financial_freedom_calculated(
             step2_progress = 100
         step2_completed = step2_progress >= 100
 
-        # Step 3: Full Emergency Fund (3-6 months expenses)
-        full_emergency_target = monthly_expenses * emergency_fund_months
+        # Step 3: Full Emergency Fund (6 months expenses = six_month_fund goal)
+        # Target matches savings section logic: six_month_fund = 6 months expenses by default
+        # Prefer savings-entry target_amount, then 6 months expenses
+        if six_month_goal_target and float(six_month_goal_target) > 0:
+            full_emergency_target = float(six_month_goal_target)
+        elif monthly_expenses > 0:
+            full_emergency_target = float(monthly_expenses) * 6
+        else:
+            full_emergency_target = monthly_expenses * emergency_fund_months
         if full_emergency_target > 0:
-            step3_progress = min(100, round((liquid_savings / full_emergency_target) * 100))
+            step3_progress = min(100, round((six_month_fund_savings / full_emergency_target) * 100))
         else:
             step3_progress = 100
         step3_completed = step3_progress >= 100
@@ -316,7 +338,7 @@ async def get_financial_freedom_calculated(
                     "descriptionKey": "financialFreedom.steps.step1.description",
                     "isCompleted": step1_completed,
                     "progress": step1_progress,
-                    "targetAmount": emergency_fund_target,
+                    "targetAmount": step1_target,
                     "currentAmount": emergency_fund_savings,
                     "completionDate": existing_step.get("completionDate") if existing_step and step1_completed else None,
                     "notes": existing_step.get("notes", "") if existing_step else ""
@@ -341,7 +363,7 @@ async def get_financial_freedom_calculated(
                     "isCompleted": step3_completed,
                     "progress": step3_progress,
                     "targetAmount": full_emergency_target,
-                    "currentAmount": liquid_savings,
+                    "currentAmount": six_month_fund_savings,
                     "completionDate": existing_step.get("completionDate") if existing_step and step3_completed else None,
                     "notes": existing_step.get("notes", "") if existing_step else ""
                 })

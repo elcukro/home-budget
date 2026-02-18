@@ -14,10 +14,10 @@ from ..models import Subscription, Expense, Income, Loan, Saving
 
 # Feature limits for free tier
 FREE_TIER_LIMITS = {
-    "expenses_per_month": 20,
+    "expenses_per_month": 50,
     "incomes_per_month": 3,
-    "max_loans": 3,
-    "max_savings_goals": 3,
+    "max_loans": 5,
+    "max_savings_goals": 5,
     "export_formats": ["json"],
     "reports": ["monthly"],
     "bank_integration": False,

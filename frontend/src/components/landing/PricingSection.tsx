@@ -28,10 +28,10 @@ const plans = [
   {
     id: 'annual',
     name: 'Roczny',
-    price: '149',
+    price: '199',
     period: 'rok',
     popular: true,
-    savings: '37%',
+    savings: '17%',
     description: 'Najlepsza wartość dla poważnych użytkowników',
     buttonText: 'Wybierz plan',
     buttonStyle: 'primary',

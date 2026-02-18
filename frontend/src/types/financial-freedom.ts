@@ -129,7 +129,9 @@ export interface SavingsGoalUpdate {
 }
 
 export interface SavingsSummary {
-  total_savings: number;
+  total_savings: number;           // All assets including real estate (for net worth display)
+  liquid_savings?: number;         // Only liquid cash — total minus real estate
+  real_estate_value?: number;      // Real estate portion (if any)
   category_totals: Record<SavingCategory, number>;
   monthly_contribution: number;
   ppk_balance?: number;  // PPK (Employee Capital Plans) total balance

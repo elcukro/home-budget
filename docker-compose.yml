@@ -59,6 +59,8 @@ services:
       - INTERNAL_SERVICE_SECRET=dev-internal-secret
       - NEXTAUTH_SECRET=dev-nextauth-secret-minimum-32-chars
       - NEXTAUTH_URL=http://localhost:3100
+      - NEXTAUTH_URL_INTERNAL=http://localhost:3000
+      - AUTH_TRUST_HOST=1
     depends_on:
       - db
       - backend

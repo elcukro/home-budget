@@ -29,10 +29,18 @@ ChartJS.register(
   Legend
 );
 
+interface CategorySaving {
+  category: string;
+  currentAmount: number;
+  targetAmount: number;
+  progress: number;
+}
+
 interface SavingsGoalProgressChartProps {
   goals: SavingsGoal[];
   formatCurrency: (amount: number) => string;
   onGoalClick?: (goalId: number) => void;
+  categorySavings?: CategorySaving[];
 }
 
 interface GoalStats {
@@ -143,6 +151,7 @@ export default function SavingsGoalProgressChart({
   goals,
   formatCurrency,
   onGoalClick,
+  categorySavings,
 }: SavingsGoalProgressChartProps) {
   const intl = useIntl();
   const [chartKey, setChartKey] = useState(Date.now());
@@ -373,23 +382,74 @@ export default function SavingsGoalProgressChart({
   );
 
   if (!goals || goals.length === 0) {
+    // Show only Baby Steps goals (emergency fund + 6-month fund), not all savings categories
+    const BABY_STEP_CATEGORIES = ['emergency_fund', 'six_month_fund'];
+    const babyStepGoals = (categorySavings || [])
+      .filter(c => BABY_STEP_CATEGORIES.includes(c.category) && c.currentAmount > 0)
+      .sort((a, b) => BABY_STEP_CATEGORIES.indexOf(a.category) - BABY_STEP_CATEGORIES.indexOf(b.category));
+
     return (
       <div className="bg-card border border-default p-6 rounded-xl shadow-sm h-full flex flex-col">
-        <h2 className="text-lg font-semibold text-primary mb-4">
-          {intl.formatMessage({ id: 'dashboard.savingsGoalProgress.title' })}
-        </h2>
-        <div className="flex-grow flex flex-col items-center justify-center py-12 text-secondary">
-          <Target className="h-12 w-12 opacity-30 mb-4" />
-          <p className="text-center text-sm mb-4">
-            {intl.formatMessage({ id: 'dashboard.savingsGoalProgress.emptyState' })}
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-primary">
+            {intl.formatMessage({ id: 'dashboard.savingsGoalProgress.title' })}
+          </h2>
+          <p className="text-sm text-secondary">
+            {babyStepGoals.length > 0
+              ? intl.formatMessage({ id: 'dashboard.savingsGoalProgress.categoryBreakdown' })
+              : intl.formatMessage({ id: 'dashboard.savingsGoalProgress.description' })}
           </p>
-          <Link
-            href="/savings"
-            className="text-primary hover:underline text-sm font-medium"
-          >
-            {intl.formatMessage({ id: 'dashboard.savingsGoalProgress.addGoal' })}
-          </Link>
         </div>
+
+        {babyStepGoals.length > 0 ? (
+          <div className="flex-grow space-y-4 mb-4">
+            {babyStepGoals.map(cat => {
+              const pct = Math.min(cat.progress, 100);
+              const categoryLabel = intl.formatMessage({
+                id: `savings.categories.${cat.category}`,
+                defaultMessage: cat.category,
+              });
+              return (
+                <div key={cat.category}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-primary font-medium">{categoryLabel}</span>
+                    <span className="text-secondary tabular-nums">
+                      {formatCurrency(cat.currentAmount)}
+                      {cat.targetAmount > 0 && (
+                        <span className="text-xs ml-1 text-muted-foreground">
+                          / {formatCurrency(cat.targetAmount)}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? 'bg-emerald-500' : 'bg-amber-400'}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 text-right">
+                    {pct.toFixed(0)}%
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex-grow flex flex-col items-center justify-center py-12 text-secondary">
+            <Target className="h-12 w-12 opacity-30 mb-4" />
+            <p className="text-center text-sm mb-4">
+              {intl.formatMessage({ id: 'dashboard.savingsGoalProgress.emptyState' })}
+            </p>
+          </div>
+        )}
+
+        <Link
+          href="/savings"
+          className="text-sm font-medium text-center text-primary hover:underline"
+        >
+          {intl.formatMessage({ id: 'dashboard.savingsGoalProgress.addGoal' })}
+        </Link>
       </div>
     );
   }

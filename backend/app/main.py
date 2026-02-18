@@ -16,7 +16,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget, reconciliation, partner
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget, reconciliation, partner, ai_chat
 from datetime import timezone
 from .routers.stripe_billing import TRIAL_DAYS
 from .database import engine, Base
@@ -285,6 +285,8 @@ app.include_router(budget.router)
 app.include_router(reconciliation.router)
 # Partner access (invite, accept, status, unlink)
 app.include_router(partner.router)
+# AI Chat (WebSocket + REST)
+app.include_router(ai_chat.router)
 
 # Loan models
 VALID_LOAN_TYPES = ["mortgage", "car", "personal", "student", "credit_card", "cash_loan", "installment", "leasing", "overdraft", "other"]
@@ -1612,51 +1614,19 @@ async def get_user_summary(
         month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
-        # Fetch monthly income (non-recurring, within current month)
-        monthly_income_non_recurring = db.query(func.sum(models.Income.amount)).filter(
-            models.Income.user_id == hid,
-            models.Income.date >= month_start,
-            models.Income.date <= month_end,
-            models.Income.is_recurring == False
-        ).scalar() or 0
+        # Use MonthlyTotalsService for both income and expenses to ensure consistent
+        # deduplication logic (recurring edit-duplicates, bank reconciliation, etc.)
+        # Raw SUM queries here would double-count recurring entries created by edits
+        # (each edit creates a new row with end_date=None, leaving two active rows).
+        income_totals = MonthlyTotalsService.calculate_monthly_income(
+            hid, today.year, today.month, db
+        )
+        monthly_income = income_totals["total"]
 
-        # Fetch recurring income (active in current month)
-        # Must have started before/during this month AND not ended before this month
-        monthly_income_recurring = db.query(func.sum(models.Income.amount)).filter(
-            models.Income.user_id == hid,
-            models.Income.is_recurring == True,
-            models.Income.date <= month_end,  # Started before or during this month
-            or_(
-                models.Income.end_date == None,  # No end date (ongoing)
-                models.Income.end_date >= month_start  # Or end_date is this month or later
-            )
-        ).scalar() or 0
-
-        # Total monthly income
-        monthly_income = monthly_income_non_recurring + monthly_income_recurring
-
-        # Fetch monthly expenses (non-recurring, within current month)
-        monthly_expenses_non_recurring = db.query(func.sum(models.Expense.amount)).filter(
-            models.Expense.user_id == hid,
-            models.Expense.date >= month_start,
-            models.Expense.date <= month_end,
-            models.Expense.is_recurring == False
-        ).scalar() or 0
-
-        # Fetch recurring expenses (active in current month)
-        # Must have started before/during this month AND not ended before this month
-        monthly_expenses_recurring = db.query(func.sum(models.Expense.amount)).filter(
-            models.Expense.user_id == hid,
-            models.Expense.is_recurring == True,
-            models.Expense.date <= month_end,  # Started before or during this month
-            or_(
-                models.Expense.end_date == None,  # No end date (ongoing)
-                models.Expense.end_date >= month_start  # Or end_date is this month or later
-            )
-        ).scalar() or 0
-
-        # Total monthly expenses
-        monthly_expenses = monthly_expenses_non_recurring + monthly_expenses_recurring
+        expense_totals = MonthlyTotalsService.calculate_monthly_expenses(
+            hid, today.year, today.month, db
+        )
+        monthly_expenses = expense_totals["total"]
 
         # Fetch monthly loan payments (exclude archived loans)
         monthly_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
@@ -1684,40 +1654,33 @@ async def get_user_summary(
         if monthly_income > 0:
             debt_to_income = monthly_loan_payments / monthly_income
 
-        # Get income distribution by category (current month only)
+        # Get income distribution by category using deduplicated data from MonthlyTotalsService
         income_distribution = []
-
-        # Non-recurring income in current month
-        income_non_recurring_by_cat = db.query(
-            models.Income.category,
-            func.sum(models.Income.amount).label("total_amount")
-        ).filter(
-            models.Income.user_id == hid,
-            models.Income.is_recurring == False,
-            models.Income.date >= month_start,
-            models.Income.date <= month_end
-        ).group_by(models.Income.category).all()
-
-        # Recurring income (active in current month)
-        income_recurring_by_cat = db.query(
-            models.Income.category,
-            func.sum(models.Income.amount).label("total_amount")
-        ).filter(
-            models.Income.user_id == hid,
-            models.Income.is_recurring == True,
-            models.Income.date <= month_end,  # Started before or during this month
-            or_(
-                models.Income.end_date == None,  # No end date (ongoing)
-                models.Income.end_date >= month_start  # Or end_date is this month or later
-            )
-        ).group_by(models.Income.category).all()
-
-        # Combine income by category
-        income_by_category = {}
-        for cat in income_non_recurring_by_cat:
-            income_by_category[cat.category] = cat.total_amount
-        for cat in income_recurring_by_cat:
-            income_by_category[cat.category] = income_by_category.get(cat.category, 0) + cat.total_amount
+        income_active = MonthlyTotalsService._query_active_income_for_month(
+            hid, today.year, today.month, db
+        )
+        # Apply same dedup as calculate_monthly_income: filter duplicate_of_bank + recurring dedup
+        income_manual = [i for i in income_active if i.bank_transaction_id is None]
+        income_deduped_manual = [
+            i for i in income_manual if i.reconciliation_status not in ["duplicate_of_bank"]
+        ]
+        _seen_inc = {}
+        _non_rec_inc = []
+        for i in income_deduped_manual:
+            if i.is_recurring and i.end_date is None:
+                key = (i.category, i.description)
+                if key not in _seen_inc or i.id > _seen_inc[key].id:
+                    _seen_inc[key] = i
+            else:
+                _non_rec_inc.append(i)
+        income_deduped = (
+            [i for i in income_active if i.bank_transaction_id is not None]
+            + _non_rec_inc
+            + list(_seen_inc.values())
+        )
+        income_by_category: dict = {}
+        for i in income_deduped:
+            income_by_category[i.category] = income_by_category.get(i.category, 0) + float(i.amount)
 
         total_income_dist = sum(income_by_category.values())
         for category, amount in income_by_category.items():
@@ -1728,40 +1691,33 @@ async def get_user_summary(
                 "percentage": float(percentage)
             })
 
-        # Get expense distribution by category (current month only)
+        # Get expense distribution by category using deduplicated data from MonthlyTotalsService
         expense_distribution = []
-
-        # Non-recurring expenses in current month
-        expense_non_recurring_by_cat = db.query(
-            models.Expense.category,
-            func.sum(models.Expense.amount).label("total_amount")
-        ).filter(
-            models.Expense.user_id == hid,
-            models.Expense.is_recurring == False,
-            models.Expense.date >= month_start,
-            models.Expense.date <= month_end
-        ).group_by(models.Expense.category).all()
-
-        # Recurring expenses (active in current month)
-        expense_recurring_by_cat = db.query(
-            models.Expense.category,
-            func.sum(models.Expense.amount).label("total_amount")
-        ).filter(
-            models.Expense.user_id == hid,
-            models.Expense.is_recurring == True,
-            models.Expense.date <= month_end,  # Started before or during this month
-            or_(
-                models.Expense.end_date == None,  # No end date (ongoing)
-                models.Expense.end_date >= month_start  # Or end_date is this month or later
-            )
-        ).group_by(models.Expense.category).all()
-
-        # Combine expenses by category
-        expense_by_category = {}
-        for cat in expense_non_recurring_by_cat:
-            expense_by_category[cat.category] = cat.total_amount
-        for cat in expense_recurring_by_cat:
-            expense_by_category[cat.category] = expense_by_category.get(cat.category, 0) + cat.total_amount
+        expense_active = MonthlyTotalsService._query_active_expenses_for_month(
+            hid, today.year, today.month, db
+        )
+        # Apply same dedup as calculate_monthly_expenses: filter duplicate_of_bank + recurring dedup
+        exp_manual = [e for e in expense_active if e.bank_transaction_id is None]
+        exp_deduped_manual = [
+            e for e in exp_manual if e.reconciliation_status not in ["duplicate_of_bank"]
+        ]
+        _seen_exp = {}
+        _non_rec_exp = []
+        for e in exp_deduped_manual:
+            if e.is_recurring and e.end_date is None:
+                key = (e.category, e.description)
+                if key not in _seen_exp or e.id > _seen_exp[key].id:
+                    _seen_exp[key] = e
+            else:
+                _non_rec_exp.append(e)
+        expense_deduped = (
+            [e for e in expense_active if e.bank_transaction_id is not None]
+            + _non_rec_exp
+            + list(_seen_exp.values())
+        )
+        expense_by_category: dict = {}
+        for e in expense_deduped:
+            expense_by_category[e.category] = expense_by_category.get(e.category, 0) + float(e.amount)
 
         total_expense_dist = sum(expense_by_category.values())
         for category, amount in expense_by_category.items():
@@ -1772,91 +1728,45 @@ async def get_user_summary(
                 "percentage": float(percentage)
             })
 
-        # Generate cash flow data for all months in the current year
+        # Generate cash flow data for the rolling last 13 months (12 past + current).
+        # Using a rolling window instead of "current calendar year" ensures the
+        # BudgetVsActual 3-month average always has real historical data even in
+        # January, and avoids polluting past-month averages with future scheduled items.
         cash_flow = []
-        current_year = today.year
-        
-        # Include all 12 months of the current year
-        for month in range(1, 13):
-            month_date = datetime(current_year, month, 1)
-            month_start_date = month_date.replace(day=1)
-            month_end_date = (month_start_date + timedelta(days=32)).replace(day=1) - timedelta(days=1)
-            month_str = f"{current_year}-{month:02d}"
-            
-            # Calculate recurring income for THIS specific month
-            month_income_recurring = db.query(func.sum(models.Income.amount)).filter(
-                models.Income.user_id == hid,
-                models.Income.is_recurring == True,
-                models.Income.date <= month_end_date,  # Started before or during this month
-                or_(
-                    models.Income.end_date == None,  # No end date (ongoing)
-                    models.Income.end_date >= month_start_date  # Or end_date is this month or later
-                )
+
+        for offset in range(12, -1, -1):  # 12 months ago → current month (ascending)
+            # Pure stdlib month arithmetic — no dateutil needed
+            total_months = (today.year * 12 + today.month - 1) - offset
+            m_year, m_month = divmod(total_months, 12)
+            m_month += 1  # divmod gives 0-based month
+            month_end_date = datetime(m_year, m_month, 1) + timedelta(days=32)
+            month_end_date = month_end_date.replace(day=1) - timedelta(days=1)
+            month_str = f"{m_year}-{m_month:02d}"
+
+            # Use MonthlyTotalsService for accurate deduplication in all months
+            m_income = MonthlyTotalsService.calculate_monthly_income(hid, m_year, m_month, db)
+            m_expenses = MonthlyTotalsService.calculate_monthly_expenses(hid, m_year, m_month, db)
+
+            month_income = m_income["total"]
+            month_expenses = m_expenses["total"]
+
+            # Loan payments for this month (exclude archived)
+            month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
+                models.Loan.user_id == hid,
+                models.Loan.start_date <= month_end_date,
+                (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
             ).scalar() or 0
 
-            # Calculate recurring expenses for THIS specific month
-            month_expenses_recurring = db.query(func.sum(models.Expense.amount)).filter(
-                models.Expense.user_id == hid,
-                models.Expense.is_recurring == True,
-                models.Expense.date <= month_end_date,  # Started before or during this month
-                or_(
-                    models.Expense.end_date == None,  # No end date (ongoing)
-                    models.Expense.end_date >= month_start_date  # Or end_date is this month or later
-                )
-            ).scalar() or 0
-
-            # For past and current months, use actual data
-            if month <= today.month:
-                # Non-recurring income for this month
-                month_income_non_recurring = db.query(func.sum(models.Income.amount)).filter(
-                    models.Income.user_id == hid,
-                    models.Income.date >= month_start_date,
-                    models.Income.date <= month_end_date,
-                    models.Income.is_recurring == False
-                ).scalar() or 0
-
-                # Include recurring income for this specific month
-                month_income = month_income_non_recurring + month_income_recurring
-
-                # Non-recurring expenses for this month
-                month_expenses_non_recurring = db.query(func.sum(models.Expense.amount)).filter(
-                    models.Expense.user_id == hid,
-                    models.Expense.date >= month_start_date,
-                    models.Expense.date <= month_end_date,
-                    models.Expense.is_recurring == False
-                ).scalar() or 0
-
-                # Include recurring expenses for this specific month
-                month_expenses = month_expenses_non_recurring + month_expenses_recurring
-
-                # Loan payments for this month (exclude archived)
-                month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
-                    models.Loan.user_id == hid,
-                    models.Loan.start_date <= month_end_date,
-                    (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
-                ).scalar() or 0
-            else:
-                # For future months, use projections based on recurring data for this specific month
-                month_income = month_income_recurring
-                month_expenses = month_expenses_recurring
-
-                # Loan payments for future months (assuming all current loans continue, exclude archived)
-                month_loan_payments = db.query(func.sum(models.Loan.monthly_payment)).filter(
-                    models.Loan.user_id == hid,
-                    models.Loan.start_date <= today,
-                    (models.Loan.is_archived == False) | (models.Loan.is_archived == None)
-                ).scalar() or 0
-            
             # Calculate net flow
             net_flow = month_income - month_expenses - month_loan_payments
-            
+
             cash_flow.append({
                 "month": month_str,
                 "income": float(month_income),
                 "expenses": float(month_expenses),
                 "loanPayments": float(month_loan_payments),
                 "netFlow": float(net_flow),
-                "year": current_year
+                "year": m_year
             })
 
         # Fetch active loans for the user (exclude archived)
@@ -1955,14 +1865,22 @@ async def get_user_summary(
         ).group_by(models.Saving.category).all()
 
         for goal in savings_by_category:
-            target = goal.target_amount or 0
+            target = float(goal.target_amount or 0)
             current = float(goal.current_amount or 0)
-            progress = (current / target * 100) if target > 0 else 0
+            # Hardcoded Baby Steps targets: emergency_fund = 1 month, six_month_fund = 6 months
+            if target == 0:
+                if goal.category == 'emergency_fund':
+                    target = float(monthly_expenses) * 1
+                elif goal.category == 'six_month_fund':
+                    target = float(monthly_expenses) * 6
+            # Show actual balance (no capping) — progress bar capped separately below
+            effective_current = current
+            progress = (effective_current / target * 100) if target > 0 else 0
             savings_goals.append({
                 "category": goal.category,
-                "currentAmount": current,
-                "targetAmount": float(target),
-                "progress": min(float(progress), 100)  # Cap at 100%
+                "currentAmount": effective_current,
+                "targetAmount": target,
+                "progress": min(float(progress), 100)
             })
 
         recent_activities = db.query(models.Activity).filter(

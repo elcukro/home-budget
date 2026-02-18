@@ -52,6 +52,9 @@ class User(Base):
     achievements = relationship("Achievement", back_populates="user", cascade="all, delete-orphan")
     streak_history = relationship("StreakHistory", back_populates="user", cascade="all, delete-orphan")
     gamification_events = relationship("GamificationEvent", back_populates="user", cascade="all, delete-orphan")
+    # AI Chat relationships
+    ai_conversations = relationship("AIConversation", back_populates="user", cascade="all, delete-orphan")
+    ai_usage_quotas = relationship("AIUsageQuota", back_populates="user", cascade="all, delete-orphan")
 
     # Partner access relationships
     partner_link_as_partner = relationship(
@@ -1007,4 +1010,58 @@ class PartnerInvitation(Base):
     __table_args__ = (
         Index('idx_partner_invitations_token', 'token'),
         Index('idx_partner_invitations_inviter', 'inviter_user_id'),
+    )
+
+
+# ==========================================
+# AI CHAT MODELS
+# ==========================================
+
+class AIConversation(Base):
+    __tablename__ = "ai_conversations"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    messages = relationship("AIMessage", back_populates="conversation", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="ai_conversations")
+
+    __table_args__ = (
+        Index('idx_ai_conversations_user_id', 'user_id'),
+    )
+
+
+class AIMessage(Base):
+    __tablename__ = "ai_messages"
+
+    id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer, ForeignKey("ai_conversations.id", ondelete="CASCADE"), index=True)
+    role = Column(String, nullable=False)  # "user" | "assistant"
+    content = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    conversation = relationship("AIConversation", back_populates="messages")
+
+    __table_args__ = (
+        Index('idx_ai_messages_conversation_id', 'conversation_id'),
+    )
+
+
+class AIUsageQuota(Base):
+    __tablename__ = "ai_usage_quotas"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    month = Column(String, index=True)  # "2026-02" format
+    queries_used = Column(Integer, default=0)
+
+    user = relationship("User", back_populates="ai_usage_quotas")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "month", name="uq_ai_quota_user_month"),
+        Index('idx_ai_usage_quotas_user_id', 'user_id'),
+        Index('idx_ai_usage_quotas_month', 'month'),
     )

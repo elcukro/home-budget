@@ -150,40 +150,38 @@
       "07": "Jul",
       "08": "Aug",
       "09": "Sep"
-    }
+    },
+    "amount": "Amount",
+    "date": "Date"
   },
   "validation": {
-    "required": "This field is required.",
+    "required": "This field is required",
+    "categoryRequired": "Please select a category",
     "amount": {
-      "nonPositive": "Enter an amount greater than 0.",
-      "tooLarge": "The amount is too large.",
-      "nonNegative": "Amount cannot be negative."
-    },
-    "description": {
-      "required": "Description is required.",
-      "tooLong": "Description must be at most 100 characters."
-    },
-    "date": {
-      "future": "Date cannot be in the future.",
-      "tooEarly": "Date cannot be before 2000.",
-      "tooFarFuture": "Date cannot be more than 5 years in the future."
+      "nonPositive": "Amount must be greater than zero",
+      "tooLarge": "Amount is too large",
+      "nonNegative": "Amount cannot be negative"
     },
     "interestRate": {
-      "negative": "Interest rate cannot be negative.",
-      "max": "Interest rate cannot exceed 100%."
-    },
-    "monthlyPayment": {
-      "negative": "Monthly payment cannot be negative.",
-      "exceedsAmount": "Monthly payment cannot exceed the loan amount."
+      "negative": "Interest rate cannot be negative",
+      "max": "Interest rate cannot exceed 100%"
     },
     "remainingBalance": {
-      "negative": "Remaining balance cannot be negative.",
-      "exceedsAmount": "Remaining balance cannot exceed the loan amount."
+      "negative": "Balance cannot be negative",
+      "exceedsAmount": "Balance cannot exceed principal amount"
     },
-    "categoryRequired": "Select a category.",
-    "termMonths": {
-      "min": "Term must be at least 1 month."
-    }
+    "monthlyPayment": {
+      "negative": "Payment cannot be negative",
+      "exceedsAmount": "Payment cannot exceed principal amount"
+    },
+    "date": {
+      "future": "Date cannot be in the future",
+      "tooEarly": "Date is too early"
+    },
+    "description": {
+      "tooLong": "Description is too long (max 200 characters)"
+    },
+    "endDateAfterStartDate": "End date must be after start date"
   },
   "auth": {
     "welcome": "Welcome to Home Budget",
@@ -527,7 +525,7 @@
       }
     },
     "fireMetrics": {
-      "title": "FIRE Metrics",
+      "title": "Financial Freedom",
       "fireGauge": "FIRE Number",
       "savingsRate": "Savings Rate",
       "babySteps": "Baby Steps",
@@ -541,7 +539,25 @@
       "overpaymentSim": "Overpayment Simulator",
       "loanOverpayment": "Loan overpayment",
       "savingsGoal": "Savings",
-      "investmentGoal": "Investments"
+      "investmentGoal": "Investments",
+      "yearsToFire": "Years to FIRE",
+      "yearsValue": "{years} yrs",
+      "fireReached": "Reached! 🎉",
+      "increasesSavings": "Increase savings",
+      "atReturn": "at {rate}% annual return",
+      "passiveIncome": "Passive Income",
+      "passiveIncomeSub": "at FIRE (4% rule)",
+      "coastReached": "Reached! ⚡",
+      "coastReachedSub": "Growth alone is enough",
+      "coastNeeded": "Still need {missing}",
+      "stepsCompleted": "{count}/7 steps",
+      "coastFireTooltip": {
+        "title": "What is Coast FIRE?",
+        "what": "The point where your savings – left alone at a 7% annual return – will grow to your FIRE Number by retirement. You no longer need to add new money to investments.",
+        "means": "You can \"coast\" to retirement – earn, spend freely, and not worry about saving for the future.",
+        "formula": "Formula: Coast FIRE = FIRE Number ÷ (1 + 7%)²⁰",
+        "horizon": "We assume a 20-year horizon to retirement and a 7% average annual return."
+      }
     },
     "sections": {
       "summary": {
@@ -574,7 +590,7 @@
       }
     },
     "savings": {
-      "totalBalance": "Total Savings",
+      "totalBalance": "Total Savings & Assets",
       "monthlySavings": "This Month",
       "goalsTitle": "Your Goals",
       "goalTarget": "Goal: {amount}",
@@ -629,7 +645,7 @@
         },
         "loanPayments": {
           "up": "Loan payments increased by {amount} vs {period}. Make sure cashflow covers the change.",
-          "down": "Loan payments decreased by {amount} vs {period}.", 
+          "down": "Loan payments decreased by {amount} vs {period}.",
           "steady": "Loan payments remained steady compared to {period}."
         },
         "netCashflow": {
@@ -740,14 +756,16 @@
     "budgetVsActual": {
       "title": "Budget vs Actual",
       "description": "Compare this month's spending against your 3-month average.",
-      "budget": "Budget (3-mo avg)",
+      "descriptionMonths": "Compare this month's spending against your {n}-month average.",
+      "descriptionNoHistory": "No historical data yet — add more months to see your average.",
+      "budget": "Budget ({n}-mo avg)",
       "actual": "Actual",
       "totalBudget": "Budget",
       "totalActual": "Actual",
       "variance": "Variance",
       "status": "Status",
       "emptyState": "No expense data yet. Add expenses to see budget comparisons.",
-      "legendNote": "Green = under budget • Red = over budget • Budget based on 3-month average",
+      "legendNote": "Green = under budget • Red = over budget • Budget based on {n}-month average",
       "tooltip": {
         "overBudget": "Over budget",
         "underBudget": "Under budget"
@@ -756,6 +774,7 @@
     "savingsGoalProgress": {
       "title": "Savings Goal Progress",
       "description": "Track progress toward your financial goals.",
+      "categoryBreakdown": "Your savings by category.",
       "emptyState": "No savings goals yet. Create your first goal to start tracking.",
       "addGoal": "Create a savings goal",
       "noActiveGoals": "No active goals to display. All goals are completed or paused.",
@@ -816,19 +835,19 @@
       "saving": "saving",
       "settings": "settings",
       "source": "source",
-      "description": "description",
-      "amount": "amount",
-      "category": "category",
+      "description": "Description",
+      "amount": "Amount",
+      "category": "Category",
       "id": "ID",
-      "principal_amount": "principal amount",
-      "remaining_balance": "remaining balance",
-      "interest_rate": "interest rate",
-      "term_months": "term months",
+      "principal_amount": "Principal amount",
+      "remaining_balance": "Remaining balance",
+      "interest_rate": "Interest rate",
+      "term_months": "Term (months)",
       "end_date": "end date",
       "is_gross": "gross amount",
       "bank_transaction_id": "bank transaction ID",
       "reconciliation_status": "reconciliation status",
-      "monthly_payment": "monthly payment",
+      "monthly_payment": "Monthly payment",
       "timestamp": "{date} at {time}",
       "updated_at": "Updated {date} at {time}",
       "details": {
@@ -851,17 +870,9 @@
       },
       "emptyState": "No recent activity.",
       "emptyStateFiltered": "No activity matches this filter yet.",
-      "amount": "Amount",
-      "description": "Description",
-      "category": "Category",
       "date": "Date",
-      "principal_amount": "Principal amount",
-      "remaining_balance": "Remaining balance",
-      "monthly_payment": "Monthly payment",
-      "interest_rate": "Interest rate",
       "loan_type": "Loan type",
       "start_date": "Start date",
-      "term_months": "Term (months)",
       "due_day": "Due day",
       "overpayment_fee_percent": "Overpayment fee (%)",
       "overpayment_fee_waived_until": "Fee waived until",
@@ -873,7 +884,6 @@
       "is_recurring": "Recurring",
       "recurring_day": "Recurring day",
       "user_id": "User",
-      "id": "ID",
       "employment_type": "Employment type",
       "kup_type": "Tax deductible costs",
       "owner": "Owner",
@@ -1117,6 +1127,11 @@
       "changeNoData": "No previous month to compare.",
       "comparisonUnavailable": "Select a month to compare monthly changes."
     },
+    "monthlyTotal": {
+      "label": "Total expenses",
+      "fromBank": "from bank",
+      "fromManual": "manual"
+    },
     "filters": {
       "categorySortLabel": "Categories",
       "periodLabel": "Period",
@@ -1226,7 +1241,7 @@
     "summaryPanel": {
       "totalMonthlyLabel": "Total monthly payment",
       "totalMonthlyDescription": "Combined monthly installments across all loans.",
-      "totalBalanceLabel": "Total loan balance",
+      "totalBalanceLabel": "Total liabilities",
       "totalBalanceDescription": "Outstanding balance remaining on all loans.",
       "nextPaymentLabel": "Next payment",
       "nextPaymentDescription": "Keep an eye on the upcoming due date.",
@@ -1819,7 +1834,8 @@
         "description": "Pay off all debt (except your mortgage) using the debt snowball method, paying smallest to largest.",
         "remainingDebt": "Remaining Debt: {amount}",
         "debtFree": "You're debt free!",
-        "tip": "List all your debts from smallest to largest and focus on paying the smallest one first."
+        "tip": "List all your debts from smallest to largest and focus on paying the smallest one first.",
+        "noMortgageTip": "Progress excludes your mortgage — that's paid off in Baby Step 6."
       },
       "step3": {
         "title": "Baby Step 3: {months} Months Expenses",
@@ -2022,7 +2038,8 @@
     "overLimit": "Limit exceeded",
     "limitUsed": "used",
     "summary": {
-      "totalSavings": "Total Savings",
+      "totalSavings": "Total Assets",
+      "liquidSavings": "liquid savings",
       "monthlyContribution": "Deposits This Month",
       "recentTransactions": "Recent Transactions",
       "noRecent": "No recent transactions",
@@ -2146,7 +2163,50 @@
       "confirm": "Delete"
     },
     "noEntries": "No savings entries yet",
-    "loadError": "Failed to load savings data. Please try again later."
+    "loadError": "Failed to load savings data. Please try again later.",
+    "withdraw": {
+      "title": "Withdraw from: {name}",
+      "available": "Available in this goal:",
+      "destination": "Funds will be moved to Free Savings.",
+      "exceedsBalance": "Amount exceeds available balance ({max}).",
+      "confirm": "Withdraw",
+      "success": "Withdrew {amount} to Free Savings."
+    },
+    "deposit": {
+      "title": "Deposit to: {name}",
+      "availableFree": "Available free savings:",
+      "exceedsBalance": "Amount exceeds available free savings ({max}).",
+      "confirm": "Deposit",
+      "success": "Deposited {amount} to goal.",
+      "useSuggested": "Use suggested amount: {amount}"
+    },
+    "freeSavings": {
+      "title": "Free Savings",
+      "description": "Funds without an assigned goal.",
+      "withdrawToIncome": "Withdraw to Income",
+      "goalAchieved": "Goal achieved",
+      "withdrawModal": {
+        "title": "Withdraw to Income",
+        "available": "Available:",
+        "description": "Funds will be recorded as an income entry.",
+        "descriptionLabel": "Description",
+        "descriptionPlaceholder": "Savings withdrawal",
+        "confirm": "Withdraw to Income",
+        "success": "Withdrew {amount} to Income."
+      },
+      "advice": {
+        "heading": "What to do with free funds?",
+        "ikeLabel": "IKE",
+        "ikeDesc": "capital gains tax-free",
+        "ikzeLabel": "IKZE",
+        "ikzeDesc": "deductible from income tax",
+        "oipeLabel": "OIPE",
+        "oipeDesc": "pan-European pension account",
+        "lokataLabel": "Bank deposit",
+        "lokataDesc": "Safe, guaranteed return",
+        "allLimitsReached": "IKE, IKZE and OIPE limits reached for this year."
+      }
+    }
   },
   "goals": {
     "title": "Savings Goals",
@@ -3278,38 +3338,9 @@
       "rights": "All rights reserved."
     }
   },
-  "validation": {
-    "required": "This field is required",
-    "categoryRequired": "Please select a category",
-    "amount": {
-      "nonPositive": "Amount must be greater than zero",
-      "tooLarge": "Amount is too large",
-      "nonNegative": "Amount cannot be negative"
-    },
-    "interestRate": {
-      "negative": "Interest rate cannot be negative",
-      "max": "Interest rate cannot exceed 100%"
-    },
-    "remainingBalance": {
-      "negative": "Balance cannot be negative",
-      "exceedsAmount": "Balance cannot exceed principal amount"
-    },
-    "monthlyPayment": {
-      "negative": "Payment cannot be negative",
-      "exceedsAmount": "Payment cannot exceed principal amount"
-    },
-    "date": {
-      "future": "Date cannot be in the future",
-      "tooEarly": "Date is too early"
-    },
-    "description": {
-      "tooLong": "Description is too long (max 200 characters)"
-    },
-    "endDateAfterStartDate": "End date must be after start date"
-  },
   "welcome": {
     "title": "Welcome to your free trial!",
-    "subtitle": "You have full access to all Premium features. No commitments \u2013 cancel anytime.",
+    "subtitle": "You have full access to all Premium features. No commitments – cancel anytime.",
     "expired": {
       "title": "Your trial has ended",
       "subtitle": "You can still use basic features for free."
@@ -3441,5 +3472,18 @@
       "asPartnerDescription": "Linked with {name}. You have access to shared financial data.",
       "noPartner": "No linked partner"
     }
+  },
+  "chat": {
+    "title": "Mieszko Assistant",
+    "placeholder": "Ask about your finances...",
+    "streaming": "Mieszko is answering...",
+    "upsell": "AI Assistant available in Premium plan",
+    "errorRetry": "Try again",
+    "quotaInfo": "queries this month",
+    "quotaExceeded": "Query limit reached. Resets on the 1st of next month.",
+    "suggestions": "Suggestions",
+    "newConversation": "New conversation",
+    "greeting": "Hi! I'm Mieszko",
+    "greetingSubtitle": "Your personal AI financial advisor. What would you like to know?"
   }
 }

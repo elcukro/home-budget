@@ -779,8 +779,11 @@ export default function IncomePage() {
     const groups = new Map<string, IncomeGroup>();
 
     // Group by category + description
+    // Non-recurring incomes are independent transactions — never collapse them as "historical"
     incomes.forEach((income) => {
-      const key = `${income.category}::${income.description}`;
+      const key = income.is_recurring
+        ? `${income.category}::${income.description}`
+        : `${income.category}::${income.description}::${income.id}`;
 
       if (!groups.has(key)) {
         groups.set(key, {
@@ -856,11 +859,14 @@ export default function IncomePage() {
     });
   };
 
-  // Calculate totals by frequency
+  // Calculate totals by frequency — uses groupedIncomes to avoid double-counting
+  // recurring entries that have both a current and historical version (edit duplicates).
   const totalsByFrequency = useMemo(
     () =>
-      incomes.reduce(
-        (acc, income) => {
+      groupedIncomes.reduce(
+        (acc, group) => {
+          const income = group.current ?? group.historical[0];
+          if (!income) return acc;
           if (income.is_recurring) {
             acc.recurring += income.amount;
           } else {
@@ -871,7 +877,7 @@ export default function IncomePage() {
         },
         { recurring: 0, oneOff: 0, total: 0 },
       ),
-    [incomes],
+    [groupedIncomes],
   );
 
   const handleSort = (key: typeof sortKey) => {

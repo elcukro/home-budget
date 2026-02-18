@@ -155,7 +155,9 @@ class Saving(SavingBase):
         from_attributes = True
 
 class SavingsSummary(BaseModel):
-    total_savings: float
+    total_savings: float          # All assets (liquid + real estate) — for net worth display
+    liquid_savings: float = 0     # Only liquid cash (excludes real_estate) — for savings progress
+    real_estate_value: float = 0  # Real estate portion of standard savings
     emergency_fund: float
     emergency_fund_target: float = 1000  # Default target for baby step 1
     emergency_fund_progress: float

@@ -41,7 +41,6 @@ import {
   faTriangleExclamation,
   faUser,
   faGlobe,
-  faPiggyBank,
   faReceipt,
   faBuilding,
   faDatabase,
@@ -183,7 +182,7 @@ export default function SettingsPage() {
     if (tabFromUrl === 'general') {
       setActiveTab('general');
     } else if (tabFromUrl === 'finance') {
-      setActiveTab('finance');
+      setActiveTab('general'); // Finance tab removed — redirect to general
     } else if (tabFromUrl === 'integrations') {
       setActiveTab('integrations');
     } else if (tabFromUrl === 'data') {
@@ -817,10 +816,6 @@ export default function SettingsPage() {
           <TabsTrigger value="general" className="gap-2">
             <FontAwesomeIcon icon={faGlobe} className="w-4 h-4" />
             <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.general" })}</span>
-          </TabsTrigger>
-          <TabsTrigger value="finance" className="gap-2">
-            <FontAwesomeIcon icon={faPiggyBank} className="w-4 h-4" />
-            <span className="hidden sm:inline">{intl.formatMessage({ id: "settings.tabs.finance" })}</span>
           </TabsTrigger>
           {!isPartner && (
             <TabsTrigger value="integrations" className="gap-2">
@@ -1605,78 +1600,6 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Finance Settings Tab */}
-        <TabsContent value="finance">
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FontAwesomeIcon icon={faPiggyBank} className="w-5 h-5 text-primary" />
-                  {intl.formatMessage({ id: "settings.financialFreedom.title" })}
-                </CardTitle>
-                <CardDescription>
-                  {intl.formatMessage({ id: "settings.tabs.financeDescription" })}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-6" onSubmit={handleSubmit}>
-                  <div className="grid gap-6 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="emergency_fund_target">
-                        {intl.formatMessage({ id: "settings.financialFreedom.emergencyFundTarget" })}
-                      </Label>
-                      <CurrencyInput
-                        id="emergency_fund_target"
-                        value={settings.emergency_fund_target}
-                        onValueChange={(val) =>
-                          setSettings((prev) =>
-                            prev && {
-                              ...prev,
-                              emergency_fund_target: val,
-                            },
-                          )
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {intl.formatMessage({ id: "settings.tooltips.emergencyFundTarget" })}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="emergency_fund_months">
-                        {intl.formatMessage({ id: "settings.financialFreedom.emergencyFundMonths" })}
-                      </Label>
-                      <Input
-                        id="emergency_fund_months"
-                        type="number"
-                        min={1}
-                        max={12}
-                        value={settings.emergency_fund_months}
-                        onChange={(event) =>
-                          setSettings((prev) =>
-                            prev && {
-                              ...prev,
-                              emergency_fund_months: Number(event.target.value),
-                            },
-                          )
-                        }
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {intl.formatMessage({ id: "settings.tooltips.emergencyFundMonths" })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <Button type="submit">
-                    {intl.formatMessage({ id: "settings.form.submit" })}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         {/* Integrations Tab (Banking) */}

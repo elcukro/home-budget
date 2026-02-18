@@ -1319,9 +1319,18 @@ export const SavingsManager = () => {
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-200 text-emerald-800">
                   <PiggyBank className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <p className="text-xs uppercase tracking-wide text-emerald-800/80">
-                  <FormattedMessage id="savings.summary.totalSavings" />
-                </p>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-emerald-800/80">
+                    <FormattedMessage id="savings.summary.totalSavings" />
+                  </p>
+                  {(summary.real_estate_value ?? 0) > 0 && (
+                    <p className="text-xs text-emerald-700/60 mt-0.5">
+                      <FormattedMessage id="savings.summary.liquidSavings" />
+                      {': '}
+                      {formatCurrency(summary.liquid_savings ?? summary.total_savings)}
+                    </p>
+                  )}
+                </div>
               </div>
               <p className="text-2xl font-semibold text-emerald-900 shrink-0">
                 {formatCurrency(summary.total_savings)}

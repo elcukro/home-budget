@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 export const getFinancialFreedomData = async (): Promise<FinancialFreedomData> => {
   try {
     // Use Next.js API proxy which adds auth headers (X-User-ID + X-Internal-Secret)
-    const response = await fetch('/api/backend/financial-freedom');
+    const response = await fetch('/api/backend/financial-freedom/calculated');
 
     if (!response.ok) {
       throw new Error(`Failed to fetch financial freedom data: ${response.statusText}`);

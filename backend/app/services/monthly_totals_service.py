@@ -51,11 +51,25 @@ class MonthlyTotalsService:
         bank_backed = [e for e in expenses if e.bank_transaction_id is not None]
         manual = [e for e in expenses if e.bank_transaction_id is None]
 
-        # Filter out duplicates from manual entries
+        # Filter out duplicates from manual entries (bank reconciliation duplicates)
         deduplicated_manual = [
             e for e in manual
             if e.reconciliation_status not in ["duplicate_of_bank"]
         ]
+
+        # Deduplicate recurring manual entries with no end_date that share (category, description).
+        # When a user edits a recurring expense, a new row is created without closing the old one,
+        # leaving two rows with end_date=None. Keep only the newest (highest id).
+        seen_recurring: dict = {}
+        non_recurring_manual = []
+        for e in deduplicated_manual:
+            if e.is_recurring and e.end_date is None:
+                key = (e.category, e.description)
+                if key not in seen_recurring or e.id > seen_recurring[key].id:
+                    seen_recurring[key] = e
+            else:
+                non_recurring_manual.append(e)
+        deduplicated_manual = non_recurring_manual + list(seen_recurring.values())
 
         # Count unreviewed entries (manual entries created after bank connection)
         unreviewed = [
@@ -92,11 +106,25 @@ class MonthlyTotalsService:
         bank_backed = [i for i in income if i.bank_transaction_id is not None]
         manual = [i for i in income if i.bank_transaction_id is None]
 
-        # Filter out duplicates from manual entries
+        # Filter out duplicates from manual entries (bank reconciliation duplicates)
         deduplicated_manual = [
             i for i in manual
             if i.reconciliation_status not in ["duplicate_of_bank"]
         ]
+
+        # Deduplicate recurring manual entries with no end_date that share (category, description).
+        # When a user edits a recurring income, a new row is created without closing the old one,
+        # leaving two rows with end_date=None for the same income. Keep only the newest (highest id).
+        seen_recurring: dict = {}
+        non_recurring_manual = []
+        for i in deduplicated_manual:
+            if i.is_recurring and i.end_date is None:
+                key = (i.category, i.description)
+                if key not in seen_recurring or i.id > seen_recurring[key].id:
+                    seen_recurring[key] = i
+            else:
+                non_recurring_manual.append(i)
+        deduplicated_manual = non_recurring_manual + list(seen_recurring.values())
 
         # Count unreviewed entries
         unreviewed = [
