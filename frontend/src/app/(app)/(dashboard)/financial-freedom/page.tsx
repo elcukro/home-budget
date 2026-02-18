@@ -11,49 +11,9 @@ import { BabyStep, FinancialFreedomData } from '@/types/financial-freedom';
 import { useSettings } from '@/contexts/SettingsContext';
 import ProtectedPage from '@/components/ProtectedPage';
 import { getFinancialFreedomData, updateFinancialFreedomData } from '@/api/financialFreedom';
-import { getNonMortgageDebt, getNonMortgagePrincipal, getMortgageData } from '@/api/loans';
-import { getEmergencyFundSavings, getLiquidSavingsForEmergencyFund, getMonthlyRecurringExpenses } from '@/api/savings';
+import { getLiquidSavingsForEmergencyFund, getMonthlyRecurringExpenses } from '@/api/savings';
 import { logger } from '@/lib/logger';
 
-// Helper function to calculate debt progress percentage
-const calculateDebtProgress = (remainingDebt: number, totalPrincipal: number): number => {
-  if (totalPrincipal <= 0) {
-    // No loans means 100% complete
-    return 100;
-  }
-  
-  const progressPercentage = Math.round((1 - (remainingDebt / totalPrincipal)) * 100);
-  // Ensure percentage is between 0 and 100
-  return Math.max(0, Math.min(100, progressPercentage));
-};
-
-// Helper function to calculate emergency fund progress percentage
-const calculateEmergencyFundProgress = (currentSavings: number, monthlyExpenses: number, monthsTarget = 3): number => {
-  // Target is the specified number of months of expenses
-  const targetAmount = monthlyExpenses * monthsTarget;
-  
-  if (targetAmount <= 0) {
-    // If monthly expenses are 0 or negative, consider it 100% complete
-    return 100;
-  }
-  
-  const progressPercentage = Math.round((currentSavings / targetAmount) * 100);
-  // Ensure percentage is between 0 and 100
-  return Math.max(0, Math.min(100, progressPercentage));
-};
-
-// Helper function to calculate mortgage progress percentage
-const calculateMortgageProgress = (remainingBalance: number, principalAmount: number): number => {
-  if (principalAmount <= 0) {
-    // No mortgage means either 0% or 100% complete depending on context
-    return 0;
-  }
-  
-  // Progress is represented by how much of the mortgage has been paid off
-  const progressPercentage = Math.round((1 - (remainingBalance / principalAmount)) * 100);
-  // Ensure percentage is between 0 and 100
-  return Math.max(0, Math.min(100, progressPercentage));
-};
 
 export default function FinancialFreedomPage() {
   const intl = useIntl();
@@ -62,7 +22,6 @@ export default function FinancialFreedomPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<FinancialFreedomData | null>(null);
   const [errorMessageId, setErrorMessageId] = useState<string | null>(null);
-  const [_totalNonMortgageDebt, setTotalNonMortgageDebt] = useState<number>(0);
   const [monthlyExpensesAmount, setMonthlyExpensesAmount] = useState<number>(8000);
   const [totalSavings, setTotalSavings] = useState<number>(0);
 
@@ -80,102 +39,38 @@ export default function FinancialFreedomPage() {
       try {
         logger.debug('Financial Freedom: Loading all data');
         
-        // Load all data in parallel in a single batch
+        // Load data in parallel — backend /calculated handles steps 1-3 & 6,
+        // liquid savings + monthly expenses are needed for FIRECalculator display only
         const [
           financialFreedomData,
-          nonMortgageDebt,
-          nonMortgagePrincipal,
-          emergencyFundSavings,
           liquidSavings,
           monthlyExpenses,
-          mortgageData
         ] = await Promise.all([
           getFinancialFreedomData(),
-          getNonMortgageDebt(),
-          getNonMortgagePrincipal(),
-          getEmergencyFundSavings(),
           getLiquidSavingsForEmergencyFund(),
           getMonthlyRecurringExpenses(),
-          getMortgageData()
         ]);
-        
+
         if (!isMounted) return;
-        
-        // Set total debt state
-        setTotalNonMortgageDebt(nonMortgageDebt);
+
+        // Populate state for FIRECalculator component
         setMonthlyExpensesAmount(monthlyExpenses || 8000);
         setTotalSavings(liquidSavings || 0);
-        
-        // Get settings values or use defaults
-        const emergencyFundMonths = settings?.emergency_fund_months || 3;
-        const targetAmount = monthlyExpenses * emergencyFundMonths;
-        
-        const starterEmergencyFundTarget = settings?.emergency_fund_target || 3000; // Baby Step 1: 3000-5000 PLN recommended
-        const starterEmergencyFundProgress = Math.min(100, Math.round((emergencyFundSavings / starterEmergencyFundTarget) * 100));
-        
-        // Calculate progress percentages
-        const debtProgressPercentage = calculateDebtProgress(nonMortgageDebt, nonMortgagePrincipal);
-        const emergencyFundProgressPercentage = calculateEmergencyFundProgress(liquidSavings, monthlyExpenses, emergencyFundMonths);
-        const mortgageProgressPercentage = mortgageData && mortgageData.hasMortgage && mortgageData.principal_amount > 0
-          ? calculateMortgageProgress(mortgageData.remaining_balance, mortgageData.principal_amount)
-          : 0;
-        
-        // Update the steps with calculated values
+
+        // Steps 1-3 & 6 already calculated by backend (/calculated endpoint).
+        // Just mark them as auto-calculated for UI feedback.
         const updatedSteps = financialFreedomData.steps.map((step: BabyStep) => {
-          if (step.id === 1) {
-            return {
-              ...step,
-              progress: starterEmergencyFundProgress,
-              targetAmount: starterEmergencyFundTarget,
-              currentAmount: emergencyFundSavings,
-              isCompleted: starterEmergencyFundProgress === 100,
-              isAutoCalculated: true
-            };
-          } else if (step.id === 2) {
-            return {
-              ...step,
-              progress: debtProgressPercentage,
-              targetAmount: nonMortgagePrincipal,
-              currentAmount: nonMortgageDebt,
-              isCompleted: debtProgressPercentage === 100,
-              isAutoCalculated: true
-            };
-          } else if (step.id === 3) {
-            return {
-              ...step,
-              progress: emergencyFundProgressPercentage,
-              targetAmount: targetAmount,
-              currentAmount: liquidSavings,
-              isCompleted: emergencyFundProgressPercentage === 100,
-              isAutoCalculated: true
-            };
-          } else if (step.id === 6) {
-            // Ensure we only populate this data if the user actually has a mortgage
-            if (mortgageData && mortgageData.hasMortgage) {
-              return {
-                ...step,
-                progress: mortgageProgressPercentage,
-                targetAmount: mortgageData.principal_amount,
-                currentAmount: mortgageData.remaining_balance,
-                isCompleted: mortgageProgressPercentage === 100,
-                // Skip manual updates for data-driven steps
-                isAutoCalculated: true
-              };
-            }
-            return step;
+          if (step.id <= 3 || step.id === 6) {
+            return { ...step, isAutoCalculated: true };
           }
           return step;
         });
-        
-        // Create the final data object
-        const finalData = {
+
+        setData({
           ...financialFreedomData,
           steps: updatedSteps,
           lastUpdated: new Date().toISOString()
-        };
-        
-        // Update state with all the data
-        setData(finalData);
+        });
         setLoading(false);
         
       } catch (error) {
@@ -192,7 +87,7 @@ export default function FinancialFreedomPage() {
     return () => {
       isMounted = false;
     };
-  }, [sessionStatus, session?.user?.id, settings?.emergency_fund_months, settings?.emergency_fund_target]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessionStatus, session?.user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdateStep = useCallback((stepId: number, updates: Partial<BabyStep>) => {
     if (!data) return;
@@ -292,6 +187,7 @@ export default function FinancialFreedomPage() {
                 onUpdate={(updates: Partial<BabyStep>) => handleUpdateStep(step.id, updates)}
                 formatCurrency={formatCurrency}
                 currency={settings?.currency || 'USD'}
+                monthlyExpenses={monthlyExpensesAmount}
               />
             ))}
           </div>

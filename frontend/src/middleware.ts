@@ -22,7 +22,7 @@ const securityHeaders = {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://accounts.google.com https://firedup.app https://api.stripe.com https://*.sentry.io https://eu.i.posthog.com https://eu-assets.i.posthog.com https://*.posthog.com",
+    "connect-src 'self' https://accounts.google.com https://firedup.app https://api.stripe.com https://*.sentry.io https://eu.i.posthog.com https://eu-assets.i.posthog.com https://*.posthog.com ws://localhost:8100 ws://kit.local:8100 ws://kit:8100 wss://firedup.app",
     "frame-src 'self' https://accounts.google.com https://js.stripe.com https://hooks.stripe.com",
     "worker-src 'self' blob:",
     "object-src 'none'",

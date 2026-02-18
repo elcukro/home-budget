@@ -141,40 +141,38 @@
       "010": "Paź",
       "011": "Lis",
       "012": "Gru"
-    }
+    },
+    "amount": "Kwota",
+    "date": "Data"
   },
   "validation": {
-    "required": "To pole jest wymagane.",
+    "required": "To pole jest wymagane",
+    "categoryRequired": "Wybierz kategorię",
     "amount": {
-      "nonPositive": "Wprowadź kwotę większą od 0.",
-      "tooLarge": "Kwota jest zbyt wysoka.",
-      "nonNegative": "Kwota nie może być ujemna."
-    },
-    "description": {
-      "required": "Opis jest wymagany.",
-      "tooLong": "Opis może mieć maksymalnie 100 znaków."
-    },
-    "date": {
-      "future": "Data nie może być w przyszłości.",
-      "tooEarly": "Data nie może być wcześniejsza niż 2000 rok.",
-      "tooFarFuture": "Data nie może być dalej niż 5 lat w przyszłości."
+      "nonPositive": "Kwota musi być większa od zera",
+      "tooLarge": "Kwota jest zbyt duża",
+      "nonNegative": "Kwota nie może być ujemna"
     },
     "interestRate": {
-      "negative": "Oprocentowanie nie może być ujemne.",
-      "max": "Oprocentowanie nie może przekraczać 100%."
-    },
-    "monthlyPayment": {
-      "negative": "Rata miesięczna nie może być ujemna.",
-      "exceedsAmount": "Rata miesięczna nie może przekraczać wartości pożyczki."
+      "negative": "Oprocentowanie nie może być ujemne",
+      "max": "Oprocentowanie nie może przekraczać 100%"
     },
     "remainingBalance": {
-      "negative": "Pozostałe saldo nie może być ujemne.",
-      "exceedsAmount": "Pozostałe saldo nie może przekraczać wartości pożyczki."
+      "negative": "Saldo nie może być ujemne",
+      "exceedsAmount": "Saldo nie może przekraczać kwoty głównej"
     },
-    "categoryRequired": "Wybierz kategorię.",
-    "termMonths": {
-      "min": "Okres musi wynosić co najmniej 1 miesiąc."
-    }
+    "monthlyPayment": {
+      "negative": "Rata nie może być ujemna",
+      "exceedsAmount": "Rata nie może przekraczać kwoty głównej"
+    },
+    "date": {
+      "future": "Data nie może być w przyszłości",
+      "tooEarly": "Data jest zbyt wczesna"
+    },
+    "description": {
+      "tooLong": "Opis jest zbyt długi (max 200 znaków)"
+    },
+    "endDateAfterStartDate": "Data końcowa musi być późniejsza niż data początkowa"
   },
   "navigation": {
     "onboarding": "Onboarding",
@@ -477,7 +475,7 @@
       }
     },
     "fireMetrics": {
-      "title": "Wskaźniki FIRE",
+      "title": "Wolność Finansowa",
       "fireGauge": "Liczba FIRE",
       "savingsRate": "Stopa oszczędności",
       "babySteps": "Baby Steps",
@@ -491,7 +489,25 @@
       "overpaymentSim": "Symulator Nadpłaty",
       "loanOverpayment": "Nadpłata kredytu",
       "savingsGoal": "Oszczędności",
-      "investmentGoal": "Inwestycje"
+      "investmentGoal": "Inwestycje",
+      "yearsToFire": "Lat do FIRE",
+      "yearsValue": "{years} lat",
+      "fireReached": "Osiągnięty! 🎉",
+      "increasesSavings": "Zwiększ oszczędności",
+      "atReturn": "przy {rate}% zwrocie rocznie",
+      "passiveIncome": "Pasywny dochód",
+      "passiveIncomeSub": "przy FIRE (zasada 4%)",
+      "coastReached": "Osiągnięty! ⚡",
+      "coastReachedSub": "Wzrost bez nowych wpłat wystarczy",
+      "coastNeeded": "Brakuje {missing}",
+      "stepsCompleted": "{count}/7 kroków",
+      "coastFireTooltip": {
+        "title": "Co to jest Coast FIRE?",
+        "what": "To punkt, w którym Twoje oszczędności – pozostawione samemu sobie przy stopie zwrotu 7% rocznie – urośną do Twojej liczby FIRE zanim przejdziesz na emeryturę. Nie musisz już dokładać nowych środków do inwestycji.",
+        "means": "Możesz \"dryfować do brzegu\" (coast) – zarabiać, wydawać swobodnie i nie martwić się o emeryturę.",
+        "formula": "Wzór: Coast FIRE = Liczba FIRE ÷ (1 + 7%)²⁰",
+        "horizon": "Przyjmujemy horyzont 20 lat do emerytury i średnioroczny zwrot 7%."
+      }
     },
     "sections": {
       "summary": {
@@ -524,7 +540,7 @@
       }
     },
     "savings": {
-      "totalBalance": "Łączne oszczędności",
+      "totalBalance": "Łączne oszczędności i majątek",
       "monthlySavings": "Ten miesiąc",
       "goalsTitle": "Twoje cele",
       "goalTarget": "Cel: {amount}",
@@ -621,7 +637,7 @@
           "can_be_improved": "Można poprawić",
           "bad": "Wymaga uwagi"
         },
-        "generatedAt": "Wygenerowano: {date}",
+        "generatedAt": "Wygenerowano {date}",
         "lastRefreshed": "Ostatnio odświeżono {date} ({days} dni temu)",
         "dataChanges": "Zmiany od ostatniego odświeżenia",
         "incomeChange": "Dochody: {change}",
@@ -630,7 +646,6 @@
         "refresh": "Odśwież analizę",
         "refreshNeeded": "Twoje dane finansowe uległy zmianie. Odśwież analizę, aby uzyskać aktualne wyniki.",
         "upToDate": "Analiza jest aktualna z Twoimi obecnymi danymi finansowymi.",
-        "generatedAt": "Wygenerowano {date}",
         "usingCached": "Używanie zapisanej analizy",
         "apiErrors": {
           "overloaded": "Serwis AI jest obecnie przeciążony. Spróbuj ponownie później.",
@@ -693,14 +708,16 @@
     "budgetVsActual": {
       "title": "Budżet vs Rzeczywistość",
       "description": "Porównaj wydatki tego miesiąca ze średnią z ostatnich 3 miesięcy.",
-      "budget": "Budżet (śr. 3 mies.)",
+      "descriptionMonths": "Porównaj wydatki tego miesiąca ze średnią z ostatnich {n} mies.",
+      "descriptionNoHistory": "Brak danych historycznych — dodaj więcej miesięcy, aby zobaczyć średnią.",
+      "budget": "Budżet (śr. {n} mies.)",
       "actual": "Rzeczywiste",
       "totalBudget": "Budżet",
       "totalActual": "Rzeczywiste",
       "variance": "Różnica",
       "status": "Status",
       "emptyState": "Brak danych o wydatkach. Dodaj wydatki, aby zobaczyć porównanie z budżetem.",
-      "legendNote": "Zielony = poniżej budżetu • Czerwony = powyżej budżetu • Budżet oparty na średniej z 3 miesięcy",
+      "legendNote": "Zielony = poniżej budżetu • Czerwony = powyżej budżetu • Budżet oparty na średniej z {n} mies.",
       "tooltip": {
         "overBudget": "Powyżej budżetu",
         "underBudget": "Poniżej budżetu"
@@ -709,6 +726,7 @@
     "savingsGoalProgress": {
       "title": "Postęp Celów Oszczędnościowych",
       "description": "Śledź postęp realizacji swoich celów finansowych.",
+      "categoryBreakdown": "Twoje oszczędności według kategorii.",
       "emptyState": "Brak celów oszczędnościowych. Utwórz pierwszy cel, aby rozpocząć śledzenie.",
       "addGoal": "Utwórz cel oszczędnościowy",
       "noActiveGoals": "Brak aktywnych celów do wyświetlenia. Wszystkie cele są ukończone lub wstrzymane.",
@@ -769,15 +787,15 @@
       "saving": "oszczędność",
       "settings": "ustawienia",
       "source": "źródło",
-      "description": "opis",
-      "amount": "kwota",
-      "category": "kategoria",
+      "description": "Opis",
+      "amount": "Kwota",
+      "category": "Kategoria",
       "id": "ID",
-      "principal_amount": "kwota główna",
-      "remaining_balance": "pozostałe saldo",
-      "interest_rate": "oprocentowanie",
-      "term_months": "okres w miesiącach",
-      "monthly_payment": "rata miesięczna",
+      "principal_amount": "Kwota kredytu",
+      "remaining_balance": "Pozostałe saldo",
+      "interest_rate": "Oprocentowanie",
+      "term_months": "Okres (miesiące)",
+      "monthly_payment": "Rata miesięczna",
       "end_date": "data końcowa",
       "is_gross": "kwota brutto",
       "bank_transaction_id": "ID transakcji bankowej",
@@ -804,17 +822,9 @@
       },
       "emptyState": "Brak ostatniej aktywności.",
       "emptyStateFiltered": "Brak aktywności dla wybranego filtra.",
-      "amount": "Kwota",
-      "description": "Opis",
-      "category": "Kategoria",
       "date": "Data",
-      "principal_amount": "Kwota kredytu",
-      "remaining_balance": "Pozostałe saldo",
-      "monthly_payment": "Rata miesięczna",
-      "interest_rate": "Oprocentowanie",
       "loan_type": "Typ kredytu",
       "start_date": "Data rozpoczęcia",
-      "term_months": "Okres (miesiące)",
       "due_day": "Dzień płatności",
       "overpayment_fee_percent": "Opłata za nadpłatę (%)",
       "overpayment_fee_waived_until": "Zwolnienie z opłaty do",
@@ -826,7 +836,6 @@
       "is_recurring": "Cykliczny",
       "recurring_day": "Dzień cyklu",
       "user_id": "Użytkownik",
-      "id": "ID",
       "employment_type": "Typ zatrudnienia",
       "kup_type": "Koszty uzyskania przychodu",
       "owner": "Właściciel",
@@ -1074,6 +1083,11 @@
       "changeNoData": "Brak wcześniejszego miesiąca do porównania.",
       "comparisonUnavailable": "Wybierz miesiąc, aby zobaczyć porównanie."
     },
+    "monthlyTotal": {
+      "label": "Suma wydatków",
+      "fromBank": "z banku",
+      "fromManual": "ręcznych"
+    },
     "filters": {
       "categorySortLabel": "Kategorie",
       "periodLabel": "Okres",
@@ -1183,7 +1197,7 @@
     "summaryPanel": {
       "totalMonthlyLabel": "Łączna rata miesięczna",
       "totalMonthlyDescription": "Suma rat wszystkich kredytów, niezależnie od filtra.",
-      "totalBalanceLabel": "Łączne saldo kredytów",
+      "totalBalanceLabel": "Łączne saldo zobowiązań",
       "totalBalanceDescription": "Pozostała kwota do spłaty we wszystkich kredytach.",
       "nextPaymentLabel": "Najbliższa rata",
       "nextPaymentDescription": "Monitoruj termin, aby nie przegapić kolejnej płatności.",
@@ -1813,7 +1827,8 @@
         "description": "Spłać wszystkie długi (oprócz kredytu hipotecznego) metodą kuli śnieżnej, płacąc od najmniejszego do największego.",
         "remainingDebt": "Pozostały Dług: {amount}",
         "debtFree": "Jesteś wolny od długów!",
-        "tip": "Uszereguj wszystkie swoje długi od najmniejszego do największego i skup się na spłacie najmniejszego najpierw."
+        "tip": "Uszereguj wszystkie swoje długi od najmniejszego do największego i skup się na spłacie najmniejszego najpierw.",
+        "noMortgageTip": "Postęp nie uwzględnia kredytu hipotecznego — ten dług spłacasz w kroku 6."
       },
       "step3": {
         "title": "Krok 3: {months} Miesięcy Wydatków",
@@ -2016,7 +2031,8 @@
     "overLimit": "Przekroczono limit",
     "limitUsed": "wykorzystane",
     "summary": {
-      "totalSavings": "Łączne oszczędności",
+      "totalSavings": "Łączne aktywa",
+      "liquidSavings": "w tym płynne",
       "monthlyContribution": "Wpłaty w tym miesiącu",
       "recentTransactions": "Ostatnie transakcje",
       "noRecent": "Brak ostatnich transakcji",
@@ -2141,7 +2157,50 @@
       "confirm": "Usuń"
     },
     "noEntries": "Brak zapisów oszczędności",
-    "loadError": "Nie udało się załadować oszczędności. Spróbuj ponownie później."
+    "loadError": "Nie udało się załadować oszczędności. Spróbuj ponownie później.",
+    "withdraw": {
+      "title": "Wypłać z: {name}",
+      "available": "Dostępne w tym celu:",
+      "destination": "Środki trafią do Wolnych Oszczędności.",
+      "exceedsBalance": "Kwota przekracza dostępne saldo ({max}).",
+      "confirm": "Wypłać",
+      "success": "Wypłacono {amount} do Wolnych Oszczędności."
+    },
+    "deposit": {
+      "title": "Wpłać do: {name}",
+      "availableFree": "Dostępne wolne oszczędności:",
+      "exceedsBalance": "Kwota przekracza dostępne wolne oszczędności ({max}).",
+      "confirm": "Wpłać",
+      "success": "Wpłacono {amount} do celu.",
+      "useSuggested": "Użyj sugerowanej kwoty: {amount}"
+    },
+    "freeSavings": {
+      "title": "Wolne Oszczędności",
+      "description": "Środki bez przypisanego celu.",
+      "withdrawToIncome": "Wypłać do Przychodu",
+      "goalAchieved": "Cel osiągnięty",
+      "withdrawModal": {
+        "title": "Wypłać do Przychodu",
+        "available": "Dostępne:",
+        "description": "Środki trafią jako wpis do sekcji Przychody.",
+        "descriptionLabel": "Opis",
+        "descriptionPlaceholder": "Wypłata oszczędności",
+        "confirm": "Wypłać do Przychodu",
+        "success": "Wypłacono {amount} do Przychodu."
+      },
+      "advice": {
+        "heading": "Co zrobić z wolnymi środkami?",
+        "ikeLabel": "IKE",
+        "ikeDesc": "zyski bez podatku Belki",
+        "ikzeLabel": "IKZE",
+        "ikzeDesc": "odliczysz od podatku dochodowego",
+        "oipeLabel": "OIPE",
+        "oipeDesc": "europejskie konto emerytalne",
+        "lokataLabel": "Lokata bankowa",
+        "lokataDesc": "Bezpieczny, gwarantowany zwrot",
+        "allLimitsReached": "Limity IKE, IKZE i OIPE wyczerpane na ten rok."
+      }
+    }
   },
   "goals": {
     "title": "Cele oszczędnościowe",
@@ -3230,50 +3289,21 @@
       "rights": "Wszelkie prawa zastrzeżone."
     }
   },
-  "validation": {
-    "required": "To pole jest wymagane",
-    "categoryRequired": "Wybierz kategorię",
-    "amount": {
-      "nonPositive": "Kwota musi być większa od zera",
-      "tooLarge": "Kwota jest zbyt duża",
-      "nonNegative": "Kwota nie może być ujemna"
-    },
-    "interestRate": {
-      "negative": "Oprocentowanie nie może być ujemne",
-      "max": "Oprocentowanie nie może przekraczać 100%"
-    },
-    "remainingBalance": {
-      "negative": "Saldo nie może być ujemne",
-      "exceedsAmount": "Saldo nie może przekraczać kwoty głównej"
-    },
-    "monthlyPayment": {
-      "negative": "Rata nie może być ujemna",
-      "exceedsAmount": "Rata nie może przekraczać kwoty głównej"
-    },
-    "date": {
-      "future": "Data nie może być w przyszłości",
-      "tooEarly": "Data jest zbyt wczesna"
-    },
-    "description": {
-      "tooLong": "Opis jest zbyt długi (max 200 znaków)"
-    },
-    "endDateAfterStartDate": "Data końcowa musi być późniejsza niż data początkowa"
-  },
   "welcome": {
-    "title": "Witaj w okresie pr\u00f3bnym!",
-    "subtitle": "Masz pe\u0142ny dost\u0119p do wszystkich funkcji Premium. \u017badnych zobowi\u0105za\u0144 \u2013 anuluj w dowolnym momencie.",
+    "title": "Witaj w okresie próbnym!",
+    "subtitle": "Masz pełny dostęp do wszystkich funkcji Premium. Żadnych zobowiązań – anuluj w dowolnym momencie.",
     "expired": {
-      "title": "Tw\u00f3j trial si\u0119 zako\u0144czy\u0142",
-      "subtitle": "Mo\u017cesz nadal korzysta\u0107 z podstawowych funkcji za darmo."
+      "title": "Twój trial się zakończył",
+      "subtitle": "Możesz nadal korzystać z podstawowych funkcji za darmo."
     },
     "lifetime": {
-      "title": "Masz dost\u0119p Premium!",
-      "subtitle": "Korzystasz z pe\u0142nego dost\u0119pu do wszystkich funkcji FiredUp."
+      "title": "Masz dostęp Premium!",
+      "subtitle": "Korzystasz z pełnego dostępu do wszystkich funkcji FiredUp."
     },
     "greeting": "Witaj, {name}!",
     "trial": {
-      "endsLabel": "Tw\u00f3j trial ko\u0144czy si\u0119:",
-      "reminder": "Przypomnimy Ci na 3 dni przed ko\u0144cem",
+      "endsLabel": "Twój trial kończy się:",
+      "reminder": "Przypomnimy Ci na 3 dni przed końcem",
       "active": "7 dni Premium gratis"
     },
     "pricing": {
@@ -3284,7 +3314,7 @@
       "heading": "Co zyskujesz z Premium?",
       "unlimited": {
         "title": "Nieograniczone transakcje",
-        "desc": "Brak limit\u00f3w na wydatki i przychody"
+        "desc": "Brak limitów na wydatki i przychody"
       },
       "bank": {
         "title": "Integracja z bankami",
@@ -3292,25 +3322,25 @@
       },
       "ai": {
         "title": "AI Insights",
-        "desc": "Inteligentne sugestie i analiza wydatk\u00f3w"
+        "desc": "Inteligentne sugestie i analiza wydatków"
       },
       "reports": {
         "title": "Zaawansowane raporty",
         "desc": "Eksport do Excel/CSV, raporty kwartalne/roczne"
       },
       "all": {
-        "title": "Wszystkie funkcje ju\u017c teraz!",
-        "desc": "Pe\u0142ny dost\u0119p przez ca\u0142y trial"
+        "title": "Wszystkie funkcje już teraz!",
+        "desc": "Pełny dostęp przez cały trial"
       }
     },
     "comparison": {
-      "heading": "Por\u00f3wnanie plan\u00f3w"
+      "heading": "Porównanie planów"
     },
-    "finePrint": "Po zako\u0144czeniu trialu dost\u0119p do podstawowych funkcji pozostanie darmowy.",
-    "continue": "\u015awietnie, kontynuuj!",
-    "skip": "Przypomnij mi p\u00f3\u017aniej",
+    "finePrint": "Po zakończeniu trialu dostęp do podstawowych funkcji pozostanie darmowy.",
+    "continue": "Świetnie, kontynuuj!",
+    "skip": "Przypomnij mi później",
     "start": "Zaczynajmy!",
-    "skip.error": "Nie uda\u0142o si\u0119 zako\u0144czy\u0107 aktywacji. Spr\u00f3buj ponownie."
+    "skip.error": "Nie udało się zakończyć aktywacji. Spróbuj ponownie."
   },
   "budget": {
     "title": "Budżet {year} — {month}",
@@ -3393,5 +3423,18 @@
       "asPartnerDescription": "Powiązane z {name}. Masz dostęp do wspólnych danych finansowych.",
       "noPartner": "Brak powiązanego partnera"
     }
+  },
+  "chat": {
+    "title": "Asystent Mieszko",
+    "placeholder": "Zapytaj o swoje finanse...",
+    "streaming": "Mieszko odpowiada...",
+    "upsell": "Asystent AI dostępny w planie Premium",
+    "errorRetry": "Spróbuj ponownie",
+    "quotaInfo": "zapytań w tym miesiącu",
+    "quotaExceeded": "Limit zapytań wyczerpany. Odnowi się 1. dnia następnego miesiąca.",
+    "suggestions": "Sugestie",
+    "newConversation": "Nowa rozmowa",
+    "greeting": "Cześć! Jestem Mieszko",
+    "greetingSubtitle": "Twój prywatny doradca finansowy AI. O co chcesz zapytać?"
   }
 }

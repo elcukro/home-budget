@@ -10,9 +10,6 @@ import HeroCards from '@/components/dashboard/HeroCards';
 import AIInsightsPanel from '@/components/dashboard/AIInsightsPanel';
 import FireMetricsPanel from '@/components/dashboard/FireMetricsPanel';
 import DistributionChart from '@/components/dashboard/DistributionChart';
-import CashFlowChart from '@/components/dashboard/CashFlowChart';
-import SpendingTrendChart from '@/components/dashboard/SpendingTrendChart';
-import CategoryBreakdownChart from '@/components/dashboard/CategoryBreakdownChart';
 import BudgetVsActualChart from '@/components/dashboard/BudgetVsActualChart';
 import SavingsGoalProgressChart from '@/components/dashboard/SavingsGoalProgressChart';
 import LoanOverview from '@/components/dashboard/LoanOverview';
@@ -34,7 +31,6 @@ import {
   Plus,
   Target,
   Landmark,
-  LineChart,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -286,6 +282,7 @@ export default function Home() {
     savingsRate?: number;
     currentBabyStep?: number;
   }>({});
+  const [babySteps, setBabySteps] = useState<Array<{ id: number; progress: number; isCompleted: boolean }>>([]);
   const { data: session } = useSession();
 
   const summaryComparisons = useMemo(() => {
@@ -386,10 +383,11 @@ export default function Home() {
 
       try {
         setErrorMessageId(null);
-        // Fetch dashboard summary and savings goals in parallel
-        const [summaryResponse, goalsData] = await Promise.all([
+        // Fetch dashboard summary, savings goals, and baby steps progress in parallel
+        const [summaryResponse, goalsData, ffResponse] = await Promise.all([
           fetch(`/api/backend/users/${encodeURIComponent(session.user.email)}/summary`),
           getSavingsGoals(),
+          fetch('/api/backend/financial-freedom/calculated'),
         ]);
 
         if (!summaryResponse.ok) {
@@ -449,6 +447,16 @@ export default function Home() {
 
         setDashboardData(mappedData);
         setSavingsGoals(goalsData);
+        if (ffResponse.ok) {
+          const ffData = await ffResponse.json();
+          setBabySteps(
+            (ffData.steps || []).map((s: any) => ({
+              id: s.id,
+              progress: s.progress ?? 0,
+              isCompleted: s.isCompleted ?? false,
+            }))
+          );
+        }
       } catch (error) {
         if (process.env.NODE_ENV === 'development') {
           logger.error('[Dashboard] Error:', error instanceof Error ? error.message : 'Failed to load dashboard data');
@@ -498,6 +506,15 @@ export default function Home() {
     ? filteredActivities
     : filteredActivities.slice(0, previewCount);
   const canToggleActivities = filteredActivities.length > previewCount;
+
+  // Estimate FIRE number from actual expenses when AI insights don't provide one
+  // Rule of 25: (monthly expenses + loan payments) × 12 × 25
+  // Must be before early returns to satisfy Rules of Hooks
+  const fireNumberEstimate = useMemo(() => {
+    if (!dashboardData) return undefined;
+    const monthlyBurn = dashboardData.summary.totalExpenses + dashboardData.summary.totalLoanPayments;
+    return monthlyBurn > 0 ? monthlyBurn * 12 * 25 : undefined;
+  }, [dashboardData]);
 
   if (loading) {
     return <DashboardSkeleton />;
@@ -554,27 +571,7 @@ export default function Home() {
           />
         </section>
 
-        {/* AI Insights Panel */}
-        <AIInsightsPanel
-          onInsightsLoaded={(data) => {
-            setInsightsMetrics({
-              fireNumber: data.fireNumber,
-              savingsRate: data.savingsRate,
-              currentBabyStep: data.currentBabyStep,
-            });
-          }}
-        />
-
-        {/* FIRE Metrics Widgets */}
-        <FireMetricsPanel
-          fireNumber={insightsMetrics.fireNumber}
-          currentSavings={dashboardData.savings.totalBalance}
-          savingsRate={insightsMetrics.savingsRate ?? (dashboardData.summary.savingsRate * 100)}
-          currentBabyStep={insightsMetrics.currentBabyStep}
-          formatCurrency={formatCurrency}
-        />
-
-        {/* Full Monthly Summary (detailed metrics) */}
+        {/* Full Monthly Summary + AI Insights Panel */}
         <section className="space-y-4">
           <SectionHeader
             icon={<TrendingUp className="h-5 w-5" />}
@@ -588,6 +585,27 @@ export default function Home() {
             formatCurrency={formatCurrency}
           />
         </section>
+
+        <AIInsightsPanel
+          onInsightsLoaded={(data) => {
+            setInsightsMetrics({
+              fireNumber: data.fireNumber,
+              savingsRate: data.savingsRate,
+              currentBabyStep: data.currentBabyStep,
+            });
+          }}
+        />
+
+        {/* FIRE Metrics Widgets */}
+        <FireMetricsPanel
+          fireNumber={insightsMetrics.fireNumber ?? fireNumberEstimate}
+          currentSavings={dashboardData.savings.totalBalance}
+          savingsRate={insightsMetrics.savingsRate ?? (dashboardData.summary.savingsRate * 100)}
+          currentBabyStep={insightsMetrics.currentBabyStep}
+          babySteps={babySteps.length > 0 ? babySteps : undefined}
+          monthlyNetSavings={dashboardData.summary.netCashflow}
+          formatCurrency={formatCurrency}
+        />
 
         {/* Distribution Charts */}
         <section className="space-y-4">
@@ -612,25 +630,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Spending Trend */}
-        <section className="space-y-4">
-          <SectionHeader
-            icon={<LineChart className="h-5 w-5" />}
-            title={intl.formatMessage({ id: 'dashboard.sections.spendingTrend.title' })}
-            description={intl.formatMessage({ id: 'dashboard.sections.spendingTrend.description' })}
-          />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <SpendingTrendChart
-              data={dashboardData.cashFlow}
-              formatCurrency={formatCurrency}
-            />
-            <CategoryBreakdownChart
-              data={dashboardData.expenseDistribution}
-              formatCurrency={formatCurrency}
-            />
-          </div>
-        </section>
-
         {/* Budget vs Actual */}
         <section className="space-y-4">
           <SectionHeader
@@ -641,20 +640,6 @@ export default function Home() {
           <BudgetVsActualChart
             cashFlowData={dashboardData.cashFlow}
             expenseDistribution={dashboardData.expenseDistribution}
-            formatCurrency={formatCurrency}
-          />
-        </section>
-
-        {/* Cash Flow */}
-        <section className="space-y-4">
-          <SectionHeader
-            icon={<BarChart2 className="h-5 w-5" />}
-            title={intl.formatMessage({ id: 'dashboard.sections.cashFlow.title' })}
-            description={intl.formatMessage({ id: 'dashboard.sections.cashFlow.description' })}
-          />
-          <CashFlowChart
-            title={intl.formatMessage({ id: 'dashboard.cashFlow.title' })}
-            data={dashboardData.cashFlow}
             formatCurrency={formatCurrency}
           />
         </section>
@@ -703,6 +688,7 @@ export default function Home() {
           <SavingsGoalProgressChart
             goals={savingsGoals}
             formatCurrency={formatCurrency}
+            categorySavings={dashboardData.savings.goals}
           />
         </section>
 

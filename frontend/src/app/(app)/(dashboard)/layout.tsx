@@ -6,6 +6,7 @@ import Sidebar from "@/components/Sidebar";
 import Footer from "@/components/Footer";
 import { Toaster as SonnerToaster } from "@/components/ui/toaster";
 import { useUser } from "@/contexts/UserContext";
+import { FloatingChat } from "@/components/ai/chat/FloatingChat";
 
 export default function DashboardLayout({
   children,
@@ -57,6 +58,7 @@ export default function DashboardLayout({
       </div>
       <Footer />
       <SonnerToaster />
+      <FloatingChat />
     </div>
   );
 }

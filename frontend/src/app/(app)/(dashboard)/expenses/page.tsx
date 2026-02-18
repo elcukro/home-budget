@@ -725,17 +725,36 @@ export default function ExpensesPage() {
         }
         acc[expense.category].items.push(expense);
         acc[expense.category].total += expense.amount;
-        // Only add to activeTotal if expense is active in selected month
-        if (isExpenseActiveInMonth(expense, selectedMonth)) {
-          acc[expense.category].activeTotal += expense.amount;
-        }
         return acc;
       },
       {},
     );
 
+    // Compute activeTotal with deduplication for recurring expenses:
+    // When multiple recurring rows share the same description and all have end_date=null,
+    // only the newest one is counted (prevents double-counting after an edit that creates a new row).
     Object.values(grouped).forEach((group) => {
       group.items.sort((a, b) => b.amount - a.amount);
+
+      const countedRecurring = new Set<string>();
+      // Sort by date desc so newest is processed first
+      const byDate = [...group.items].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      for (const expense of byDate) {
+        if (!isExpenseActiveInMonth(expense, selectedMonth)) continue;
+        if (expense.is_recurring && !expense.end_date) {
+          // Recurring without end_date: only count once per description (newest wins)
+          if (!countedRecurring.has(expense.description)) {
+            group.activeTotal += expense.amount;
+            countedRecurring.add(expense.description);
+          }
+          // Older duplicates are skipped — they still appear in the list for deletion
+        } else {
+          // Non-recurring or has explicit end_date: always count
+          group.activeTotal += expense.amount;
+        }
+      }
     });
 
     return grouped;
@@ -759,7 +778,9 @@ export default function ExpensesPage() {
     const groups = new Map<string, ExpenseDescriptionGroup>();
 
     items.forEach((expense) => {
-      const key = expense.description;
+      // Non-recurring expenses are each unique transactions — never group them as "historical"
+      // Only recurring expenses with the same description can have current/historical versions
+      const key = expense.is_recurring ? expense.description : `${expense.description}__${expense.id}`;
 
       if (!groups.has(key)) {
         groups.set(key, {
@@ -1359,6 +1380,36 @@ export default function ExpensesPage() {
 
       {/* Budget vs Actual chart */}
       <BudgetChart expenses={expenses} selectedMonth={selectedMonth} />
+
+      {/* Monthly total summary */}
+      {selectedMonth !== "all" && _totalSpend > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-muted/60 bg-card px-5 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              <FormattedMessage id="expenses.monthlyTotal.label" defaultMessage="Suma wydatków" />
+            </span>
+            <span className="text-lg font-semibold text-foreground">
+              {formatCurrency(_totalSpend)}
+            </span>
+          </div>
+          {monthlyTotalsBreakdown && monthlyTotalsBreakdown.from_bank > 0 && (
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <span>
+                <span className="font-medium text-foreground">{formatCurrency(monthlyTotalsBreakdown.from_bank)}</span>
+                {" "}
+                <FormattedMessage id="expenses.monthlyTotal.fromBank" defaultMessage="z banku" />
+              </span>
+              {(_totalSpend - monthlyTotalsBreakdown.from_bank) > 0 && (
+                <span>
+                  <span className="font-medium text-foreground">{formatCurrency(_totalSpend - monthlyTotalsBreakdown.from_bank)}</span>
+                  {" "}
+                  <FormattedMessage id="expenses.monthlyTotal.fromManual" defaultMessage="ręcznych" />
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-muted/60 bg-muted/20 px-5 py-4">

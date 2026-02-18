@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, or_, and_
 from typing import List, Optional
@@ -263,10 +264,12 @@ async def get_savings_summary(
         ppk_balance = ppk_deposits - ppk_withdrawals
 
         # Calculate monthly contribution (net: deposits - withdrawals for current month)
+        # Excludes real_estate — entering property values is a balance snapshot, not a cash contribution.
         month_start = today.replace(day=1)
         month_end = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        _ILLIQUID_CATS = (SavingCategory.REAL_ESTATE,)
 
-        # Non-recurring deposits in current month
+        # Non-recurring deposits in current month (excluding real estate balance entries)
         monthly_non_recurring_deposits = db.query(
             func.sum(Saving.amount)
         ).filter(
@@ -274,10 +277,11 @@ async def get_savings_summary(
             Saving.saving_type == 'deposit',
             Saving.is_recurring == False,
             Saving.date >= month_start,
-            Saving.date <= month_end
+            Saving.date <= month_end,
+            ~Saving.category.in_(_ILLIQUID_CATS),
         ).scalar() or 0.0
 
-        # Non-recurring withdrawals in current month
+        # Non-recurring withdrawals in current month (excluding real estate)
         monthly_non_recurring_withdrawals = db.query(
             func.sum(Saving.amount)
         ).filter(
@@ -285,7 +289,8 @@ async def get_savings_summary(
             Saving.saving_type == 'withdrawal',
             Saving.is_recurring == False,
             Saving.date >= month_start,
-            Saving.date <= month_end
+            Saving.date <= month_end,
+            ~Saving.category.in_(_ILLIQUID_CATS),
         ).scalar() or 0.0
 
         # Recurring deposits active in current month
@@ -334,9 +339,15 @@ async def get_savings_summary(
 
         # Calculate emergency fund progress
         emergency_fund_progress = min((emergency_fund / emergency_fund_target) * 100, 100) if emergency_fund_target > 0 else 0
-        
+
+        # Split total into liquid vs real estate (real estate is an asset, not liquid cash)
+        real_estate_value = category_totals.get(SavingCategory.REAL_ESTATE, 0.0)
+        liquid_savings = max(0.0, total_savings - real_estate_value)
+
         summary = SavingsSummary(
             total_savings=total_savings,
+            liquid_savings=liquid_savings,
+            real_estate_value=real_estate_value,
             emergency_fund=emergency_fund,
             emergency_fund_target=emergency_fund_target,
             emergency_fund_progress=emergency_fund_progress,
@@ -819,6 +830,105 @@ async def delete_savings_goal(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting savings goal: {str(e)}"
+        )
+
+
+class WithdrawToIncomeRequest(BaseModel):
+    amount: float
+    description: str = "Wypłata oszczędności"
+    date: str  # ISO date string "YYYY-MM-DD"
+
+
+class WithdrawToIncomeResponse(BaseModel):
+    saving_id: int
+    income_id: int
+    amount: float
+
+
+@router.post("/withdraw-to-income", response_model=WithdrawToIncomeResponse)
+async def withdraw_savings_to_income(
+    body: WithdrawToIncomeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Atomically withdraw from general savings and create an income entry.
+    Both records are created in a single transaction — either both succeed or neither.
+    """
+    try:
+        user_id = current_user.household_id
+
+        # Calculate current general savings balance
+        general_deposits = db.query(func.sum(Saving.amount)).filter(
+            Saving.user_id == user_id,
+            Saving.category == SavingCategory.GENERAL,
+            Saving.saving_type == 'deposit',
+            Saving.is_recurring == False
+        ).scalar() or 0.0
+        general_withdrawals = db.query(func.sum(Saving.amount)).filter(
+            Saving.user_id == user_id,
+            Saving.category == SavingCategory.GENERAL,
+            Saving.saving_type == 'withdrawal',
+            Saving.is_recurring == False
+        ).scalar() or 0.0
+        general_balance = general_deposits - general_withdrawals
+
+        if body.amount <= 0:
+            raise HTTPException(status_code=400, detail="Amount must be positive")
+        if body.amount > general_balance:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient general savings balance ({general_balance:.2f})"
+            )
+
+        try:
+            withdrawal_date = date.fromisoformat(body.date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+
+        # Create withdrawal from general savings
+        saving_entry = Saving(
+            user_id=user_id,
+            category=SavingCategory.GENERAL,
+            saving_type='withdrawal',
+            amount=body.amount,
+            date=withdrawal_date,
+            description=body.description,
+            is_recurring=False,
+        )
+        db.add(saving_entry)
+        db.flush()  # get saving_entry.id without committing
+
+        # Create income entry
+        income_entry = Income(
+            user_id=user_id,
+            category='other',
+            source='savings_withdrawal',
+            amount=body.amount,
+            date=withdrawal_date,
+            description=body.description,
+            is_recurring=False,
+        )
+        db.add(income_entry)
+        db.commit()
+        db.refresh(saving_entry)
+        db.refresh(income_entry)
+
+        logger.info(f"withdraw-to-income: user={user_id} amount={body.amount} saving_id={saving_entry.id} income_id={income_entry.id}")
+        return WithdrawToIncomeResponse(
+            saving_id=saving_entry.id,
+            income_id=income_entry.id,
+            amount=body.amount,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in withdraw_savings_to_income: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error withdrawing savings to income: {str(e)}"
         )
 
 

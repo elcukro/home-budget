@@ -1,5 +1,6 @@
 import React from 'react'
 import Markdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface RichTextProps {
   content: string // Markdown string from Strapi
@@ -24,6 +25,7 @@ export function RichText({ content, className = '' }: RichTextProps) {
   return (
     <div className={`prose prose-emerald prose-lg max-w-none ${className}`}>
       <Markdown
+        remarkPlugins={[remarkGfm]}
         components={{
           h2: ({ children }) => (
             <h2 className="text-2xl font-bold text-emerald-900 mb-4 mt-10 pb-2 border-b border-emerald-100">{children}</h2>
@@ -108,6 +110,38 @@ export function RichText({ content, className = '' }: RichTextProps) {
           },
           strong: ({ children }) => (
             <strong className="font-semibold text-emerald-900">{children}</strong>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto my-8">
+              <table className="min-w-full divide-y divide-emerald-200 border border-emerald-200 rounded-lg">
+                {children}
+              </table>
+            </div>
+          ),
+          thead: ({ children }) => (
+            <thead className="bg-emerald-50">
+              {children}
+            </thead>
+          ),
+          tbody: ({ children }) => (
+            <tbody className="bg-white divide-y divide-emerald-100">
+              {children}
+            </tbody>
+          ),
+          tr: ({ children }) => (
+            <tr className="hover:bg-emerald-50/50 transition-colors">
+              {children}
+            </tr>
+          ),
+          th: ({ children }) => (
+            <th className="px-6 py-3 text-left text-xs font-semibold text-emerald-900 uppercase tracking-wider">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="px-6 py-4 text-sm text-emerald-800">
+              {children}
+            </td>
           ),
         }}
       >

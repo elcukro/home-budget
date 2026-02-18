@@ -68,7 +68,20 @@ export default function BudgetVsActualChart({
     setChartKey(Date.now());
   }, [intl]);
 
-  // Calculate budget based on historical average (last 3 months)
+  // Count how many past months with data were used for the budget average
+  const historyMonthsCount = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const pastWithData = cashFlowData.filter(item => {
+      const [year, month] = item.month.split('-').map(Number);
+      const isPast = year < currentYear || (year === currentYear && month < currentMonth);
+      return isPast && item.expenses > 0;
+    });
+    return Math.min(pastWithData.length, 3);
+  }, [cashFlowData]);
+
+  // Calculate budget based on historical average (last 3 months with data)
   const categoryComparisons: CategoryBudgetComparison[] = useMemo(() => {
     if (!expenseDistribution || expenseDistribution.length === 0) {
       return [];
@@ -80,21 +93,23 @@ export default function BudgetVsActualChart({
     const currentMonth = now.getMonth() + 1;
 
     // Filter to past months only (exclude current month from average)
+    // Also exclude months with zero expenses to avoid diluting the average
+    // with months where the user had no data yet.
     const pastMonths = cashFlowData.filter(item => {
       const [year, month] = item.month.split('-').map(Number);
-      if (year < currentYear) return true;
-      if (year === currentYear && month < currentMonth) return true;
-      return false;
+      const isPast = year < currentYear || (year === currentYear && month < currentMonth);
+      return isPast && item.expenses > 0;
     });
 
-    // Take last 3 months
+    // Take last 3 months with actual data
     const last3Months = pastMonths.slice(-3);
 
     // Calculate average total spending from historical data
     let avgMonthlySpending = 0;
-    if (last3Months.length > 0) {
+    const monthsUsed = last3Months.length;
+    if (monthsUsed > 0) {
       const totalHistorical = last3Months.reduce((sum, m) => sum + m.expenses, 0);
-      avgMonthlySpending = totalHistorical / last3Months.length;
+      avgMonthlySpending = totalHistorical / monthsUsed;
     }
 
     // Current month total actual spending
@@ -161,7 +176,7 @@ export default function BudgetVsActualChart({
     labels: categoryLabels,
     datasets: [
       {
-        label: intl.formatMessage({ id: 'dashboard.budgetVsActual.budget', defaultMessage: 'Budget (3-mo avg)' }),
+        label: intl.formatMessage({ id: 'dashboard.budgetVsActual.budget', defaultMessage: 'Budget ({n}-mo avg)' }, { n: historyMonthsCount || 1 }),
         data: categoryComparisons.map(cat => cat.budget),
         backgroundColor: '#6366F1AA',
         borderColor: '#6366F1',
@@ -277,7 +292,13 @@ export default function BudgetVsActualChart({
           {intl.formatMessage({ id: 'dashboard.budgetVsActual.title', defaultMessage: 'Budget vs Actual' })}
         </h2>
         <p className="text-sm text-secondary">
-          {intl.formatMessage({ id: 'dashboard.budgetVsActual.description', defaultMessage: 'Compare this month\'s spending against your 3-month average.' })}
+          {historyMonthsCount > 0
+            ? intl.formatMessage(
+                { id: 'dashboard.budgetVsActual.descriptionMonths', defaultMessage: 'Compare this month\'s spending against your {n}-month average.' },
+                { n: historyMonthsCount }
+              )
+            : intl.formatMessage({ id: 'dashboard.budgetVsActual.descriptionNoHistory', defaultMessage: 'No historical data yet — add more months to see your average.' })
+          }
         </p>
       </div>
 
@@ -345,10 +366,10 @@ export default function BudgetVsActualChart({
 
       {/* Legend Note */}
       <p className="text-xs text-secondary mt-4 text-center">
-        {intl.formatMessage({
-          id: 'dashboard.budgetVsActual.legendNote',
-          defaultMessage: 'Green = under budget • Red = over budget • Budget based on 3-month average'
-        })}
+        {intl.formatMessage(
+          { id: 'dashboard.budgetVsActual.legendNote', defaultMessage: 'Green = under budget • Red = over budget • Budget based on {n}-month average' },
+          { n: historyMonthsCount || 1 }
+        )}
       </p>
     </div>
   );

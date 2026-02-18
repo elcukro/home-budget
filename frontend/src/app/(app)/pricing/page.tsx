@@ -29,7 +29,7 @@ const plans = [
   {
     id: 'annual',
     nameKey: 'pricing.plans.annual.name',
-    price: 149,
+    price: 199,
     periodKey: 'pricing.plans.annual.period',
     descriptionKey: 'pricing.plans.annual.description',
     savingsKey: 'pricing.plans.annual.savings',
@@ -46,9 +46,9 @@ const plans = [
 
 const comparisonRows = [
   { key: 'expenses', freeValue: '50/mies', premiumValue: 'unlimited' },
-  { key: 'incomes', freeValue: '20/mies', premiumValue: 'unlimited' },
-  { key: 'loans', freeValue: '3', premiumValue: 'unlimited' },
-  { key: 'savings', freeValue: '3', premiumValue: 'unlimited' },
+  { key: 'incomes', freeValue: '3/mies', premiumValue: 'unlimited' },
+  { key: 'loans', freeValue: '5', premiumValue: 'unlimited' },
+  { key: 'savings', freeValue: '5', premiumValue: 'unlimited' },
   { key: 'bank', freeValue: false, premiumValue: true },
   { key: 'ai', freeValue: false, premiumValue: true },
   { key: 'export', freeValue: 'JSON', premiumValue: 'JSON, CSV, XLSX' },
@@ -125,7 +125,7 @@ function PricingContent() {
   };
 
   return (
-    <div className="container max-w-6xl py-8">
+    <div className="container max-w-6xl py-8 mx-auto">
       {/* Header */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4 text-foreground">
@@ -163,7 +163,7 @@ function PricingContent() {
       )}
 
       {/* Pricing Cards */}
-      <div className="grid md:grid-cols-3 gap-8 mb-16">
+      <div className="grid md:grid-cols-2 gap-8 mb-16 max-w-2xl mx-auto">
         {plans.map((plan) => (
           <Card
             key={plan.id}

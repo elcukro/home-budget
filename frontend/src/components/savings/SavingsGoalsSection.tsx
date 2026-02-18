@@ -4,7 +4,9 @@ import React, { useCallback, useEffect, useState, useMemo } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { z } from "zod";
 import {
+  ArrowDownLeft,
   ArrowRight,
+  ArrowUpRight,
   Baby,
   Calendar,
   CheckCircle2,
@@ -20,6 +22,7 @@ import {
   Trash2,
   TrendingUp,
   Wallet,
+  WalletCards,
   X,
 } from "lucide-react";
 
@@ -43,7 +46,22 @@ import {
   getMonthlyRecurringExpenses,
   createSaving,
   invalidateSavingsCache,
+  getRetirementLimits,
+  RetirementLimitsResponse,
 } from "@/api/savings";
+import { AccountType } from "@/types/financial-freedom";
+import { GoalWithdrawModal } from "@/components/savings/GoalWithdrawModal";
+import { GoalDepositModal } from "@/components/savings/GoalDepositModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { CrudDialog, type FormFieldConfig } from "@/components/crud/CrudDialog";
 import { ConfirmDialog } from "@/components/crud/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -178,7 +196,7 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
   onTransferComplete,
 }) => {
   const intl = useIntl();
-  const { formatCurrency } = useSettings();
+  const { formatCurrency, settings } = useSettings();
   const { toast } = useToast();
 
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
@@ -197,6 +215,18 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
   const [sixMonthFundSavings, setSixMonthFundSavings] = useState<number>(0);
   const [categoryTotals, setCategoryTotals] = useState<Record<SavingCategory, number>>({} as Record<SavingCategory, number>);
   const [isAllocating, setIsAllocating] = useState(false);
+  const [retirementLimits, setRetirementLimits] = useState<RetirementLimitsResponse | null>(null);
+
+  // Transfer modal state
+  const [withdrawModalGoal, setWithdrawModalGoal] = useState<BabyStepGoal | null>(null);
+  const [depositModalGoal, setDepositModalGoal] = useState<BabyStepGoal | null>(null);
+  const [withdrawToIncomeOpen, setWithdrawToIncomeOpen] = useState(false);
+  const [withdrawToIncomeAmount, setWithdrawToIncomeAmount] = useState<number>(0);
+  const [withdrawToIncomeDesc, setWithdrawToIncomeDesc] = useState<string>("");
+  const [withdrawToIncomeDate, setWithdrawToIncomeDate] = useState<string>(
+    new Date().toISOString().slice(0, 10)
+  );
+  const [isWithdrawingToIncome, setIsWithdrawingToIncome] = useState(false);
 
   const fetchGoals = useCallback(async () => {
     try {
@@ -228,6 +258,14 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
     void fetchGoals();
   }, [fetchGoals, refreshTrigger]);
 
+  // Fetch retirement limits to show advice in free savings section
+  useEffect(() => {
+    const isSelfEmployed = settings?.employment_type === 'b2b' || settings?.employment_type === 'jdg';
+    getRetirementLimits(undefined, isSelfEmployed)
+      .then(data => setRetirementLimits(data))
+      .catch(() => { /* non-critical, silently ignore */ });
+  }, [settings?.employment_type]);
+
   // Generate Baby Steps goals based on monthly expenses
   const babyStepGoals = useMemo<BabyStepGoal[]>(() => {
     if (monthlyExpenses <= 0) return [];
@@ -235,16 +273,21 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
     const emergencyTarget = monthlyExpenses; // 1 month of expenses
     const sixMonthTarget = monthlyExpenses * 6; // 6 months of expenses
 
-    // Overflow: excess from emergency fund flows to 6-month fund
-    const emergencyOverflow = Math.max(emergencyFundSavings - emergencyTarget, 0);
-    const effectiveEmergency = Math.min(emergencyFundSavings, emergencyTarget);
-    const effectiveSixMonth = sixMonthFundSavings + emergencyOverflow;
+    // Round to cents to avoid floating-point artifacts (e.g. 14599.179999... vs 14599.18)
+    const roundCents = (v: number) => Math.round(v * 100) / 100;
+    const emergencySavingsR = roundCents(emergencyFundSavings);
+    const emergencyTargetR  = roundCents(emergencyTarget);
+    const sixMonthSavingsR  = roundCents(sixMonthFundSavings);
+    const sixMonthTargetR   = roundCents(sixMonthTarget);
 
-    const emergencyProgress = emergencyTarget > 0
-      ? Math.min((effectiveEmergency / emergencyTarget) * 100, 100)
+    const emergencyComplete = emergencyTargetR > 0 && emergencySavingsR >= emergencyTargetR;
+    const sixMonthComplete  = sixMonthTargetR  > 0 && sixMonthSavingsR  >= sixMonthTargetR;
+
+    const emergencyProgress = emergencyTargetR > 0
+      ? Math.min((emergencySavingsR / emergencyTargetR) * 100, 100)
       : 0;
-    const sixMonthProgress = sixMonthTarget > 0
-      ? Math.min((effectiveSixMonth / sixMonthTarget) * 100, 100)
+    const sixMonthProgress = sixMonthTargetR > 0
+      ? Math.min((sixMonthSavingsR / sixMonthTargetR) * 100, 100)
       : 0;
 
     return [
@@ -254,12 +297,12 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
         babyStepNumber: 1,
         name: intl.formatMessage({ id: "goals.babySteps.emergencyFund" }),
         category: SavingCategory.EMERGENCY_FUND,
-        target_amount: emergencyTarget,
-        current_amount: effectiveEmergency,
-        status: emergencyProgress >= 100 ? GoalStatus.COMPLETED : GoalStatus.ACTIVE,
-        priority: 100, // Highest priority
+        target_amount: emergencyTargetR,
+        current_amount: emergencySavingsR,
+        status: emergencyComplete ? GoalStatus.COMPLETED : GoalStatus.ACTIVE,
+        priority: 100,
         progress_percent: emergencyProgress,
-        remaining_amount: Math.max(emergencyTarget - effectiveEmergency, 0),
+        remaining_amount: emergencyComplete ? 0 : Math.max(emergencyTargetR - emergencySavingsR, 0),
         is_on_track: null,
         monthly_needed: null,
         deadline: null,
@@ -275,12 +318,12 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
         babyStepNumber: 3,
         name: intl.formatMessage({ id: "goals.babySteps.sixMonthFund" }),
         category: SavingCategory.SIX_MONTH_FUND,
-        target_amount: sixMonthTarget,
-        current_amount: effectiveSixMonth,
-        status: sixMonthProgress >= 100 ? GoalStatus.COMPLETED : GoalStatus.ACTIVE,
+        target_amount: sixMonthTargetR,
+        current_amount: sixMonthSavingsR,
+        status: sixMonthComplete ? GoalStatus.COMPLETED : GoalStatus.ACTIVE,
         priority: 90,
         progress_percent: sixMonthProgress,
-        remaining_amount: Math.max(sixMonthTarget - effectiveSixMonth, 0),
+        remaining_amount: sixMonthComplete ? 0 : Math.max(sixMonthTargetR - sixMonthSavingsR, 0),
         is_on_track: null,
         monthly_needed: null,
         deadline: null,
@@ -294,10 +337,16 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
   }, [monthlyExpenses, emergencyFundSavings, sixMonthFundSavings, intl]);
 
   // Categories that are never touched by Baby Steps allocations
+  // Non-liquid assets (real estate, investments, college, other) must also be excluded —
+  // they cannot be transferred to emergency fund or other liquid goals.
   const PROTECTED_CATEGORIES = useMemo(() => new Set([
     SavingCategory.RETIREMENT,
     SavingCategory.EMERGENCY_FUND,
     SavingCategory.SIX_MONTH_FUND,
+    SavingCategory.REAL_ESTATE,
+    SavingCategory.INVESTMENT,
+    SavingCategory.COLLEGE,
+    SavingCategory.OTHER,
   ]), []);
 
   // Available savings = non-retirement, non-target categories with positive balance
@@ -474,6 +523,46 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
     ],
     []
   );
+
+  const handleWithdrawToIncome = async () => {
+    const generalBalance = Math.round((categoryTotals[SavingCategory.GENERAL] ?? 0) * 100) / 100;
+    if (withdrawToIncomeAmount <= 0 || withdrawToIncomeAmount > generalBalance) return;
+    setIsWithdrawingToIncome(true);
+    try {
+      const res = await fetch("/api/backend/savings/withdraw-to-income", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: withdrawToIncomeAmount,
+          description: withdrawToIncomeDesc || "Wypłata oszczędności",
+          date: withdrawToIncomeDate,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail ?? "Unknown error");
+      }
+      toast({
+        title: intl.formatMessage(
+          { id: "savings.freeSavings.withdrawModal.success" },
+          { amount: formatCurrency(withdrawToIncomeAmount) }
+        ),
+      });
+      setWithdrawToIncomeOpen(false);
+      setWithdrawToIncomeAmount(0);
+      setWithdrawToIncomeDesc("");
+      invalidateSavingsCache();
+      await fetchGoals();
+      onTransferComplete?.();
+    } catch (err) {
+      toast({
+        title: String(err),
+        variant: "destructive",
+      });
+    } finally {
+      setIsWithdrawingToIncome(false);
+    }
+  };
 
   const handleOpenCreate = () => {
     setActiveGoal(null);
@@ -753,6 +842,34 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
                 );
               })()}
 
+              {/* Wpłać / Wypłać buttons — only on baby step goals */}
+              {isBabyStep && (
+                <div className="mt-3 flex gap-2">
+                  {/* Wypłać — pull funds back to general */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-amber-700 border-amber-300 hover:bg-amber-50"
+                    disabled={goal.current_amount <= 0}
+                    onClick={() => setWithdrawModalGoal(goal as BabyStepGoal)}
+                  >
+                    <ArrowDownLeft className="mr-1.5 h-3.5 w-3.5" />
+                    <FormattedMessage id="savings.types.withdrawal" />
+                  </Button>
+                  {/* Wpłać — move funds from general to goal */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                    disabled={goal.progress_percent >= 100 || (categoryTotals[SavingCategory.GENERAL] ?? 0) <= 0}
+                    onClick={() => setDepositModalGoal(goal as BabyStepGoal)}
+                  >
+                    <ArrowUpRight className="mr-1.5 h-3.5 w-3.5" />
+                    <FormattedMessage id="savings.types.deposit" />
+                  </Button>
+                </div>
+              )}
+
               {goal.deadline && (
                 <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
@@ -901,6 +1018,248 @@ export const SavingsGoalsSection: React.FC<SavingsGoalsSectionProps> = ({
           )}
         </CardContent>
       </Card>
+
+      {/* Free Savings Card */}
+      {(categoryTotals[SavingCategory.GENERAL] ?? 0) >= 0 && monthlyExpenses > 0 && (
+        <Card className="rounded-3xl border-slate-200">
+          <CardContent className="flex flex-col gap-4 p-6">
+            {/* Header row: icon+title | balance+button */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
+                  <WalletCards className="h-5 w-5 text-slate-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-800">
+                    <FormattedMessage id="savings.freeSavings.title" />
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    <FormattedMessage id="savings.freeSavings.description" />
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-slate-800">
+                  {formatCurrency(categoryTotals[SavingCategory.GENERAL] ?? 0)}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  disabled={(categoryTotals[SavingCategory.GENERAL] ?? 0) <= 0}
+                  onClick={() => {
+                    setWithdrawToIncomeAmount(0);
+                    setWithdrawToIncomeDesc("");
+                    setWithdrawToIncomeDate(new Date().toISOString().slice(0, 10));
+                    setWithdrawToIncomeOpen(true);
+                  }}
+                >
+                  <ArrowDownLeft className="mr-1.5 h-3.5 w-3.5" />
+                  <FormattedMessage id="savings.freeSavings.withdrawToIncome" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Advice chips — shown when general balance > 0 */}
+            {(categoryTotals[SavingCategory.GENERAL] ?? 0) > 0 && (() => {
+              const ikeAccount = retirementLimits?.accounts.find(a => a.account_type === AccountType.IKE);
+              const ikzeAccount = retirementLimits?.accounts.find(a => a.account_type === AccountType.IKZE);
+              const oipeAccount = retirementLimits?.accounts.find(a => a.account_type === AccountType.OIPE);
+
+              const ikeRemaining = retirementLimits
+                ? (ikeAccount?.remaining_limit ?? retirementLimits.ike_limit)
+                : 28260;
+              const isSelfEmployed = settings?.employment_type === 'b2b' || settings?.employment_type === 'jdg';
+              const ikzeRemaining = retirementLimits
+                ? (ikzeAccount?.remaining_limit ?? (isSelfEmployed ? retirementLimits.ikze_limit_jdg : retirementLimits.ikze_limit_standard))
+                : 11304;
+              const oipeRemaining = retirementLimits
+                ? (oipeAccount?.remaining_limit ?? 0)
+                : 0;
+
+              const hasAnyLimit = ikeRemaining > 0 || ikzeRemaining > 0 || oipeRemaining > 0;
+
+              return (
+                <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/40 px-4 py-3">
+                  <p className="text-[11px] font-semibold text-amber-800 uppercase tracking-wide mb-2.5">
+                    💡 <FormattedMessage id="savings.freeSavings.advice.heading" />
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {ikeRemaining > 0 && (
+                      <div className="flex flex-col rounded-lg border border-emerald-200 bg-white px-3 py-2 text-left min-w-[140px]">
+                        <span className="text-[11px] font-bold text-emerald-700">
+                          <FormattedMessage id="savings.freeSavings.advice.ikeLabel" />
+                        </span>
+                        <span className="text-sm font-bold text-slate-800 mt-0.5">
+                          {formatCurrency(ikeRemaining)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 leading-snug">
+                          <FormattedMessage id="savings.freeSavings.advice.ikeDesc" />
+                        </span>
+                      </div>
+                    )}
+                    {ikzeRemaining > 0 && (
+                      <div className="flex flex-col rounded-lg border border-blue-200 bg-white px-3 py-2 text-left min-w-[140px]">
+                        <span className="text-[11px] font-bold text-blue-700">
+                          <FormattedMessage id="savings.freeSavings.advice.ikzeLabel" />
+                        </span>
+                        <span className="text-sm font-bold text-slate-800 mt-0.5">
+                          {formatCurrency(ikzeRemaining)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 leading-snug">
+                          <FormattedMessage id="savings.freeSavings.advice.ikzeDesc" />
+                        </span>
+                      </div>
+                    )}
+                    {oipeRemaining > 0 && (
+                      <div className="flex flex-col rounded-lg border border-purple-200 bg-white px-3 py-2 text-left min-w-[140px]">
+                        <span className="text-[11px] font-bold text-purple-700">
+                          <FormattedMessage id="savings.freeSavings.advice.oipeLabel" />
+                        </span>
+                        <span className="text-sm font-bold text-slate-800 mt-0.5">
+                          {formatCurrency(oipeRemaining)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 leading-snug">
+                          <FormattedMessage id="savings.freeSavings.advice.oipeDesc" />
+                        </span>
+                      </div>
+                    )}
+                    {!hasAnyLimit && retirementLimits && (
+                      <p className="text-[10px] text-slate-500 italic self-center">
+                        <FormattedMessage id="savings.freeSavings.advice.allLimitsReached" />
+                      </p>
+                    )}
+                    {/* Lokata — always shown */}
+                    <div className="flex flex-col rounded-lg border border-slate-200 bg-white px-3 py-2 text-left min-w-[140px]">
+                      <span className="text-[11px] font-bold text-slate-700">
+                        <FormattedMessage id="savings.freeSavings.advice.lokataLabel" />
+                      </span>
+                      <span className="text-[10px] text-slate-500 leading-snug mt-0.5">
+                        <FormattedMessage id="savings.freeSavings.advice.lokataDesc" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Goal Withdraw Modal */}
+      {withdrawModalGoal && (
+        <GoalWithdrawModal
+          open={!!withdrawModalGoal}
+          onOpenChange={(open) => { if (!open) setWithdrawModalGoal(null); }}
+          goalName={withdrawModalGoal.name}
+          goalCategory={withdrawModalGoal.category}
+          actualBalance={categoryTotals[withdrawModalGoal.category] ?? 0}
+          onSuccess={() => {
+            invalidateSavingsCache();
+            void fetchGoals();
+            onTransferComplete?.();
+          }}
+        />
+      )}
+
+      {/* Goal Deposit Modal */}
+      {depositModalGoal && (
+        <GoalDepositModal
+          open={!!depositModalGoal}
+          onOpenChange={(open) => { if (!open) setDepositModalGoal(null); }}
+          goalName={depositModalGoal.name}
+          goalCategory={depositModalGoal.category}
+          remainingAmount={depositModalGoal.remaining_amount}
+          generalBalance={categoryTotals[SavingCategory.GENERAL] ?? 0}
+          onSuccess={() => {
+            invalidateSavingsCache();
+            void fetchGoals();
+            onTransferComplete?.();
+          }}
+        />
+      )}
+
+      {/* Withdraw to Income Modal */}
+      <Dialog open={withdrawToIncomeOpen} onOpenChange={setWithdrawToIncomeOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowDownLeft className="h-5 w-5 text-slate-600" />
+              <FormattedMessage id="savings.freeSavings.withdrawModal.title" />
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-lg bg-muted/50 p-3 text-sm">
+              <span className="text-muted-foreground">
+                <FormattedMessage id="savings.freeSavings.withdrawModal.available" />
+              </span>{" "}
+              <span className="font-semibold">
+                {formatCurrency(categoryTotals[SavingCategory.GENERAL] ?? 0)}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              <FormattedMessage id="savings.freeSavings.withdrawModal.description" />
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="wti-amount">
+                <FormattedMessage id="common.amount" />
+              </Label>
+              <CurrencyInput
+                id="wti-amount"
+                value={withdrawToIncomeAmount}
+                onValueChange={setWithdrawToIncomeAmount}
+                max={categoryTotals[SavingCategory.GENERAL] ?? 0}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wti-desc">
+                <FormattedMessage id="savings.freeSavings.withdrawModal.descriptionLabel" />
+              </Label>
+              <Input
+                id="wti-desc"
+                value={withdrawToIncomeDesc}
+                onChange={(e) => setWithdrawToIncomeDesc(e.target.value)}
+                placeholder={intl.formatMessage({ id: "savings.freeSavings.withdrawModal.descriptionPlaceholder" })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="wti-date">
+                <FormattedMessage id="common.date" />
+              </Label>
+              <Input
+                id="wti-date"
+                type="date"
+                value={withdrawToIncomeDate}
+                onChange={(e) => setWithdrawToIncomeDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setWithdrawToIncomeOpen(false)}
+              disabled={isWithdrawingToIncome}
+            >
+              <FormattedMessage id="common.cancel" />
+            </Button>
+            <Button
+              onClick={handleWithdrawToIncome}
+              disabled={
+                withdrawToIncomeAmount <= 0 ||
+                withdrawToIncomeAmount > Math.round((categoryTotals[SavingCategory.GENERAL] ?? 0) * 100) / 100 ||
+                isWithdrawingToIncome
+              }
+            >
+              {isWithdrawingToIncome ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowDownLeft className="mr-2 h-4 w-4" />
+              )}
+              <FormattedMessage id="savings.freeSavings.withdrawModal.confirm" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CrudDialog
         open={dialogOpen}
