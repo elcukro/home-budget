@@ -36,6 +36,12 @@ import websockets
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
+# ── Skip in CI — requires live backend + DB ───────────────────────────────────
+pytestmark = pytest.mark.skipif(
+    os.getenv("ENVIRONMENT") == "test",
+    reason="Integration tests require a live backend on :8100 and local DB — skip in CI",
+)
+
 # ── Config ────────────────────────────────────────────────────────────────────
 
 WS_URL = os.getenv("MIESZKO_WS_URL", "ws://localhost:8100/ai/ws")
