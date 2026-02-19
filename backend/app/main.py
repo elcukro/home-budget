@@ -9,7 +9,7 @@ from . import models, database
 from pydantic import BaseModel, Field, model_validator
 from datetime import date, datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import func, case, or_, text
+from sqlalchemy import func, case, or_, and_, text
 import calendar
 from fastapi.responses import JSONResponse, StreamingResponse
 import csv
@@ -3200,7 +3200,25 @@ async def get_user_financial_data(user_id: str, db: Session):
         raise HTTPException(status_code=404, detail="User not found")
 
     incomes = db.query(models.Income).filter(models.Income.user_id == user_id).all()
-    expenses = db.query(models.Expense).filter(models.Expense.user_id == user_id).all()
+
+    # Only include expenses from current month and future (planned).
+    # Historical one-off expenses distort the AI's analysis — it lumps
+    # months of data into "this month" and inflates the one-time total.
+    now = datetime.now()
+    current_month_start = date(now.year, now.month, 1)
+    expenses = db.query(models.Expense).filter(
+        models.Expense.user_id == user_id,
+        or_(
+            # Recurring expenses active now (no date filter needed)
+            models.Expense.is_recurring == True,
+            # One-off expenses: current month onward only
+            and_(
+                models.Expense.is_recurring == False,
+                models.Expense.date >= current_month_start,
+            ),
+        ),
+    ).all()
+
     loans = db.query(models.Loan).filter(models.Loan.user_id == user_id).all()
     savings = db.query(models.Saving).filter(models.Saving.user_id == user_id).all()
     savings_goals = db.query(models.SavingsGoal).filter(models.SavingsGoal.user_id == user_id).all()
@@ -3265,6 +3283,7 @@ async def get_user_financial_data(user_id: str, db: Session):
                 "start_date": loan.start_date.isoformat() if loan.start_date else None,
                 "overpayment_fee_percent": loan.overpayment_fee_percent,
                 "overpayment_fee_waived_until": loan.overpayment_fee_waived_until.isoformat() if loan.overpayment_fee_waived_until else None,
+                "is_archived": loan.is_archived,
             }
             for loan in loans
         ],
@@ -3279,6 +3298,8 @@ async def get_user_financial_data(user_id: str, db: Session):
                 "account_type": saving.account_type,
                 "annual_return_rate": saving.annual_return_rate,
                 "goal_id": saving.goal_id,
+                "entry_type": saving.entry_type,
+                "owner": saving.owner,
             }
             for saving in savings
         ],
