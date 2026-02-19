@@ -3322,9 +3322,12 @@ async def get_user_financial_data(user_id: str, db: Session):
             for goal in savings_goals
         ],
         "financial_freedom": {
-            "steps": financial_freedom.steps if financial_freedom else None,
+            "steps": financial_freedom.steps if financial_freedom else [
+                {"id": i, "isCompleted": False, "progress": 0, "targetAmount": None, "currentAmount": None}
+                for i in range(1, 8)
+            ],
             "start_date": financial_freedom.startDate.isoformat() if financial_freedom and financial_freedom.startDate else None,
-        } if financial_freedom else None,
+        },
     }
 
 async def generate_insights(user_data: dict, api_key: str):
@@ -3597,8 +3600,7 @@ async def generate_insights(user_data: dict, api_key: str):
         if not employment_status:
             missing_data_links.append("employment_status")
             required_links_by_category["tax_optimization"].append("[Uzupełnij profil podatkowy](/settings)")
-        if not baby_steps_summary:
-            required_links_by_category["baby_steps"].append("[Skonfiguruj Baby Steps](/financial-freedom)")
+        # Baby Steps always auto-populate with defaults, so this link is no longer needed
         # Deduplicate links per category
         for cat in required_links_by_category:
             required_links_by_category[cat] = list(dict.fromkeys(required_links_by_category[cat]))
@@ -3710,7 +3712,7 @@ EMERGENCY FUND STATUS (PRE-CALCULATED - use these EXACT values, do NOT recalcula
   Current liquid savings: {emergency_fund_current:,.0f} {currency}
   Status: {baby_step_3_status}
   Complete: {"YES ✓" if baby_step_3_complete else "NO - needs " + f"{abs(baby_step_3_difference):,.0f}" + " " + currency + " more"}
-{"  Surplus: " + f"{emergency_fund_surplus:,.0f}" + " " + currency + " above target. Consider redirecting excess to Baby Step 4 (investing) or Baby Step 6 (mortgage)." if emergency_fund_surplus > 0 else ""}
+{"  Surplus: " + f"{emergency_fund_surplus:,.0f}" + " " + currency + " above target. Consider redirecting excess to Baby Step 4 (investing)" + (" or Baby Step 6 (mortgage overpayment)." if mortgage_loans else " — IKE/IKZE, index funds, ETFs.") if emergency_fund_surplus > 0 else ""}
 {" Recommended months for this user: " + recommended_emergency_months + " months (variable income detected)" if has_variable_income else ""}
 
 INCOME BY EMPLOYMENT TYPE:
@@ -3724,11 +3726,9 @@ BABY STEP 2 DEBTS (PRE-SORTED smallest to largest - this IS the Debt Snowball or
 
 {"ONLY MORTGAGE REMAINING - User has completed Baby Steps 1-5 debt elimination! Focus entirely on Baby Step 6 mortgage payoff strategy." if not baby_step_2_debts and mortgage_loans and baby_step_1_complete else ""}
 
-MORTGAGE (Baby Step 6 - {"ACTIVE: user has completed earlier steps" if not baby_step_2_debts and baby_step_1_complete else "IGNORE until Baby Steps 1-5 completed"}):
-{json.dumps(mortgage_loans, indent=2) if mortgage_loans else "No mortgage"}
+{"MORTGAGE (Baby Step 6 - " + ("ACTIVE: user has completed earlier steps" if not baby_step_2_debts and baby_step_1_complete else "IGNORE until Baby Steps 1-5 completed") + "):" + chr(10) + json.dumps(mortgage_loans, indent=2) if mortgage_loans else "NO MORTGAGE - user has no active mortgage. Do NOT mention mortgage payoff or Baby Step 6 mortgage strategy."}
 
-LEASING (FIXED CONTRACTS - CANNOT be prepaid early, do NOT include in any payoff strategy):
-{json.dumps(leasing_loans, indent=2) if leasing_loans else "No leasing"}
+{"LEASING (FIXED CONTRACTS - CANNOT be prepaid early, do NOT include in any payoff strategy):" + chr(10) + json.dumps(leasing_loans, indent=2) if leasing_loans else "NO LEASING - user has no active leasing contracts."}
 
 HIGH INTEREST DEBTS (>5%) WITH PRE-CALCULATED OVERPAYMENT SAVINGS:
 {json.dumps(high_interest_savings, indent=2) if high_interest_savings else "No high-interest Baby Step 2 debts"}
@@ -3770,7 +3770,7 @@ Generate a "hero_dashboard" object with:
 TOP 3 MOVES RULES:
 - Each move MUST have a specific {currency} impact calculated from the user's data (not generic advice)
 - Prioritize by impact: highest {currency} savings/gain first
-- Good: "Nadpłać hipotekę 3000 zł/mies → oszczędność 22k odsetek" — Bad: "Śledź wydatki"
+- Good: "Wpłać 9 304 zł na IKZE → oszczędność 2 976 zł podatku" — Bad: "Śledź wydatki"
 - Never suggest generic things like "track expenses" or "read a book"
 
 CRITICAL GUIDELINES:
@@ -3787,8 +3787,9 @@ CRITICAL GUIDELINES:
 - DTI: Reference baby_step_2_dti for debt discussion, total_dti for overall health assessment
 - LINKS: Include mandatory links from MISSING DATA section in the actionItems of the specified categories
 - IKE/IKZE: Reference exact remaining contribution room for the current year
-- {"User has NO debts but negative cash flow - focus on expense reduction and Baby Step 1 emergency fund urgency" if not loans and monthly_balance < 0 else ""}
-- {"User has emergency fund surplus of " + f"{emergency_fund_surplus:,.0f}" + " " + currency + " - suggest redirecting to investing or mortgage, do NOT recommend reducing emergency fund" if emergency_fund_surplus > 0 else ""}
+- {"User has NO debts but negative cash flow - focus on expense reduction and Baby Step 1 emergency fund urgency" if not active_loans and monthly_balance < 0 else ""}
+- {"User has emergency fund surplus of " + f"{emergency_fund_surplus:,.0f}" + " " + currency + " - suggest redirecting to " + ("mortgage overpayment or " if mortgage_loans else "") + "investing (IKE/IKZE/ETF), do NOT recommend reducing emergency fund" if emergency_fund_surplus > 0 else ""}
+- {"User is DEBT-FREE (all loans archived/paid off). Do NOT mention mortgage payoff, leasing payments, or any debt-related advice. Focus on: IKE/IKZE optimization, FIRE progress, investing surplus, tax optimization." if not active_loans else ""}
 - If they're past Baby Step 3, focus on IKE/IKZE optimization and FIRE progress
 - Celebrate achievements but be direct about what needs improvement
 - For Polish users, always mention relevant tax benefits they might be missing
