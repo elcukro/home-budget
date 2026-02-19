@@ -3347,11 +3347,14 @@ async def generate_insights(user_data: dict, api_key: str):
         currency = settings.get("currency", "PLN")
         language = settings.get("language", "en")
 
+        # Separate active vs archived loans — archived loans should not count in metrics
+        active_loans = [l for l in loans if not l.get("is_archived")]
+
         # Calculate basic financial metrics
         total_income = sum(income["amount"] for income in incomes)
         total_expenses = sum(expense["amount"] for expense in expenses)
-        total_loan_payments = sum(loan["monthly_payment"] for loan in loans)
-        total_loan_balance = sum(loan["remaining_balance"] for loan in loans)
+        total_loan_payments = sum(loan["monthly_payment"] for loan in active_loans)
+        total_loan_balance = sum(loan["remaining_balance"] for loan in active_loans)
 
         # Calculate recurring vs one-time breakdown
         recurring_income = sum(i["amount"] for i in incomes if i.get("is_recurring"))
@@ -3449,9 +3452,9 @@ async def generate_insights(user_data: dict, api_key: str):
             if not is_completed and current_baby_step == 0:
                 current_baby_step = step_num
 
-        # Sort loans by balance for debt snowball analysis (smallest first)
+        # Sort active loans by balance for debt snowball analysis (smallest first)
         # NOTE: Only snowball order - avalanche data intentionally excluded per Dave Ramsey methodology
-        loans_sorted_by_balance = sorted(loans, key=lambda x: x.get("remaining_balance", 0))
+        loans_sorted_by_balance = sorted(active_loans, key=lambda x: x.get("remaining_balance", 0))
 
         # Polish tax context
         user_age = settings.get("user_age")
@@ -3467,18 +3470,23 @@ async def generate_insights(user_data: dict, api_key: str):
         ikze_limit_b2b = 16956  # PLN
 
         # Calculate IKE/IKZE year-to-date contributions
+        # Only count actual contributions (not opening balances) from the primary user (not partner)
         current_year = datetime.now().year
         ike_ytd = sum(
             s["amount"] for s in savings
             if s.get("saving_type") == "deposit"
             and s.get("account_type") == "ike"
             and s.get("date", "")[:4] == str(current_year)
+            and s.get("entry_type") != "opening_balance"
+            and not s.get("owner")
         )
         ikze_ytd = sum(
             s["amount"] for s in savings
             if s.get("saving_type") == "deposit"
             and s.get("account_type") == "ikze"
             and s.get("date", "")[:4] == str(current_year)
+            and s.get("entry_type") != "opening_balance"
+            and not s.get("owner")
         )
         is_self_employed = employment_status in ("b2b", "self_employed", "self-employed")
         ikze_applicable_limit = ikze_limit_b2b if is_self_employed else ikze_limit_2026
@@ -3495,14 +3503,14 @@ async def generate_insights(user_data: dict, api_key: str):
         language_names = {"en": "English", "pl": "Polish", "es": "Spanish"}
         language_name = language_names.get(language, "English")
 
-        # Categorize loans for proper Baby Steps handling
-        mortgage_loans = [l for l in loans if l.get("loan_type") == "mortgage"]
-        leasing_loans = [l for l in loans if l.get("loan_type") == "leasing"]
+        # Categorize active loans for proper Baby Steps handling
+        mortgage_loans = [l for l in active_loans if l.get("loan_type") == "mortgage"]
+        leasing_loans = [l for l in active_loans if l.get("loan_type") == "leasing"]
         baby_step_2_debts = sorted(
-            [l for l in loans if l.get("loan_type") not in ("mortgage", "leasing")],
+            [l for l in active_loans if l.get("loan_type") not in ("mortgage", "leasing")],
             key=lambda x: x.get("remaining_balance", 0)
         )
-        high_interest_loans = [l for l in loans if l.get("interest_rate", 0) >= 5 and l.get("loan_type") not in ("mortgage", "leasing")]
+        high_interest_loans = [l for l in active_loans if l.get("interest_rate", 0) >= 5 and l.get("loan_type") not in ("mortgage", "leasing")]
 
         # Calculate debt totals by category
         baby_step_2_debt_total = sum(l.get("remaining_balance", 0) for l in baby_step_2_debts)
