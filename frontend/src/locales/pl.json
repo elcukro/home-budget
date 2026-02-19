@@ -1332,8 +1332,8 @@
       "balance": "Saldo"
     },
     "deleteDialog": {
-      "title": "Usuń kredyt",
-      "description": "Czy na pewno chcesz usunąć ten kredyt? Tego działania nie można cofnąć.",
+      "title": "Usuń zobowiązanie",
+      "description": "Czy na pewno chcesz usunąć to zobowiązanie? Spowoduje to również usunięcie powiązanych wpisów z budżetu wydatków. Tego działania nie można cofnąć.",
       "confirm": "Usuń"
     },
     "warning": {

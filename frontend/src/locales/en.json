@@ -1376,8 +1376,8 @@
       "balance": "Balance"
     },
     "deleteDialog": {
-      "title": "Remove loan entry",
-      "description": "Are you sure you want to delete this loan? This action cannot be undone.",
+      "title": "Remove obligation",
+      "description": "Are you sure you want to delete this obligation? This will also remove the associated entries from the expense budget. This action cannot be undone.",
       "confirm": "Delete"
     },
     "warning": {
