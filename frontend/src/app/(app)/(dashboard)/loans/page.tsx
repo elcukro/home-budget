@@ -1403,6 +1403,7 @@ export default function LoansPage() {
 
     setIsDeleting(true);
     try {
+      // 1. Delete the loan itself
       const response = await fetch(
         `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/loans/${pendingDelete.id}`,
         {
@@ -1414,6 +1415,21 @@ export default function LoansPage() {
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(errorText || "Failed to delete loan");
+      }
+
+      // 2. Remove corresponding budget entries (best-effort)
+      try {
+        const params = new URLSearchParams({
+          entry_type: "loan_payment",
+          category: pendingDelete.loan_type,
+          description: pendingDelete.description,
+        });
+        await fetch(
+          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/budget/entries/by-loan?${params}`,
+          { method: "DELETE", headers: { Accept: "application/json" } },
+        );
+      } catch {
+        logger.error("[Loans] Failed to clean up budget entries");
       }
 
       setLoans((prev) =>

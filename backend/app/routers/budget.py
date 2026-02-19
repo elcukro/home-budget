@@ -376,6 +376,33 @@ async def delete_budget_entry(
     return None
 
 
+@router.delete("/users/{email}/budget/entries/by-loan", status_code=200)
+async def delete_budget_entries_by_loan(
+    email: str,
+    entry_type: str,
+    category: str,
+    description: str,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db),
+):
+    """Delete all budget entries matching a loan (by entry_type + category + description)."""
+    user = _get_user_or_404(email, db)
+    _validate_access(user, current_user)
+
+    hid = current_user.household_id
+    count = db.query(models.BudgetEntry).filter(
+        and_(
+            models.BudgetEntry.user_id == hid,
+            models.BudgetEntry.entry_type == entry_type,
+            models.BudgetEntry.category == category,
+            models.BudgetEntry.description == description,
+        )
+    ).delete()
+    db.commit()
+    logger.info(f"Deleted {count} budget entries for loan {category}/{description}")
+    return {"deleted": count}
+
+
 # ============== Bulk Onboarding Endpoint ==============
 
 @router.post("/users/{email}/budget/years/from-onboarding")
