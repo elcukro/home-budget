@@ -3722,7 +3722,7 @@ EXPENSE BREAKDOWN:
 {json.dumps(expense_categories, indent=2)}
 
 BABY STEP 2 DEBTS (PRE-SORTED smallest to largest - this IS the Debt Snowball order, recommend paying in THIS exact order):
-{json.dumps(baby_step_2_debts, indent=2) if baby_step_2_debts else "No Baby Step 2 debts - user is debt-free (excluding mortgage/leasing)!"}
+{json.dumps(baby_step_2_debts, indent=2) if baby_step_2_debts else ("No Baby Step 2 debts. User is COMPLETELY DEBT-FREE — no consumer debt, no mortgage, no leasing. Do NOT mention any debt categories." if not mortgage_loans and not leasing_loans else "No Baby Step 2 debts — only " + ("mortgage" if mortgage_loans else "") + (" and " if mortgage_loans and leasing_loans else "") + ("leasing" if leasing_loans else "") + " remaining.")}
 
 {"ONLY MORTGAGE REMAINING - User has completed Baby Steps 1-5 debt elimination! Focus entirely on Baby Step 6 mortgage payoff strategy." if not baby_step_2_debts and mortgage_loans and baby_step_1_complete else ""}
 
