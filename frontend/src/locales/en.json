@@ -511,6 +511,8 @@
       "error": "Failed to load analysis. Please try again.",
       "retry": "Retry",
       "noData": "No data to analyze. Add income and expenses first.",
+      "noDataDescription": "Generate an AI analysis to see personalized financial advice.",
+      "generateAnalysis": "Generate analysis",
       "configureKey": "Configure Claude API key in Settings",
       "cachedLabel": "Cached",
       "lastUpdated": "Last updated: {date}",

@@ -461,6 +461,8 @@
       "error": "Nie udało się załadować analizy. Spróbuj ponownie.",
       "retry": "Ponów",
       "noData": "Brak danych do analizy. Dodaj przychody i wydatki.",
+      "noDataDescription": "Wygeneruj analizę AI, aby zobaczyć spersonalizowane porady finansowe.",
+      "generateAnalysis": "Wygeneruj analizę",
       "configureKey": "Skonfiguruj klucz API Claude w Ustawieniach",
       "cachedLabel": "Z pamięci podręcznej",
       "lastUpdated": "Ostatnia aktualizacja: {date}",

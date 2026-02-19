@@ -3061,11 +3061,18 @@ async def import_user_data(
 @app.get("/users/{user_id}/insights", response_model=InsightsResponse)
 async def get_user_insights(
     user_id: str,
-    refresh: bool = False,  # Changed default to False
+    refresh: bool = False,
+    cache_only: bool = False,
     current_user: models.User = Depends(get_authenticated_user),
     db: Session = Depends(database.get_db)
 ):
-    """Get AI insights for the authenticated user."""
+    """Get AI insights for the authenticated user.
+
+    Args:
+        refresh: Force regeneration (bypasses cache, calls OpenAI)
+        cache_only: Only return cached insights. If no cache exists, return 204.
+                   Use this from the dashboard to avoid slow auto-generation.
+    """
     validate_user_access(user_id, current_user)
 
     try:
@@ -3077,16 +3084,11 @@ async def get_user_insights(
         if refresh:
             return await _refresh_insights_internal(current_user.household_id, db)
 
-        # Get current financial data
-        current_data = await get_user_financial_data(current_user.household_id, db)
-
         # Get user's language preference
-        language = current_data.get("settings", {}).get("language", "en")
-
-        # Calculate current totals
-        current_income = sum(income["amount"] for income in current_data["incomes"])
-        current_expenses = sum(expense["amount"] for expense in current_data["expenses"])
-        current_loans = sum(loan["remaining_balance"] for loan in current_data["loans"])
+        settings = db.query(models.Settings).filter(
+            models.Settings.user_id == current_user.household_id
+        ).first()
+        language = settings.language if settings else "en"
 
         # Check for valid cache for the current language
         cache = db.query(models.InsightsCache).filter(
@@ -3096,7 +3098,7 @@ async def get_user_insights(
         ).order_by(models.InsightsCache.created_at.desc()).first()
 
         if cache:
-            # Cache exists — always return it (user must manually refresh via button)
+            # Cache exists — return it
             return {
                 **cache.insights,
                 "metadata": {
@@ -3107,6 +3109,10 @@ async def get_user_insights(
                     "validityReason": "Using cached insights",
                 }
             }
+
+        # No valid cache — in cache_only mode, return 204 (no content)
+        if cache_only:
+            raise HTTPException(status_code=204)
 
         # No valid cache exists for this language, generate new insights
         return await _refresh_insights_internal(current_user.household_id, db)
