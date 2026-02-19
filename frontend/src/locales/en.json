@@ -218,6 +218,9 @@
       "tip8": "Plan bigger purchases ahead. Impulse decisions cost an average of 20% more.",
       "tip9": "Your future self will thank you for every $100 saved today.",
       "backToLogin": "Back to login",
+      "inactivityTitle": "Session expired",
+      "inactivitySubtitle": "Your session ended after 5 minutes of inactivity to keep your account secure.",
+      "inactivityBackToLogin": "Sign in again",
       "footer": "Your finances are waiting for you – come back when you're ready!"
     }
   },

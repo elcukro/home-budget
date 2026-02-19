@@ -1788,6 +1788,9 @@
       "tip8": "Planuj większe zakupy z wyprzedzeniem. Impulsywne decyzje kosztują średnio 20% więcej.",
       "tip9": "Twój przyszły Ty będzie Ci wdzięczny za każde 100 zł odłożone dzisiaj.",
       "backToLogin": "Wróć do logowania",
+      "inactivityTitle": "Sesja wygasła",
+      "inactivitySubtitle": "Ze względu na 5 minut bezczynności Twoja sesja została zakończona dla bezpieczeństwa Twojego konta.",
+      "inactivityBackToLogin": "Zaloguj się ponownie",
       "footer": "Twoje finanse czekają na Ciebie – wróć, kiedy będziesz gotowy!"
     }
   },

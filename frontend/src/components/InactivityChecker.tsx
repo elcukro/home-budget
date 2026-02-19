@@ -23,10 +23,18 @@ export default function InactivityChecker() {
   const [timeLeft, setTimeLeft] = useState(WARNING_DURATION);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastActivityRef = useRef<number>(Date.now());
+  const isWarningRef = useRef(false);
+  const isSigningOutRef = useRef(false);
 
-  const resetTimers = useCallback(() => {
-    logger.debug('[InactivityChecker] Resetting timers');
-    // Clear existing timers
+  const performSignOut = useCallback(() => {
+    if (isSigningOutRef.current) return;
+    isSigningOutRef.current = true;
+    logger.debug('[InactivityChecker] Signing out due to inactivity');
+    signOut({ callbackUrl: '/auth/signout?reason=inactivity' });
+  }, []);
+
+  const clearAllTimers = useCallback(() => {
     if (warningTimerRef.current) {
       clearInterval(warningTimerRef.current);
       warningTimerRef.current = null;
@@ -35,34 +43,75 @@ export default function InactivityChecker() {
       clearTimeout(activityTimerRef.current);
       activityTimerRef.current = null;
     }
+  }, []);
 
+  const resetTimers = useCallback(() => {
+    logger.debug('[InactivityChecker] Resetting timers');
+    clearAllTimers();
+
+    lastActivityRef.current = Date.now();
+    isWarningRef.current = false;
     setShowWarning(false);
     setTimeLeft(WARNING_DURATION);
 
     // Set new activity timer
     activityTimerRef.current = setTimeout(() => {
       logger.debug('[InactivityChecker] Inactivity timeout reached, showing warning');
+      isWarningRef.current = true;
       setShowWarning(true);
       // Start warning countdown
       warningTimerRef.current = setInterval(() => {
-        setTimeLeft((prev) => {
-          const newTime = prev - 1000;
-          logger.debug('[InactivityChecker] Warning countdown:', newTime / 1000, 'seconds remaining');
-          if (newTime <= 1000) {
-            // Clear interval and log out
-            if (warningTimerRef.current) {
-              clearInterval(warningTimerRef.current);
-              warningTimerRef.current = null;
-            }
-            logger.debug('[InactivityChecker] Warning timeout reached, signing out');
-            signOut({ callbackUrl: '/' });
-            return 0;
-          }
-          return newTime;
-        });
+        const elapsed = Date.now() - lastActivityRef.current;
+        const remaining = (INACTIVITY_TIMEOUT + WARNING_DURATION) - elapsed;
+
+        if (remaining <= 1000) {
+          clearAllTimers();
+          performSignOut();
+          setTimeLeft(0);
+          return;
+        }
+
+        setTimeLeft(remaining);
       }, 1000);
     }, INACTIVITY_TIMEOUT);
-  }, []); // No dependencies needed as we're using refs
+  }, [clearAllTimers, performSignOut]);
+
+  // Check elapsed time on visibility change (handles background tab throttling)
+  const handleVisibilityChange = useCallback(() => {
+    if (document.hidden || !session || isSigningOutRef.current) return;
+
+    const elapsed = Date.now() - lastActivityRef.current;
+    logger.debug('[InactivityChecker] Tab visible again, elapsed:', Math.round(elapsed / 1000), 's');
+
+    if (elapsed >= INACTIVITY_TIMEOUT + WARNING_DURATION) {
+      // Past the deadline — sign out immediately
+      clearAllTimers();
+      performSignOut();
+    } else if (elapsed >= INACTIVITY_TIMEOUT) {
+      // In warning zone — show warning with correct remaining time
+      clearAllTimers();
+      const remaining = (INACTIVITY_TIMEOUT + WARNING_DURATION) - elapsed;
+      isWarningRef.current = true;
+      setShowWarning(true);
+      setTimeLeft(remaining);
+
+      warningTimerRef.current = setInterval(() => {
+        const now = Date.now();
+        const totalElapsed = now - lastActivityRef.current;
+        const timeRemaining = (INACTIVITY_TIMEOUT + WARNING_DURATION) - totalElapsed;
+
+        if (timeRemaining <= 1000) {
+          clearAllTimers();
+          performSignOut();
+          setTimeLeft(0);
+          return;
+        }
+
+        setTimeLeft(timeRemaining);
+      }, 1000);
+    }
+    // else: not yet past inactivity timeout, timers will handle it
+  }, [session, clearAllTimers, performSignOut]);
 
   // Reset timers on user activity
   const handleUserActivity = useCallback((e: Event) => {
@@ -74,8 +123,12 @@ export default function InactivityChecker() {
       return;
     }
 
+    // Don't reset if warning is showing — user must click "Continue Session"
+    if (isWarningRef.current) {
+      return;
+    }
+
     if (session) {
-      logger.debug('[InactivityChecker] User activity detected');
       resetTimers();
     }
   }, [session, resetTimers]);
@@ -84,20 +137,23 @@ export default function InactivityChecker() {
   useEffect(() => {
     logger.debug('[InactivityChecker] Session changed, session exists:', !!session);
     if (session) {
+      isSigningOutRef.current = false;
       resetTimers();
     }
     return () => {
-      // Cleanup timers
-      if (warningTimerRef.current) {
-        clearInterval(warningTimerRef.current);
-        warningTimerRef.current = null;
-      }
-      if (activityTimerRef.current) {
-        clearTimeout(activityTimerRef.current);
-        activityTimerRef.current = null;
-      }
+      clearAllTimers();
     };
-  }, [session, resetTimers]);
+  }, [session, resetTimers, clearAllTimers]);
+
+  // Listen for visibility change (tab focus/unfocus)
+  useEffect(() => {
+    if (!session) return;
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [session, handleVisibilityChange]);
 
   // Add event listeners for user activity
   useEffect(() => {
@@ -129,12 +185,12 @@ export default function InactivityChecker() {
   }
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50"
       data-inactivity-warning
       onClick={(e) => e.stopPropagation()}
     >
-      <div 
+      <div
         className="card w-full max-w-md space-y-4 rounded-xl p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
@@ -142,8 +198,8 @@ export default function InactivityChecker() {
           <FormattedMessage id="inactivity.warning.title" defaultMessage="Session Timeout Warning" />
         </h2>
         <p className="text-subtle">
-          <FormattedMessage 
-            id="inactivity.warning.message" 
+          <FormattedMessage
+            id="inactivity.warning.message"
             defaultMessage="Due to inactivity, your session will expire in {seconds} seconds."
             values={{ seconds: Math.ceil(timeLeft / 1000) }}
           />
@@ -163,4 +219,4 @@ export default function InactivityChecker() {
       </div>
     </div>
   );
-} 
+}
