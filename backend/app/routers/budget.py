@@ -352,30 +352,6 @@ async def update_budget_entry(
     return db_entry
 
 
-@router.delete("/users/{email}/budget/entries/{entry_id}", status_code=204)
-async def delete_budget_entry(
-    email: str,
-    entry_id: int,
-    current_user: models.User = Depends(get_authenticated_user),
-    db: Session = Depends(database.get_db),
-):
-    """Delete a budget entry."""
-    user = _get_user_or_404(email, db)
-    _validate_access(user, current_user)
-
-    db_entry = db.query(models.BudgetEntry).filter(
-        models.BudgetEntry.id == entry_id,
-        models.BudgetEntry.user_id == current_user.household_id,
-    ).first()
-    if not db_entry:
-        raise HTTPException(status_code=404, detail="Budget entry not found")
-
-    db.delete(db_entry)
-    db.commit()
-    logger.info(f"Deleted budget entry {entry_id}")
-    return None
-
-
 @router.delete("/users/{email}/budget/entries/by-loan", status_code=200)
 async def delete_budget_entries_by_loan(
     email: str,
@@ -401,6 +377,30 @@ async def delete_budget_entries_by_loan(
     db.commit()
     logger.info(f"Deleted {count} budget entries for loan {category}/{description}")
     return {"deleted": count}
+
+
+@router.delete("/users/{email}/budget/entries/{entry_id}", status_code=204)
+async def delete_budget_entry(
+    email: str,
+    entry_id: int,
+    current_user: models.User = Depends(get_authenticated_user),
+    db: Session = Depends(database.get_db),
+):
+    """Delete a budget entry."""
+    user = _get_user_or_404(email, db)
+    _validate_access(user, current_user)
+
+    db_entry = db.query(models.BudgetEntry).filter(
+        models.BudgetEntry.id == entry_id,
+        models.BudgetEntry.user_id == current_user.household_id,
+    ).first()
+    if not db_entry:
+        raise HTTPException(status_code=404, detail="Budget entry not found")
+
+    db.delete(db_entry)
+    db.commit()
+    logger.info(f"Deleted budget entry {entry_id}")
+    return None
 
 
 # ============== Bulk Onboarding Endpoint ==============
