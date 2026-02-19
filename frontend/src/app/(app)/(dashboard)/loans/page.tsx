@@ -793,6 +793,34 @@ export default function LoansPage() {
         )
       );
 
+      // Also create an expense record so Wydatki page reflects this outflow
+      try {
+        const monthNames = [
+          "styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec",
+          "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień",
+        ];
+        await fetch(
+          `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/expenses`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              category: "obligations",
+              description: `${loan.description} — rata ${monthNames[currentMonth - 1]} ${currentYear}`,
+              amount: loan.monthly_payment,
+              date: now.toISOString().split("T")[0],
+              is_recurring: false,
+            }),
+          },
+        );
+      } catch {
+        // Non-critical: expense creation failure shouldn't block payment recording
+        logger.error("[Loans] Failed to create expense for loan payment");
+      }
+
       toast({
         title: intl.formatMessage({ id: "loans.payment.toast.success" }),
       });
@@ -972,24 +1000,34 @@ export default function LoansPage() {
 
       let nextPaymentDate: Date | null = null;
       if (monthlyPayment > 0 && monthsRemaining > 0) {
-        const startDate = new Date(loan.start_date);
-        if (!Number.isNaN(startDate.getTime())) {
-          const monthsPaidEstimate = Math.max(termMonths - monthsRemaining, 0);
-          const baseCandidate = addMonths(startDate, monthsPaidEstimate);
-          const initialCandidate =
-            monthsPaidEstimate > 0 ? baseCandidate : addMonths(startDate, 1);
-          const today = new Date();
-          let candidate = new Date(initialCandidate);
-          const finalLimit =
-            termMonths > 0 ? addMonths(startDate, termMonths) : null;
+        // Use due_day (or day of start_date as fallback)
+        const dueDay = loan.due_day ?? new Date(loan.start_date).getDate();
+        const today = new Date();
 
-          while (candidate < today && (!finalLimit || candidate <= finalLimit)) {
-            candidate = addMonths(candidate, 1);
-          }
+        // Helper: get number of days in a given month
+        const daysInMonth = (d: Date): number =>
+          new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
 
-          nextPaymentDate =
-            finalLimit && candidate > finalLimit ? null : candidate;
+        // Start from current month, set day to dueDay (clamped to month length)
+        let candidate = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          Math.min(dueDay, daysInMonth(today)),
+        );
+
+        // If this month's due date has already passed, move to next month
+        if (candidate <= today) {
+          candidate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+          candidate.setDate(Math.min(dueDay, daysInMonth(candidate)));
         }
+
+        // Don't exceed loan term end date
+        const loanEndDate =
+          termMonths > 0
+            ? addMonths(new Date(loan.start_date), termMonths)
+            : null;
+        nextPaymentDate =
+          !loanEndDate || candidate <= loanEndDate ? candidate : null;
       }
 
       acc[String(loan.id)] = {
@@ -1240,6 +1278,77 @@ export default function LoansPage() {
         toast({
           title: intl.formatMessage({ id: "loans.toast.createSuccess" }),
         });
+
+        // Auto-create budget entries for this loan (best-effort)
+        try {
+          const budgetYearsRes = await fetch(
+            `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/budget/years`,
+            { headers: { Accept: "application/json" } },
+          );
+          if (budgetYearsRes.ok) {
+            const budgetYears = await budgetYearsRes.json();
+            const currentYear = new Date().getFullYear();
+            const activeBudgetYear = budgetYears.find(
+              (by: { year: number; status: string }) =>
+                by.year === currentYear && by.status === "active",
+            );
+
+            if (activeBudgetYear) {
+              const loanStart = new Date(created.start_date);
+              const loanEnd =
+                created.term_months > 0
+                  ? addMonths(loanStart, created.term_months)
+                  : null;
+
+              const startMonth =
+                loanStart.getFullYear() < currentYear
+                  ? 1
+                  : loanStart.getFullYear() === currentYear
+                    ? loanStart.getMonth() + 1
+                    : 13;
+
+              const endMonth = !loanEnd
+                ? 12
+                : loanEnd.getFullYear() > currentYear
+                  ? 12
+                  : loanEnd.getFullYear() === currentYear
+                    ? loanEnd.getMonth() + 1
+                    : 0;
+
+              const entryPromises = [];
+              for (
+                let month = startMonth;
+                month <= Math.min(endMonth, 12);
+                month++
+              ) {
+                entryPromises.push(
+                  fetch(
+                    `${API_BASE_URL}/users/${encodeURIComponent(userEmail)}/budget/entries`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                      },
+                      body: JSON.stringify({
+                        budget_year_id: activeBudgetYear.id,
+                        month,
+                        entry_type: "loan_payment",
+                        category: created.loan_type,
+                        description: created.description,
+                        planned_amount: created.monthly_payment,
+                        is_recurring: true,
+                      }),
+                    },
+                  ),
+                );
+              }
+              await Promise.all(entryPromises);
+            }
+          }
+        } catch {
+          logger.error("[Loans] Failed to auto-create budget entries");
+        }
       } else if (activeLoan) {
         const response = await fetch(
           `${API_BASE_URL}/loans/${activeLoan.id}`,
