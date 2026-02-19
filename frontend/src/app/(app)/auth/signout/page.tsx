@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { signOut } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useIntl } from 'react-intl';
 import Image from 'next/image';
-import { LogIn, Lightbulb, Sparkles, TrendingUp, PiggyBank, Wallet } from 'lucide-react';
+import { LogIn, Lightbulb, Sparkles, TrendingUp, PiggyBank, Wallet, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const FloatingIcon = ({
@@ -28,6 +28,8 @@ const FloatingIcon = ({
 export default function SignOutPage() {
   const intl = useIntl();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isInactivity = searchParams.get('reason') === 'inactivity';
   const [randomTip, setRandomTip] = useState<string>('');
   const [isSigningOut, setIsSigningOut] = useState(true);
 
@@ -78,26 +80,32 @@ export default function SignOutPage() {
 
       <div className="w-full max-w-lg mx-4 relative z-10">
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl border border-emerald-100 p-8 md:p-12">
-          {/* Illustration */}
+          {/* Illustration or inactivity icon */}
           <div className="flex justify-center mb-6">
-            <div className="relative w-64 h-48 md:w-80 md:h-60">
-              <Image
-                src="/images/signout-illustration.jpg"
-                alt=""
-                fill
-                className="object-contain rounded-2xl"
-                priority
-              />
-            </div>
+            {isInactivity ? (
+              <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center">
+                <Timer className="w-12 h-12 text-amber-600" />
+              </div>
+            ) : (
+              <div className="relative w-64 h-48 md:w-80 md:h-60">
+                <Image
+                  src="/images/signout-illustration.jpg"
+                  alt=""
+                  fill
+                  className="object-contain rounded-2xl"
+                  priority
+                />
+              </div>
+            )}
           </div>
 
           {/* Main message */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-emerald-900 mb-3">
-              {intl.formatMessage({ id: 'auth.signedOut.title' })}
+              {intl.formatMessage({ id: isInactivity ? 'auth.signedOut.inactivityTitle' : 'auth.signedOut.title' })}
             </h1>
             <p className="text-lg text-emerald-700/80 leading-relaxed">
-              {intl.formatMessage({ id: 'auth.signedOut.subtitle' })}
+              {intl.formatMessage({ id: isInactivity ? 'auth.signedOut.inactivitySubtitle' : 'auth.signedOut.subtitle' })}
             </p>
           </div>
 
@@ -122,7 +130,7 @@ export default function SignOutPage() {
             className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold py-6 text-lg rounded-xl shadow-lg shadow-emerald-200 transition-all duration-300 hover:shadow-xl hover:shadow-emerald-300 hover:-translate-y-0.5"
           >
             <LogIn className="w-5 h-5 mr-2" />
-            {intl.formatMessage({ id: 'auth.signedOut.backToLogin' })}
+            {intl.formatMessage({ id: isInactivity ? 'auth.signedOut.inactivityBackToLogin' : 'auth.signedOut.backToLogin' })}
           </Button>
 
           {/* Footer message */}
