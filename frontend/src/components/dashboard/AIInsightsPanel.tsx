@@ -89,9 +89,19 @@ const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ className, onInsights
       );
       if (forceRefresh) {
         url.searchParams.set('refresh', 'true');
+      } else {
+        // On initial load, only fetch from cache — never trigger slow AI generation
+        url.searchParams.set('cache_only', 'true');
       }
 
       const response = await fetch(url);
+
+      // 204 = no cached insights available
+      if (response.status === 204) {
+        setPanelState('no-data');
+        setInsights(null);
+        return;
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -195,6 +205,36 @@ const AIInsightsPanel: React.FC<AIInsightsPanelProps> = ({ className, onInsights
   // No API key configured server-side - hide the panel entirely
   if (panelState === 'no-api-key') {
     return null;
+  }
+
+  // No cached insights available — prompt user to generate on AI analysis page
+  if (panelState === 'no-data') {
+    return (
+      <div className={`rounded-2xl border border-default bg-card p-6 ${className || ''}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <SparklesIcon className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-primary">
+                {intl.formatMessage({ id: 'dashboard.aiInsightsSection.title' })}
+              </h3>
+              <p className="text-xs text-secondary mt-0.5">
+                {intl.formatMessage({ id: 'dashboard.aiInsightsSection.noDataDescription' })}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/ai-analysis"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-xs font-medium transition-colors"
+          >
+            {intl.formatMessage({ id: 'dashboard.aiInsightsSection.generateAnalysis' })}
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   // Error state
