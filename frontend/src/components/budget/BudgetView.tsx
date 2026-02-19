@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   HeartPulse,
   Sparkles,
+  Landmark,
   CircleDot,
 } from "lucide-react";
 import { z } from "zod";
@@ -133,9 +134,13 @@ const EXPENSE_CATEGORY_META: Record<string, { icon: React.ReactNode; borderColor
   insurance:      { icon: <ShieldCheck className="h-4 w-4" />,       borderColor: "border-l-indigo-500",  bgColor: "bg-indigo-50/50" },
   healthcare:     { icon: <HeartPulse className="h-4 w-4" />,        borderColor: "border-l-rose-500",    bgColor: "bg-rose-50/50" },
   entertainment:  { icon: <Sparkles className="h-4 w-4" />,          borderColor: "border-l-purple-500",  bgColor: "bg-purple-50/50" },
+  obligations:    { icon: <Landmark className="h-4 w-4" />,          borderColor: "border-l-violet-500",  bgColor: "bg-violet-50/50" },
   other:          { icon: <CircleDot className="h-4 w-4" />,         borderColor: "border-l-gray-400",    bgColor: "bg-gray-50/50" },
 };
 const DEFAULT_CATEGORY_META = { icon: <CircleDot className="h-4 w-4" />, borderColor: "border-l-gray-400", bgColor: "bg-gray-50/50" };
+
+// All loan_payment categories get violet styling (they're all obligations)
+const LOAN_CATEGORY_META = { icon: <Landmark className="h-4 w-4" />, borderColor: "border-l-violet-500", bgColor: "bg-violet-50/50" };
 
 const ENTRY_TYPE_META: Record<string, { icon: React.ReactNode; labelId: string; colorClass: string }> = {
   income: {
@@ -578,19 +583,23 @@ export default function BudgetView({ month, onMonthChange, defaultCollapsed = fa
                     <FormattedMessage id="budget.noEntries" />
                   </p>
                 ) : (
-                  <div className={cn(type === "expense" ? "space-y-1" : "divide-y divide-muted/40")}>
+                  <div className={cn((type === "expense" || type === "loan_payment") ? "space-y-1" : "divide-y divide-muted/40")}>
                     {Object.entries(categories).map(([category, catEntries]) => {
-                      const catMeta = type === "expense" ? (EXPENSE_CATEGORY_META[category] ?? DEFAULT_CATEGORY_META) : null;
+                      const catMeta = type === "expense"
+                        ? (EXPENSE_CATEGORY_META[category.toLowerCase()] ?? DEFAULT_CATEGORY_META)
+                        : type === "loan_payment"
+                          ? LOAN_CATEGORY_META
+                          : null;
                       const catTotal = catEntries.reduce((sum, e) => sum + e.planned_amount, 0);
                       const catKey = `${type}:${category}`;
                       const isCatExpanded = expandedCategories.has(catKey);
-                      const hasMultipleCategories = type === "expense" && Object.keys(categories).length > 1;
+                      const hasMultipleCategories = (type === "expense" || type === "loan_payment") && Object.keys(categories).length > 1;
 
                       return (
                         <div
                           key={category}
                           className={cn(
-                            type === "expense" && catMeta
+                            (type === "expense" || type === "loan_payment") && catMeta
                               ? `rounded-lg ${catMeta.bgColor} px-4 py-1`
                               : undefined,
                           )}
@@ -606,7 +615,7 @@ export default function BudgetView({ month, onMonthChange, defaultCollapsed = fa
                                 <span className="text-muted-foreground">{catMeta.icon}</span>
                                 <span className="text-xs uppercase tracking-wide text-muted-foreground font-semibold">
                                   {intl.formatMessage({
-                                    id: `expenses.categories.${category}`,
+                                    id: `${CATEGORY_I18N_PREFIX[type] ?? "expenses.categories"}.${category.toLowerCase()}`,
                                     defaultMessage: category,
                                   })}
                                 </span>
@@ -631,7 +640,7 @@ export default function BudgetView({ month, onMonthChange, defaultCollapsed = fa
                             // Hide category label when it matches description (e.g. loan entries)
                             const categoryLabel = type !== "expense"
                               ? intl.formatMessage({
-                                  id: `${CATEGORY_I18N_PREFIX[type] ?? "expenses.categories"}.${entry.category}`,
+                                  id: `${CATEGORY_I18N_PREFIX[type] ?? "expenses.categories"}.${entry.category.toLowerCase()}`,
                                   defaultMessage: entry.category,
                                 })
                               : null;

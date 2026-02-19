@@ -226,7 +226,7 @@
     "dashboard": "Dashboard",
     "income": "Income",
     "expenses": "Expenses",
-    "loans": "Loans",
+    "loans": "Obligations",
     "reports": "Reports",
     "financialFreedom": "Financial Freedom",
     "aiAnalysis": "AI Analysis",
@@ -907,6 +907,7 @@
         "insurance": "Insurance",
         "healthcare": "Healthcare",
         "entertainment": "Entertainment",
+        "obligations": "Obligations",
         "other": "Other"
       }
     },
@@ -1104,6 +1105,7 @@
       "insurance": "Insurance",
       "healthcare": "Healthcare",
       "entertainment": "Entertainment",
+      "obligations": "Obligations",
       "other": "Other"
     },
     "summary": {
@@ -1214,6 +1216,7 @@
       "insurance": "Policies that protect your income and assets.",
       "healthcare": "Medical care and wellness costs.",
       "entertainment": "Fun money for experiences, media, and hobbies.",
+      "obligations": "Loan payments, leasing, debt repayments.",
       "other": "Miscellaneous spending that doesn't fit elsewhere."
     },
     "monthlyBreakdown": {

@@ -143,6 +143,28 @@ class MonthlyTotalsService:
         }
 
     @staticmethod
+    def calculate_monthly_obligations(
+        user_id: str, year: int, month: int, db: Session
+    ) -> float:
+        """
+        Calculate total of expenses with category='obligations' for a given month.
+        These represent actual loan/obligation payments and should be counted as
+        actual_loan_payments in the budget, not as regular actual_expenses.
+        """
+        expenses = MonthlyTotalsService._query_active_expenses_for_month(
+            user_id, year, month, db
+        )
+        obligations = [e for e in expenses if e.category == "obligations"]
+        # Apply same dedup as regular expenses
+        bank_backed = [e for e in obligations if e.bank_transaction_id is not None]
+        manual = [e for e in obligations if e.bank_transaction_id is None]
+        deduplicated_manual = [
+            e for e in manual
+            if e.reconciliation_status not in ["duplicate_of_bank"]
+        ]
+        return sum(e.amount for e in bank_backed) + sum(e.amount for e in deduplicated_manual)
+
+    @staticmethod
     def suggest_duplicates(
         user_id: str,
         db: Session,

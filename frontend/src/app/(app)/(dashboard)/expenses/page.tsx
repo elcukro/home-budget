@@ -164,6 +164,7 @@ const expenseCategoryOptions = [
   { value: "insurance", labelId: "expenses.categories.insurance", icon: <ShieldCheck className="h-5 w-5" /> },
   { value: "healthcare", labelId: "expenses.categories.healthcare", icon: <HeartPulse className="h-5 w-5" /> },
   { value: "entertainment", labelId: "expenses.categories.entertainment", icon: <Sparkles className="h-5 w-5" /> },
+  { value: "obligations", labelId: "expenses.categories.obligations", icon: <Landmark className="h-5 w-5" /> },
   { value: "other", labelId: "expenses.categories.other", icon: <CircleDot className="h-5 w-5" /> },
 ];
 
@@ -217,6 +218,12 @@ const CATEGORY_META: Record<
     badgeClass: "bg-pink-100 text-pink-700",
     iconClass: "text-pink-600",
     descriptionId: "expenses.hints.entertainment",
+  },
+  obligations: {
+    Icon: Landmark,
+    badgeClass: "bg-violet-100 text-violet-700",
+    iconClass: "text-violet-600",
+    descriptionId: "expenses.hints.obligations",
   },
   other: {
     Icon: CircleDot,

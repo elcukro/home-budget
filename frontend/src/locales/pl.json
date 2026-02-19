@@ -179,7 +179,7 @@
     "dashboard": "Panel",
     "income": "Przychody",
     "expenses": "Wydatki",
-    "loans": "Kredyty",
+    "loans": "Zobowiązania",
     "reports": "Raporty",
     "financialFreedom": "Wolność Finansowa",
     "aiAnalysis": "Analiza AI",
@@ -859,6 +859,7 @@
         "insurance": "Ubezpieczenia",
         "healthcare": "Opieka Zdrowotna",
         "entertainment": "Rozrywka",
+        "obligations": "Zobowiązania",
         "other": "Inne"
       }
     },
@@ -1060,6 +1061,7 @@
       "insurance": "Ubezpieczenia",
       "healthcare": "Opieka Zdrowotna",
       "entertainment": "Rozrywka",
+      "obligations": "Zobowiązania",
       "other": "Inne"
     },
     "summary": {
@@ -1170,6 +1172,7 @@
       "insurance": "Polisy chroniące Twoje dochody i majątek.",
       "healthcare": "Zdrowie, leki oraz profilaktyka.",
       "entertainment": "Rozrywka, hobby i przyjemności.",
+      "obligations": "Raty kredytów, leasing, spłaty pożyczek.",
       "other": "Pozostałe wydatki, których nie da się łatwo przypisać."
     },
     "monthlyBreakdown": {

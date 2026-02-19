@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import and_
 from typing import List, Optional
+from datetime import date
 import logging
 
 from .. import models, database
@@ -40,6 +42,76 @@ def _get_budget_year(user_id: str, year: int, db: Session) -> models.BudgetYear:
     if not budget_year:
         raise HTTPException(status_code=404, detail=f"Budget year {year} not found")
     return budget_year
+
+
+def _populate_loan_entries(budget_year: models.BudgetYear, user_id: str, db: Session) -> int:
+    """
+    Auto-create budget entries for active loans in the given budget year.
+    Skips loans that already have entries for this budget year.
+    Returns the number of entries created.
+    """
+    year = budget_year.year
+
+    # Get all non-archived loans for this user
+    loans = db.query(models.Loan).filter(
+        and_(
+            models.Loan.user_id == user_id,
+            models.Loan.is_archived == False,
+        )
+    ).all()
+
+    # Get existing loan_payment entries for this budget year to avoid duplicates
+    existing = db.query(models.BudgetEntry).filter(
+        and_(
+            models.BudgetEntry.budget_year_id == budget_year.id,
+            models.BudgetEntry.entry_type == "loan_payment",
+        )
+    ).all()
+    existing_keys = {(e.category, e.description, e.month) for e in existing}
+
+    created = 0
+    for loan in loans:
+        loan_start = loan.start_date
+        if loan.term_months and loan.term_months > 0:
+            end_total_months = loan_start.year * 12 + (loan_start.month - 1) + loan.term_months
+            loan_end = date(end_total_months // 12, (end_total_months % 12) + 1, 1)
+        else:
+            loan_end = None
+
+        # Calculate active months for this budget year
+        if loan_start.year < year:
+            start_month = 1
+        elif loan_start.year == year:
+            start_month = loan_start.month
+        else:
+            continue  # loan starts in a future year
+
+        if loan_end is None:
+            end_month = 12
+        elif loan_end.year > year:
+            end_month = 12
+        elif loan_end.year == year:
+            end_month = loan_end.month
+        else:
+            continue  # loan already ended before this year
+
+        for month in range(start_month, min(end_month, 12) + 1):
+            key = (loan.loan_type, loan.description, month)
+            if key in existing_keys:
+                continue
+            db.add(models.BudgetEntry(
+                budget_year_id=budget_year.id,
+                user_id=user_id,
+                month=month,
+                entry_type="loan_payment",
+                category=loan.loan_type,
+                description=loan.description,
+                planned_amount=loan.monthly_payment,
+                is_recurring=True,
+            ))
+            created += 1
+
+    return created
 
 
 def _compute_monthly_summaries(budget_year: models.BudgetYear, entries: list, db: Session) -> List[MonthSummary]:
@@ -88,11 +160,18 @@ def _compute_monthly_summaries(budget_year: models.BudgetYear, entries: list, db
             db=db
         )
 
-        months[month_num].actual_expenses = expense_totals["total"]
-        months[month_num].actual_income = income_totals["total"]
+        # Split obligations from regular expenses:
+        # Expenses with category="obligations" are loan payments (tracked via Wydatki)
+        obligations_total = MonthlyTotalsService.calculate_monthly_obligations(
+            user_id=budget_year.user_id,
+            year=budget_year.year,
+            month=month_num,
+            db=db
+        )
 
-        # TODO: Calculate actual_loan_payments from LoanPayment table
-        # For now, leave at 0 (would require similar service method)
+        months[month_num].actual_expenses = expense_totals["total"] - obligations_total
+        months[month_num].actual_income = income_totals["total"]
+        months[month_num].actual_loan_payments = obligations_total
 
     return sorted(months.values(), key=lambda s: s.month)
 
@@ -128,9 +207,14 @@ async def create_budget_year(
         status="active",
     )
     db.add(budget_year)
+    db.flush()  # Get ID before populating loan entries
+
+    # Auto-populate budget entries from active loans
+    loan_entries = _populate_loan_entries(budget_year, hid, db)
+
     db.commit()
     db.refresh(budget_year)
-    logger.info(f"Created budget year {data.year} for user {hid}")
+    logger.info(f"Created budget year {data.year} for user {hid} (auto-added {loan_entries} loan entries)")
     return budget_year
 
 
@@ -351,10 +435,14 @@ async def create_budget_from_onboarding(
         ))
 
     db.add_all(all_entries)
+
+    # Auto-populate from active loans (skips duplicates)
+    loan_entries = _populate_loan_entries(budget_year, hid, db)
+
     db.commit()
     db.refresh(budget_year)
 
-    logger.info(f"Created budget from onboarding: year={data.year}, entries={len(all_entries)} for user {hid}")
+    logger.info(f"Created budget from onboarding: year={data.year}, entries={len(all_entries)}+{loan_entries} loan for user {hid}")
 
     return {
         "budget_year_id": budget_year.id,
