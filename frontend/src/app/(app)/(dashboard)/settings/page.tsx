@@ -1871,13 +1871,14 @@ export default function SettingsPage() {
                         {connection.accounts && connection.accounts.length > 0 && (
                           <div className="mt-2">
                             <p className="text-xs font-medium text-muted-foreground mb-1">
-                              Connected accounts ({connection.accounts.length}):
+                              {connection.accounts.length} connected account{connection.accounts.length !== 1 ? "s" : ""}
                             </p>
                             <ul className="text-sm space-y-1">
-                              {connection.accounts.map((accountId) => (
-                                <li key={accountId} className="flex items-center gap-2">
+                              {connection.accounts.map((accountId, idx) => (
+                                <li key={accountId} className="flex items-center gap-2 text-muted-foreground">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
                                   <span>
-                                    {connection.account_names?.[accountId] || accountId.slice(0, 8) + "..."}
+                                    {connection.account_names?.[accountId] || `Account ${idx + 1}`}
                                   </span>
                                 </li>
                               ))}

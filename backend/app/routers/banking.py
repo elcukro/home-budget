@@ -375,6 +375,8 @@ async def get_account_details(
             
             return response.json()
             
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error getting account details: {str(e)}")
         raise HTTPException(

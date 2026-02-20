@@ -51,11 +51,12 @@ export default function BankingCallbackPage() {
         );
       }
 
-      // Fetch account details for display names
+      // Fetch account details for display names (sequential, bail on rate limit)
       const accountNames: Record<string, string> = {};
       for (const accountId of requisition.accounts) {
         try {
           const detailsRes = await fetch(`/api/banking/accounts/${accountId}/details`);
+          if (detailsRes.status === 429 || detailsRes.status === 500) break; // Rate limited or error, stop trying
           if (detailsRes.ok) {
             const details = await detailsRes.json();
             const ownerName = details.account?.ownerName;
