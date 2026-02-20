@@ -221,16 +221,38 @@ export default function BankTransactionsPage() {
     if (!session?.user?.email) return;
 
     try {
-      // Use proxy which adds auth headers automatically
-      const [connRes, txRes] = await Promise.all([
+      // Fetch connections from both providers + transactions in parallel
+      const [gcConnRes, ebConnRes, txRes] = await Promise.all([
         fetch(`/api/banking/connections`),
+        fetch(`/api/banking/enablebanking/connections`),
         fetch(`/api/banking/transactions?limit=500`),
       ]);
 
-      if (connRes.ok) {
-        const connections = await connRes.json();
-        setConnection(connections.length > 0 ? connections[0] : null);
+      // Check GoCardless connections
+      let foundConnection: BankConnection | null = null;
+      if (gcConnRes.ok) {
+        const gcConnections = await gcConnRes.json();
+        if (gcConnections.length > 0) {
+          foundConnection = gcConnections[0];
+        }
       }
+
+      // Check Enable Banking connections (prefer EB if both exist)
+      if (ebConnRes.ok) {
+        const ebConnections = await ebConnRes.json();
+        if (ebConnections.length > 0) {
+          const eb = ebConnections[0];
+          foundConnection = {
+            id: eb.id,
+            institution_name: eb.aspsp_name,
+            is_active: eb.is_active,
+            last_sync_at: eb.last_sync_at,
+            expires_at: eb.valid_until,
+          };
+        }
+      }
+
+      setConnection(foundConnection);
 
       if (txRes.ok) {
         setTransactions(await txRes.json());
