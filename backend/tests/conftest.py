@@ -88,6 +88,7 @@ class BankTransaction(Base):
     status = Column(String, default="pending", nullable=False)
     linked_income_id = Column(Integer, nullable=True)
     linked_expense_id = Column(Integer, nullable=True)
+    provider = Column(String, default="tink")
     raw_data = Column(JSON, nullable=True)
     is_duplicate = Column(Boolean, default=False)
     duplicate_of = Column(Integer, nullable=True)

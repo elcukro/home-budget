@@ -455,6 +455,7 @@ class BankingConnection(Base):
     is_active = Column(Boolean, default=True)
     accounts = Column(JSON)  # List of account IDs
     account_names = Column(JSON)  # Map of account ID to account name
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationship
     user = relationship("User", back_populates="banking_connections")
@@ -572,7 +573,10 @@ class BankTransaction(Base):
     linked_income_id = Column(Integer, ForeignKey("income.id"), nullable=True)
     linked_expense_id = Column(Integer, ForeignKey("expenses.id"), nullable=True)
 
-    # Raw data from Tink (for debugging/audit)
+    # Provider identification
+    provider = Column(String, default="tink")  # "tink" or "gocardless"
+
+    # Raw data from provider (for debugging/audit)
     raw_data = Column(JSONB, nullable=True)
 
     # Metadata

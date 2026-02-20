@@ -32,8 +32,9 @@ from slowapi import Limiter
 
 from ..database import get_db
 from ..dependencies import get_current_user
-from ..models import User, TinkConnection, BankTransaction, Expense, Income, Settings
+from ..models import User, TinkConnection, BankTransaction, BankingConnection, Expense, Income, Settings
 from ..services.tink_service import tink_service, TinkAPIError, TinkAPIRetryExhausted
+from ..services.gocardless_service import gocardless_service, GoCardlessAPIError
 from ..services.categorization_service import categorize_in_batches
 from ..services.audit_service import (
     audit_transactions_synced,
@@ -86,6 +87,7 @@ class BankTransactionResponse(BaseModel):
     id: int
     tink_transaction_id: str
     tink_account_id: str
+    provider: Optional[str] = "tink"
     amount: float
     currency: str
     date: date
@@ -397,6 +399,201 @@ async def sync_transactions(
         else:
             error = internal_error(str(e))
             return JSONResponse(status_code=500, content=error.model_dump())
+
+
+@router.post("/sync-gocardless", response_model=SyncResponse)
+async def sync_gocardless_transactions(
+    http_request: Request,
+    days: int = Query(default=90, ge=1, le=365, description="Number of days to sync"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Sync transactions from GoCardless (PSD2 Open Banking) to local database.
+
+    Fetches transactions from all accounts in the user's active BankingConnection
+    and stores them in bank_transactions table. Duplicates detected by
+    internalTransactionId (provider_transaction_id).
+
+    Rate limit: 50/day per user (calls GoCardless API, heavy operation)
+    """
+    limiter = get_limiter(http_request)
+    await limiter.check("50/day", http_request)
+
+    # Get active GoCardless BankingConnection for user
+    connection = db.query(BankingConnection).filter(
+        BankingConnection.user_id == current_user.household_id,
+        BankingConnection.is_active == True
+    ).first()
+
+    if not connection:
+        raise HTTPException(
+            status_code=404,
+            detail="No active GoCardless banking connection. Please connect your bank first."
+        )
+
+    if not connection.accounts:
+        raise HTTPException(
+            status_code=400,
+            detail="Banking connection has no linked accounts."
+        )
+
+    try:
+        from_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+        total_fetched = 0
+        synced_count = 0
+        exact_duplicate_count = 0
+        # Track IDs added in this batch to catch cross-account duplicates
+        # (e.g., ING internal transfers share the same internalTransactionId on both sides)
+        seen_tx_ids = set()
+
+        for account_id in connection.accounts:
+            try:
+                transactions = await gocardless_service.fetch_transactions(
+                    account_id, from_date=from_date
+                )
+            except GoCardlessAPIError as e:
+                logger.warning(f"Failed to fetch transactions for account {account_id}: {e}")
+                continue
+
+            total_fetched += len(transactions)
+
+            for tx in transactions:
+                # Dedup key: internalTransactionId is stable across reconnections
+                internal_tx_id = tx.get("internalTransactionId")
+                gc_transaction_id = tx.get("transactionId", "")
+
+                # Use internalTransactionId for dedup if available, fall back to transactionId
+                dedup_id = internal_tx_id or gc_transaction_id
+
+                if not dedup_id:
+                    logger.warning(f"Transaction missing both internalTransactionId and transactionId, skipping")
+                    continue
+
+                # Check for exact duplicate by provider_transaction_id
+                if internal_tx_id:
+                    existing = db.query(BankTransaction).filter(
+                        BankTransaction.user_id == current_user.household_id,
+                        BankTransaction.provider_transaction_id == internal_tx_id
+                    ).first()
+
+                    if existing:
+                        exact_duplicate_count += 1
+                        continue
+
+                # Build a globally unique tink_transaction_id for GoCardless:
+                # internalTransactionId is a unique hash, but transactionId is per-account sequential
+                # (e.g., ING uses "D202602190000002" which repeats across accounts)
+                unique_tx_id = internal_tx_id or f"gc:{account_id}:{gc_transaction_id}"
+
+                # In-batch dedup: ING internal transfers share the same internalTransactionId
+                # across both sides of the transfer (debit on account A, credit on account B)
+                if unique_tx_id in seen_tx_ids:
+                    exact_duplicate_count += 1
+                    continue
+                seen_tx_ids.add(unique_tx_id)
+
+                # Check DB for existing record
+                existing_by_tx_id = db.query(BankTransaction).filter(
+                    BankTransaction.tink_transaction_id == unique_tx_id
+                ).first()
+
+                if existing_by_tx_id:
+                    exact_duplicate_count += 1
+                    continue
+
+                # Parse amount: GoCardless sends string like "-95.35"
+                amount_data = tx.get("transactionAmount", {})
+                try:
+                    amount = float(amount_data.get("amount", "0"))
+                except (ValueError, TypeError):
+                    amount = 0.0
+
+                currency = amount_data.get("currency", "PLN")
+
+                # Parse date
+                booking_date_str = tx.get("bookingDate")
+                if booking_date_str:
+                    try:
+                        tx_date = datetime.strptime(booking_date_str, "%Y-%m-%d").date()
+                    except ValueError:
+                        tx_date = datetime.now().date()
+                else:
+                    tx_date = datetime.now().date()
+
+                # Extract merchant/description
+                creditor_name = tx.get("creditorName")
+                debtor_name = tx.get("debtorName")
+                remittance_info = tx.get("remittanceInformationUnstructured", "")
+
+                # For expenses (negative amount), creditor is the merchant
+                # For income (positive amount), debtor is the source
+                if amount < 0:
+                    merchant_name = creditor_name
+                    description_display = creditor_name or remittance_info or "Unknown transaction"
+                else:
+                    merchant_name = debtor_name
+                    description_display = debtor_name or remittance_info or "Unknown transaction"
+
+                suggested_type = "income" if amount > 0 else "expense"
+
+                # proprietaryBankTransactionCode e.g. "PURCHASE", "TRANSFER"
+                bank_tx_code = tx.get("proprietaryBankTransactionCode", "")
+
+                bank_tx = BankTransaction(
+                    user_id=current_user.household_id,
+                    tink_transaction_id=unique_tx_id,
+                    tink_account_id=account_id,
+                    provider_transaction_id=internal_tx_id,
+                    provider="gocardless",
+                    amount=amount,
+                    currency=currency,
+                    date=tx_date,
+                    description_display=description_display,
+                    description_original=remittance_info,
+                    description_detailed=remittance_info,
+                    merchant_name=merchant_name,
+                    merchant_category_code=bank_tx_code,
+                    tink_category_id=None,
+                    tink_category_name=None,
+                    suggested_type=suggested_type,
+                    suggested_category=None,
+                    status="pending",
+                    raw_data=tx,
+                )
+
+                db.add(bank_tx)
+                synced_count += 1
+
+        # Update connection sync timestamp
+        connection.last_sync_at = datetime.now()
+        db.commit()
+
+        message_parts = [f"Synced {synced_count} new transactions from GoCardless"]
+        if exact_duplicate_count > 0:
+            message_parts.append(f"{exact_duplicate_count} duplicates skipped")
+
+        return SyncResponse(
+            success=True,
+            synced_count=synced_count,
+            exact_duplicate_count=exact_duplicate_count,
+            fuzzy_duplicate_count=0,
+            total_fetched=total_fetched,
+            message=", ".join(message_parts)
+        )
+
+    except GoCardlessAPIError as e:
+        logger.error(f"GoCardless API error during sync: {str(e)}")
+        raise HTTPException(
+            status_code=e.status_code,
+            detail=f"GoCardless API error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Error syncing GoCardless transactions: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error syncing transactions: {str(e)}"
+        )
 
 
 @router.post("/categorize", response_model=CategorizeResponse)
