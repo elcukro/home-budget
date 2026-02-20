@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const days = request.nextUrl.searchParams.get('days') || '90';
+    const days = request.nextUrl.searchParams.get('days') || '30';
     const backendUrl = `${BACKEND_BASE_URL}/banking/enablebanking/sync?days=${days}`;
 
     const response = await fetch(backendUrl, {
