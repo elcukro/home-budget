@@ -248,43 +248,68 @@ export default function BankTransactionsPage() {
     }
   }, [sessionStatus, fetchData]);
 
-  // Sync transactions
+  // Sync transactions from all connected providers (GoCardless + Enable Banking)
   const handleSync = async () => {
     if (!session?.user?.email) return;
 
     setSyncing(true);
     try {
-      const response = await fetch(`/api/banking/sync-gocardless`, {
-        method: "POST",
-      });
+      // Sync from both providers in parallel
+      const [gcRes, ebRes] = await Promise.allSettled([
+        fetch(`/api/banking/sync-gocardless`, { method: "POST" }),
+        fetch(`/api/banking/enablebanking/sync`, { method: "POST" }),
+      ]);
 
-      if (response.ok) {
-        const result = await response.json();
+      let totalSynced = 0;
+      let anySuccess = false;
+      let lastError: string | null = null;
+
+      // Process GoCardless result
+      if (gcRes.status === "fulfilled" && gcRes.value.ok) {
+        const result = await gcRes.value.json();
+        totalSynced += result.synced_count || 0;
+        anySuccess = true;
+      } else if (gcRes.status === "fulfilled" && gcRes.value.status !== 404) {
+        // 404 = no GC connection, that's fine; other errors are real
+        try {
+          const errorData = await gcRes.value.json();
+          if (errorData.error_code) {
+            lastError = errorData.error_code;
+          }
+        } catch { /* ignore parse errors */ }
+      }
+
+      // Process Enable Banking result
+      if (ebRes.status === "fulfilled" && ebRes.value.ok) {
+        const result = await ebRes.value.json();
+        totalSynced += result.synced_count || 0;
+        anySuccess = true;
+      } else if (ebRes.status === "fulfilled" && ebRes.value.status !== 404) {
+        try {
+          const errorData = await ebRes.value.json();
+          if (errorData.error_code) {
+            lastError = errorData.error_code;
+          }
+        } catch { /* ignore parse errors */ }
+      }
+
+      if (anySuccess) {
         toast({
           title: intl.formatMessage(
             { id: "bankTransactions.toast.syncSuccess" },
-            { count: result.synced_count }
+            { count: totalSynced }
           ),
         });
         fetchData();
+      } else if (lastError) {
+        const errorKey = `bankTransactions.errors.${lastError.toLowerCase()}`;
+        toast({
+          title: intl.formatMessage({ id: `${errorKey}.title` }),
+          description: intl.formatMessage({ id: `${errorKey}.description` }),
+          variant: "destructive",
+        });
       } else {
-        // Parse structured error response
-        const errorData = await response.json();
-
-        // Check if it's a structured error
-        if (errorData.error_code) {
-          // Use error-specific translation keys
-          const errorKey = `bankTransactions.errors.${errorData.error_code.toLowerCase()}`;
-
-          toast({
-            title: intl.formatMessage({ id: `${errorKey}.title` }),
-            description: intl.formatMessage({ id: `${errorKey}.description` }),
-            variant: "destructive",
-          });
-        } else {
-          // Fallback to generic error
-          throw new Error("Sync failed");
-        }
+        throw new Error("Sync failed");
       }
     } catch (_error) {
       toast({

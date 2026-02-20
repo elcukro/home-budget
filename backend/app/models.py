@@ -42,6 +42,7 @@ class User(Base):
     banking_connections = relationship("BankingConnection", back_populates="user", cascade="all, delete-orphan")
     tink_connections = relationship("TinkConnection", back_populates="user", cascade="all, delete-orphan")
     bank_transactions = relationship("BankTransaction", back_populates="user", cascade="all, delete-orphan")
+    enable_banking_connections = relationship("EnableBankingConnection", back_populates="user", cascade="all, delete-orphan")
     subscription = relationship("Subscription", back_populates="user", uselist=False, cascade="all, delete-orphan")
     payment_history = relationship("PaymentHistory", back_populates="user", cascade="all, delete-orphan")
     onboarding_backups = relationship("OnboardingBackup", back_populates="user", cascade="all, delete-orphan")
@@ -523,6 +524,41 @@ class TinkConnection(Base):
     __table_args__ = (
         Index('idx_tink_connections_user_id', 'user_id'),
         Index('idx_tink_connections_tink_user_id', 'tink_user_id'),
+    )
+
+
+class EnableBankingConnection(Base):
+    """Stores Enable Banking PSD2 connections (session-based, JWT auth)."""
+    __tablename__ = "enable_banking_connections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+
+    # Enable Banking session (long-lived credential from POST /sessions)
+    session_id = Column(String, unique=True, nullable=False)
+
+    # Bank info (from ASPSP)
+    aspsp_name = Column(String, nullable=False)      # e.g., "ING Bank Śląski"
+    aspsp_country = Column(String, nullable=False)    # e.g., "PL"
+
+    # Consent validity (from access.valid_until in session response)
+    valid_until = Column(DateTime(timezone=True), nullable=False)
+
+    # Accounts (list of {uid, iban, name, currency} from session creation)
+    accounts = Column(JSON)
+
+    # Status
+    is_active = Column(Boolean, default=True)
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationship
+    user = relationship("User", back_populates="enable_banking_connections")
+
+    __table_args__ = (
+        Index('idx_eb_connections_user_id', 'user_id'),
+        Index('idx_eb_connections_session_id', 'session_id'),
     )
 
 
