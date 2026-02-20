@@ -81,11 +81,12 @@ interface BankTransaction {
   created_at: string;
 }
 
-interface TinkConnection {
+interface BankConnection {
   id: number;
+  institution_name: string;
   is_active: boolean;
   last_sync_at: string | null;
-  token_expires_at: string | null;
+  expires_at: string;
 }
 
 interface SpendingPattern {
@@ -190,7 +191,7 @@ export default function BankTransactionsPage() {
 
   // State
   const [transactions, setTransactions] = useState<BankTransaction[]>([]);
-  const [connection, setConnection] = useState<TinkConnection | null>(null);
+  const [connection, setConnection] = useState<BankConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [categorizing, setCategorizing] = useState(false);
@@ -222,7 +223,7 @@ export default function BankTransactionsPage() {
     try {
       // Use proxy which adds auth headers automatically
       const [connRes, txRes] = await Promise.all([
-        fetch(`/api/backend/banking/tink/connections`),
+        fetch(`/api/banking/connections`),
         fetch(`/api/backend/banking/transactions?limit=500`),
       ]);
 
@@ -631,9 +632,9 @@ export default function BankTransactionsPage() {
     }
   };
 
-  // Check if token is expired
-  const isTokenExpired = connection?.token_expires_at
-    ? new Date(connection.token_expires_at) < new Date()
+  // Check if bank connection has expired
+  const isTokenExpired = connection?.expires_at
+    ? new Date(connection.expires_at) < new Date()
     : false;
 
   if (loading || sessionStatus === "loading") {

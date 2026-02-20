@@ -60,22 +60,6 @@ interface ExportBackup {
   created_at: string;
 }
 
-interface TinkAccount {
-  id: string;
-  name?: string;
-  iban?: string;
-  currency?: string;
-  type?: string;
-}
-
-interface TinkConnection {
-  id: number;
-  is_active: boolean;
-  last_sync_at: string | null;
-  created_at: string;
-  token_expires_at: string | null;
-  accounts: TinkAccount[];
-}
 
 interface UserSettings {
   id: number;
@@ -206,8 +190,6 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tinkConnections, setTinkConnections] = useState<TinkConnection[]>([]);
-  const [tinkConnecting, setTinkConnecting] = useState(false);
   const [gcConnections, setGcConnections] = useState<Array<{
     id: number;
     institution_id: string;
@@ -332,74 +314,6 @@ export default function SettingsPage() {
       fetchPartnerStatus();
     } catch (err: any) {
       toast({ title: err.message, variant: "destructive" });
-    }
-  };
-
-  const fetchTinkConnections = async () => {
-    try {
-      const response = await fetch("/api/banking/tink/connections");
-      if (response.ok) {
-        const data: TinkConnection[] = await response.json();
-        setTinkConnections(data);
-      }
-    } catch (err) {
-      logger.error("[Settings] Failed to fetch Tink connections", err);
-    }
-  };
-
-  const handleTinkConnect = async () => {
-    setTinkConnecting(true);
-    try {
-      const response = await fetch("/api/banking/tink/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ locale: settings?.language === "pl" ? "pl_PL" : "en_US" }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to initiate bank connection");
-      }
-
-      const data = await response.json();
-
-      // Redirect to Tink Link
-      window.location.href = data.tink_link_url;
-    } catch (err: any) {
-      logger.error("[Settings] Tink connect failed", err);
-      toast({
-        title: err.message || "Failed to connect bank",
-        variant: "destructive",
-      });
-    } finally {
-      setTinkConnecting(false);
-    }
-  };
-
-  const handleTinkDisconnect = async (connectionId: number) => {
-    if (!confirm(intl.formatMessage({ id: "settings.messages.confirmBankDelete" }))) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/banking/tink/connections/${connectionId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      toast({
-        title: intl.formatMessage({ id: "settings.messages.bankDeleteSuccess" }),
-      });
-      setTinkConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
-    } catch (err) {
-      logger.error("[Settings] Failed to delete Tink connection", err);
-      toast({
-        title: intl.formatMessage({ id: "settings.messages.bankDeleteError" }),
-        variant: "destructive",
-      });
     }
   };
 
@@ -558,7 +472,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     void fetchSettings();
-    void fetchTinkConnections();
     void fetchGcConnections();
     void fetchOnboardingBackups();
     void checkUserHasCompleteData();
@@ -568,7 +481,6 @@ export default function SettingsPage() {
   // Refetch connections when integrations tab becomes active (e.g., after returning from callback)
   useEffect(() => {
     if (activeTab === 'integrations') {
-      void fetchTinkConnections();
       void fetchGcConnections();
     }
   }, [activeTab]);
@@ -1682,7 +1594,7 @@ export default function SettingsPage() {
         {/* Integrations Tab (Banking) */}
         <TabsContent value="integrations">
           <div className="space-y-6">
-            {/* Tink Connections - Primary bank integration */}
+            {/* Bank Connections (Open Banking / PSD2) */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1694,145 +1606,15 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Connect your bank account to automatically import transactions. Supports most Polish banks including ING, PKO BP, and mBank.
-                </p>
-
-                {tinkConnections.length === 0 ? (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      No bank accounts connected yet.
-                    </p>
-                    <Button
-                      onClick={() => void handleTinkConnect()}
-                      disabled={tinkConnecting}
-                    >
-                      {tinkConnecting ? "Connecting..." : "Connect Bank Account"}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {tinkConnections.map((connection) => (
-                      <div
-                        key={connection.id}
-                        className="flex flex-col gap-2 rounded-lg border p-4"
-                      >
-                        {(() => {
-                          const isExpired = connection.token_expires_at
-                            ? new Date(connection.token_expires_at) < new Date()
-                            : false;
-
-                          return (
-                            <>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className={`h-2 w-2 rounded-full ${isExpired ? 'bg-amber-500' : 'bg-green-500'}`} />
-                                  <span className="font-medium">
-                                    {isExpired ? 'Expired - Needs Reconnection' : 'Connected'}
-                                  </span>
-                                </div>
-                                {isExpired ? (
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    onClick={() => void handleTinkConnect()}
-                                    disabled={tinkConnecting}
-                                  >
-                                    {tinkConnecting ? 'Connecting...' : 'Reconnect'}
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => void handleTinkDisconnect(connection.id)}
-                                  >
-                                    Disconnect
-                                  </Button>
-                                )}
-                              </div>
-                              {isExpired && connection.token_expires_at && (
-                                <p className="text-xs text-amber-600">
-                                  Token expired: {new Date(connection.token_expires_at).toLocaleString()}
-                                </p>
-                              )}
-                            </>
-                          );
-                        })()}
-                        {connection.accounts.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-xs font-medium text-muted-foreground mb-1">
-                              Connected accounts:
-                            </p>
-                            <ul className="text-sm space-y-1">
-                              {connection.accounts.map((account) => (
-                                <li key={account.id} className="flex items-center gap-2">
-                                  <span>{account.name || "Account"}</span>
-                                  {account.iban && (
-                                    <span className="text-muted-foreground">
-                                      (...{account.iban.slice(-4)})
-                                    </span>
-                                  )}
-                                  {account.currency && (
-                                    <span className="text-xs text-muted-foreground">
-                                      {account.currency}
-                                    </span>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {connection.last_sync_at && (
-                          <p className="text-xs text-muted-foreground">
-                            Last synced: {new Date(connection.last_sync_at).toLocaleString()}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          Connected: {new Date(connection.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                    <div className="flex gap-2 flex-wrap">
-                      <Button
-                        variant="outline"
-                        onClick={() => void handleTinkConnect()}
-                        disabled={tinkConnecting}
-                      >
-                        {tinkConnecting ? "Connecting..." : "Connect Another Account"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => router.push('/banking/tink/test')}
-                      >
-                        View API Data
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* GoCardless (PSD2) Connections */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FontAwesomeIcon icon={faBuilding} className="w-5 h-5 text-green-600" />
-                  GoCardless (Open Banking)
-                </CardTitle>
-                <CardDescription>
-                  PSD2 bank connection via GoCardless. Supports ING, PKO BP, mBank, and 2000+ European banks.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 {gcConnections.length === 0 ? (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      No GoCardless connections yet.
+                      No bank accounts connected yet. Connect your bank to automatically import transactions.
                     </p>
                     <Button
                       onClick={() => router.push('/banking')}
                     >
-                      Connect Bank via GoCardless
+                      Connect Bank Account
                     </Button>
                   </div>
                 ) : (
