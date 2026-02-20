@@ -203,6 +203,17 @@ export default function SettingsPage() {
     expires_at: string;
   }>>([]);
   const [gcSyncing, setGcSyncing] = useState(false);
+  const [ebConnections, setEbConnections] = useState<Array<{
+    id: number;
+    aspsp_name: string;
+    aspsp_country: string;
+    valid_until: string;
+    accounts: Array<{ uid: string; iban: string; name: string; currency: string }> | null;
+    is_active: boolean;
+    last_sync_at: string | null;
+    created_at: string;
+  }>>([]);
+  const [ebSyncing, setEbSyncing] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [shouldClearBeforeImport, setShouldClearBeforeImport] = useState<boolean>(false);
   const [importing, setImporting] = useState(false);
@@ -380,6 +391,68 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchEbConnections = async () => {
+    try {
+      const response = await fetch("/api/banking/enablebanking/connections");
+      if (response.ok) {
+        const data = await response.json();
+        setEbConnections(data);
+      }
+    } catch (err) {
+      logger.error("[Settings] Failed to fetch Enable Banking connections", err);
+    }
+  };
+
+  const handleEbSync = async () => {
+    setEbSyncing(true);
+    try {
+      const response = await fetch("/api/banking/enablebanking/sync", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Sync failed");
+      }
+
+      const data = await response.json();
+      toast({
+        title: data.message || `Synced ${data.synced_count} transactions`,
+      });
+      fetchEbConnections();
+    } catch (err: any) {
+      logger.error("[Settings] Enable Banking sync failed", err);
+      toast({
+        title: err.message || "Failed to sync transactions",
+        variant: "destructive",
+      });
+    } finally {
+      setEbSyncing(false);
+    }
+  };
+
+  const handleEbDisconnect = async (connectionId: number) => {
+    if (!confirm("Are you sure you want to disconnect this bank account?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/banking/enablebanking/connections/${connectionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      toast({ title: "Bank connection removed successfully" });
+      setEbConnections((prev) => prev.filter((c) => c.id !== connectionId));
+    } catch (err: any) {
+      logger.error("[Settings] Failed to delete Enable Banking connection", err);
+      toast({ title: "Failed to disconnect bank", variant: "destructive" });
+    }
+  };
+
   const fetchOnboardingBackups = async () => {
     if (!userEmail) return;
     try {
@@ -473,6 +546,7 @@ export default function SettingsPage() {
   useEffect(() => {
     void fetchSettings();
     void fetchGcConnections();
+    void fetchEbConnections();
     void fetchOnboardingBackups();
     void checkUserHasCompleteData();
     void fetchPartnerStatus();
@@ -482,6 +556,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeTab === 'integrations') {
       void fetchGcConnections();
+      void fetchEbConnections();
     }
   }, [activeTab]);
 
@@ -1606,7 +1681,7 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {gcConnections.length === 0 ? (
+                {gcConnections.length === 0 && ebConnections.length === 0 ? (
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
                       No bank accounts connected yet. Connect your bank to automatically import transactions.
@@ -1619,9 +1694,73 @@ export default function SettingsPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
+                    {/* Enable Banking connections */}
+                    {ebConnections.map((connection) => (
+                      <div
+                        key={`eb-${connection.id}`}
+                        className="flex flex-col gap-2 rounded-lg border p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500" />
+                            <span className="font-medium">
+                              {connection.aspsp_name || "Connected Bank"}
+                            </span>
+                            <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">PSD2</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void handleEbSync()}
+                              disabled={ebSyncing}
+                            >
+                              <FontAwesomeIcon icon={faArrowsRotate} className={`w-3 h-3 mr-1 ${ebSyncing ? 'animate-spin' : ''}`} />
+                              {ebSyncing ? "Syncing..." : "Sync Now"}
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => void handleEbDisconnect(connection.id)}
+                            >
+                              Disconnect
+                            </Button>
+                          </div>
+                        </div>
+                        {connection.accounts && connection.accounts.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">
+                              {connection.accounts.length} connected account{connection.accounts.length !== 1 ? "s" : ""}
+                            </p>
+                            <ul className="text-sm space-y-1">
+                              {connection.accounts.map((account, idx) => (
+                                <li key={account.uid || idx} className="flex items-center gap-2 text-muted-foreground">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 flex-shrink-0" />
+                                  <span>
+                                    {account.iban ? `****${account.iban.slice(-4)}` : account.name || `Account ${idx + 1}`}
+                                    {account.currency ? ` (${account.currency})` : ""}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {connection.last_sync_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Last synced: {new Date(connection.last_sync_at).toLocaleString()}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Connected: {new Date(connection.created_at).toLocaleDateString()}
+                          {" | "}
+                          Expires: {new Date(connection.valid_until).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
+                    {/* GoCardless connections */}
                     {gcConnections.map((connection) => (
                       <div
-                        key={connection.id}
+                        key={`gc-${connection.id}`}
                         className="flex flex-col gap-2 rounded-lg border p-4"
                       >
                         <div className="flex items-center justify-between">

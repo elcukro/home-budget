@@ -37,12 +37,15 @@ services:
       - NEXTAUTH_SECRET=dev-nextauth-secret-minimum-32-chars
       - ENVIRONMENT=development
       - OPENAI_API_KEY=${OPENAI_API_KEY:-your-openai-api-key}
+      - ENABLEBANKING_APP_ID=3c5e1856-c3b3-4e79-9f8a-a0e88ac868dc
+      - ENABLEBANKING_PRIVATE_KEY_PATH=/secrets/enablebanking.pem
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - ./backend:/app
       - /app/venv
+      - ${HOME}/claude/config/enablebanking.pem:/secrets/enablebanking.pem:ro
 
   frontend:
     build:

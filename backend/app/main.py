@@ -16,7 +16,7 @@ import csv
 import io
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget, reconciliation, partner, ai_chat
+from .routers import users, auth, financial_freedom, savings, exchange_rates, banking, tink, stripe_billing, bank_transactions, gamification, admin, budget, reconciliation, partner, ai_chat, enable_banking
 from datetime import timezone
 from .routers.stripe_billing import TRIAL_DAYS
 from .database import engine, Base
@@ -271,6 +271,7 @@ app.include_router(exchange_rates.router)
 app.include_router(banking.router)
 app.include_router(tink.router)
 app.include_router(bank_transactions.router)
+app.include_router(enable_banking.router)
 app.include_router(stripe_billing.router)
 # Mobile billing access (direct backend, bypasses Next.js routing)
 app.include_router(stripe_billing.router, prefix="/internal-api")
