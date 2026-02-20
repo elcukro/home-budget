@@ -615,6 +615,9 @@ class BankTransaction(Base):
     # Raw data from provider (for debugging/audit)
     raw_data = Column(JSONB, nullable=True)
 
+    # Internal transfer detection
+    is_internal_transfer = Column(Boolean, default=False, index=True)
+
     # Metadata
     is_duplicate = Column(Boolean, default=False)
     duplicate_of = Column(Integer, ForeignKey("bank_transactions.id"), nullable=True)

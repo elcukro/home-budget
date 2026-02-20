@@ -78,6 +78,7 @@ interface BankTransaction {
   confidence_score: number | null;
   status: string;
   is_duplicate: boolean;
+  is_internal_transfer: boolean;
   created_at: string;
 }
 
@@ -207,6 +208,7 @@ export default function BankTransactionsPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
   const [periodFilter, setPeriodFilter] = useState<"week" | "month" | "quarter" | "year" | "all">("all");
+  const [hideInternal, setHideInternal] = useState(true);
 
   // Add to budget modal
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -553,6 +555,11 @@ export default function BankTransactionsPage() {
   const filteredTransactions = useMemo(() => {
     let result = [...transactions];
 
+    // Filter out internal transfers (Smart Saver, own-account, etc.)
+    if (hideInternal) {
+      result = result.filter((tx) => !tx.is_internal_transfer);
+    }
+
     // Filter by search
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -627,7 +634,7 @@ export default function BankTransactionsPage() {
     });
 
     return result.slice(0, showAllTransactions ? undefined : 20);
-  }, [transactions, searchQuery, categoryFilter, typeFilter, periodFilter, showAllTransactions, sortField, sortDirection]);
+  }, [transactions, searchQuery, categoryFilter, typeFilter, periodFilter, hideInternal, showAllTransactions, sortField, sortDirection]);
 
   // Add to budget handler
   const openAddModal = (tx: BankTransaction) => {
@@ -1104,8 +1111,19 @@ export default function BankTransactionsPage() {
                 </SelectContent>
               </Select>
 
+              {/* Hide internal transfers toggle */}
+              <label className="flex items-center gap-2 text-sm cursor-pointer whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={hideInternal}
+                  onChange={(e) => setHideInternal(e.target.checked)}
+                  className="rounded"
+                />
+                <FormattedMessage id="bankTransactions.filters.hideInternal" />
+              </label>
+
               {/* Clear Filters Button (only show if any filter is active) */}
-              {(categoryFilter !== "all" || typeFilter !== "all" || periodFilter !== "all" || searchQuery) && (
+              {(categoryFilter !== "all" || typeFilter !== "all" || periodFilter !== "all" || searchQuery || !hideInternal) && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1114,6 +1132,7 @@ export default function BankTransactionsPage() {
                     setTypeFilter("all");
                     setPeriodFilter("all");
                     setSearchQuery("");
+                    setHideInternal(true);
                   }}
                   className="text-xs"
                 >

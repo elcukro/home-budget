@@ -319,7 +319,8 @@
       "lastMonth": "Last month",
       "lastQuarter": "Last quarter",
       "lastYear": "Last year",
-      "clearAll": "Clear filters"
+      "clearAll": "Clear filters",
+      "hideInternal": "Hide internal transfers"
     },
     "tokenExpired": {
       "title": "Bank Connection Expired",

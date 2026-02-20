@@ -646,6 +646,12 @@ async def categorize_transactions(
         BankTransaction.user_id == current_user.household_id
     )
 
+    # Skip internal transfers — they're noise (Smart Saver, own-account, etc.)
+    query = query.filter(
+        (BankTransaction.is_internal_transfer == False) |
+        (BankTransaction.is_internal_transfer == None)
+    )
+
     if not force:
         # Only uncategorized (confidence_score = 0 or None)
         query = query.filter(
