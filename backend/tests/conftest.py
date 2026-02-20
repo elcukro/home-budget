@@ -90,6 +90,7 @@ class BankTransaction(Base):
     linked_expense_id = Column(Integer, nullable=True)
     provider = Column(String, default="tink")
     raw_data = Column(JSON, nullable=True)
+    is_internal_transfer = Column(Boolean, default=False)
     is_duplicate = Column(Boolean, default=False)
     duplicate_of = Column(Integer, nullable=True)
     duplicate_confidence = Column(Float, nullable=True)

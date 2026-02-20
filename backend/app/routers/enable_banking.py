@@ -37,6 +37,43 @@ def get_limiter(request: Request) -> Limiter:
     return request.app.state.limiter
 
 
+def _detect_internal_transfer(tx: dict) -> bool:
+    """Detect internal transfers from Enable Banking raw transaction data.
+
+    Catches: ING Smart Saver, own-account transfers, savings account transfers,
+    and same-bank same-person transfers.
+    """
+    remittance = tx.get("remittance_information", [])
+    remittance_text = " ".join(remittance) if isinstance(remittance, list) else str(remittance or "")
+    remittance_lower = remittance_text.lower()
+
+    # Pattern 1: ING Smart Saver auto-savings
+    if "smart saver" in remittance_lower:
+        return True
+
+    # Pattern 2: Own-account transfer ("Przelew własny")
+    if "przelew własny" in remittance_lower:
+        return True
+
+    # Pattern 3: Savings account transfer
+    if "konto oszczędnościowe" in remittance_lower:
+        return True
+
+    # Pattern 4: Same bank, same person (debtor_agent BIC == creditor_agent BIC)
+    debtor_agent = tx.get("debtor_agent") or {}
+    creditor_agent = tx.get("creditor_agent") or {}
+    if (debtor_agent.get("bic_fi") and
+            debtor_agent.get("bic_fi") == creditor_agent.get("bic_fi")):
+        debtor_addr = (tx.get("debtor") or {}).get("postal_address") or {}
+        creditor_addr = (tx.get("creditor") or {}).get("postal_address") or {}
+        debtor_lines = debtor_addr.get("address_line") or []
+        creditor_lines = creditor_addr.get("address_line") or []
+        if debtor_lines and creditor_lines and debtor_lines[0] == creditor_lines[0]:
+            return True
+
+    return False
+
+
 router = APIRouter(
     prefix="/banking/enablebanking",
     tags=["enable-banking"],
@@ -486,6 +523,7 @@ async def sync_transactions(
                     suggested_type=suggested_type,
                     suggested_category=None,
                     status="pending",
+                    is_internal_transfer=_detect_internal_transfer(tx),
                     raw_data=tx,
                 )
                 db.add(bank_tx)

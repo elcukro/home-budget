@@ -266,7 +266,8 @@
       "lastMonth": "Ostatni miesiąc",
       "lastQuarter": "Ostatni kwartał",
       "lastYear": "Ostatni rok",
-      "clearAll": "Wyczyść filtry"
+      "clearAll": "Wyczyść filtry",
+      "hideInternal": "Ukryj przelewy wewnętrzne"
     },
     "tokenExpired": {
       "title": "Połączenie z bankiem wygasło",
