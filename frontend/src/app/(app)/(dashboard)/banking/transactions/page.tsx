@@ -60,7 +60,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import Link from "next/link";
 import { mapTinkCategoryToApp } from "@/lib/tink-category-mapping";
 
-// API calls now go through Next.js proxy at /api/backend/* which adds auth headers
+// API calls go through dedicated Next.js API routes at /api/banking/* which add auth headers
 
 interface BankTransaction {
   id: number;
@@ -224,7 +224,7 @@ export default function BankTransactionsPage() {
       // Use proxy which adds auth headers automatically
       const [connRes, txRes] = await Promise.all([
         fetch(`/api/banking/connections`),
-        fetch(`/api/backend/banking/transactions?limit=500`),
+        fetch(`/api/banking/transactions?limit=500`),
       ]);
 
       if (connRes.ok) {
@@ -254,7 +254,7 @@ export default function BankTransactionsPage() {
 
     setSyncing(true);
     try {
-      const response = await fetch(`/api/backend/banking/transactions/sync`, {
+      const response = await fetch(`/api/banking/sync-gocardless`, {
         method: "POST",
       });
 
@@ -319,7 +319,7 @@ export default function BankTransactionsPage() {
         setCategorizeStep(intl.formatMessage({ id: "bankTransactions.categorizeModal.step2" }));
       }, 1000);
 
-      const response = await fetch(`/api/backend/banking/transactions/categorize`, {
+      const response = await fetch(`/api/banking/transactions/categorize`, {
         method: "POST",
       });
 
@@ -601,7 +601,7 @@ export default function BankTransactionsPage() {
     setAdding(true);
     try {
       const response = await fetch(
-        `/api/backend/banking/transactions/${selectedTransaction.id}/convert`,
+        `/api/banking/transactions/${selectedTransaction.id}/convert`,
         {
           method: "POST",
           headers: {
