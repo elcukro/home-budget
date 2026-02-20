@@ -141,6 +141,7 @@ class BankingConnectionResponse(BaseModel):
     is_active: bool
     accounts: Optional[List[str]] = None
     account_names: Optional[Dict[str, str]] = None  # Map of account ID to account name
+    last_sync_at: Optional[datetime] = None
 
 async def get_access_token():
     """Get or refresh the access token for GoCardless API"""

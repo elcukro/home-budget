@@ -208,6 +208,19 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [tinkConnections, setTinkConnections] = useState<TinkConnection[]>([]);
   const [tinkConnecting, setTinkConnecting] = useState(false);
+  const [gcConnections, setGcConnections] = useState<Array<{
+    id: number;
+    institution_id: string;
+    institution_name: string;
+    requisition_id: string;
+    is_active: boolean;
+    accounts: string[] | null;
+    account_names: Record<string, string> | null;
+    last_sync_at: string | null;
+    created_at: string;
+    expires_at: string;
+  }>>([]);
+  const [gcSyncing, setGcSyncing] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [shouldClearBeforeImport, setShouldClearBeforeImport] = useState<boolean>(false);
   const [importing, setImporting] = useState(false);
@@ -390,6 +403,69 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchGcConnections = async () => {
+    try {
+      const response = await fetch("/api/banking/connections");
+      if (response.ok) {
+        const data = await response.json();
+        setGcConnections(data);
+      }
+    } catch (err) {
+      logger.error("[Settings] Failed to fetch GoCardless connections", err);
+    }
+  };
+
+  const handleGcSync = async () => {
+    setGcSyncing(true);
+    try {
+      const response = await fetch("/api/banking/sync-gocardless", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Sync failed");
+      }
+
+      const data = await response.json();
+      toast({
+        title: data.message || `Synced ${data.synced_count} transactions`,
+      });
+      // Refresh connections to update last_sync_at
+      fetchGcConnections();
+    } catch (err: any) {
+      logger.error("[Settings] GoCardless sync failed", err);
+      toast({
+        title: err.message || "Failed to sync transactions",
+        variant: "destructive",
+      });
+    } finally {
+      setGcSyncing(false);
+    }
+  };
+
+  const handleGcDisconnect = async (connectionId: number) => {
+    if (!confirm("Are you sure you want to disconnect this bank account?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/banking/connections/${connectionId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      toast({ title: "Bank connection removed successfully" });
+      setGcConnections((prev) => prev.filter((c) => c.id !== connectionId));
+    } catch (err: any) {
+      logger.error("[Settings] Failed to delete GoCardless connection", err);
+      toast({ title: "Failed to disconnect bank", variant: "destructive" });
+    }
+  };
+
   const fetchOnboardingBackups = async () => {
     if (!userEmail) return;
     try {
@@ -483,15 +559,17 @@ export default function SettingsPage() {
   useEffect(() => {
     void fetchSettings();
     void fetchTinkConnections();
+    void fetchGcConnections();
     void fetchOnboardingBackups();
     void checkUserHasCompleteData();
     void fetchPartnerStatus();
   }, [userEmail]);
 
-  // Refetch Tink connections when integrations tab becomes active (e.g., after returning from callback)
+  // Refetch connections when integrations tab becomes active (e.g., after returning from callback)
   useEffect(() => {
     if (activeTab === 'integrations') {
       void fetchTinkConnections();
+      void fetchGcConnections();
     }
   }, [activeTab]);
 
@@ -1729,6 +1807,101 @@ export default function SettingsPage() {
                         View API Data
                       </Button>
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* GoCardless (PSD2) Connections */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faBuilding} className="w-5 h-5 text-green-600" />
+                  GoCardless (Open Banking)
+                </CardTitle>
+                <CardDescription>
+                  PSD2 bank connection via GoCardless. Supports ING, PKO BP, mBank, and 2000+ European banks.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {gcConnections.length === 0 ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      No GoCardless connections yet.
+                    </p>
+                    <Button
+                      onClick={() => router.push('/banking')}
+                    >
+                      Connect Bank via GoCardless
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {gcConnections.map((connection) => (
+                      <div
+                        key={connection.id}
+                        className="flex flex-col gap-2 rounded-lg border p-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-green-500" />
+                            <span className="font-medium">
+                              {connection.institution_name || "Connected Bank"}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void handleGcSync()}
+                              disabled={gcSyncing}
+                            >
+                              <FontAwesomeIcon icon={faArrowsRotate} className={`w-3 h-3 mr-1 ${gcSyncing ? 'animate-spin' : ''}`} />
+                              {gcSyncing ? "Syncing..." : "Sync Now"}
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => void handleGcDisconnect(connection.id)}
+                            >
+                              Disconnect
+                            </Button>
+                          </div>
+                        </div>
+                        {connection.accounts && connection.accounts.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs font-medium text-muted-foreground mb-1">
+                              Connected accounts ({connection.accounts.length}):
+                            </p>
+                            <ul className="text-sm space-y-1">
+                              {connection.accounts.map((accountId) => (
+                                <li key={accountId} className="flex items-center gap-2">
+                                  <span>
+                                    {connection.account_names?.[accountId] || accountId.slice(0, 8) + "..."}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {connection.last_sync_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Last synced: {new Date(connection.last_sync_at).toLocaleString()}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          Connected: {new Date(connection.created_at).toLocaleDateString()}
+                          {" | "}
+                          Expires: {new Date(connection.expires_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push('/banking')}
+                    >
+                      Connect Another Bank
+                    </Button>
                   </div>
                 )}
               </CardContent>
