@@ -365,7 +365,7 @@ async def delete_connection(
 @router.post("/sync", response_model=SyncResponse)
 async def sync_transactions(
     http_request: Request,
-    days: int = Query(default=90, ge=1, le=730, description="Number of days to sync"),
+    days: int = Query(default=30, ge=1, le=730, description="Number of days to sync"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
