@@ -157,22 +157,42 @@ def main():
             print("=== DRY RUN — no changes made. Run without --dry-run to execute. ===")
             return
 
-        # Execute cleanup
+        # Execute cleanup — must NULL FK references BEFORE deleting records
         affected_tx_ids = set()
 
+        # Phase 1: Collect IDs to delete
+        income_ids_to_delete = {income.id for income, tx, reason in income_to_delete}
+        expense_ids_to_delete = {expense.id for expense, tx, reason in expense_to_delete}
+
+        # Phase 2: NULL all FK references in bank_transactions that point to these records
+        if income_ids_to_delete:
+            db.query(BankTransaction).filter(
+                BankTransaction.linked_income_id.in_(income_ids_to_delete)
+            ).update({
+                BankTransaction.linked_income_id: None,
+                BankTransaction.status: "skipped",
+            }, synchronize_session="fetch")
+
+        if expense_ids_to_delete:
+            db.query(BankTransaction).filter(
+                BankTransaction.linked_expense_id.in_(expense_ids_to_delete)
+            ).update({
+                BankTransaction.linked_expense_id: None,
+                BankTransaction.status: "skipped",
+            }, synchronize_session="fetch")
+
+        db.flush()
+
+        # Phase 3: Delete the income/expense records (FK references already cleared)
         for income, tx, reason in income_to_delete:
             affected_tx_ids.add(tx.id)
-            if tx.linked_income_id == income.id:
-                tx.linked_income_id = None
             db.delete(income)
 
         for expense, tx, reason in expense_to_delete:
             affected_tx_ids.add(tx.id)
-            if tx.linked_expense_id == expense.id:
-                tx.linked_expense_id = None
             db.delete(expense)
 
-        # Mark affected bank transactions
+        # Phase 4: Mark affected bank transactions as internal transfers
         for tx_id in affected_tx_ids:
             tx = bank_txs.get(tx_id)
             if tx:
