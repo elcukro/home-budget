@@ -66,14 +66,18 @@ def main():
             return
 
         # Fix: delete income records, create expense records
+        # Phase 1: NULL all FK references to these income records (bulk)
+        income_ids = {income.id for income, tx in to_fix}
+        db.query(BankTransaction).filter(
+            BankTransaction.linked_income_id.in_(income_ids)
+        ).update({BankTransaction.linked_income_id: None}, synchronize_session="fetch")
+        db.flush()
+
+        # Phase 2: Delete and recreate
         converted = 0
         for income, tx in to_fix:
             # Map income category to expense category
             category = _map_category(income.category, tx)
-
-            # NULL the FK reference in bank_transaction
-            if tx.linked_income_id == income.id:
-                tx.linked_income_id = None
 
             # Delete the income record
             db.delete(income)
