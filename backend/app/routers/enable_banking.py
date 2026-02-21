@@ -28,6 +28,7 @@ from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User, EnableBankingConnection, BankTransaction
 from ..services.enable_banking_service import enable_banking_service, EnableBankingAPIError
+from ..services.internal_transfer_detection import detect_internal_transfer_eb
 
 logger = logging.getLogger(__name__)
 
@@ -39,39 +40,9 @@ def get_limiter(request: Request) -> Limiter:
 
 def _detect_internal_transfer(tx: dict) -> bool:
     """Detect internal transfers from Enable Banking raw transaction data.
-
-    Catches: ING Smart Saver, own-account transfers, savings account transfers,
-    and same-bank same-person transfers.
+    Delegates to shared detection module.
     """
-    remittance = tx.get("remittance_information", [])
-    remittance_text = " ".join(remittance) if isinstance(remittance, list) else str(remittance or "")
-    remittance_lower = remittance_text.lower()
-
-    # Pattern 1: ING Smart Saver auto-savings
-    if "smart saver" in remittance_lower:
-        return True
-
-    # Pattern 2: Own-account transfer ("Przelew własny")
-    if "przelew własny" in remittance_lower:
-        return True
-
-    # Pattern 3: Savings account transfer
-    if "konto oszczędnościowe" in remittance_lower:
-        return True
-
-    # Pattern 4: Same bank, same person (debtor_agent BIC == creditor_agent BIC)
-    debtor_agent = tx.get("debtor_agent") or {}
-    creditor_agent = tx.get("creditor_agent") or {}
-    if (debtor_agent.get("bic_fi") and
-            debtor_agent.get("bic_fi") == creditor_agent.get("bic_fi")):
-        debtor_addr = (tx.get("debtor") or {}).get("postal_address") or {}
-        creditor_addr = (tx.get("creditor") or {}).get("postal_address") or {}
-        debtor_lines = debtor_addr.get("address_line") or []
-        creditor_lines = creditor_addr.get("address_line") or []
-        if debtor_lines and creditor_lines and debtor_lines[0] == creditor_lines[0]:
-            return True
-
-    return False
+    return detect_internal_transfer_eb(tx)
 
 
 router = APIRouter(

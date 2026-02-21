@@ -76,6 +76,7 @@ class TransactionStatus(str, Enum):
     rejected = "rejected"
     converted = "converted"
     ignored = "ignored"  # Used for confirmed duplicates
+    skipped = "skipped"  # AI detected as internal transfer
 
 
 class ConvertType(str, Enum):
@@ -156,6 +157,7 @@ class TransactionStats(BaseModel):
     rejected: int
     converted: int
     ignored: int = 0  # Confirmed duplicates
+    skipped: int = 0  # Internal transfers detected by AI
 
 
 class CategorizeResponse(BaseModel):
@@ -710,10 +712,21 @@ async def categorize_transactions(
 
     # Auto-convert categorized transactions to Expense/Income records
     converted_count = 0
+    internal_transfer_count = 0
     for tx in transactions:
         if tx.id in results_map and tx.suggested_type and tx.suggested_category:
             # Skip if already converted
             if tx.status == "converted":
+                continue
+
+            result = results_map[tx.id]
+
+            # Handle internal_transfer: mark and skip, don't create records
+            if result.get("type") == "internal_transfer":
+                tx.is_internal_transfer = True
+                tx.status = "skipped"
+                tx.reviewed_at = datetime.now()
+                internal_transfer_count += 1
                 continue
 
             # Skip if transaction already has a linked income/expense record
@@ -722,7 +735,6 @@ async def categorize_transactions(
                 logger.warning(f"Skipping auto-convert for transaction {tx.id} - already has linked record")
                 continue
 
-            result = results_map[tx.id]
             amount = abs(tx.amount)
 
             try:
@@ -775,7 +787,7 @@ async def categorize_transactions(
 
     db.commit()
 
-    logger.info(f"Categorized {categorized_count}/{len(transactions)} transactions, auto-converted {converted_count} to Expense/Income")
+    logger.info(f"Categorized {categorized_count}/{len(transactions)} transactions, auto-converted {converted_count} to Expense/Income, {internal_transfer_count} marked as internal transfers")
 
     # Audit: AI categorization requested
     audit_categorization_requested(
@@ -883,6 +895,7 @@ async def get_transaction_stats(
         "rejected": 0,
         "converted": 0,
         "ignored": 0,
+        "skipped": 0,
     }
 
     for status, count in stats:

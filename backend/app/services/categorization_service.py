@@ -99,7 +99,7 @@ async def categorize_transactions(
 
 Categorize each transaction into the appropriate type and category.
 
-EXPENSE CATEGORIES (for negative amounts / spending):
+EXPENSE CATEGORIES (for spending):
 - housing: {CATEGORY_DESCRIPTIONS["housing"]}
 - transportation: {CATEGORY_DESCRIPTIONS["transportation"]}
 - food: {CATEGORY_DESCRIPTIONS["food"]}
@@ -109,12 +109,15 @@ EXPENSE CATEGORIES (for negative amounts / spending):
 - entertainment: {CATEGORY_DESCRIPTIONS["entertainment"]}
 - other: {CATEGORY_DESCRIPTIONS["other"]}
 
-INCOME CATEGORIES (for positive amounts / money received):
+INCOME CATEGORIES (for real household income):
 - salary: {CATEGORY_DESCRIPTIONS["salary"]}
 - freelance: {CATEGORY_DESCRIPTIONS["freelance"]}
 - investments: {CATEGORY_DESCRIPTIONS["investments"]}
 - rental: {CATEGORY_DESCRIPTIONS["rental"]}
 - other: {CATEGORY_DESCRIPTIONS["other_income"]}
+
+INTERNAL TRANSFER (money moving between own accounts — NOT real income or expense):
+- transfer: own-account transfers, savings deposits/withdrawals, ATM self-deposits, loan account top-ups, currency exchanges, card payment reversals
 
 TRANSACTIONS TO CATEGORIZE:
 {json.dumps(tx_list, ensure_ascii=False, indent=2)}
@@ -124,7 +127,7 @@ RESPOND WITH JSON ONLY. Format:
   "results": [
     {{
       "id": <transaction_id>,
-      "type": "expense" or "income",
+      "type": "expense" or "income" or "internal_transfer",
       "category": "<category_name>",
       "confidence": <0.0 to 1.0>
     }}
@@ -132,11 +135,22 @@ RESPOND WITH JSON ONLY. Format:
 }}
 
 Rules:
-1. Use "expense" type for negative amounts, "income" for positive
-2. Match category from the lists above EXACTLY (lowercase)
-3. confidence: 0.9+ if obvious, 0.7-0.9 if likely, 0.5-0.7 if guessing
-4. Polish merchant names are common - interpret them correctly
-5. Consider tink_category as a hint but make your own judgment"""
+1. Classify by SEMANTIC MEANING, not amount sign. A positive amount does NOT always mean income.
+2. "income" = real household income: salary, freelance payments, investment returns, rental income
+3. "expense" = real household spending: purchases, bills, subscriptions, loan payments
+4. "internal_transfer" = money moving between own accounts, NOT real income/expense:
+   - Own-account transfers (przelew własny, przelew środków)
+   - Savings deposits/withdrawals (Smart Saver, velo, konto oszczędnościowe)
+   - ATM self-deposits (wpłatomat, wpłata własna)
+   - Loan account top-ups (zasilenie kredytu)
+   - Currency exchanges (wymiana walut)
+   - Card payment reversals on same account
+5. When unsure if a positive transaction is income vs internal transfer, prefer "internal_transfer"
+6. Match category from the lists above EXACTLY (lowercase)
+7. For "internal_transfer" type, set category to "transfer"
+8. confidence: 0.9+ if obvious, 0.7-0.9 if likely, 0.5-0.7 if guessing
+9. Polish merchant names are common - interpret them correctly
+10. Consider tink_category as a hint but make your own judgment"""
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
