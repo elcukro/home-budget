@@ -675,16 +675,19 @@ async def categorize_transactions(
         )
 
     # Prepare data for AI
-    tx_data = [
-        {
+    tx_data = []
+    for tx in transactions:
+        entry = {
             "id": tx.id,
             "description": tx.description_display,
             "merchant_name": tx.merchant_name,
             "amount": tx.amount,
             "tink_category": tx.tink_category_name,
         }
-        for tx in transactions
-    ]
+        # Include CDI (credit/debit indicator) so AI knows the direction
+        if tx.raw_data and tx.raw_data.get("credit_debit_indicator"):
+            entry["direction"] = "incoming" if tx.raw_data["credit_debit_indicator"] == "CRDT" else "outgoing"
+        tx_data.append(entry)
 
     logger.info(f"Categorizing {len(tx_data)} transactions for user {current_user.household_id}")
 
@@ -734,6 +737,18 @@ async def categorize_transactions(
             if tx.linked_expense_id is not None or tx.linked_income_id is not None:
                 logger.warning(f"Skipping auto-convert for transaction {tx.id} - already has linked record")
                 continue
+
+            # CDI safety guard: DBIT (outgoing) transactions should never create income
+            # records, and CRDT (incoming) should never create expense records.
+            # Override AI classification if it contradicts the bank's CDI.
+            cdi = (tx.raw_data or {}).get("credit_debit_indicator", "")
+            ai_type = result.get("type")
+            if cdi == "DBIT" and ai_type == "income":
+                result = {**result, "type": "expense"}
+                logger.info(f"CDI guard: tx {tx.id} is DBIT but AI said income, forcing expense")
+            elif cdi == "CRDT" and ai_type == "expense":
+                result = {**result, "type": "income"}
+                logger.info(f"CDI guard: tx {tx.id} is CRDT but AI said expense, forcing income")
 
             amount = abs(tx.amount)
 

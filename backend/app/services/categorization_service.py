@@ -135,9 +135,9 @@ RESPOND WITH JSON ONLY. Format:
 }}
 
 Rules:
-1. Classify by SEMANTIC MEANING, not amount sign. A positive amount does NOT always mean income.
-2. "income" = real household income: salary, freelance payments, investment returns, rental income
-3. "expense" = real household spending: purchases, bills, subscriptions, loan payments
+1. CRITICAL: If "direction" is "outgoing", type MUST be "expense" (money left the account). If "incoming", type is "income" or "internal_transfer".
+2. "income" = real household income from EXTERNAL sources: salary, freelance payments, investment returns, rental income, refunds from merchants
+3. "expense" = real household spending: purchases, bills, subscriptions, loan payments, transfers to other people
 4. "internal_transfer" = money moving between own accounts, NOT real income/expense:
    - Own-account transfers (przelew własny, przelew środków)
    - Savings deposits/withdrawals (Smart Saver, velo, konto oszczędnościowe)
@@ -145,7 +145,7 @@ Rules:
    - Loan account top-ups (zasilenie kredytu)
    - Currency exchanges (wymiana walut)
    - Card payment reversals on same account
-5. When unsure if a positive transaction is income vs internal transfer, prefer "internal_transfer"
+5. When unsure if an incoming transaction is income vs internal transfer, prefer "internal_transfer"
 6. Match category from the lists above EXACTLY (lowercase)
 7. For "internal_transfer" type, set category to "transfer"
 8. confidence: 0.9+ if obvious, 0.7-0.9 if likely, 0.5-0.7 if guessing
