@@ -16,6 +16,7 @@ from app.services.internal_transfer_detection import (
     detect_internal_transfer_eb as eb_detect,
     detect_internal_transfer as backfill_detect,
     detect_internal_from_descriptions,
+    infer_account_bic,
 )
 
 
@@ -23,16 +24,34 @@ from app.services.internal_transfer_detection import (
 # Helpers
 # ============================================================================
 
-def _make_eb_tx(remittance_text: str = "", **overrides) -> dict:
+def _make_eb_tx(remittance_text: str = "", cdi: str = "", **overrides) -> dict:
     """Build a minimal Enable Banking raw transaction dict."""
     tx = {
         "remittance_information": [remittance_text] if remittance_text else [],
+        "credit_debit_indicator": cdi,
         "debtor": {},
         "creditor": {},
         "debtor_agent": {},
         "creditor_agent": {},
     }
     tx.update(overrides)
+    return tx
+
+
+def _make_crdt_tx(
+    debtor_bic: str | None = None,
+    creditor_bic: str | None = None,
+    remittance: str = "",
+) -> dict:
+    """Build a CRDT transaction with optional BICs for structural testing."""
+    tx = {
+        "credit_debit_indicator": "CRDT",
+        "remittance_information": [remittance] if remittance else [],
+        "debtor": {},
+        "creditor": {},
+        "debtor_agent": {"bic_fi": debtor_bic} if debtor_bic else {},
+        "creditor_agent": {"bic_fi": creditor_bic} if creditor_bic else {},
+    }
     return tx
 
 
@@ -46,6 +65,7 @@ def _make_same_bic_tx(
     """Build a transaction with BIC info for same-bank detection."""
     tx = {
         "remittance_information": [],
+        "credit_debit_indicator": "",
         "debtor_agent": {"bic_fi": bic},
         "creditor_agent": {"bic_fi": bic},
         "debtor": {
@@ -70,11 +90,90 @@ def _desc_detect(**kwargs):
 
 
 # ============================================================================
-# Enable Banking detection — text patterns
+# STRUCTURAL BIC DETECTION (CRDT transactions — the core income filter)
+# ============================================================================
+
+class TestStructuralBICDetection:
+    """Tests for BIC-based structural filtering of CRDT transactions.
+
+    The simple rule: income = money from a DIFFERENT bank.
+    - Same bank (debtor_bic == account_bic) → internal
+    - No bank (debtor_bic is None) → internal (ATM)
+    - Different bank → real income (unless text pattern matches)
+    """
+
+    def test_same_bank_card_payment(self):
+        """Card payment CRDT: debtor=ING, creditor=null → internal."""
+        tx = _make_crdt_tx(debtor_bic="INGBPLPW", creditor_bic=None)
+        assert eb_detect(tx, account_bic="INGBPLPW") is True
+
+    def test_same_bank_own_transfer(self):
+        """Own ING→ING transfer: both BICs = INGBPLPW → internal."""
+        tx = _make_crdt_tx(debtor_bic="INGBPLPW", creditor_bic="INGBPLPW")
+        assert eb_detect(tx, account_bic="INGBPLPW") is True
+
+    def test_same_bank_blik_refund(self):
+        """BLIK refund: debtor=ING → internal."""
+        tx = _make_crdt_tx(debtor_bic="INGBPLPW", remittance="Zwrot transakcji BLIK")
+        assert eb_detect(tx, account_bic="INGBPLPW") is True
+
+    def test_same_bank_interest(self):
+        """Interest posting: debtor=ING → internal."""
+        tx = _make_crdt_tx(debtor_bic="INGBPLPW", remittance="Kapitalizacja odsetek")
+        assert eb_detect(tx, account_bic="INGBPLPW") is True
+
+    def test_same_bank_currency_exchange(self):
+        """Currency exchange: debtor=ING → internal."""
+        tx = _make_crdt_tx(debtor_bic="INGBPLPW", remittance="Wymiana walut EUR/PLN")
+        assert eb_detect(tx, account_bic="INGBPLPW") is True
+
+    def test_no_debtor_bic_atm(self):
+        """ATM deposit: no debtor bank → internal."""
+        tx = _make_crdt_tx(debtor_bic=None, creditor_bic=None)
+        assert eb_detect(tx, account_bic="INGBPLPW") is True
+
+    def test_different_bank_salary(self):
+        """Salary from Citi Handlowy → real income."""
+        tx = _make_crdt_tx(debtor_bic="CITIPLPX", creditor_bic="INGBPLPW")
+        assert eb_detect(tx, account_bic="INGBPLPW") is False
+
+    def test_different_bank_family_transfer(self):
+        """Family transfer from BNP Paribas → real income."""
+        tx = _make_crdt_tx(debtor_bic="PPABPLPK", creditor_bic="INGBPLPW")
+        assert eb_detect(tx, account_bic="INGBPLPW") is False
+
+    def test_different_bank_velo_caught_by_text(self):
+        """Velo transfer from different bank BIC but caught by text pattern."""
+        tx = _make_crdt_tx(debtor_bic="GBGCPLPK", remittance="velo zasilenie styczen")
+        assert eb_detect(tx, account_bic="INGBPLPW") is True
+
+    def test_different_bank_own_transfer_caught_by_text(self):
+        """mBank PRZELEW SRODKOW: different BIC but caught by ASCII text pattern."""
+        tx = _make_crdt_tx(debtor_bic="BREXPLPW", remittance="PRZELEW SRODKOW")
+        assert eb_detect(tx, account_bic="INGBPLPW") is True
+
+    def test_different_bank_real_transfer(self):
+        """mBank real transfer (LOTY) → real income, not caught by patterns."""
+        tx = _make_crdt_tx(debtor_bic="BREXPLPW", remittance="LOTY I ESTA")
+        assert eb_detect(tx, account_bic="INGBPLPW") is False
+
+    def test_no_account_bic_falls_back_to_creditor_compare(self):
+        """Without account_bic, falls back to comparing debtor vs creditor BIC."""
+        tx = _make_crdt_tx(debtor_bic="INGBPLPW", creditor_bic="INGBPLPW")
+        assert eb_detect(tx, account_bic=None) is True
+
+    def test_no_account_bic_different_banks(self):
+        """Without account_bic, different debtor/creditor BICs → not internal."""
+        tx = _make_crdt_tx(debtor_bic="CITIPLPX", creditor_bic="INGBPLPW")
+        assert eb_detect(tx, account_bic=None) is False
+
+
+# ============================================================================
+# Enable Banking detection — text patterns (Polish diacritics + ASCII)
 # ============================================================================
 
 class TestEBDetection:
-    """Tests for _detect_internal_transfer in enable_banking.py."""
+    """Tests for text pattern matching in detect_internal_transfer_eb."""
 
     def test_smart_saver(self):
         tx = _make_eb_tx("Smart Saver transfer")
@@ -84,8 +183,17 @@ class TestEBDetection:
         tx = _make_eb_tx("Przelew własny na konto")
         assert eb_detect(tx) is True
 
+    def test_przelew_wlasny_ascii(self):
+        """ASCII variant without diacritics (e.g. mBank)."""
+        tx = _make_eb_tx("PRZELEW WLASNY")
+        assert eb_detect(tx) is True
+
     def test_konto_oszczednosciowe(self):
         tx = _make_eb_tx("Przelew Na Konto Oszczędnościowe")
+        assert eb_detect(tx) is True
+
+    def test_konto_oszczednosciowe_ascii(self):
+        tx = _make_eb_tx("KONTO OSZCZEDNOSCIOWE")
         assert eb_detect(tx) is True
 
     def test_velo_zasilenie(self):
@@ -100,8 +208,16 @@ class TestEBDetection:
         tx = _make_eb_tx("Wpłatomat - wpłata własna")
         assert eb_detect(tx) is True
 
+    def test_wplatomat_ascii(self):
+        tx = _make_eb_tx("WPLATOMAT")
+        assert eb_detect(tx) is True
+
     def test_wplata_wlasna(self):
         tx = _make_eb_tx("wpłata własna w oddziale")
+        assert eb_detect(tx) is True
+
+    def test_wplata_wlasna_ascii(self):
+        tx = _make_eb_tx("WPLATA WLASNA")
         assert eb_detect(tx) is True
 
     def test_zasilenie_kredyt(self):
@@ -112,6 +228,11 @@ class TestEBDetection:
         tx = _make_eb_tx("PRZELEW ŚRODKÓW")
         assert eb_detect(tx) is True
 
+    def test_przelew_srodkow_ascii(self):
+        """mBank sends SRODKOW without diacritics."""
+        tx = _make_eb_tx("PRZELEW SRODKOW")
+        assert eb_detect(tx) is True
+
     def test_wymiana(self):
         tx = _make_eb_tx("Wymiana walut EUR/PLN")
         assert eb_detect(tx) is True
@@ -120,8 +241,16 @@ class TestEBDetection:
         tx = _make_eb_tx("Płatność kartą zwrot")
         assert eb_detect(tx) is True
 
+    def test_platnosc_karta_ascii(self):
+        tx = _make_eb_tx("PLATNOSC KARTA")
+        assert eb_detect(tx) is True
+
     def test_zwrot_karta(self):
         tx = _make_eb_tx("Zwrot kartą VISA")
+        assert eb_detect(tx) is True
+
+    def test_zwrot_karta_ascii(self):
+        tx = _make_eb_tx("ZWROT KARTA")
         assert eb_detect(tx) is True
 
     def test_kapitalizacja_odsetek(self):
@@ -130,6 +259,10 @@ class TestEBDetection:
 
     def test_naliczenie_odsetek(self):
         tx = _make_eb_tx("naliczenie odsetek konto")
+        assert eb_detect(tx) is True
+
+    def test_zwrot_blik(self):
+        tx = _make_eb_tx("Zwrot transakcji BLIK nr 12345")
         assert eb_detect(tx) is True
 
     def test_case_insensitive(self):
@@ -143,7 +276,7 @@ class TestEBDetection:
 
 
 # ============================================================================
-# Enable Banking detection — BIC-based
+# Enable Banking detection — BIC-based same-person (mainly DBIT)
 # ============================================================================
 
 class TestEBDetectionBIC:
@@ -222,6 +355,64 @@ class TestNegativeCases:
         tx["creditor"] = {"name": "Jan Kowalski"}
         assert eb_detect(tx) is False
 
+    def test_salary_crdt_with_account_bic(self):
+        """Salary from external bank should NOT be internal even with account_bic."""
+        tx = _make_crdt_tx(debtor_bic="CITIPLPX", creditor_bic="INGBPLPW",
+                           remittance="Wynagrodzenie za styczeń")
+        assert eb_detect(tx, account_bic="INGBPLPW") is False
+
+    def test_family_transfer_crdt(self):
+        """Family transfer from BNP Paribas should NOT be internal."""
+        tx = _make_crdt_tx(debtor_bic="PPABPLPK", remittance="Dopłata do czynszu")
+        assert eb_detect(tx, account_bic="INGBPLPW") is False
+
+
+# ============================================================================
+# Account BIC inference
+# ============================================================================
+
+class TestInferAccountBIC:
+    """Tests for infer_account_bic helper."""
+
+    def test_infer_from_dbit(self):
+        """Should find BIC from DBIT debtor_agent."""
+        txs = [
+            {"credit_debit_indicator": "DBIT", "debtor_agent": {"bic_fi": "INGBPLPW"}, "creditor_agent": {}},
+        ]
+        assert infer_account_bic(txs) == "INGBPLPW"
+
+    def test_infer_from_crdt_creditor(self):
+        """Should find BIC from CRDT creditor_agent."""
+        txs = [
+            {"credit_debit_indicator": "CRDT", "debtor_agent": {"bic_fi": "CITIPLPX"}, "creditor_agent": {"bic_fi": "INGBPLPW"}},
+        ]
+        assert infer_account_bic(txs) == "INGBPLPW"
+
+    def test_infer_dbit_preferred_over_crdt(self):
+        """DBIT comes first in iteration, should be preferred."""
+        txs = [
+            {"credit_debit_indicator": "DBIT", "debtor_agent": {"bic_fi": "INGBPLPW"}, "creditor_agent": {}},
+            {"credit_debit_indicator": "CRDT", "debtor_agent": {"bic_fi": "CITIPLPX"}, "creditor_agent": {"bic_fi": "INGBPLPW"}},
+        ]
+        assert infer_account_bic(txs) == "INGBPLPW"
+
+    def test_no_bic_available(self):
+        """No BIC info → returns None."""
+        txs = [
+            {"credit_debit_indicator": "CRDT", "debtor_agent": {}, "creditor_agent": {}},
+        ]
+        assert infer_account_bic(txs) is None
+
+    def test_empty_list(self):
+        assert infer_account_bic([]) is None
+
+    def test_whitespace_bic_ignored(self):
+        """Whitespace-only BIC should be treated as None."""
+        txs = [
+            {"credit_debit_indicator": "DBIT", "debtor_agent": {"bic_fi": "  "}, "creditor_agent": {}},
+        ]
+        assert infer_account_bic(txs) is None
+
 
 # ============================================================================
 # Backfill detection — GoCardless
@@ -283,12 +474,28 @@ class TestBackfillEnableBanking:
     def test_eb_same_bic_same_name(self):
         raw = {
             "remittance_information": [],
+            "credit_debit_indicator": "",
             "debtor_agent": {"bic_fi": "INGBPLPW"},
             "creditor_agent": {"bic_fi": "INGBPLPW"},
             "debtor": {"name": "Jan Kowalski"},
             "creditor": {"name": "Jan Kowalski"},
         }
         assert backfill_detect(raw, "enablebanking") is True
+
+    def test_eb_with_account_bic(self):
+        """Backfill can pass account_bic for structural detection."""
+        raw = {
+            "credit_debit_indicator": "CRDT",
+            "remittance_information": [],
+            "debtor_agent": {"bic_fi": "INGBPLPW"},
+            "creditor_agent": {},
+            "debtor": {},
+            "creditor": {},
+        }
+        # Without account_bic: not caught (different debtor vs no creditor)
+        assert backfill_detect(raw, "enablebanking", account_bic=None) is False
+        # With account_bic: caught by structural filter
+        assert backfill_detect(raw, "enablebanking", account_bic="INGBPLPW") is True
 
 
 # ============================================================================
@@ -319,3 +526,7 @@ class TestDescriptionFallback:
 
     def test_case_insensitive(self):
         assert _desc_detect(description_original="PRZELEW ŚRODKÓW na konto") is True
+
+    def test_ascii_variant(self):
+        """ASCII variant should also match."""
+        assert _desc_detect(description_original="PRZELEW SRODKOW na konto") is True

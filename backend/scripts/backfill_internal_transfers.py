@@ -2,6 +2,8 @@
 Backfill is_internal_transfer for existing bank transactions.
 
 Checks raw_data for Enable Banking transactions and types.type for GoCardless.
+Uses structural BIC-based detection for EB CRDT transactions (infers account BIC per account).
+
 Run after migration: python scripts/backfill_internal_transfers.py
 
 Can be run inside Docker:
@@ -13,6 +15,8 @@ Or on production:
 
 import sys
 import os
+from collections import defaultdict
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import SessionLocal
@@ -20,6 +24,7 @@ from app.models import BankTransaction
 from app.services.internal_transfer_detection import (
     detect_internal_transfer as _detect_internal_transfer,
     detect_internal_from_descriptions as _detect_internal_from_descriptions_raw,
+    infer_account_bic,
 )
 
 
@@ -40,17 +45,32 @@ def main():
         ).all()
 
         total = len(transactions)
-        marked = 0
 
+        # Group EB transactions by account to infer BIC per account
+        eb_by_account = defaultdict(list)
+        for tx in transactions:
+            if tx.provider == "enablebanking" and tx.raw_data and tx.tink_account_id:
+                eb_by_account[tx.tink_account_id].append(tx.raw_data)
+
+        # Infer BIC per account from raw_data
+        account_bics = {}
+        for account_id, raw_data_list in eb_by_account.items():
+            bic = infer_account_bic(raw_data_list)
+            if bic:
+                account_bics[account_id] = bic
+                print(f"  Account {account_id[:8]}...: inferred BIC = {bic}")
+
+        marked = 0
         for tx in transactions:
             if not tx.provider:
                 continue
 
             is_internal = False
 
-            # Primary: check raw_data
+            # Primary: check raw_data (with account_bic for structural detection)
             if tx.raw_data:
-                is_internal = _detect_internal_transfer(tx.raw_data, tx.provider)
+                account_bic = account_bics.get(tx.tink_account_id)
+                is_internal = _detect_internal_transfer(tx.raw_data, tx.provider, account_bic=account_bic)
 
             # Fallback: check description fields
             if not is_internal:

@@ -28,7 +28,7 @@ from ..database import get_db
 from ..dependencies import get_current_user
 from ..models import User, EnableBankingConnection, BankTransaction
 from ..services.enable_banking_service import enable_banking_service, EnableBankingAPIError
-from ..services.internal_transfer_detection import detect_internal_transfer_eb
+from ..services.internal_transfer_detection import detect_internal_transfer_eb, infer_account_bic
 
 logger = logging.getLogger(__name__)
 
@@ -36,13 +36,6 @@ logger = logging.getLogger(__name__)
 def get_limiter(request: Request) -> Limiter:
     """Get the limiter instance from app state."""
     return request.app.state.limiter
-
-
-def _detect_internal_transfer(tx: dict) -> bool:
-    """Detect internal transfers from Enable Banking raw transaction data.
-    Delegates to shared detection module.
-    """
-    return detect_internal_transfer_eb(tx)
 
 
 router = APIRouter(
@@ -389,6 +382,9 @@ async def sync_transactions(
 
             total_fetched += len(transactions)
 
+            # Infer account's bank BIC for structural internal transfer detection
+            account_bic = infer_account_bic(transactions)
+
             for tx in transactions:
                 # Dedup key: entry_reference is the stable bank ID
                 entry_ref = tx.get("entry_reference", "")
@@ -494,7 +490,7 @@ async def sync_transactions(
                     suggested_type=suggested_type,
                     suggested_category=None,
                     status="pending",
-                    is_internal_transfer=_detect_internal_transfer(tx),
+                    is_internal_transfer=detect_internal_transfer_eb(tx, account_bic=account_bic),
                     raw_data=tx,
                 )
                 db.add(bank_tx)

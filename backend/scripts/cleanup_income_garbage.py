@@ -1,10 +1,9 @@
 """
 Comprehensive cleanup of income/expense entries created from internal transfers.
 
-Unlike cleanup_internal_transfer_entries.py (which only cleans entries already
-marked as is_internal_transfer), this script:
+Uses structural BIC-based detection (same bank = internal) plus text patterns.
 1. Scans ALL bank-imported income/expense entries
-2. Checks descriptions AND raw_data for internal transfer patterns
+2. Checks BIC structure, descriptions AND raw_data for internal transfer patterns
 3. Deletes matching records and marks their bank transactions
 4. Supports --dry-run mode for safe preview
 
@@ -22,11 +21,18 @@ Usage:
 
 import sys
 import os
+from collections import defaultdict
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import SessionLocal
 from app.models import BankTransaction, Income, Expense
-from app.services.internal_transfer_detection import INTERNAL_PATTERNS, _text_matches_internal
+from app.services.internal_transfer_detection import (
+    INTERNAL_PATTERNS,
+    _text_matches_internal,
+    detect_internal_transfer_eb,
+    infer_account_bic,
+)
 
 
 def _matches_internal_pattern(text: str) -> str | None:
@@ -49,13 +55,30 @@ def _check_raw_data_remittance(raw_data: dict) -> str | None:
     return _matches_internal_pattern(remittance_text)
 
 
-def _check_transaction(tx: BankTransaction) -> str | None:
+def _check_transaction(tx: BankTransaction, account_bics: dict) -> str | None:
     """Check a bank transaction against all detection methods. Returns reason or None."""
     # Already marked
     if tx.is_internal_transfer:
         return "already_marked"
 
-    # Check raw_data remittance
+    # Structural BIC detection (primary for Enable Banking CRDT)
+    if tx.raw_data and tx.provider == "enablebanking":
+        account_bic = account_bics.get(tx.tink_account_id)
+        if detect_internal_transfer_eb(tx.raw_data, account_bic=account_bic):
+            # Determine reason for reporting
+            cdi = tx.raw_data.get("credit_debit_indicator", "")
+            debtor_bic = ((tx.raw_data.get("debtor_agent") or {}).get("bic_fi") or "").strip()
+            if cdi == "CRDT" and not debtor_bic:
+                return "structural:no_debtor_bic(ATM)"
+            if cdi == "CRDT" and account_bic and debtor_bic == account_bic:
+                return f"structural:same_bank({debtor_bic})"
+            # Fall through to text pattern reason
+            match = _check_raw_data_remittance(tx.raw_data)
+            if match:
+                return f"raw_data_remittance:{match}"
+            return "structural:bic_match"
+
+    # Check raw_data remittance (non-EB or fallback)
     if tx.raw_data:
         match = _check_raw_data_remittance(tx.raw_data)
         if match:
@@ -108,13 +131,41 @@ def main():
             for tx in db.query(BankTransaction).filter(BankTransaction.id.in_(all_tx_ids)).all():
                 bank_txs[tx.id] = tx
 
+        # Infer account BICs from raw_data for structural detection
+        eb_by_account = defaultdict(list)
+        for tx in bank_txs.values():
+            if tx.provider == "enablebanking" and tx.raw_data and tx.tink_account_id:
+                eb_by_account[tx.tink_account_id].append(tx.raw_data)
+
+        account_bics = {}
+        for account_id, raw_data_list in eb_by_account.items():
+            bic = infer_account_bic(raw_data_list)
+            if bic:
+                account_bics[account_id] = bic
+                print(f"  Account {account_id[:8]}...: inferred BIC = {bic}")
+
+        # Also try inferring from ALL EB transactions in the DB (not just linked ones)
+        if not account_bics:
+            all_eb_txs = db.query(BankTransaction).filter(
+                BankTransaction.provider == "enablebanking",
+                BankTransaction.raw_data != None,
+            ).limit(100).all()
+            for tx in all_eb_txs:
+                if tx.tink_account_id and tx.tink_account_id not in account_bics:
+                    bic = infer_account_bic([tx.raw_data])
+                    if bic:
+                        account_bics[tx.tink_account_id] = bic
+                        print(f"  Account {tx.tink_account_id[:8]}...: inferred BIC = {bic} (from DB)")
+
+        print()
+
         # Check income entries
         income_to_delete = []
         for income in incomes:
             tx = bank_txs.get(income.bank_transaction_id)
             if not tx:
                 continue
-            reason = _check_transaction(tx)
+            reason = _check_transaction(tx, account_bics)
             if reason:
                 income_to_delete.append((income, tx, reason))
 
@@ -124,7 +175,7 @@ def main():
             tx = bank_txs.get(expense.bank_transaction_id)
             if not tx:
                 continue
-            reason = _check_transaction(tx)
+            reason = _check_transaction(tx, account_bics)
             if reason:
                 expense_to_delete.append((expense, tx, reason))
 
