@@ -99,6 +99,7 @@ class BankTransactionResponse(BaseModel):
     suggested_category: Optional[str] = None
     confidence_score: Optional[float] = None
     status: str
+    is_internal_transfer: Optional[bool] = False
     is_duplicate: bool
     duplicate_of: Optional[int] = None
     duplicate_confidence: Optional[float] = None
